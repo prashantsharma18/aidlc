@@ -4,3 +4,4 @@ from . import new_cmd  # noqa: F401
 from . import trace_cmd  # noqa: F401
 from . import init_repo_cmd  # noqa: F401
 from . import render_cmd  # noqa: F401
+from . import check_cmd  # noqa: F401
