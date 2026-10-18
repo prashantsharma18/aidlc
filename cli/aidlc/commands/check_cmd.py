@@ -7,6 +7,7 @@ from pathlib import Path
 
 from ..checks.context_drift import check_context_drift
 from ..checks.findings import report
+from ..checks.openwiki_block import check_openwiki
 from ..cli import command
 from ..paths import find_repo_root
 
@@ -27,6 +28,14 @@ def _context_drift(args: argparse.Namespace) -> int:
 
 
 CHECKS["context-drift"] = _context_drift
+
+
+def _openwiki(args: argparse.Namespace) -> int:
+    repo = _repo(args.path)
+    return 2 if repo is None else report(check_openwiki(repo), "openwiki")
+
+
+CHECKS["openwiki"] = _openwiki
 
 
 def _list(_args: argparse.Namespace) -> int:
