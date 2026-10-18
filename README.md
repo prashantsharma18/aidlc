@@ -7,6 +7,14 @@ with a Claude Code adapter and extension points for other tools.
 - Design: [docs/design/2026-10-18-aidlc-framework-design.md](docs/design/2026-10-18-aidlc-framework-design.md)
 - Plans: [docs/plans/](docs/plans/)
 
+## Documentation
+
+- [Operating model: lifecycle](docs/operating-model/lifecycle.md), [tiers](docs/operating-model/tiers.md), [roles](docs/operating-model/roles.md), [autonomy and maturity](docs/operating-model/autonomy-and-maturity.md)
+- [Context engineering](docs/context-engineering/README.md)
+- [Adapters](docs/adapters/interface.md)
+- [Traceability to the guide](docs/traceability.md)
+- [Codebase map](docs/codebase-map.md)
+
 ## Requirements
 
 Python 3.12 with PyYAML and jsonschema (Ubuntu: `sudo apt install python3-yaml python3-jsonschema`).
