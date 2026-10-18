@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft for review (Phase 0) |
+| Status | Approved 2026-10-18 (Phase 0) |
 | Date | 2026-10-18 |
 | Owner | Prashant Sharma |
 | Primary source | *From Intent to Verified Change*, 16 chapters (`~/demos/guide`) |
