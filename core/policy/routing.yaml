@@ -1,0 +1,14 @@
+meta: {id: policy-routing, owner: "@harness-owners", review_by: "2027-04-18", guide: ["12.13", "12.12"]}
+tiers:
+  small:   {model: claude-haiku-5-5,  use_for: "lookups, formatting, renames, single-file summaries"}
+  general: {model: claude-sonnet-5-5, use_for: "Tier 1 and 2 build tasks, test writing, refactors with strong tests, CI AI review"}
+  capable: {model: claude-opus-5-5,   use_for: "planning, Tier 3 work, reviews of security-relevant diffs, diagnosis, eval judging"}
+choose:
+  rule: The higher of the task rule and the risk rule; only models on an approved route for the data.
+  tier3: capable
+validate: The same one-command check and scope check at every tier.
+on_failed_check: Retry once at the same tier, then escalate one tier.
+retry_cap: 3
+budget_per_task: Alert at the budget; stop at twice the budget.
+log: [task_id, task_class, tier, escalations, cost, outcome]
+review: Monthly, by the harness code owner (eval pass rate and cost per task, by tier).

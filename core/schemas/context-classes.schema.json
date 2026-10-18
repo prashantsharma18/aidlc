@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "context-classes.schema.json",
+  "type": "object",
+  "required": [
+    "meta",
+    "classes"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object"
+    },
+    "classes": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": [
+          "n",
+          "name",
+          "answers",
+          "loads",
+          "trust",
+          "home",
+          "fresh_by",
+          "examples"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "n": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8
+          },
+          "name": {
+            "type": "string"
+          },
+          "answers": {
+            "type": "string"
+          },
+          "loads": {
+            "type": "string"
+          },
+          "trust": {
+            "type": "string"
+          },
+          "home": {
+            "type": "string"
+          },
+          "fresh_by": {
+            "type": "string"
+          },
+          "examples": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

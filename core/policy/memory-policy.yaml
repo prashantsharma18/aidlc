@@ -1,0 +1,10 @@
+meta: {id: policy-memory-policy, owner: "@framework-owners", review_by: "2027-04-18", guide: ["2.10", "2.13"]}
+auto_memory:
+  developer_sessions: allowed for non-sensitive preferences and working notes; reviewed and pruned
+  demo_eval_ci_sessions: disabled (reproducibility; memory differs per engineer)
+never_store: [secrets, credentials, personal or customer data, regulated data, production identifiers, details of unfixed vulnerabilities]
+authority: Never authoritative; memory loses every conflict (order of authority).
+promotion:
+  path: capture -> propose (PR to the right home, evidence linked) -> owner review -> publish -> audit -> retire
+  criteria: [traceability, scope or time to live, owner, rollback path]
+  otherwise: delete or reset the note

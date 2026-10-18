@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "routing.schema.json",
+  "type": "object",
+  "required": [
+    "meta",
+    "tiers",
+    "choose",
+    "validate",
+    "on_failed_check",
+    "retry_cap",
+    "budget_per_task",
+    "log",
+    "review"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object"
+    },
+    "tiers": {
+      "type": "object",
+      "required": [
+        "small",
+        "general",
+        "capable"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "small": {
+          "type": "object",
+          "required": [
+            "model",
+            "use_for"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "model": {
+              "type": "string"
+            },
+            "use_for": {
+              "type": "string"
+            }
+          }
+        },
+        "general": {
+          "type": "object",
+          "required": [
+            "model",
+            "use_for"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "model": {
+              "type": "string"
+            },
+            "use_for": {
+              "type": "string"
+            }
+          }
+        },
+        "capable": {
+          "type": "object",
+          "required": [
+            "model",
+            "use_for"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "model": {
+              "type": "string"
+            },
+            "use_for": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "choose": {
+      "type": "object",
+      "required": [
+        "rule",
+        "tier3"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "rule": {
+          "type": "string"
+        },
+        "tier3": {
+          "enum": [
+            "small",
+            "general",
+            "capable"
+          ]
+        }
+      }
+    },
+    "validate": {
+      "type": "string"
+    },
+    "on_failed_check": {
+      "type": "string"
+    },
+    "retry_cap": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "budget_per_task": {
+      "type": "string"
+    },
+    "log": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "review": {
+      "type": "string"
+    }
+  }
+}

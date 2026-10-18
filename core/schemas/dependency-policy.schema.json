@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dependency-policy.schema.json",
+  "type": "object",
+  "required": [
+    "meta",
+    "ecosystems",
+    "adding",
+    "rules",
+    "monitoring",
+    "exceptions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object"
+    },
+    "ecosystems": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "registry",
+          "install",
+          "exact_versions"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "registry": {
+            "type": "string"
+          },
+          "install": {
+            "type": "string"
+          },
+          "exact_versions": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "adding": {
+      "type": "object",
+      "required": [
+        "agent",
+        "needs",
+        "approver"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "type": "string"
+        },
+        "needs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "approver": {
+          "type": "string"
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "required": [
+        "minimum_release_age_days",
+        "install_scripts",
+        "licences",
+        "vulnerabilities",
+        "review_first"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "minimum_release_age_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "install_scripts": {
+          "type": "string"
+        },
+        "licences": {
+          "type": "object",
+          "required": [
+            "allow",
+            "review",
+            "deny"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "allow": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "review": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "deny": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "vulnerabilities": {
+          "type": "string"
+        },
+        "review_first": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "required": [
+        "advisories",
+        "review"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "advisories": {
+          "type": "string"
+        },
+        "review": {
+          "type": "string"
+        }
+      }
+    },
+    "exceptions": {
+      "type": "string"
+    }
+  }
+}

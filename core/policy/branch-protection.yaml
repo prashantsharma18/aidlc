@@ -1,0 +1,14 @@
+meta: {id: policy-branch-protection, owner: "@platform-team", review_by: "2027-04-18", guide: ["11.8", "9.7", "14.16"]}
+branch: main
+require_pull_request: true
+required_checks: [compile, check, scans, agent-config-evals, ai-review-dispositioned]
+require_branch_up_to_date: true
+approvals:
+  required: 1
+  from_code_owners: true
+  excluded_identities: [pr_author, commit_pushers]
+  dismiss_on_new_commits: true
+require_resolved_comments: true
+bypass_allowed_for: []
+allow_force_push: false
+allow_deletion: false

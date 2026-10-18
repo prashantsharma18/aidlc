@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "memory-policy.schema.json",
+  "type": "object",
+  "required": [
+    "meta",
+    "auto_memory",
+    "never_store",
+    "authority",
+    "promotion"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object"
+    },
+    "auto_memory": {
+      "type": "object",
+      "required": [
+        "developer_sessions",
+        "demo_eval_ci_sessions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "developer_sessions": {
+          "type": "string"
+        },
+        "demo_eval_ci_sessions": {
+          "type": "string"
+        }
+      }
+    },
+    "never_store": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "authority": {
+      "type": "string"
+    },
+    "promotion": {
+      "type": "object",
+      "required": [
+        "path",
+        "criteria",
+        "otherwise"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "otherwise": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

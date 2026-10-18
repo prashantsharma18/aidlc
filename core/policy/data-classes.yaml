@@ -1,0 +1,16 @@
+meta: {id: policy-data-classes, owner: "@security-and-privacy", review_by: "2027-04-18", guide: ["13.5", "5.11"]}
+classes:
+  - id: public
+    examples: [open-source code, published documentation]
+    to_model: Yes, on any approved route
+  - id: internal
+    examples: [service source code, tickets, design notes]
+    to_model: Yes, on any approved route; smallest context needed
+  - id: confidential
+    examples: [security configuration, incident details, unfixed vulnerabilities]
+    to_model: Only on a route reviewed for this class; minimised; never in memory
+  - id: restricted
+    examples: [customer email addresses, password hashes, production logs with personal data]
+    to_model: Not by default. A recorded exception after security review; masked or synthetic data instead
+credentials: Never sent to any model, nor kept in a prompt, memory, transcript or telemetry.
+when_unsure: Treat it as the higher class.

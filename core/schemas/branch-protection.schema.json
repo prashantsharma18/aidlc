@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "branch-protection.schema.json",
+  "type": "object",
+  "required": [
+    "meta",
+    "branch",
+    "require_pull_request",
+    "required_checks",
+    "require_branch_up_to_date",
+    "approvals",
+    "require_resolved_comments",
+    "bypass_allowed_for",
+    "allow_force_push",
+    "allow_deletion"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object"
+    },
+    "branch": {
+      "type": "string"
+    },
+    "require_pull_request": {
+      "const": true
+    },
+    "required_checks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "require_branch_up_to_date": {
+      "type": "boolean"
+    },
+    "approvals": {
+      "type": "object",
+      "required": [
+        "required",
+        "from_code_owners",
+        "excluded_identities",
+        "dismiss_on_new_commits"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "from_code_owners": {
+          "const": true
+        },
+        "excluded_identities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dismiss_on_new_commits": {
+          "type": "boolean"
+        }
+      }
+    },
+    "require_resolved_comments": {
+      "type": "boolean"
+    },
+    "bypass_allowed_for": {
+      "type": "array",
+      "maxItems": 0
+    },
+    "allow_force_push": {
+      "const": false
+    },
+    "allow_deletion": {
+      "const": false
+    }
+  }
+}
