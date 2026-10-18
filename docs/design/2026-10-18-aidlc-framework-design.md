@@ -131,11 +131,11 @@ aidlc/
     observability/ attribute map, emitters (hook decisions, check results, eval runs)
     ci/            local trusted-CI runner; GitHub Actions templates (inactive)
   adapters/
-    interface.md   the contract every adapter implements (§4.3)
-    claude-code/   plugin, settings renderer, managed-settings drop-in, hook shims
-    copilot/       README with the mapping only; no code this phase
+    claude-code/   plugin assets, managed-settings drop-in, hook shims (Plan 2)
   cli/aidlc/       init-repo, render, scope, check, ci, eval, review, workspace,
                    doctor, openwiki, telemetry
+    adapters/      adapter code: base (interface), claude_code, copilot (extension point)
+  (docs/adapters/  interface.md and copilot.md: the adapter contract and the Copilot mapping)
   tests/           unit tests, hook fixtures, harness attack tests (Ch 3 step 8)
 ```
 
@@ -204,12 +204,12 @@ One skill per procedure. Each skill names its inputs, produces its template arte
 
 The framework implements Chapter 2's model and the procedures below. It does not just describe them.
 
-- **Eight classes, each with a home.** `core/context/classes.yaml` gives each class its home, load moment, trust level and freshness mechanism. The `aidlc-context-setup` skill asks the A2 placement questions in order.
+- **Eight classes, each with a home.** `core/policy/context-classes.yaml` gives each class its home, load moment, trust level and freshness mechanism. The `aidlc-context-setup` skill asks the A2 placement questions in order.
 - **Order of authority.** `core/context/authority.md` sets three ladders. The agent's conflict protocol is: flag the conflict, cite both sources, never choose silently.
 - **Budget.** `aidlc doctor` warns when:
   - `AGENTS.md` exceeds about 80 lines;
   - a skill description exceeds its limit;
-  - an `@import` pulls in long reference material.
+  - an `@import` pulls in long reference material (built in `aidlc doctor`, Plan 2).
 
 ### 6.2 Repository context (Procedure A)
 
@@ -217,7 +217,7 @@ The framework implements Chapter 2's model and the procedures below. It does not
 
 | File | Standard | Enforcement |
 |---|---|---|
-| `AGENTS.md` | Five sections (map pointer, standards with a named exemplar, exact commands with the one-command check, tool usage, guardrails) plus "where to look". Each rule is specific, testable and stable. | Drift check: every path and command named exists. Removal-test lint. Code-owned. Agent edit denied. |
+| `AGENTS.md` | Five sections (map pointer, standards with a named exemplar, exact commands with the one-command check, tool usage, guardrails) plus "where to look". Each rule is specific, testable and stable. | Drift check: every path and command named exists; line budget (warn > 80, fail > 200). The removal test stays a reviewer's judgement. Code-owned. Agent edit denied. |
 | `CLAUDE.md` | `@AGENTS.md` plus Claude-only lines | Rendered and checked to stay thin. Agent edit denied. |
 | `docs/codebase-map.md` | Purpose, areas with owner and allowed dependencies, key flows, where changes go, shared capabilities, traps, tests, plus owner, last-verified date and commit | Drift check: paths exist; last-verified older than the interval gives a warning |
 | `.aidlc/rules/*.md` | Folder rules with `paths:` (one source for both tools) | Rendered per adapter |

@@ -10,14 +10,17 @@ and plan it points to.
 
 ## MAY CHANGE format
 Comma- or newline-separated globs after the `MAY CHANGE` label; continuation lines are indented;
-parenthesised notes are ignored; the next uppercase field label ends the list. An empty or missing
-field means no task can start.
+parenthesised notes are ignored; the first non-indented line ends the list. An empty or missing
+field means no task can start. Patterns must stay inside the repository: absolute paths, `..`,
+anything under `.git/` and a bare `*` or `**` are refused.
 
 ## Approval and scope
 1. The approver appends one line to `plans/approved-bundles.txt` on main:
-   `<branch> <commit>:<bundle path> <approver> <YYYY-MM-DD>`.
+   `<branch> <commit sha>:<bundle path> <approver> <YYYY-MM-DD>`. The commit must be a sha,
+   never a moving ref such as `HEAD` or a branch name.
 2. `aidlc scope --branch <branch>` reads that line from main, reads the bundle at that commit
    (never the copy on the working branch) and writes a read-only scope file outside the workspace.
+   Approvals are read only from main, so a branch cannot approve itself.
 3. The guard hook, the post-tool check, the local check and trusted CI all read the same scope,
    and each fails closed when it is missing.
 

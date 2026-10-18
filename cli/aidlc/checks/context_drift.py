@@ -23,19 +23,37 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8").lstrip("﻿").replace("\r\n", "\n")
 
 
-def _is_path(span: str) -> bool:
+def _has_ext(span: str) -> bool:
+    last = span.rstrip("/").rsplit("/", 1)[-1]
+    return "." in last and last.rsplit(".", 1)[1] in EXTS
+
+
+def _is_path(repo: Path, span: str) -> bool:
+    """A span names a repository path when it has a known file extension, ends with '/',
+    contains a glob, or starts with an existing top-level entry. This skips MIME types,
+    'origin/main', 'HTTP/2', 'and/or' and 'owner/repo' slugs."""
     if any(ch in FORBIDDEN for ch in span) or span.startswith(("/", "http", "-", "@")):
         return False
-    if "/" in span:
+    if "/" not in span:
+        return _has_ext(span)
+    if span.endswith("/") or _has_ext(span) or any(ch in span for ch in "*?["):
         return True
-    return "." in span and span.rsplit(".", 1)[1] in EXTS
+    return (repo / span.split("/", 1)[0]).exists()
 
 
 def _exists(repo: Path, span: str) -> bool:
     if any(ch in span for ch in "*?["):
-        return any(repo.glob(span.rstrip("/")))
+        pattern = span.rstrip("/")
+        return any(repo.glob(pattern if "/" in pattern else f"**/{pattern}"))
     target = repo / span
     return target.is_dir() if span.endswith("/") else target.exists()
+
+
+def _ignored(repo: Path, span: str) -> bool:
+    """Gitignored paths (build output such as dist/) legitimately do not exist in CI."""
+    result = subprocess.run(["git", "check-ignore", "-q", "--no-index", span], cwd=repo,
+                            capture_output=True)
+    return result.returncode == 0
 
 
 def _aidlc_subcommands() -> set[str]:
@@ -74,7 +92,7 @@ def _scan(repo: Path, path: Path, subcommands: set[str]) -> list[Finding]:
             span = span.strip()
             if " " in span:
                 findings += _command_findings(repo, rel, lineno, span, subcommands)
-            elif _is_path(span) and not _exists(repo, span):
+            elif _is_path(repo, span) and not _exists(repo, span) and not _ignored(repo, span):
                 findings.append(Finding("FAIL", rel, lineno, f"names '{span}', which does not exist"))
     return findings
 

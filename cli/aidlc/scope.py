@@ -10,8 +10,25 @@ from pathlib import Path
 
 
 
+PINNED_REF = re.compile(r"^[0-9a-f]{6,40}:[^:]+$")
+
+
 class ScopeError(Exception):
     """No usable scope: the task must not start."""
+
+
+def _validate(patterns: list[str]) -> None:
+    """Refuse patterns that reach outside the repository, into .git, or allow everything."""
+    for pattern in patterns:
+        parts = pattern.replace("\\", "/").split("/")
+        if pattern.startswith(("/", "~")) or re.match(r"^[A-Za-z]:", pattern):
+            raise ScopeError(f"pattern '{pattern}' is absolute")
+        if ".." in parts:
+            raise ScopeError(f"pattern '{pattern}' leaves the repository")
+        if parts[0] == ".git":
+            raise ScopeError(f"pattern '{pattern}' reaches into .git")
+        if not pattern.strip("*/"):
+            raise ScopeError(f"pattern '{pattern}' would allow every file")
 
 
 def parse_may_change(text: str) -> list[str]:
@@ -32,6 +49,7 @@ def parse_may_change(text: str) -> list[str]:
     patterns = [p.strip() for p in re.split(r"[,\s]+", joined) if p.strip()]
     if not patterns:
         raise ScopeError("MAY CHANGE field is empty")
+    _validate(patterns)
     return patterns
 
 
@@ -58,6 +76,8 @@ def approved_ref(repo: Path, branch: str, approvals_ref: str = "main") -> str:
     if match is None:
         raise ScopeError(f"no approved bundle for branch '{branch}' in "
                          f"{approvals_ref}:plans/approved-bundles.txt")
+    if not PINNED_REF.match(match):
+        raise ScopeError(f"approval for '{branch}' must pin a commit sha (<sha>:<path>), got '{match}'")
     return match
 
 

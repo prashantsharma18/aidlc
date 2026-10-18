@@ -1,13 +1,14 @@
 """Repository configuration (.aidlc/config.yaml) and Procedure A scaffolding."""
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
 import yaml
 
-from .paths import framework_root
+from .paths import framework_root, safe_target
 from .policy import load_yaml
 from .templates import load_template, render
 
@@ -38,9 +39,13 @@ def load_config(repo: Path) -> RepoConfig:
 
 
 def _write(repo: Path, rel: str, text: str, report: list[tuple[str, str]]) -> None:
-    path = repo / rel
-    if path.exists():
+    if os.path.lexists(repo / rel):          # lexists: a dangling symlink also counts
         report.append((rel, "skipped (exists)"))
+        return
+    try:
+        path = safe_target(repo, rel)
+    except ValueError as exc:
+        report.append((rel, f"refused ({exc})"))
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")

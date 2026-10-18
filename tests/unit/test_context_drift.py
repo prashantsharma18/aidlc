@@ -67,3 +67,4 @@ class ContextDriftTest(unittest.TestCase):
             code, out, _ = run_cli("check", "context-drift", cwd=root / "src")
             self.assertEqual(code, 1, out)
             self.assertIn("context-drift:", out)
+            self.assertIn("missing/file.md", out)  # proves the root, not src/, was checked

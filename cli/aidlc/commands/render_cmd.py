@@ -7,10 +7,15 @@ from pathlib import Path
 from ..adapters import adapter_names, get_adapter
 from ..adapters.base import AdapterNotImplemented, write_rendered
 from ..cli import command
+from ..paths import find_repo_root
 
 
 def _run(args: argparse.Namespace) -> int:
-    repo = Path(args.path).resolve()
+    try:
+        repo = find_repo_root(Path(args.path))
+    except FileNotFoundError as exc:
+        print(f"aidlc render: {exc}")
+        return 2
     adapter = get_adapter(args.tool)
     try:
         files = adapter.render_rules(repo) + adapter.render_folder_rules(repo)
@@ -20,7 +25,8 @@ def _run(args: argparse.Namespace) -> int:
     except ValueError as exc:
         print(f"aidlc render: {exc}")
         return 1
-    problems = write_rendered(repo, files, check=args.check)
+    problems = write_rendered(repo, files, check=args.check,
+                              managed_dirs=adapter.managed_dirs)
     for problem in problems:
         print(problem)
     if not problems:

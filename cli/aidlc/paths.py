@@ -20,3 +20,19 @@ def find_repo_root(start: Path) -> Path:
         if (candidate / ".git").exists():
             return candidate
     raise FileNotFoundError(f"not inside a git repository: {start}")
+
+
+def safe_target(repo: Path, rel: str) -> Path:
+    """repo/rel for writing. Refuses absolute paths, '..', and any symlinked component
+    (including a dangling final symlink), so nothing is written outside the repository."""
+    root = repo.resolve()
+    rel_path = Path(rel)
+    if rel_path.is_absolute() or ".." in rel_path.parts:
+        raise ValueError(f"{rel}: must be a relative path inside the repository")
+    current = root
+    for part in rel_path.parts:
+        current = current / part
+        if current.is_symlink():
+            raise ValueError(f"{rel}: '{current.relative_to(root)}' is a symlink; "
+                             "refusing to write through it")
+    return current

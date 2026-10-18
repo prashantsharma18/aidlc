@@ -11,6 +11,7 @@ _MSG = ("the Copilot adapter is an extension point and is not built yet; "
 
 class CopilotAdapter:
     name = "copilot"
+    managed_dirs: tuple[str, ...] = ()
 
     def render_rules(self, repo: Path) -> list[RenderedFile]:
         raise AdapterNotImplemented(_MSG)
