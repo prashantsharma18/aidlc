@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "permissions.schema.json",
+  "type": "object",
+  "required": ["meta", "precedence", "defaults", "secret_paths", "protected_paths", "deny", "ask", "allow"],
+  "additionalProperties": false,
+  "$defs": {
+    "ruleset": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "read": { "type": "array", "items": { "type": "string" } },
+        "edit": { "type": "array", "items": { "type": "string" } },
+        "shell": { "type": "array", "items": { "type": "string" } },
+        "tools": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "properties": {
+    "meta": { "type": "object" },
+    "precedence": { "const": "deny > ask > allow" },
+    "defaults": {
+      "type": "object", "required": ["interactive", "unattended"], "additionalProperties": false,
+      "properties": { "interactive": { "enum": ["ask", "deny"] }, "unattended": { "const": "deny" } }
+    },
+    "secret_paths": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "protected_paths": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "deny": { "$ref": "#/$defs/ruleset" },
+    "ask": { "$ref": "#/$defs/ruleset" },
+    "allow": { "$ref": "#/$defs/ruleset" }
+  }
+}

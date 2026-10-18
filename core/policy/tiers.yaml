@@ -1,0 +1,64 @@
+meta:
+  id: policy-tiers
+  owner: "@framework-owners"
+  review_by: "2027-04-18"
+  guide: ["1.10", "2.14", "4.7", "5.9", "6.17", "7.14", "8.15", "9.13", "11.13", "14.18"]
+
+dials:
+  - id: risk
+    question: What does it cost if this change is wrong?
+  - id: complexity
+    question: How well is the code understood and pinned by tests?
+  - id: scope
+    question: How many repositories and owners are involved?
+
+rule: >-
+  Rate each dial. The tier is the highest any dial reaches. When uncertain, go up a tier:
+  unknown owners, unknown consumers or untested behaviour count as the next tier until
+  someone resolves them. Scope alone never makes Tier 3; it raises coordination.
+  A higher tier adds enforcement, checkpoints and approvers, never extra stages.
+
+evidence_pack_items:
+  - {n: 1, name: Scope and entry points, requirement: "Every way the behaviour or data is triggered: API, UI, events, jobs, schedulers, procedures"}
+  - {n: 2, name: Ownership, requirement: "An owner for each affected component, or 'unknown' with an escalation"}
+  - {n: 3, name: Contracts, requirement: "Each interface touched has a contract, existing or drafted and owner-reviewed"}
+  - {n: 4, name: Dependants, requirement: "One method plus owner confirmation (Tier 2); at Tier 3, two independent methods, one of them runtime evidence, when dependants could break"}
+  - {n: 5, name: Unknowns, requirement: "Each with its risk and an owner-agreed mitigation"}
+  - {n: 6, name: Pinned behaviour, requirement: "Existing or characterisation tests covering the change area"}
+  - {n: 7, name: Citations, requirement: "Every claim cites file:line, a recorded command or query, or a person and date"}
+  - {n: 8, name: Rollback, requirement: "Proven reversible, or rehearsed"}
+
+tiers:
+  - id: 1
+    name: routine
+    typical: One repository, one owner, no contract change, familiar well-tested code
+    spec: "A few lines on the work item: actor, observable behaviour, constraints, an example, a testable criterion"
+    evidence_pack: []
+    design: Usually stops at step 1 with a recorded 'none needed'
+    plan: Short plan in the PR description
+    verification: [required CI checks]
+    approvals: [one code owner]
+    autonomy: Whole slices can be delegated
+    release: Normal pipeline; revert to roll back
+  - id: 2
+    name: crosses a boundary or moderate risk
+    typical: "Crosses a contract or ownership boundary (public API, event, shared module, another team's code), moderate risk, or weak tests"
+    spec: "Written spec with non-goals; every edge-case concern decided; contract changes agreed with consumers; open questions owned"
+    evidence_pack: [1, 2, 3, 4, 5]
+    design: Every step, compactly
+    plan: Written spec and plan; tech lead approves the plan
+    verification: [required CI checks, contract tests, integration environment]
+    approvals: [code owners of every affected area, tech lead approves the plan]
+    autonomy: Delegated work pauses at contract decisions
+    release: Normal pipeline; flag where behaviour is user-visible
+  - id: 3
+    name: high risk
+    typical: Security, money, personal data, regulated behaviour, or legacy core code
+    spec: "Specialist reviews the spec; every risk decision names its decider; data in the agent's context is classified"
+    evidence_pack: [1, 2, 3, 4, 5, 6, 7, 8]
+    design: Specialist approval; threat model; NFRs tested before release
+    plan: Written plan with rollback; approach approved before slicing
+    verification: [required CI checks, contract tests, integration environment, security or privacy tests, characterisation tests for legacy code]
+    approvals: [code owners of every affected area, tech lead approves the plan, recorded specialist review (security, privacy, architecture or release)]
+    autonomy: "Judgement calls stay hands-on; read-only first where code is poorly understood; no production access"
+    release: Staged release behind a feature flag; written stop criteria; rehearsed rollback; named release approver

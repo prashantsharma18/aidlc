@@ -1,0 +1,124 @@
+# Framework baseline permission policy (tool-neutral). Adapters render it; repositories may
+# only narrow it (.aidlc/permissions.yaml). Precedence: deny > ask > allow; unmatched calls
+# fall to the default. Must-hold rules are also enforced by the sandbox and the guard hook.
+meta:
+  id: policy-permissions
+  owner: "@framework-owners"
+  review_by: "2027-04-18"
+  guide: ["3 step 3", "3.4", "13.4", "13.10"]
+
+precedence: "deny > ask > allow"
+defaults:
+  interactive: ask
+  unattended: deny          # CI and background runs: "ask" becomes deny
+
+# Rendered twice (verified 2026-10-18, docs/verification/2026-10-18-sandbox-wsl2.md):
+# into the sandbox's denyRead (commands) and into Read() deny rules (the Read tool runs
+# outside the sandbox).
+secret_paths:
+  - ".env"
+  - ".env.*"
+  - "**/*.pem"
+  - "**/*.key"
+  - "secrets/**"
+  - "~/.ssh/**"
+  - "~/.aws/**"
+  - "~/.config/ai-platform/**"
+  - "~/.openwiki/**"
+
+# Harness files the agent may never edit (it must not weaken the controls that judge it).
+protected_paths:
+  - ".aidlc/**"
+  - "AGENTS.md"
+  - "**/AGENTS.md"
+  - "CLAUDE.md"
+  - "**/CLAUDE.md"
+  - ".claude/**"
+  - ".mcp.json"
+  - ".github/**"
+  - "ci/**"
+  - "plans/**"
+  - "architecture/**"
+  - "api/**"
+  - "scripts/check*"
+  - "test/protected-exceptions.txt"
+  - "test/allowed-skips.txt"
+  - ".openwikiignore"
+  - "openwiki/**"
+
+deny:
+  read:
+    - ".env"
+    - ".env.*"
+    - "**/*.pem"
+    - "**/*.key"
+    - "secrets/**"
+    - "~/.ssh/**"
+    - "~/.aws/**"
+    - "~/.config/ai-platform/**"
+    - "~/.openwiki/**"
+  edit:
+    - ".aidlc/**"
+    - "AGENTS.md"
+    - "**/AGENTS.md"
+    - "CLAUDE.md"
+    - "**/CLAUDE.md"
+    - ".claude/**"
+    - ".mcp.json"
+    - ".github/**"
+    - "ci/**"
+    - "plans/**"
+    - "architecture/**"
+    - "api/**"
+    - "scripts/check*"
+    - "test/protected-exceptions.txt"
+    - "test/allowed-skips.txt"
+    - ".openwikiignore"
+    - "openwiki/**"
+    - ".env*"
+  shell:
+    - "git push*"
+    - "git reset --hard*"
+    - "git clean -f*"
+    - "rm -rf*"
+    - "sudo *"
+    - "curl *"
+    - "wget *"
+    - "npm publish*"
+    - "dotnet nuget push*"
+  tools:
+    - "tracker.transition_issue"
+    - "tracker.delete_*"
+
+ask:
+  edit:
+    - "package.json"
+    - "package-lock.json"
+    - "**/*.csproj"
+    - "Directory.Packages.props"
+    - "docs/adr/**"
+  shell:
+    - "npm install*"
+    - "npm uninstall*"
+    - "dotnet add package*"
+  tools:
+    - "tracker.add_comment"
+    - "tracker.create_issue"
+
+allow:
+  read: ["**"]
+  edit: ["src/**", "test/**", "tests/**", "docs/**"]
+  shell:
+    - "aidlc check*"
+    - "npm run *"
+    - "npm test*"
+    - "dotnet build*"
+    - "dotnet test*"
+    - "git status"
+    - "git diff*"
+    - "git log*"
+    - "git add *"
+    - "git commit *"
+  tools:
+    - "tracker.read_issue"
+    - "tracker.search"

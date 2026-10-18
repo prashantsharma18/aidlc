@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tiers.schema.json",
+  "type": "object",
+  "required": ["meta", "dials", "rule", "evidence_pack_items", "tiers"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": { "type": "object" },
+    "dials": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["id", "question"], "additionalProperties": false,
+        "properties": { "id": { "enum": ["risk", "complexity", "scope"] }, "question": { "type": "string" } }
+      },
+      "minItems": 3, "maxItems": 3
+    },
+    "rule": { "type": "string", "minLength": 1 },
+    "evidence_pack_items": {
+      "type": "array", "minItems": 8, "maxItems": 8,
+      "items": {
+        "type": "object", "required": ["n", "name", "requirement"], "additionalProperties": false,
+        "properties": { "n": { "type": "integer" }, "name": { "type": "string" }, "requirement": { "type": "string" } }
+      }
+    },
+    "tiers": {
+      "type": "array", "minItems": 3, "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "typical", "spec", "evidence_pack", "design", "plan",
+                     "verification", "approvals", "autonomy", "release"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "enum": [1, 2, 3] },
+          "name": { "type": "string" },
+          "typical": { "type": "string" },
+          "spec": { "type": "string" },
+          "evidence_pack": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 8 } },
+          "design": { "type": "string" },
+          "plan": { "type": "string" },
+          "verification": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+          "approvals": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+          "autonomy": { "type": "string" },
+          "release": { "type": "string" }
+        }
+      }
+    }
+  }
+}
