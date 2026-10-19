@@ -818,7 +818,7 @@ def _log(event: dict, result: dict, version: str | None = None) -> None:
         args = event.get("args") or {}
         target = str(args.get("path") or args.get("command") or args.get("name") or args.get("url") or "")
         record = {"ts": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
-                  "hook": "pre-tool-guard", "session": event.get("session"), "call": event.get("call"),
+                  "hook": event.get("hook", "pre-tool-guard"), "session": event.get("session"), "call": event.get("call"),
                   "harness": version, "tool": event.get("tool"),
                   "target": _redact(target)[:200], **result}
         record = {k: (_redact(v) if isinstance(v, str) else v) for k, v in record.items()}
