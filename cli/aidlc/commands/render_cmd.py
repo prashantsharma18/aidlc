@@ -2,15 +2,25 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
 from ..adapters import adapter_names, get_adapter
 from ..adapters.base import AdapterNotImplemented, write_rendered
 from ..cli import command
-from ..cliinfo import write_cli_entry
+from ..cliinfo import record_entry
 from ..harness import HarnessError
 from ..paths import find_repo_root
+
+
+def _allow_write(files) -> list[str]:
+    """The sandbox allowWrite paths this render put into .claude/settings.json."""
+    for f in files:
+        if f.path == ".claude/settings.json":
+            paths = json.loads(f.content).get("sandbox", {}).get("filesystem", {}).get("allowWrite", [])
+            return [p for p in paths if isinstance(p, str)]
+    return []
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -35,14 +45,17 @@ def _run(args: argparse.Namespace) -> int:
         print(problem)
     if not problems and not args.check and args.tool == "claude-code":
         try:
-            if write_cli_entry() is None:
-                print("aidlc render: warning: framework entry point not found; the retry limit will "
-                      "never credit a PASS", file=sys.stderr)
-            # next to harness.json: the hooks trust a PASS only from this entry point
+            status, entry = record_entry(repo, _allow_write(files))
         except OSError as exc:
             print(f"aidlc render: cannot record the aidlc entry point ({exc}); a passing check "
                   "will not reset the retry counter")
             return 1
+        if status == "missing":
+            print("aidlc render: warning: framework entry point not found; the retry limit will "
+                  "never credit a PASS", file=sys.stderr)
+        elif status == "refused":
+            print(f"aidlc render: warning: framework entry point {entry} is in a location the agent "
+                  "can write; the retry limit will never credit a PASS", file=sys.stderr)
     if not problems:
         print(f"render ({adapter.name}): {len(files)} file(s) {'current' if args.check else 'written'}")
     return 1 if problems else 0

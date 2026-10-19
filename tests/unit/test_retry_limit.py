@@ -38,32 +38,19 @@ def pass_text(root, **kw):
     return context(root, **kw) + "check  lint            ok\ncheck  result PASS  (0 of 6 steps failed)\n"
 
 
-ORIGINAL_WRITABLE_ROOTS = guard.writable_roots
-
-
-def repo_only_roots(cwd):
-    """Writable roots for tests whose stub entry lives under /tmp: only the repository counts."""
-    top = guard.repo_root(Path(cwd or os.getcwd()))
-    return [os.path.realpath(top)] if top else []
-
-
-def install_entry(base, name="real", case=None):
-    """A stub `aidlc` (the framework's entry point) on PATH, recorded in cli.json. The ambient
-    PATH is never relied on. Call inside GuardEnv (it sets AIDLC_HOME_DIR and restores the env)."""
-    stub = Path(base) / name / "aidlc"
+def install_entry(root, base, name="real"):
+    """A stub `aidlc` (the framework's entry point) outside the repository, recorded for `root` the
+    way `aidlc render` records it. Returns the entry string. Call inside GuardEnv (it sets
+    AIDLC_HOME_DIR and restores the environment). The ambient PATH is never relied on."""
+    stub = (Path(base) / name / "aidlc")
     stub.parent.mkdir(parents=True, exist_ok=True)
     stub.write_text("#!/bin/sh\nexit 0\n")
     stub.chmod(0o755)
-    home = Path(os.environ["AIDLC_HOME_DIR"])
-    home.mkdir(parents=True, exist_ok=True)
-    (home / "cli.json").write_text(json.dumps({"entry": str(stub.resolve())}))
-    os.environ["PATH"] = f"{stub.parent}{os.pathsep}/usr/bin{os.pathsep}/bin"
-    if case is not None:                       # the stub is under /tmp, so keep only the repository writable
-        for module in (guard, post.guard):      # post_check imports its own copy of guard
-            patcher = mock.patch.object(module, "writable_roots", repo_only_roots)
-            patcher.start()
-            case.addCleanup(patcher.stop)
-    return stub
+    entry = str(stub.resolve())
+    record = guard.entry_file(root)
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text(json.dumps({"entry": entry}))
+    return entry
 
 
 def write_run(root, run):
@@ -77,31 +64,42 @@ def ran(root, command, text, exit_code):
 
 
 class CheckSegmentsTest(unittest.TestCase):
-    CASES = [
-        ("aidlc check", (True, True)),
-        ("bin/aidlc check --repo .", (True, True)),
-        ("env X=1 aidlc check", (True, False)),               # wrappers and assignments are not exact
-        ("PATH=/tmp/fake:$PATH aidlc check", (True, False)),
-        ("env -i aidlc check", (True, False)),
-        ("aidlc check > log.txt", (True, True)),               # exact, but its output is hidden
-        ("aidlc check || true", (True, False)),
-        ("aidlc check; echo 'check  result PASS  (0 of 1 steps failed)'", (True, False)),
-        ("bash -c 'aidlc check'", (True, False)),
-        ("echo $(aidlc check)", (True, False)),
-        ("aidlc check context-drift .", (False, False)),
-        ("echo aidlc check", (False, False)),
-        ("npm test", (False, False)),
-        ("", (False, False)),
-    ]
+    def setUp(self):
+        self.env = GuardEnv().__enter__()
+        self.repo, self.root = repo_on_branch()
+        self.stubs = tempfile.TemporaryDirectory()
+        self.entry = install_entry(self.root, self.stubs.name)
+
+    def tearDown(self):
+        self.repo.__exit__(None, None, None)
+        self.env.__exit__(None, None, None)
+        self.stubs.cleanup()
+
+    def cases(self):
+        e = self.entry
+        return [
+            (f"{e} check", (True, True)),
+            (f"{e} check --repo .", (True, True)),
+            ("aidlc check", (True, False)),                       # a bare word is never exact
+            ("bin/aidlc check --repo .", (True, False)),          # nor is any other spelling
+            ("env X=1 aidlc check", (True, False)),
+            (f"PATH=/tmp/fake:$PATH {e} check", (True, False)),   # wrappers and assignments are not exact
+            (f"env -i {e} check", (True, False)),
+            (f"{e} check > log.txt", (True, True)),               # exact, but its output is hidden
+            (f"{e} check || true", (True, False)),
+            (f"{e} check; echo 'check  result PASS  (0 of 1 steps failed)'", (True, False)),
+            (f"bash -c '{e} check'", (True, False)),
+            (f"echo $({e} check)", (True, False)),
+            ("aidlc check context-drift .", (False, False)),
+            ("echo aidlc check", (False, False)),
+            ("npm test", (False, False)),
+            ("", (False, False)),
+        ]
 
     def test_cases(self):
-        with GuardEnv(), tempfile.TemporaryDirectory() as tmp:
-            stub = install_entry(tmp, case=self)
-            (Path(tmp) / "bin").mkdir()
-            (Path(tmp) / "bin" / "aidlc").symlink_to(stub)       # `bin/aidlc` relative to cwd
-            for command, expected in self.CASES:
-                with self.subTest(command=command):
-                    self.assertEqual(guard.check_segments(command, tmp), expected)
+        for command, expected in self.cases():
+            with self.subTest(command=command):
+                self.assertEqual(guard.check_segments(command, str(self.root)), expected)
 
     def test_named_checks_after_repo_are_not_the_one_check(self):
         for command in ("aidlc check --repo . context-drift", "aidlc check --repo=. openwiki",
@@ -110,34 +108,61 @@ class CheckSegmentsTest(unittest.TestCase):
                 self.assertEqual(guard.check_segments(command), (False, False))
         self.assertEqual(guard.check_segments("aidlc check --repo context-drift")[0], True)
 
-    def test_only_the_framework_entry_point_is_exact(self):
-        with GuardEnv(), tempfile.TemporaryDirectory() as tmp:
-            install_entry(tmp, case=self)
-            fake = Path(tmp) / "fakebin" / "aidlc"
-            fake.parent.mkdir()
-            fake.write_text("#!/bin/sh\nexit 0\n")
-            fake.chmod(0o755)
-            self.assertEqual(guard.check_segments(f"{fake} check", tmp), (True, False))     # by path
-            self.assertEqual(guard.check_segments("../fakebin/aidlc check", f"{tmp}/real"), (True, False))
-            os.environ["PATH"] = f"{fake.parent}{os.pathsep}{os.environ['PATH']}"           # earlier on PATH
-            self.assertEqual(guard.check_segments("aidlc check", tmp), (True, False))
-            os.environ["PATH"] = f"{Path(tmp) / 'real'}{os.pathsep}{os.environ['PATH']}"
-            self.assertEqual(guard.check_segments("aidlc check", tmp), (True, True))
+    def exact(self, word):
+        return guard.check_segments(f"{word} check", str(self.root))[1]
 
-    def test_missing_or_bad_cli_json_is_never_exact(self):
-        with GuardEnv(), tempfile.TemporaryDirectory() as tmp:
-            install_entry(tmp, case=self)
-            cli = Path(os.environ["AIDLC_HOME_DIR"]) / "cli.json"
-            cli.write_text(json.dumps({"entry": 5}))
-            self.assertEqual(guard.check_segments("aidlc check", tmp), (True, False))
-            cli.write_text("{nope")
-            self.assertEqual(guard.check_segments("aidlc check", tmp), (True, False))
-            cli.unlink()
-            self.assertEqual(guard.check_segments("aidlc check", tmp), (True, False))
-            elsewhere = Path(tmp) / "elsewhere.json"
-            elsewhere.write_text(json.dumps({"entry": str((Path(tmp) / "real" / "aidlc").resolve())}))
-            cli.symlink_to(elsewhere)                                                        # a symlinked cli.json
-            self.assertEqual(guard.check_segments("aidlc check", tmp), (True, False))
+    def test_only_the_exact_recorded_string_is_exact(self):
+        self.assertTrue(self.exact(self.entry))
+        bin_dir = Path(self.stubs.name) / "bin"
+        bin_dir.mkdir()
+        (bin_dir / "aidlc").symlink_to(self.entry)
+        os.environ["PATH"] = f"{bin_dir}{os.pathsep}/usr/bin"
+        self.assertFalse(self.exact("aidlc"))                        # resolves to the entry, still not exact
+        self.assertFalse(self.exact(str(bin_dir / "aidlc")))          # a link to the entry
+        self.assertFalse(self.exact(os.path.relpath(self.entry, self.root)))
+
+    def test_dot_dot_after_a_symlink_does_not_reach_the_entry(self):          # probe p8-C
+        deep = Path(self.stubs.name) / "a" / "b" / "c"
+        deep.mkdir(parents=True)
+        link = Path(self.stubs.name) / "l"
+        link.symlink_to(deep)
+        fake = Path(self.stubs.name) / "a" / "x"
+        fake.mkdir()
+        word = f"{link}/../../x/{Path(self.entry).relative_to('/')}"
+        self.assertFalse(self.exact(word))
+        self.assertFalse(self.exact(f"{link}/../../../real/aidlc"))
+
+    def test_a_fake_in_an_allow_write_directory_linked_to_the_entry_is_not_exact(self):   # probe p8-D
+        npm = Path(self.stubs.name) / "dot-npm"
+        npm.mkdir()
+        (npm / "aidlc").symlink_to(self.entry)
+        self.assertFalse(self.exact(str(npm / "aidlc")))
+
+    def test_an_entry_that_becomes_a_link_or_moves_under_the_repository_is_not_exact(self):
+        entry = Path(self.entry)
+        other = entry.with_name("moved")
+        entry.rename(other)
+        entry.symlink_to(other)
+        self.assertFalse(self.exact(self.entry))
+        entry.unlink()
+        other.rename(entry)
+        self.assertTrue(self.exact(self.entry))
+        inside = self.root / "aidlc-bin"
+        inside.write_text("#!/bin/sh\n")
+        guard.entry_file(self.root).write_text(json.dumps({"entry": str(inside)}))
+        self.assertFalse(self.exact(str(inside)))                      # inside the repository
+
+    def test_missing_or_bad_entry_record_is_never_exact(self):
+        record = guard.entry_file(self.root)
+        for body in (json.dumps({"entry": 5}), "{nope", json.dumps({"entry": "relative/aidlc"})):
+            record.write_text(body)
+            self.assertFalse(self.exact(self.entry))
+        record.unlink()
+        self.assertFalse(self.exact(self.entry))
+        elsewhere = Path(self.stubs.name) / "elsewhere.json"
+        elsewhere.write_text(json.dumps({"entry": self.entry}))
+        record.symlink_to(elsewhere)                                   # a symlinked record
+        self.assertFalse(self.exact(self.entry))
 
 
 class CounterTest(unittest.TestCase):
@@ -145,7 +170,7 @@ class CounterTest(unittest.TestCase):
         self.env = GuardEnv().__enter__()
         self.repo, self.root = repo_on_branch()
         self.stubs = tempfile.TemporaryDirectory()
-        install_entry(self.stubs.name, case=self)
+        self.entry = install_entry(self.root, self.stubs.name)
 
     def tearDown(self):
         self.repo.__exit__(None, None, None)
@@ -159,7 +184,7 @@ class CounterTest(unittest.TestCase):
         post.record_check(ran(self.root, "aidlc check", FAIL_TEXT, 1))
         post.record_check(ran(self.root, "aidlc check", FAIL_TEXT, 1))
         self.assertEqual(self.failures(), 2)
-        r = post.record_check(ran(self.root, "aidlc check", pass_text(self.root), 0))
+        r = post.record_check(ran(self.root, f"{self.entry} check", pass_text(self.root), 0))
         self.assertEqual((r["decision"], r["rule"]), ("pass", "check-recorded"))
         self.assertEqual(self.failures(), 0)
 
@@ -201,7 +226,7 @@ class CounterTest(unittest.TestCase):
                 self.assertEqual(self.failures(), before + 1)
 
     def test_passing_text_with_nonzero_exit_is_a_failure(self):
-        post.record_check(ran(self.root, "aidlc check", pass_text(self.root), 1))
+        post.record_check(ran(self.root, f"{self.entry} check", pass_text(self.root), 1))
         self.assertEqual(self.failures(), 1)
 
     def test_detached_head_is_counted_and_limited(self):
@@ -359,7 +384,7 @@ class ArtefactCountingTest(unittest.TestCase):
         self.env = GuardEnv().__enter__()
         self.repo, self.root = repo_on_branch()
         self.stubs = tempfile.TemporaryDirectory()
-        install_entry(self.stubs.name, case=self)
+        self.entry = install_entry(self.root, self.stubs.name)
 
     def tearDown(self):
         self.repo.__exit__(None, None, None)
@@ -394,7 +419,7 @@ class ArtefactCountingTest(unittest.TestCase):
     def test_canonical_pass_stores_the_run(self):
         post.record_check(ran(self.root, "aidlc check", FAIL_TEXT, 1))
         write_run(self.root, "r2")
-        post.record_check(ran(self.root, "aidlc check", pass_text(self.root), 0))
+        post.record_check(ran(self.root, f"{self.entry} check", pass_text(self.root), 0))
         self.assertEqual(self.failures(), 0)
         self.assertIsNone(post.record_check(ran(self.root, "ls", "", 0)))
         self.assertEqual(self.failures(), 0)
@@ -419,8 +444,14 @@ class ArtefactCountingTest(unittest.TestCase):
         fake.write_text("#!/bin/sh\nexit 0\n")
         fake.chmod(0o755)
         post.record_check(ran(self.root, "aidlc check", FAIL_TEXT, 1))
-        post.record_check(ran(self.root, f"{fake} check", pass_text(self.root), 0))
-        self.assertEqual(self.failures(), 2)
+        r = post.record_check(ran(self.root, f"{fake} check", pass_text(self.root), 0))
+        self.assertEqual(guard.read_failures(self.root, "feat/SHIP-1-x"), 2)
+        self.assertIn(f"run exactly: {self.entry} check", r["reason"])
+
+    def test_message_when_no_entry_is_recorded(self):
+        guard.entry_file(self.root).unlink()
+        r = post.record_check(ran(self.root, "aidlc check", FAIL_TEXT, 1))
+        self.assertIn("aidlc render", r["reason"])
 
 
 class RecordIntegrityTest(unittest.TestCase):
@@ -462,120 +493,96 @@ class RecordIntegrityTest(unittest.TestCase):
 
 
 class CliEntryTest(unittest.TestCase):
-    def test_render_records_the_entry_point(self):
-        with TempRepo({"package.json": "{}\n"}) as root, tempfile.TemporaryDirectory() as home:
-            init_repo(root, "svc", "team", "node", "purpose", date(2026, 10, 19))
-            saved = dict(os.environ)
-            os.environ["AIDLC_HOME_DIR"] = home
-            try:
-                self.assertEqual(run_cli("render", "--tool", "claude-code", str(root))[0], 0)
-                entry = json.loads((Path(home) / "cli.json").read_text())["entry"]
-                self.assertEqual(entry, str((Path(__file__).resolve().parents[2] / "bin" / "aidlc").resolve()))
-                self.assertEqual(guard.cli_entry(), entry)
-            finally:
-                os.environ.clear()
-                os.environ.update(saved)
-
     def test_check_record_carries_a_run_id(self):
         from aidlc.checks.onecheck import CheckResult
         rec = CheckResult([]).record(type("C", (), {"branch": "b", "base": "x"})())
         self.assertRegex(rec["run"], r"^[0-9a-f]{32}$")
 
 
-class _Both:
-    def __init__(self, *patches):
-        self.patches = patches
-
-    def __enter__(self):
-        for patch in self.patches:
-            patch.start()
-
-    def __exit__(self, *exc):
-        for patch in self.patches:
-            patch.stop()
-
-
-class EntryPointLocationTest(unittest.TestCase):
-    """The entry point must be where the agent cannot write (guard.trusted_entry), and it must stay
-    there: a fake that links itself to the entry after running is not credited."""
+class RenderEntryTest(unittest.TestCase):
+    """`aidlc render` records the entry only when the agent cannot write it. The real
+    writable-roots function is pinned directly; the render tests that need a stub entry outside
+    /tmp patch only entry_point()."""
 
     def setUp(self):
-        self.env = GuardEnv().__enter__()
-        self.repo, self.root = repo_on_branch()
-        self.safe = tempfile.TemporaryDirectory()               # stands for a directory outside every writable root
-        self.stub = install_entry(self.safe.name)               # the real, unpatched writable roots stay in force
-        self.entry = str(self.stub.resolve())
-        os.environ["TMPDIR"] = "/nonexistent-tmpdir"
+        self.home = tempfile.TemporaryDirectory()
+        self.safe = tempfile.TemporaryDirectory()
+        self.saved = dict(os.environ)
+        os.environ["AIDLC_HOME_DIR"] = self.home.name
+        os.environ.pop("TMPDIR", None)
+        self.cm = TempRepo({"package.json": "{}\n"})
+        self.root = self.cm.__enter__()
+        init_repo(self.root, "svc", "team", "node", "purpose", date(2026, 10, 19))
 
     def tearDown(self):
-        self.repo.__exit__(None, None, None)
-        self.env.__exit__(None, None, None)
+        self.cm.__exit__(None, None, None)
+        os.environ.clear()
+        os.environ.update(self.saved)
+        self.home.cleanup()
         self.safe.cleanup()
 
-    def test_with_the_real_rule_a_tmp_entry_is_not_trusted(self):
-        self.assertFalse(guard.trusted_entry(self.entry, str(self.root), self.entry))
+    def stub(self, parent):
+        path = Path(parent) / "bin" / "aidlc"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("#!/bin/sh\n")
+        return path.resolve()
 
-    def outside(self):
-        roots = lambda cwd: [os.path.realpath(self.root)]  # noqa: E731
-        stack = mock.patch.object(guard, "writable_roots", roots)
-        stack2 = mock.patch.object(post.guard, "writable_roots", roots)
-        return _Both(stack, stack2)
+    def render(self, entry):
+        with mock.patch("aidlc.cliinfo.entry_point", return_value=entry):
+            return run_cli("render", "--tool", "claude-code", str(self.root))
 
-    def test_entry_by_absolute_path_and_a_link_outside_the_roots_pass(self):
-        link_dir = Path(self.safe.name) / "bin"
-        link_dir.mkdir()
-        (link_dir / "aidlc").symlink_to(self.entry)
-        with self.outside():
-            self.assertTrue(guard.trusted_entry(self.entry, str(self.root), self.entry))
-            self.assertTrue(guard.trusted_entry(str(link_dir / "aidlc"), str(self.root), self.entry))
+    def recorded(self):
+        return guard.entry_file(self.root)
 
-    def test_a_link_inside_the_repository_or_tmp_is_not_trusted(self):
-        (self.root / ".check").mkdir()
-        inside = self.root / ".check" / "aidlc"
-        inside.symlink_to(self.entry)
-        with self.outside():
-            self.assertFalse(guard.trusted_entry(".check/aidlc", str(self.root), self.entry))
-        with tempfile.TemporaryDirectory() as tmp:               # /tmp is writable under the real rule
-            linked = Path(tmp) / "aidlc"
-            linked.symlink_to(self.entry)
-            self.assertFalse(guard.trusted_entry(str(linked), str(self.root), self.entry))
+    def test_writable_roots_include_every_place_the_agent_can_write(self):
+        from aidlc.cliinfo import writable_roots
+        os.environ["TMPDIR"] = "/somewhere/else"
+        roots = writable_roots(self.root, ["~/.npm", "build", "/opt/cache"])
+        for expected in (self.root.resolve(), Path("~/.npm").expanduser().resolve(), self.root.resolve() / "build",
+                         Path("/opt/cache"), Path("/tmp"), Path("/var/tmp"), Path("/dev/shm"), Path("/somewhere/else")):
+            self.assertIn(os.path.realpath(expected), roots)
 
-    def test_a_chain_through_a_writable_hop_is_not_trusted(self):
-        hop = self.root / "hop"
-        hop.symlink_to(self.entry)
-        outer = Path(self.safe.name) / "bin"
-        outer.mkdir()
-        (outer / "aidlc").symlink_to(hop)                        # safe link -> link in the repository -> entry
-        with self.outside():
-            self.assertFalse(guard.trusted_entry(str(outer / "aidlc"), str(self.root), self.entry))
+    def test_an_entry_outside_every_root_is_recorded(self):
+        with tempfile.TemporaryDirectory(dir=Path.home()) as outside:
+            entry = self.stub(outside)
+            code, _, err = self.render(entry)
+        self.assertEqual((code, err), (0, ""))
+        self.assertEqual(json.loads(self.recorded().read_text()), {"entry": str(entry)})
 
-    def test_a_link_loop_is_not_trusted(self):
-        a, b = Path(self.safe.name) / "a", Path(self.safe.name) / "b"
-        a.symlink_to(b)
-        b.symlink_to(a)
-        with self.outside():
-            self.assertFalse(guard.trusted_entry(str(a), str(self.root), self.entry))
+    def refused(self, entry):
+        code, _, err = self.render(entry)
+        self.assertEqual(code, 0)
+        self.assertIn(f"aidlc render: warning: framework entry point {entry} is in a location the agent can "
+                      "write; the retry limit will never credit a PASS", err)
+        self.assertFalse(self.recorded().exists())
 
-    def test_a_relative_path_entry_is_never_trusted(self):
-        bin_dir = Path(self.safe.name) / "bin"
-        bin_dir.mkdir()
-        (bin_dir / "aidlc").symlink_to(self.entry)
-        os.environ["PATH"] = os.path.relpath(bin_dir, self.root)
-        with self.outside():
-            self.assertFalse(guard.trusted_entry("aidlc", str(self.root), self.entry))
-            os.environ["PATH"] = str(bin_dir)
-            self.assertTrue(guard.trusted_entry("aidlc", str(self.root), self.entry))
+    def test_an_entry_under_the_repository_is_refused(self):
+        self.refused(self.stub(self.root))
 
-    def test_self_replacing_fake_gets_no_pass(self):
-        fake = self.root / ".check" / "aidlc"
-        fake.parent.mkdir()
-        fake.write_text("#!/bin/sh\nexit 0\n")
-        post.record_check(ran(self.root, "aidlc check", FAIL_TEXT, 1))
-        fake.unlink()
-        fake.symlink_to(self.entry)                              # what `ln -sf <entry> "$0"` leaves behind
-        with self.outside():
-            post.record_check(ran(self.root, ".check/aidlc check", pass_text(self.root), 0))
-        self.assertEqual(guard.read_failures(self.root, "feat/SHIP-1-x"), 2)
+    def test_an_entry_under_an_allow_write_path_is_refused(self):
+        with tempfile.TemporaryDirectory(dir=Path.home()) as outside:
+            npm = Path(outside) / "dot-npm"
+            entry = self.stub(npm)
+            with mock.patch("aidlc.commands.render_cmd._allow_write", return_value=[str(npm)]):
+                self.refused(entry)
+
+    def test_an_entry_under_tmp_or_tmpdir_is_refused(self):
+        self.refused(self.stub(self.safe.name))                  # /tmp
+        with tempfile.TemporaryDirectory(dir=Path.home()) as outside:
+            os.environ["TMPDIR"] = outside
+            self.refused(self.stub(outside))
+
+    def test_a_stale_entry_file_is_removed_on_refusal(self):
+        self.recorded().parent.mkdir(parents=True)
+        self.recorded().write_text(json.dumps({"entry": "/old/aidlc"}))
+        self.refused(self.stub(self.root))
+
+    def test_a_symlinked_entry_directory_is_refused(self):
+        with tempfile.TemporaryDirectory(dir=Path.home()) as outside:
+            (Path(self.home.name) / "entry").symlink_to(outside)
+            code, out, _ = self.render(self.stub(outside))
+            self.assertEqual(code, 1)
+            self.assertIn("symlink", out)
 
 
 class SafePathLauncherTest(unittest.TestCase):

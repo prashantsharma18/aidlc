@@ -238,10 +238,15 @@ def record_check(event: dict) -> dict | None:
     failures = _update_attempts(guard.attempts_file(root, branch), contains, passed, run, cap)
     if failures is None:
         return None
+    hint = ""
+    if contains and not exact:
+        entry = guard.recorded_entry(root)
+        hint = (f" Only this earns credit: run exactly: {entry} check" if entry else
+                " The aidlc entry point is not recorded for this repository: a person runs `aidlc render`.")
     if failures >= cap:
-        return _result("flag", "retry-limit", guard.retry_limit_reason(failures, cap))
+        return _result("flag", "retry-limit", guard.retry_limit_reason(failures, cap) + hint)
     return _result("pass", "check-recorded",
-                   f"check {'PASS' if passed else 'FAIL'}; {failures} failing in a row (limit {cap})")
+                   f"check {'PASS' if passed else 'FAIL'}; {failures} failing in a row (limit {cap}).{hint}")
 
 
 def main() -> int:

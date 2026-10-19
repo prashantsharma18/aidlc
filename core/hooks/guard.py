@@ -16,7 +16,6 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import stat
 import sys
 import time
@@ -874,71 +873,45 @@ def _inner_strings(argv: list[str]) -> list[str]:
     return []
 
 
-def cli_entry() -> str | None:
-    """The framework's own `aidlc` entry point (realpath), as the CLI recorded it in
-    $AIDLC_HOME_DIR/cli.json when it rendered the harness. None: missing, a symlink, unreadable
-    or malformed. A PASS needs it (a fake `aidlc` on PATH must never reset the counter)."""
-    path = _home_dir() / "cli.json"
+def entry_file(root: Path) -> Path:
+    """Where `aidlc render` recorded the framework's entry point for this repository."""
+    return _home_dir() / "entry" / f"{repo_key(root)}.json"
+
+
+def recorded_entry(root: Path) -> str | None:
+    """The one command path that can earn a PASS in this repository: the realpath of the framework's
+    bin/aidlc, written by `aidlc render` (which refuses a location the agent can write). None:
+    missing, a symlink, unreadable or malformed."""
+    path = entry_file(root)
     try:
+        if path.parent.is_symlink():
+            return None
         fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
         with os.fdopen(fd, "rb") as fh:
             data = json.loads(fh.read(65537)[:65536].decode("utf-8"))
     except Exception:  # noqa: BLE001 - fail closed: no entry point, no PASS
         return None
     entry = data.get("entry") if isinstance(data, dict) else None
-    return entry if isinstance(entry, str) and entry else None
-
-
-MAX_HOPS = 40
-
-
-def writable_roots(cwd: str | None) -> list[str]:
-    """Where an agent shell can write: the repository, the temp directories and $TMPDIR."""
-    roots = ["/tmp", "/var/tmp", "/dev/shm"]
-    if os.environ.get("TMPDIR"):
-        roots.append(os.environ["TMPDIR"])
-    top = repo_root(Path(cwd or os.getcwd()))
-    if top is not None:
-        roots.append(str(top))
-    return sorted({os.path.realpath(r) for r in roots})
-
-
-def _under(path: str, roots: list[str]) -> bool:
-    return any(path == r or path.startswith(r.rstrip("/") + "/") for r in roots)
-
-
-def trusted_entry(word: str, cwd: str | None, entry: str) -> bool:
-    """True when `word` (the first word of a command) is the framework's entry point and the agent
-    could not have put it there: its path, every symlink hop on the way and the directory holding
-    each hop are all outside the writable roots, and the last hop is `entry`. A fake that is
-    replaced by a link to the entry after it ran (`ln -sf <entry> "$0"`) fails this."""
-    try:
-        base = cwd or os.getcwd()
-        if "/" in word:
-            current = os.path.abspath(os.path.join(base, word))
-        else:
-            absolute = os.pathsep.join(p for p in os.environ.get("PATH", "").split(os.pathsep)
-                                       if p.startswith("/"))     # a relative PATH entry is never trusted
-            found = shutil.which(word, path=absolute)
-            if found is None:
-                return False
-            current = os.path.abspath(found)
-        roots = writable_roots(cwd)
-        for _ in range(MAX_HOPS + 1):
-            if _under(current, roots) or _under(os.path.realpath(os.path.dirname(current)), roots):
-                return False
-            if not os.path.islink(current):
-                return current == entry and os.path.realpath(current) == entry
-            target = os.readlink(current)
-            current = os.path.abspath(os.path.join(os.path.dirname(current), target))
-        return False
-    except OSError:
-        return False
+    return entry if isinstance(entry, str) and entry.startswith("/") else None
 
 
 def _is_entry_point(word: str, cwd: str | None) -> bool:
-    entry = cli_entry()
-    return entry is not None and trusted_entry(word, cwd, entry)
+    """An allow-list of one: the word is the recorded entry string, byte for byte. No PATH lookup
+    and no path resolution of the word (a bare `aidlc`, a relative path or a `..` spelling is never
+    exact). At hook time the entry must still be its own realpath, a regular file, and outside the
+    repository the agent works in."""
+    try:
+        root = repo_root(Path(cwd or os.getcwd()))
+        if root is None:
+            return False
+        entry = recorded_entry(root)
+        if entry is None or word != entry or os.path.realpath(entry) != entry:
+            return False
+        if not stat.S_ISREG(os.lstat(entry).st_mode):
+            return False
+        return not (entry == str(root) or entry.startswith(str(root).rstrip("/") + "/"))
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def check_segments(command, cwd: str | None = None) -> tuple[bool, bool]:
@@ -982,13 +955,17 @@ def _home_dir() -> Path:
     return Path(os.environ.get("AIDLC_HOME_DIR") or "~/.aidlc").expanduser()
 
 
+def repo_key(root: Path) -> str:
+    """<repo name>-<8 hex of the repo path hash>: two clones with one directory name never collide."""
+    return f"{root.name}-{hashlib.sha256(str(root.resolve()).encode('utf-8')).hexdigest()[:8]}"
+
+
 def attempts_file(root: Path, branch: str | None) -> Path:
     """One record per repository (name plus a hash of its path, so same-named clones never collide)
     and branch. A detached HEAD has its own key, so detaching never escapes the counter."""
     home = _home_dir()
-    tag = hashlib.sha256(str(root.resolve()).encode("utf-8")).hexdigest()[:8]
     name = DETACHED if branch is None else branch.replace("/", "__")
-    return home / "attempts" / f"{root.name}-{tag}" / f"{name}.json"
+    return home / "attempts" / repo_key(root) / f"{name}.json"
 
 
 def attempts_unsafe(path: Path) -> bool:
