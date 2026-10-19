@@ -353,8 +353,8 @@ class CiOrderAndCleanupTest(unittest.TestCase):
                 ci.ci_local(r.root, BRANCH, None)
             self.assertTrue(ran)
             self.assertIn("cat-file", [name for _, _, name in calls])                # base versions were read
-            work = {repo for repo, _, _ in calls if repo.name == "head"}
-            self.assertEqual(len(work), 1)
+            work = {repo for repo, _, _ in calls if repo.name in ("head", "rerun")}
+            self.assertEqual(len(work), 1)                                       # git never needs cwd=rerun
             self.assertEqual([c for c in calls if c[0] in work and c[1]], [])        # nothing after the code ran
             self.assertEqual(steps(last(r))["protected-rerun"]["status"], "ok")
 
@@ -484,8 +484,8 @@ class PinnedBaseTest(unittest.TestCase):
             cliinfo.base_file(r.root).unlink()
             code, _, err = run_cli("ci", "--repo", str(r.root))
             self.assertEqual(code, 2)
-            self.assertIn("the trusted record has no base branch for this repository; a person must run aidlc render",
-                          err)
+            self.assertIn("the trusted record has no base branch for this repository; check out the base branch "
+                          "and run aidlc render --trusted-base", err)
             self.assertEqual(len(r.worktrees()), 1)
 
     def test_a_malformed_base_record_exits_2(self):
@@ -495,7 +495,7 @@ class PinnedBaseTest(unittest.TestCase):
                 cliinfo.base_file(r.root).write_text(body)
                 code, _, err = run_cli("ci", "--repo", str(r.root))
                 self.assertEqual(code, 2, body)
-                self.assertIn("a person must run aidlc render", err)
+                self.assertIn("aidlc render --trusted-base", err)
 
     def test_a_symlinked_base_record_is_neither_trusted_nor_written_through(self):
         from aidlc import cliinfo
@@ -508,7 +508,8 @@ class PinnedBaseTest(unittest.TestCase):
             record.symlink_to(victim)
             code, _, err = run_cli("ci", "--repo", str(r.root))
             self.assertEqual(code, 2)
-            self.assertIn("a person must run aidlc render", err)
+            self.assertIn("aidlc render --trusted-base", err)
+            git(r.root, "checkout", "-q", "main")                        # render writes only on the base
             code, out, _ = run_cli("render", "--tool", "claude-code", str(r.root))
             self.assertEqual(code, 1)
             self.assertIn("cannot record the trusted base branch", out)
@@ -613,14 +614,12 @@ class CiFixRound1Test(unittest.TestCase):
             self.assertEqual(code, 0, out)
             self.assertEqual(steps(last(r))["protected-rerun"]["status"], "ok")
 
-    def test_a_walk_error_fails_the_rerun(self):
+    def test_what_the_first_run_leaves_behind_does_not_reach_the_rerun(self):
         with CiRepo() as r:
             hostile = TEST_APP + "\nimport os\nos.makedirs('test/locked', exist_ok=True)\nos.chmod('test/locked', 0)\n"
             r.commit({"test/test_app.py": hostile})
             run_cli("ci", "--repo", str(r.root))
-            rerun = steps(last(r))["protected-rerun"]
-            self.assertEqual(rerun["status"], "FAIL")
-            self.assertIn("test/locked", rerun["detail"])
+            self.assertEqual(steps(last(r))["protected-rerun"]["status"], "ok")
 
     def test_a_malformed_trusted_config_exits_2(self):
         for label, fn in (("check_steps", lambda c: c.__setitem__("check_steps", 5)),
@@ -692,3 +691,161 @@ class LiteralPathspecTest(unittest.TestCase):
             git(root, "commit", "-qam", "change")
             problems, _ = protected_test_changes(root, base, git(root, "rev-parse", "HEAD"))
             self.assertIn("1 existing line(s) changed or removed: test/[X]_test.py", problems)
+
+
+# ---- Task 6 fix round 2 ------------------------------------------------------------------------
+
+def render(root, *extra):
+    return run_cli("render", "--tool", "claude-code", *extra, str(root))
+
+
+@NEEDS_SANDBOX
+class RerunCheckoutTest(unittest.TestCase):
+    def test_an_untracked_test_written_by_the_first_run_does_not_reach_the_rerun(self):     # review g1
+        with CiRepo() as r:
+            gen = ("import pathlib\npathlib.Path('test/test_aab.py').write_text('import app\\napp.value = lambda: 1\\n')\n"
+                   "import app\napp.value = lambda: 1\n")
+            r.commit({"src/app.py": "def value():\n    return 2\n", "test/test_aaa.py": gen})
+            code, _, _ = run_cli("ci", "--repo", str(r.root))
+            s = steps(last(r))
+            self.assertEqual(s["test"]["status"], "ok")
+            self.assertEqual(s["protected-rerun"]["status"], "FAIL")
+            self.assertEqual(code, 1)
+
+    def test_a_base_test_rewritten_by_the_first_run_does_not_reach_the_rerun(self):     # review g2
+        with CiRepo() as r:
+            neuter = ("import pathlib\npathlib.Path('test/test_app.py').write_text('import unittest\\n"
+                      "class AppTest(unittest.TestCase):\\n    def test_value(self):\\n        pass\\n')\n")
+            r.commit({"src/app.py": "def value():\n    return 2\n", "test/test_aaa.py": neuter})
+            code, _, _ = run_cli("ci", "--repo", str(r.root))
+            self.assertEqual(steps(last(r))["protected-rerun"]["status"], "FAIL")
+            self.assertEqual(code, 1)
+
+    def test_no_test_change_means_no_rerun(self):                                       # review g3
+        with CiRepo() as r:
+            app = ("import pathlib\n_p = pathlib.Path('test/test_app.py')\n"
+                   "_p.write_text('import unittest\\nclass AppTest(unittest.TestCase):\\n    def test_value(self):\\n"
+                   "        pass\\n')\ndef value():\n    return 1\n")
+            r.commit({"src/app.py": app})
+            run_cli("ci", "--repo", str(r.root))
+            rerun = steps(last(r))["protected-rerun"]
+            self.assertEqual((rerun["status"], rerun["detail"]), ("ok", "no existing test file changed"))
+
+    def test_a_rename_restores_the_base_name(self):
+        with CiRepo() as r:
+            git(r.root, "mv", "test/test_app.py", "test/test_app2.py")
+            git(r.root, "commit", "-qm", "rename")
+            run_cli("ci", "--repo", str(r.root))
+            s = steps(last(r))
+            self.assertEqual(s["protected-tests"]["status"], "FAIL")
+            self.assertEqual((s["protected-rerun"]["status"], s["protected-rerun"]["detail"]), ("ok", ""))
+
+    def test_a_committed_symlinked_parent_is_refused_and_nothing_is_written_through_it(self):
+        with CiRepo() as r, tempfile.TemporaryDirectory() as victim:
+            git(r.root, "checkout", "-q", "main")
+            r.commit({"test/sub/test_sub.py": "X = 1\n"})
+            git(r.root, "branch", "-f", BRANCH, "main")
+            git(r.root, "checkout", "-q", BRANCH)
+            git(r.root, "rm", "-q", "-r", "test/sub")
+            (r.root / "test/sub").symlink_to(victim)
+            git(r.root, "add", "test/sub")
+            git(r.root, "commit", "-qm", "a dir becomes a link")
+            run_cli("ci", "--repo", str(r.root))
+            rerun = steps(last(r))["protected-rerun"]
+            self.assertEqual(rerun["status"], "FAIL")
+            self.assertIn("symlink", rerun["detail"])
+            self.assertEqual(os.listdir(victim), [])
+
+    def test_the_rerun_is_prepared_before_the_first_sandbox_and_never_shared(self):
+        import contextlib
+        import io
+        import subprocess
+        import types
+
+        from aidlc.checks import onecheck
+        with CiRepo() as r:
+            r.commit({"src/extra.py": "X = 1\n", "test/test_app.py": TEST_APP + "\n# one more line\n"})
+            events = []
+            real_prepare = ci._prepare_rerun
+
+            def spy_prepare(*args, **kwargs):
+                out = real_prepare(*args, **kwargs)
+                events.append(("prepared", str(out.path)))
+                return out
+
+            def spy_popen(argv, *args, **kwargs):
+                if isinstance(argv, list) and argv and argv[0].endswith("bwrap"):
+                    events.append(("BWRAP-START", argv))
+                return subprocess.Popen(argv, *args, **kwargs)
+
+            fake = types.SimpleNamespace(**{k: getattr(subprocess, k) for k in dir(subprocess) if not k.startswith("__")})
+            fake.Popen = spy_popen
+            with mock.patch.object(ci, "_prepare_rerun", spy_prepare), mock.patch.object(onecheck, "subprocess", fake), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                ci.ci_local(r.root, BRANCH, None)
+            self.assertEqual(steps(last(r))["protected-rerun"]["status"], "ok")
+            kinds = [e[0] for e in events]
+            self.assertEqual(kinds[0], "prepared")
+            rerun_path = events[0][1]
+            starts = [argv for kind, argv in events if kind == "BWRAP-START"]
+            first, rerun = starts[0], starts[-1]
+            self.assertNotIn(rerun_path, " ".join(first))                    # the first run never sees rerun/
+            self.assertIn(rerun_path, " ".join(rerun))
+            chdir = lambda argv: argv[argv.index("--chdir") + 1]             # noqa: E731
+            self.assertNotIn(chdir(first), " ".join(rerun))                  # nor the re-run the first run's tree
+            homes = [argv[argv.index("--bind") + 1] for argv in (first, rerun)]
+            self.assertNotEqual(homes[0], homes[1])                          # a fresh private home
+            self.assertEqual(len(r.worktrees()), 1)
+
+
+class TrustedBaseRenderTest(unittest.TestCase):
+    def test_render_on_a_task_branch_never_repins_the_base(self):          # review probe13
+        from aidlc import cliinfo
+        with CiRepo() as r:
+            cfg_path = r.root / ".aidlc/config.yaml"
+            cfg = yaml.safe_load(cfg_path.read_text())
+            cfg["harness"]["base_branch"] = "evil"
+            r.commit({".aidlc/config.yaml": yaml.safe_dump(cfg)})
+            git(r.root, "branch", "evil", "main")
+            code, _, err = render(r.root)
+            self.assertEqual(code, 0)
+            self.assertEqual(cliinfo.recorded_base(r.root), "main")
+            self.assertIn("aidlc render: warning: trusted base stays 'main'; to change it, check out the new base "
+                          "and run aidlc render --trusted-base NAME", err)
+
+    def test_a_first_render_on_a_task_branch_writes_no_record(self):
+        from aidlc import cliinfo
+        with CiRepo() as r:
+            cliinfo.base_file(r.root).unlink()
+            code, _, err = render(r.root)
+            self.assertEqual(code, 0)
+            self.assertIsNone(cliinfo.recorded_base(r.root))
+            self.assertIn("aidlc render: warning: no trusted base recorded; check out the base branch and run "
+                          "aidlc render", err)
+
+    def test_trusted_base_needs_that_branch_checked_out(self):
+        from aidlc import cliinfo
+        with CiRepo() as r:
+            git(r.root, "branch", "trunk", "main")
+            code, _, err = render(r.root, "--trusted-base", "trunk")
+            self.assertEqual(code, 2)
+            self.assertIn("trunk", err)
+            self.assertEqual(cliinfo.recorded_base(r.root), "main")
+
+    def test_trusted_base_on_that_branch_updates_the_record(self):
+        from aidlc import cliinfo
+        with CiRepo() as r:
+            git(r.root, "checkout", "-q", "-b", "trunk", "main")
+            code, out, err = render(r.root, "--trusted-base", "trunk")
+            self.assertEqual(code, 0, out + err)
+            self.assertEqual(cliinfo.recorded_base(r.root), "trunk")
+
+    def test_a_base_changed_on_the_base_branch_names_the_command(self):    # review probe13, case 1
+        with CiRepo() as r:
+            base_update(r, lambda c: c["harness"].__setitem__("base_branch", "trunk"))
+            git(r.root, "branch", "trunk", "main")
+            with mock.patch("aidlc.ci.available", return_value=True):
+                code, _, err = run_cli("ci", "--repo", str(r.root))
+            self.assertEqual(code, 2)
+            self.assertIn("check out 'trunk' and run aidlc render --trusted-base trunk", err)
+            self.assertEqual(len(r.worktrees()), 1)

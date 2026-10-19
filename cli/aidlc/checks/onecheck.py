@@ -18,7 +18,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 from ..hookbridge import hooks
 from ..paths import safe_target
@@ -57,8 +57,7 @@ class CheckContext:
     scope_source: str = ""            # the scope file read (shown in the context line)
     head: str | None = None           # CI: judge git objects base..head instead of the working tree
     steering: dict[str, str] | None = None   # CI: the base's steering files, read before the change runs
-    rerun_base: dict[str, tuple[str, bytes]] = field(default_factory=dict)   # CI: (mode, bytes) of base tests
-    rerun_remove: list[str] = field(default_factory=list)   # CI: test files the change added
+    rerun: Any = None                 # CI: the protected re-run's own checkout, built before the change runs
     wrap: Callable[[str, str], list[str]] | None = None   # CI: argv that runs a command step (sandbox)
     today: date = field(default_factory=date.today)
     timeout_s: int = STEP_TIMEOUT_S
@@ -159,9 +158,10 @@ def _kill_group(proc: subprocess.Popen) -> None:
     proc.wait()
 
 
-def run_command(ctx: CheckContext, name: str, step: str | None = None) -> StepResult:
-    """Run commands[name] in ctx.repo. Output goes to .check/<step>.log, stdin is closed, and the
-    whole process group is killed at the timeout and after the command ends."""
+def run_command(ctx: CheckContext, name: str, step: str | None = None, cwd: Path | None = None) -> StepResult:
+    """Run commands[name] in ctx.repo (or cwd: CI's protected re-run has its own checkout). Output goes to
+    ctx.repo's .check/<step>.log, stdin is closed, and the whole process group is killed at the timeout
+    and after the command ends."""
     step = step or name
     if not STEP_NAME.fullmatch(step):
         return StepResult(step, FAIL, "step names are lower-case letters, digits and '-'")
@@ -172,7 +172,7 @@ def run_command(ctx: CheckContext, name: str, step: str | None = None) -> StepRe
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     argv = ctx.wrap(command, step) if ctx.wrap else command
     with safe_target(ctx.repo, log_rel).open("w+", encoding="utf-8", errors="replace") as log:
-        proc = subprocess.Popen(argv, shell=ctx.wrap is None, cwd=ctx.repo, env=env, stdin=subprocess.DEVNULL,
+        proc = subprocess.Popen(argv, shell=ctx.wrap is None, cwd=cwd or ctx.repo, env=env, stdin=subprocess.DEVNULL,
                                 stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         try:
             code = proc.wait(timeout=ctx.timeout_s)

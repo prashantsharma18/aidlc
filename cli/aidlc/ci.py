@@ -13,6 +13,7 @@ security property:
 The GitHub Actions workflow (core/ci/github/aidlc-verify.yml) runs the same code on two checkouts."""
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import os
@@ -28,7 +29,8 @@ from pathlib import Path
 from typing import Callable, Iterator
 
 from . import __version__
-from .checks.onecheck import (DIFF_FLAGS, FAIL, OK, STEERING, CheckContext, CheckResult, StepResult, _excepted,
+from .checks.onecheck import (DIFF_FLAGS, FAIL, OK, STEERING, CheckContext, CheckError, CheckResult, StepResult,
+                              _excepted, prepare_check_dir,
                               begin_command_steps, git, print_result, run_command, step_context_drift,
                               step_protected_tests, step_records, step_scope, step_secrets, step_skips)
 from .cliinfo import recorded_base
@@ -50,7 +52,8 @@ INSTALL_STEPS = ("install", "restore")
 COMPILE_STEPS = {"install", "restore", "build", "compile"}
 SCAN_STEPS = {"secrets", "config-policy"}
 SHA40 = re.compile(r"[0-9a-f]{40}")
-NO_BASE = "the trusted record has no base branch for this repository; a person must run aidlc render"
+NO_BASE = ("the trusted record has no base branch for this repository; check out the base branch and run "
+           "aidlc render --trusted-base <base branch>")
 NO_SANDBOX = ("bubblewrap cannot start a sandbox here (sudo apt install bubblewrap); "
               "aidlc ci never runs the change's code unsandboxed in local mode")
 
@@ -83,15 +86,25 @@ def group_of(step: str) -> str:
 RESTORE_MODES = {"100644": 0o644, "100755": 0o755}      # regular files only; never a link or a submodule
 
 
-def rerun_plan(repo: Path, base: str, head: str) -> tuple[dict[str, tuple[str, bytes]], list[str]]:
-    """What the protected re-run needs, read from git objects before any of the change's code runs:
-    the base (mode, bytes) of every test file the change modified, retyped or deleted, and the test
-    files it added. The same test patterns as protected_test_changes; steering files and approved
-    exceptions keep the change's version."""
+@dataclass
+class Rerun:
+    """The protected re-run's own checkout of the head, with the base test suite in place. Built before
+    any of the change's code runs; the first run's sandbox never binds it."""
+    path: Path                     # the checkout: the only writable tree of the re-run's sandbox
+    home: Path                     # its own private home (never the first run's)
+    touched: list[str]             # "restored <path>" and "removed <path>", for the step's message
+    problem: str = ""              # a setup failure: the re-run FAILs with it
+    wrap: Callable[[str, str], list[str]] | None = None
+
+
+def _test_changes(repo: Path, base: str, head: str) -> tuple[dict[str, str], list[str]]:
+    """From git objects: {path: base mode} of every test file the change modified, retyped or deleted,
+    and the test files it added. The same test patterns as protected_test_changes; steering files and
+    approved exceptions keep the change's version."""
     test_file = hooks().post_check.TEST_FILE_RE
     excepted = _excepted(repo, base, head)
     fields = [f for f in git(repo, "diff", *DIFF_FLAGS, "--name-status", "-z", base, head).split("\0") if f]
-    restore: dict[str, tuple[str, bytes]] = {}
+    restore: dict[str, str] = {}
     remove: list[str] = []
     for code, rel in zip(fields[::2], fields[1::2]):
         if rel in STEERING or not test_file.search(rel):
@@ -103,28 +116,26 @@ def rerun_plan(repo: Path, base: str, head: str) -> tuple[dict[str, tuple[str, b
             continue
         entry = git(repo, "ls-tree", "-z", base, "--", f":(literal){rel}").split("\0")[0]   # "<mode> <type> <oid>\t<path>"
         meta, _, listed = entry.partition("\t")
-        meta = meta.split()
-        if len(meta) != 3 or listed != rel:
+        if len(meta.split()) != 3 or listed != rel:
             raise CiError(f"cannot read the mode of {rel} at {base[:12]}")
-        mode, kind = meta[0], meta[1]
-        restore[rel] = (mode, _blob(repo, base, rel) if kind == "blob" else b"")
+        restore[rel] = meta.split()[0]
     return restore, sorted(remove)
 
 
-def _open_slot(repo: Path, rel: str, create_parents: bool) -> Path | None:
-    """The path for rel with nothing at it, after the change's code ran. Every parent is checked with
-    safe_target (a symlinked component is refused); a file, link or FIFO at rel is unlinked, never
+def _open_slot(root: Path, rel: str, create_parents: bool) -> Path | None:
+    """root/rel with nothing at it. Every parent is checked with safe_target: a symlinked component,
+    which the change chose by committing it, is refused. A file, link or FIFO at rel is unlinked, never
     followed; a directory there is refused. None: a parent is missing and create_parents is False."""
     parts = Path(rel).parts
     for i in range(1, len(parts)):
-        parent = safe_target(repo, str(Path(*parts[:i])))
+        parent = safe_target(root, str(Path(*parts[:i])))
         if not os.path.lexists(parent):
             if not create_parents:
                 return None
             parent.mkdir()
         elif not parent.is_dir():
             raise ValueError(f"{rel}: '{Path(*parts[:i])}' is not a directory")
-    target = repo.resolve() / rel
+    target = root.resolve() / rel
     if os.path.lexists(target):
         if stat.S_ISDIR(os.lstat(target).st_mode):
             raise ValueError(f"{rel} is a directory where a test file belongs")
@@ -132,46 +143,81 @@ def _open_slot(repo: Path, rel: str, create_parents: bool) -> Path | None:
     return target
 
 
-def step_protected_rerun(ctx: CheckContext) -> StepResult:
-    """Guide 9.5 rule 3: the base test suite must pass on the new code. The change's tests may only
-    add lines, but an added line (or an added test file that monkeypatches the code) can still hide a
-    regression, so the re-run restores the base version of every test file the change touched,
-    removes the test files it added, and runs the base suite. Everything was read from git objects
-    before the change's code ran (ctx.rerun_base, ctx.rerun_remove); now the checkout is untrusted,
-    so files are written and removed with plain file calls, never with git. It rewrites files, so it
-    runs last, sandboxed like every test run."""
-    restore, remove = ctx.rerun_base, ctx.rerun_remove
+def _prepare_rerun(repo: Path, tmp: Path, base: str, head: str) -> Rerun | None:
+    """Before any of the change's code runs: a detached worktree of the head at tmp/rerun, where every
+    test file the change touched gets its base bytes and mode back and every test file it added is
+    removed. Nothing the first run does can reach it. None: the change touches no test file."""
+    restore, remove = _test_changes(repo, base, head)
     if not restore and not remove:
-        return StepResult("protected-rerun", OK, "no existing test file changed")
-    if "test" not in ctx.config.commands:
-        return StepResult("protected-rerun", FAIL, "no test command to re-run the base suite with")
-    bad = [f"{rel} (mode {mode})" for rel, (mode, _) in sorted(restore.items()) if mode not in RESTORE_MODES]
+        return None
+    path, home = tmp / "rerun", tmp / "home"
+    home.mkdir()
+    git(repo, "worktree", "add", "--detach", str(path), head)
+    rerun = Rerun(path, home, [f"restored {rel}" for rel in sorted(restore)] + [f"removed {rel}" for rel in remove])
+    bad = [f"{rel} (mode {mode})" for rel, mode in sorted(restore.items()) if mode not in RESTORE_MODES]
     if bad:
-        return StepResult("protected-rerun", FAIL, "cannot restore the base version of " + ", ".join(bad[:5]) +
-                          ": only regular files (100644, 100755) can be restored")
+        rerun.problem = (f"cannot restore the base version of {', '.join(bad[:5])}: only regular files "
+                         "(100644, 100755) can be restored")
+        return rerun
     try:
-        for rel, (mode, data) in sorted(restore.items()):
-            target = _open_slot(ctx.repo, rel, create_parents=True)
+        for rel, mode in sorted(restore.items()):
+            data = _blob(repo, base, rel)
+            target = _open_slot(path, rel, create_parents=True)
             fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, RESTORE_MODES[mode])
             with os.fdopen(fd, "wb") as handle:
                 os.fchmod(handle.fileno(), RESTORE_MODES[mode])     # exact mode, whatever the umask
                 handle.write(data)
         for rel in remove:
-            _open_slot(ctx.repo, rel, create_parents=False)
-    except (ValueError, OSError) as exc:
-        return StepResult("protected-rerun", FAIL, f"cannot set up the base suite: {exc}")
-    problems = _drop_bytecode(ctx.repo)                       # stale caches must not shadow the tests
-    if problems:
-        return StepResult("protected-rerun", FAIL, "cannot clear the bytecode caches: " + "; ".join(problems[:3]))
-    for name in ctx.config.check_steps:                       # rebuild: `dotnet test --no-build` would
-        if group_of(name) == "compile" and name not in INSTALL_STEPS:   # re-run the change's binaries
-            built = run_command(ctx, name, step=f"protected-rerun-{name}")
-            if built.status == FAIL:
-                built.name, built.detail = "protected-rerun", f"rebuilding with the base tests failed ({built.detail})"
-                return built
-    result = run_command(ctx, "test", step="protected-rerun")
+            _open_slot(path, rel, create_parents=False)
+        prepare_check_dir(path)
+    except (ValueError, OSError, CheckError) as exc:
+        rerun.problem = f"cannot set up the base suite: {exc}"
+    return rerun
+
+
+@contextmanager
+def rerun_checkout(repo: Path, git_dir: Path, base: str, head: str, enabled: bool) -> Iterator[Rerun | None]:
+    """The protected re-run's checkout (see _prepare_rerun), always removed. Cleanup runs git from the
+    common git directory, never from a checkout the change's code ran in."""
+    if not enabled:
+        yield None
+        return
+    tmp = Path(tempfile.mkdtemp(prefix="aidlc-ci-rerun-"))
+    try:
+        yield _prepare_rerun(repo, tmp, base, head)
+    finally:
+        _remove_tree(tmp / "rerun")
+        _quiet(git_dir, "worktree", "remove", "--force", str(tmp / "rerun"))
+        _remove_tree(tmp)
+
+
+def step_protected_rerun(ctx: CheckContext) -> StepResult:
+    """Guide 9.5 rule 3: the base test suite must pass on the new code. The change's tests may only
+    add lines, but an added line, or an added test file that monkeypatches the code, can still hide a
+    regression. The re-run uses its own checkout (ctx.rerun), built before any of the change's code
+    ran: the base version of every test file the change touched, none of the test files it added, and
+    nothing the first run wrote. It runs in its own sandbox with a fresh private home: install, the
+    compile steps, then the test step. Logs go to the first checkout's .check/ as for every step."""
+    rerun: Rerun | None = ctx.rerun
+    if rerun is None:
+        return StepResult("protected-rerun", OK, "no existing test file changed")
+    if rerun.problem:
+        return StepResult("protected-rerun", FAIL, rerun.problem)
+    if rerun.wrap is None:
+        return StepResult("protected-rerun", FAIL, "the protected re-run runs only in the sandbox")
+    if "test" not in ctx.config.commands:
+        return StepResult("protected-rerun", FAIL, "no test command to re-run the base suite with")
+    rctx = dataclasses.replace(ctx, wrap=rerun.wrap)
+    install = [n for n in INSTALL_STEPS if n in ctx.config.commands][:1]
+    builds = [n for n in ctx.config.check_steps if group_of(n) == "compile" and n not in INSTALL_STEPS]
+    for name in install + builds:                             # `dotnet test --no-build` needs a fresh build
+        built = run_command(rctx, name, step=f"protected-rerun-{name}", cwd=rerun.path)
+        if built.status == FAIL:
+            built.name, built.detail = "protected-rerun", f"preparing the base suite failed at {name} ({built.detail})"
+            return built
+    result = run_command(rctx, "test", step="protected-rerun", cwd=rerun.path)
     if result.status == FAIL:
-        touched = [f"restored {rel}" for rel in sorted(restore)] + [f"removed {rel}" for rel in remove]
+        touched = rerun.touched
         result.detail = (f"the base test suite fails on this change ({result.detail}; {', '.join(touched[:5])}"
                          f"{' ...' if len(touched) > 5 else ''}): a changed or added test hid a regression")
     return result
@@ -184,7 +230,7 @@ JUDGE_STEPS: list[tuple[str, Callable[[CheckContext], StepResult]]] = [
     ("secrets", step_secrets),
     ("context-drift", step_context_drift),
 ]
-# After the change's commands: checks that read their output. The re-run rewrites files: last.
+# After the change's commands: checks that read their output, then the re-run in its own checkout.
 AFTER_STEPS: list[tuple[str, Callable[[CheckContext], StepResult]]] = [
     ("skips", step_skips),
     ("protected-rerun", step_protected_rerun),
@@ -269,9 +315,6 @@ def _run_phases(ctx: CheckContext, group: str | None) -> CheckResult:
             guarded(name, lambda f=fn: f(ctx))
     if group == "scans":                              # the scans job never runs the change's code
         return CheckResult(steps)
-    # Last moment before the change's code runs: everything that needs git in the checkout.
-    if group != "compile":
-        ctx.rerun_base, ctx.rerun_remove = rerun_plan(ctx.repo, ctx.base, ctx.head)
     begin_command_steps(ctx)                          # .check/, the clock, the report snapshot
     install = [n for n in INSTALL_STEPS if n in ctx.config.commands][:1]
     commands = install + [n for n in ctx.config.check_steps if n not in install]
@@ -282,32 +325,6 @@ def _run_phases(ctx: CheckContext, group: str | None) -> CheckResult:
         for name, fn in AFTER_STEPS:
             guarded(name, lambda f=fn: f(ctx))
     return CheckResult(steps)
-
-
-def _drop_bytecode(work: Path) -> list[str]:
-    """Remove __pycache__ directories in the checkout (never following symlinks). Returns the
-    problems: a directory the walk cannot read could hold a stale cache, so the caller fails."""
-    problems: list[str] = []
-
-    def failed(exc: OSError) -> None:
-        where = Path(exc.filename).relative_to(work) if exc.filename and Path(exc.filename).is_relative_to(work) \
-            else exc.filename
-        problems.append(f"{where}: {exc.strerror or exc}")
-
-    for root, dirs, _files in os.walk(work, onerror=failed):
-        dirs[:] = [d for d in dirs if d != ".git"]
-        for d in list(dirs):
-            path = Path(root) / d
-            if d == "__pycache__":
-                try:
-                    if path.is_symlink():
-                        path.unlink()
-                    else:
-                        shutil.rmtree(path)
-                except OSError as exc:
-                    failed(exc)
-                dirs.remove(d)
-    return problems
 
 
 def _blob(repo: Path, commit: str, rel: str) -> bytes:
@@ -373,8 +390,9 @@ def run_ci(plan: CiPlan, group: str | None = None) -> tuple[CheckResult, dict]:
     hooks()                                           # the guard and post-check modules the judges use
     config = load_config(plan.trusted)
     if config.harness.get("base_branch", "main") != plan.base_branch:
-        raise CiError(f"the base branch's configuration names base '{config.harness.get('base_branch')}', "
-                      f"not '{plan.base_branch}'")
+        named = config.harness.get("base_branch")
+        raise CiError(f"the base branch's configuration names base '{named}', not '{plan.base_branch}'; "
+                      f"check out '{named}' and run aidlc render --trusted-base {named}")
     approvals = _read_trusted(plan.trusted / APPROVALS)
     merges = _read_trusted(plan.trusted / MERGES)
     try:
@@ -400,12 +418,18 @@ def run_ci(plan: CiPlan, group: str | None = None) -> tuple[CheckResult, dict]:
     readable, env_names = toolchain_paths(config.profile), toolchain_env(config.profile)
     home = Path(tempfile.mkdtemp(prefix="aidlc-ci-home-"))
     try:
-        wrap = Sandbox(work=plan.work, private_home=home, git_dir=git_dir, readable=readable,
-                       env_names=env_names).argv if use_sandbox else None
-        ctx = CheckContext(repo=plan.work, config=config, branch=plan.branch, base=merge_base, scope=scope,
-                           head=plan.head, steering=steering, wrap=wrap)
-        # 2 and 3: judges, then the change's code in the sandbox, then what reads its output.
-        result = _run_phases(ctx, group)
+        # The re-run's checkout is complete before anything else; the change's code runs in neither yet.
+        with rerun_checkout(plan.repo, git_dir, merge_base, plan.head, enabled=group in (None, "check")) as rerun:
+            wrap = Sandbox(work=plan.work, private_home=home, git_dir=git_dir, readable=readable,
+                           env_names=env_names).argv if use_sandbox else None
+            if rerun is not None and use_sandbox:
+                box = Sandbox(work=rerun.path, private_home=rerun.home, git_dir=git_dir, readable=readable,
+                              env_names=env_names)
+                rerun.wrap = lambda command, step: box.argv(command, step.removeprefix("protected-rerun-"))
+            ctx = CheckContext(repo=plan.work, config=config, branch=plan.branch, base=merge_base, scope=scope,
+                               head=plan.head, steering=steering, wrap=wrap, rerun=rerun)
+            # 2 and 3: judges, then the change's code in the sandbox, then what reads its output.
+            result = _run_phases(ctx, group)
     finally:
         _remove_tree(home)
     if scope is None:
