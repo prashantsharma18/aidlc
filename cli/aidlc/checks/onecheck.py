@@ -96,11 +96,11 @@ def prepare_check_dir(repo: Path) -> Path:
         check_dir = safe_target(repo, CHECK_DIR)
         check_dir.mkdir(exist_ok=True)
         ignore = safe_target(repo, f"{CHECK_DIR}/.gitignore")      # refuses a final symlink too
-    except ValueError as exc:
-        raise CheckError(str(exc)) from None
-    fd = os.open(ignore, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
-    with os.fdopen(fd, "w", encoding="utf-8") as handle:
-        handle.write("*\n")                                       # .check never shows as a change
+        fd = os.open(ignore, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write("*\n")                                   # .check never shows as a change
+    except (ValueError, OSError) as exc:
+        raise CheckError(f"cannot prepare {CHECK_DIR}/: {exc}") from None
     return check_dir
 
 
@@ -236,7 +236,8 @@ def run_check(ctx: CheckContext, builtins=None) -> CheckResult:
 def print_result(result: CheckResult, repo: Path, prefix: str = "check") -> None:
     redact = hooks().guard._redact
     for step in result.steps:
-        line = f"{prefix}  {step.name:<16}{step.status}"
+        label = f"{step.name:<16}" if len(step.name) < 16 else f"{step.name} "
+        line = f"{prefix}  {label}{step.status}"
         if step.detail:
             line += f"  {redact(step.detail)}"
         if step.status == FAIL and step.log:

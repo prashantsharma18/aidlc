@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 from datetime import date
 from pathlib import Path
@@ -52,17 +53,18 @@ def _one(args: argparse.Namespace) -> int:
         return 2
     try:
         ctx = local_context(repo, load_config(repo))
-    except (CheckError, HarnessError, PolicyError, ValueError, KeyError, OSError) as exc:
+    except (CheckError, HarnessError, PolicyError, ValueError, KeyError, OSError,
+            subprocess.SubprocessError) as exc:
         print(f"aidlc check: {exc}", file=sys.stderr)
         return 2
     print(context_line(ctx))
     try:
         result = run_check(ctx)
-    except CheckError as exc:
+        print_result(result, repo)
+        write_record(repo, result.record(ctx))
+    except (CheckError, ValueError, OSError, subprocess.SubprocessError) as exc:
         print(f"aidlc check: {exc}", file=sys.stderr)
         return 2
-    print_result(result, repo)
-    write_record(repo, result.record(ctx))
     return 0 if result.passed else 1
 
 

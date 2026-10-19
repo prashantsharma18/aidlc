@@ -249,3 +249,56 @@ class CliTest(unittest.TestCase):
         code, out, _ = run_cli("check", "context-drift", str(self.root))
         self.assertIn(code, (0, 1))
         self.assertIn("context-drift:", out)
+
+
+class SetupErrorTest(unittest.TestCase):
+    """Every problem before or after the steps run exits 2 with a message, never a traceback."""
+
+    def setUp(self):
+        self.env = GuardEnv().__enter__()
+        self.repo, self.root = installed({"lint": py("print(1)")}, ["lint"])
+        self.env.write_scope(self.root, ["src/**"])
+
+    def tearDown(self):
+        self.repo.__exit__(None, None, None)
+        self.env.__exit__(None, None, None)
+
+    def assert_exit_2(self):
+        code, out, err = run_cli("check", "--repo", str(self.root))
+        self.assertEqual(code, 2, (out, err))
+        self.assertNotIn("Traceback", err)
+        self.assertIn("aidlc check:", err)
+
+    def test_regular_file_at_check_dir(self):
+        (self.root / ".check").write_text("x\n")
+        self.assert_exit_2()
+
+    def test_directory_at_check_gitignore(self):
+        (self.root / ".check").mkdir()
+        (self.root / ".check/.gitignore").mkdir()
+        self.assert_exit_2()
+
+    def test_step_plants_result_symlink(self):
+        outside = self.root.parent / "outside-record.txt"
+        outside.write_text("untouched\n")
+        cfg_path = self.root / ".aidlc/config.yaml"
+        cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+        cfg["commands"]["lint"] = py(f"import os; os.symlink(r'{outside}', '.check/result.json')")
+        cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
+        self.assert_exit_2()
+        self.assertEqual(outside.read_text(), "untouched\n")
+
+
+class LongStepNameTest(unittest.TestCase):
+    def test_long_names_keep_a_separator(self):
+        name = "dependency-audit-xyz1"                      # 21 characters
+        result = onecheck.CheckResult([onecheck.StepResult(name, FAIL, "exit 1"),
+                                       onecheck.StepResult("lint", OK)])
+        import contextlib
+        import io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            onecheck.print_result(result, None)
+        lines = out.getvalue().splitlines()
+        self.assertEqual(lines[0], f"check  {name} FAIL  exit 1")
+        self.assertEqual(lines[1], f"check  {'lint':<16}ok")
