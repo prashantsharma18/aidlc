@@ -9,9 +9,10 @@ from pathlib import Path
 from ..adapters import adapter_names, get_adapter
 from ..adapters.base import AdapterNotImplemented, write_rendered
 from ..cli import command
-from ..cliinfo import record_entry
-from ..harness import HarnessError
+from ..cliinfo import record_base, record_entry
+from ..harness import HarnessError, base_branch
 from ..paths import find_repo_root
+from ..repo import CONFIG
 
 
 def _allow_write(files) -> list[str]:
@@ -49,6 +50,12 @@ def _run(args: argparse.Namespace) -> int:
         except OSError as exc:
             print(f"aidlc render: cannot record the aidlc entry point ({exc}); a passing check "
                   "will not reset the retry counter")
+            return 1
+        try:
+            if (repo / CONFIG).is_file():        # aidlc ci runs only in installed repositories
+                record_base(repo, base_branch(repo))
+        except (OSError, HarnessError) as exc:
+            print(f"aidlc render: cannot record the trusted base branch ({exc}); aidlc ci will refuse to run")
             return 1
         if status == "missing":
             print("aidlc render: warning: framework entry point not found; the retry limit will "

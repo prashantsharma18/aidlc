@@ -57,7 +57,8 @@ class CheckContext:
     scope_source: str = ""            # the scope file read (shown in the context line)
     head: str | None = None           # CI: judge git objects base..head instead of the working tree
     steering: dict[str, str] | None = None   # CI: the base's steering files, read before the change runs
-    rerun_base: dict[str, bytes] = field(default_factory=dict)   # CI: base versions of changed test files
+    rerun_base: dict[str, tuple[str, bytes]] = field(default_factory=dict)   # CI: (mode, bytes) of base tests
+    rerun_remove: list[str] = field(default_factory=list)   # CI: test files the change added
     wrap: Callable[[str, str], list[str]] | None = None   # CI: argv that runs a command step (sandbox)
     today: date = field(default_factory=date.today)
     timeout_s: int = STEP_TIMEOUT_S
@@ -122,8 +123,8 @@ def changed_paths(repo: Path, base: str, head: str | None = None) -> list[str]:
     """Files changed since `base`. With `head` (CI): between the two commits, from git objects only.
     Without: in the working copy, plus untracked files that are not ignored."""
     if head is not None:
-        return sorted(p for p in git(repo, "diff", "--no-renames", "--name-only", "-z", base, head).split("\0") if p)
-    tracked = git(repo, "diff", "--no-renames", "--name-only", "-z", base).split("\0")
+        return sorted(p for p in git(repo, "diff", *DIFF_FLAGS, "--name-only", "-z", base, head).split("\0") if p)
+    tracked = git(repo, "diff", *DIFF_FLAGS, "--name-only", "-z", base).split("\0")
     untracked = git(repo, "ls-files", "--others", "--exclude-standard", "-z").split("\0")
     return sorted({p for p in (*tracked, *untracked) if p})
 
@@ -220,7 +221,9 @@ STEERING = (EXCEPTIONS, ALLOWED_SKIPS)          # files that steer the checks: n
 MAX_SCAN_BYTES = 1_000_000
 
 
-DIFF_FLAGS = ("--no-renames", "--text", "--src-prefix=a/", "--dst-prefix=b/")   # content always shown, labels fixed
+# Content always shown, labels fixed, and the real bytes: a branch's .gitattributes picks the diff driver,
+# so a textconv or external diff would let the change decide what the judges read.
+DIFF_FLAGS = ("--no-renames", "--text", "--no-textconv", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/")
 
 
 def _span(base: str, head: str | None) -> list[str]:
@@ -262,7 +265,7 @@ def protected_test_changes(repo: Path, base: str, head: str | None = None) -> tu
     """(problems, changed existing test files). An existing test file may only gain lines."""
     test_file = hooks().post_check.TEST_FILE_RE
     excepted = _excepted(repo, base, head)
-    fields = [f for f in git(repo, "diff", "--no-renames", "--name-status", "-z",
+    fields = [f for f in git(repo, "diff", *DIFF_FLAGS, "--name-status", "-z",
                              "--diff-filter=DMT", *_span(base, head)).split("\0") if f]
     problems, changed = [], []
     for code, path in zip(fields[::2], fields[1::2]):
@@ -274,7 +277,7 @@ def protected_test_changes(repo: Path, base: str, head: str | None = None) -> tu
         if code == "T":
             problems.append(f"deleted or replaced: {path} is no longer a regular file")
             continue
-        numstat = git(repo, "diff", "--numstat", "--no-renames", *_span(base, head), "--", path).split()
+        numstat = git(repo, "diff", *DIFF_FLAGS, "--numstat", *_span(base, head), "--", f":(literal){path}").split()
         removed = numstat[1] if len(numstat) >= 2 else "?"
         if removed == "-":
             problems.append(f"binary test file changed: {path}")
@@ -444,8 +447,16 @@ def run_check(ctx: CheckContext, builtins=None) -> CheckResult:
     return CheckResult(steps)
 
 
+CONTROL_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")   # C0 and C1 controls except tab and newline
+
+
 def print_result(result: CheckResult, repo: Path, prefix: str = "check") -> None:
-    redact = hooks().guard._redact
+    """One line per step. Details and log tails are redacted, then stripped of control characters, so
+    a log cannot hide or rewrite lines on the terminal (escape sequences)."""
+    guard_redact = hooks().guard._redact
+
+    def redact(text: str) -> str:
+        return CONTROL_RE.sub("", guard_redact(text))
     for step in result.steps:
         label = f"{step.name:<16}" if len(step.name) < 16 else f"{step.name} "
         line = f"{prefix}  {label}{step.status}"

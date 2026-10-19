@@ -32,7 +32,7 @@ def _run(args: argparse.Namespace) -> int:
                 raise CiError(f"{repo} is not an installed repository; run aidlc init-repo")
             result, record, path = ci_local(repo, args.branch, args.group)
     except (CiError, CheckError, HarnessError, PolicyError, SandboxError, ScopeError, ValueError,
-            KeyError, OSError, subprocess.SubprocessError) as exc:
+            KeyError, TypeError, AttributeError, OSError, subprocess.SubprocessError) as exc:
         print(f"aidlc ci: {exc}", file=sys.stderr)
         return 2
     print(f"ci  merge-ready {'yes' if record['merge_ready'] else 'no'}  ({record['merge_ready_reason']})")

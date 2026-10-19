@@ -58,7 +58,9 @@ class CiRepo:
     def __enter__(self):
         self.tools = tempfile.TemporaryDirectory()
         stub_conftest(Path(self.tools.name))
-        self.env = mock.patch.dict(os.environ, {"AIDLC_TOOLS_DIR": self.tools.name})
+        self.home = tempfile.TemporaryDirectory()          # render records the trusted base here
+        self.env = mock.patch.dict(os.environ, {"AIDLC_TOOLS_DIR": self.tools.name,
+                                                "AIDLC_HOME_DIR": self.home.name})
         self.env.start()
         self.repo = TempRepo({"src/app.py": APP, "test/test_app.py": TEST_APP, "test/run.py": RUNNER,
                               "plans/b.md": "# bundle\nMAY CHANGE: src/**, test/**\n"})
@@ -89,6 +91,7 @@ class CiRepo:
         self.repo.__exit__(None, None, None)
         self.env.stop()
         self.tools.cleanup()
+        self.home.cleanup()
 
     def commit(self, files: dict[str, str], message="change"):
         for rel, text in files.items():
@@ -451,3 +454,241 @@ class ParseApprovalsTest(unittest.TestCase):
             parse_approvals("feat/a main:plans/a.md\n", "feat/a", "s")
         with self.assertRaises(ScopeError):                  # \f never starts a new line: still a comment
             parse_approvals("# note\ffeat/a abc123:plans/a.md\n", "feat/a", "s")
+
+
+# ---- Task 6 fix round 1 ------------------------------------------------------------------------
+
+def base_update(r, fn, files=None):
+    """Change main's configuration (and files) and move the task branch onto it."""
+    git(r.root, "checkout", "-q", "main")
+    cfg_path = r.root / ".aidlc/config.yaml"
+    cfg = yaml.safe_load(cfg_path.read_text())
+    fn(cfg)
+    cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False))
+    for rel, (text, mode) in (files or {}).items():
+        (r.root / rel).write_text(text)
+        (r.root / rel).chmod(mode)
+    git(r.root, "add", "-A")
+    git(r.root, "commit", "-qm", "base update")
+    git(r.root, "branch", "-f", BRANCH, "main")
+    git(r.root, "checkout", "-q", BRANCH)
+
+
+AKIA = "AKIA" + "ABCDEFGHIJKLMNOP"
+
+
+class PinnedBaseTest(unittest.TestCase):
+    def test_a_missing_base_record_exits_2(self):
+        from aidlc import cliinfo
+        with CiRepo() as r:
+            cliinfo.base_file(r.root).unlink()
+            code, _, err = run_cli("ci", "--repo", str(r.root))
+            self.assertEqual(code, 2)
+            self.assertIn("the trusted record has no base branch for this repository; a person must run aidlc render",
+                          err)
+            self.assertEqual(len(r.worktrees()), 1)
+
+    def test_a_malformed_base_record_exits_2(self):
+        from aidlc import cliinfo
+        with CiRepo() as r:
+            for body in ('{"base_branch": 5}', "{nope", "[]"):
+                cliinfo.base_file(r.root).write_text(body)
+                code, _, err = run_cli("ci", "--repo", str(r.root))
+                self.assertEqual(code, 2, body)
+                self.assertIn("a person must run aidlc render", err)
+
+    def test_a_symlinked_base_record_is_neither_trusted_nor_written_through(self):
+        from aidlc import cliinfo
+        with CiRepo() as r:
+            victim = r.root.parent / f"victim-{uuid.uuid4().hex}.json"
+            victim.write_text('{"base_branch": "main"}')
+            self.addCleanup(victim.unlink)
+            record = cliinfo.base_file(r.root)
+            record.unlink()
+            record.symlink_to(victim)
+            code, _, err = run_cli("ci", "--repo", str(r.root))
+            self.assertEqual(code, 2)
+            self.assertIn("a person must run aidlc render", err)
+            code, out, _ = run_cli("render", "--tool", "claude-code", str(r.root))
+            self.assertEqual(code, 1)
+            self.assertIn("cannot record the trusted base branch", out)
+            self.assertEqual(victim.read_text(), '{"base_branch": "main"}')
+
+    def test_render_records_the_configured_base(self):
+        from aidlc import cliinfo
+        with CiRepo() as r:
+            self.assertEqual(cliinfo.recorded_base(r.root), "main")
+            self.assertFalse(cliinfo.base_file(r.root).is_symlink())
+
+
+@NEEDS_SANDBOX
+class CiFixRound1Test(unittest.TestCase):
+    def test_the_recorded_base_judges_even_when_the_branch_config_names_another(self):
+        with CiRepo() as r:
+            cfg_path = r.root / ".aidlc/config.yaml"
+            cfg = yaml.safe_load(cfg_path.read_text())
+            cfg["harness"]["base_branch"] = "evil"
+            r.commit({".aidlc/config.yaml": yaml.safe_dump(cfg), "src/extra.py": "X = 1\n"})
+            head = git(r.root, "rev-parse", "HEAD")
+            git(r.root, "checkout", "-q", "-b", "evil", "main")         # a base the branch controls
+            r.commit({".aidlc/config.yaml": yaml.safe_dump(cfg), ci.MERGES: f"{BRANCH} {head} lead 2026-10-19\n"})
+            git(r.root, "checkout", "-q", BRANCH)
+            run_cli("ci", "--repo", str(r.root))
+            record = last(r)
+            self.assertEqual((record["base_branch"], record["base"]), ("main", git(r.root, "rev-parse", "main")))
+            self.assertFalse(record["merge_ready"])
+
+    def test_the_base_branch_itself_is_still_refused(self):
+        with CiRepo() as r:
+            code, _, err = run_cli("ci", "--repo", str(r.root), "--branch", "main")
+            self.assertEqual(code, 2)
+            self.assertIn("not the base branch", err)
+
+    def test_a_tracked_record_in_the_head_is_refused(self):
+        with CiRepo() as r:
+            planted = r.root / ci.RECORDS / "20990101T000000000000Z-forged.json"
+            planted.parent.mkdir(parents=True, exist_ok=True)
+            planted.write_text('{"label": "simulated-ci", "merge_ready": true}\n')
+            git(r.root, "add", "-f", str(planted.relative_to(r.root)))
+            git(r.root, "commit", "-qm", "plant a record")
+            code, _, err = run_cli("ci", "--repo", str(r.root))
+            self.assertEqual(code, 2)
+            self.assertIn("under .aidlc/ci-records/", err)
+            self.assertEqual(len(r.worktrees()), 1)
+
+    def test_the_rerun_keeps_the_exec_bit(self):
+        with CiRepo() as r:
+            base_update(r, lambda c: c["commands"].__setitem__("test", "./test/run.sh"),
+                        {"test/run.sh": (f'#!/bin/sh\nexec "{PY}" test/run.py\n', 0o755)})
+            sh = r.root / "test/run.sh"
+            r.commit({"test/run.sh": sh.read_text() + "# a harmless added line\n"})
+            self.assertEqual(git(r.root, "ls-tree", "HEAD", "--", "test/run.sh").split()[0], "100755")
+            code, out, _ = run_cli("ci", "--repo", str(r.root))
+            s = steps(last(r))
+            self.assertEqual(s["protected-rerun"]["status"], "ok", out)
+            self.assertEqual(code, 0, out)
+
+    def test_a_symlink_in_the_base_cannot_be_restored(self):
+        with CiRepo() as r:
+            git(r.root, "checkout", "-q", "main")
+            (r.root / "test/link_test.py").symlink_to("test_app.py")
+            git(r.root, "add", "-A")
+            git(r.root, "commit", "-qm", "a symlinked test")
+            git(r.root, "branch", "-f", BRANCH, "main")
+            git(r.root, "checkout", "-q", BRANCH)
+            (r.root / "test/link_test.py").unlink()
+            r.commit({"test/link_test.py": TEST_APP})              # T: a link becomes a file
+            run_cli("ci", "--repo", str(r.root))
+            rerun = steps(last(r))["protected-rerun"]
+            self.assertEqual(rerun["status"], "FAIL")
+            self.assertIn("test/link_test.py (mode 120000)", rerun["detail"])
+
+    def test_an_added_test_that_monkeypatches_the_app_is_removed_for_the_rerun(self):
+        with CiRepo() as r:
+            r.commit({"src/app.py": "def value():\n    return 2\n",
+                      "test/test_aaa.py": "import app\napp.value = lambda: 1\n"})
+            code, _, _ = run_cli("ci", "--repo", str(r.root))
+            s = steps(last(r))
+            self.assertEqual((s["protected-tests"]["status"], s["test"]["status"]), ("ok", "ok"))
+            self.assertEqual(s["protected-rerun"]["status"], "FAIL")
+            self.assertIn("test/test_aaa.py", s["protected-rerun"]["detail"])
+            self.assertEqual(code, 1)
+
+    def test_a_deleted_base_test_is_restored_for_the_rerun(self):
+        with CiRepo() as r:
+            (r.root / "test/test_app.py").unlink()
+            r.commit({"src/app.py": "def value():\n    return 2\n"})
+            run_cli("ci", "--repo", str(r.root))
+            s = steps(last(r))
+            self.assertEqual(s["protected-tests"]["status"], "FAIL")
+            self.assertEqual(s["protected-rerun"]["status"], "FAIL")      # main's test is back, and fails
+            self.assertIn("test/test_app.py", s["protected-rerun"]["detail"])
+
+    def test_an_honest_change_that_adds_a_passing_test_passes(self):
+        with CiRepo() as r:
+            more = "import unittest\nfrom app import value\n\n\nclass More(unittest.TestCase):\n" \
+                   "    def test_more(self):\n        self.assertEqual(value() + 1, 2)\n"
+            r.commit({"src/extra.py": "X = 1\n", "test/test_more.py": more})
+            code, out, _ = run_cli("ci", "--repo", str(r.root))
+            self.assertEqual(code, 0, out)
+            self.assertEqual(steps(last(r))["protected-rerun"]["status"], "ok")
+
+    def test_a_walk_error_fails_the_rerun(self):
+        with CiRepo() as r:
+            hostile = TEST_APP + "\nimport os\nos.makedirs('test/locked', exist_ok=True)\nos.chmod('test/locked', 0)\n"
+            r.commit({"test/test_app.py": hostile})
+            run_cli("ci", "--repo", str(r.root))
+            rerun = steps(last(r))["protected-rerun"]
+            self.assertEqual(rerun["status"], "FAIL")
+            self.assertIn("test/locked", rerun["detail"])
+
+    def test_a_malformed_trusted_config_exits_2(self):
+        for label, fn in (("check_steps", lambda c: c.__setitem__("check_steps", 5)),
+                          ("profile", lambda c: c.__setitem__("profile", ["x"]))):
+            with CiRepo() as r:
+                base_update(r, fn)
+                code, _, err = run_cli("ci", "--repo", str(r.root))
+                self.assertEqual(code, 2, label)
+                self.assertIn(label, err)
+                self.assertEqual(len(r.worktrees()), 1)
+
+
+class TextconvTest(unittest.TestCase):
+    """A branch's .gitattributes picks a diff driver; the judges must read the real bytes."""
+
+    def repo(self, files):
+        from aidlc.repo import RepoConfig
+        tmp = TempRepo({"src/a.py": "A = 1\n", "test/test_a.py": "assert 1 == 1\n"})
+        root = tmp.__enter__()
+        self.addCleanup(tmp.__exit__, None, None, None)
+        git(root, "config", "diff.blind.textconv", "true")         # repo-local: prints nothing
+        base = git(root, "rev-parse", "HEAD")
+        git(root, "checkout", "-q", "-b", BRANCH)
+        for rel, text in files.items():
+            (root / rel).write_text(text)
+        git(root, "add", "-A")
+        git(root, "commit", "-qm", "change")
+        config = RepoConfig("svc", "team", "generic", "purpose", {}, [], {}, harness={}, tool_names={})
+        return root, base, git(root, "rev-parse", "HEAD"), config
+
+    def test_secrets_are_found_in_both_modes(self):
+        from aidlc.checks.onecheck import FAIL, CheckContext, step_secrets
+        root, base, head, config = self.repo({"src/key.py": f'K = "{AKIA}"\n', ".gitattributes": "*.py diff=blind\n"})
+        for mode_head in (None, head):
+            ctx = CheckContext(repo=root, config=config, branch=BRANCH, base=base, scope=None, head=mode_head)
+            self.assertEqual(step_secrets(ctx).status, FAIL, mode_head)
+
+    def test_removed_test_lines_are_found_in_both_modes(self):
+        from aidlc.checks.onecheck import protected_test_changes
+        root, base, head, _ = self.repo({"test/test_a.py": "pass\n", ".gitattributes": "*.py diff=blind\n"})
+        for mode_head in (None, head):
+            problems, _ = protected_test_changes(root, base, mode_head)
+            self.assertTrue(any("test/test_a.py" in p for p in problems), (mode_head, problems))
+
+
+class PrintResultTest(unittest.TestCase):
+    def test_control_characters_are_stripped(self):
+        import contextlib
+        import io
+
+        from aidlc.checks.onecheck import FAIL, CheckResult, StepResult, print_result
+        out = io.StringIO()
+        step = StepResult("test", FAIL, "bad\x1b]0;title\x07 \x9b2J", ".check/test.log", ["\x1b[8mhidden\tok\x7f"])
+        with contextlib.redirect_stdout(out):
+            print_result(CheckResult([step]), Path("."))
+        text = out.getvalue()
+        for ch in ("\x1b", "\x07", "\x9b", "\x7f"):
+            self.assertNotIn(ch, text)
+        self.assertIn("hidden\tok", text)
+
+
+class LiteralPathspecTest(unittest.TestCase):
+    def test_a_test_file_named_like_a_glob_is_judged_by_its_own_lines(self):
+        from aidlc.checks.onecheck import protected_test_changes
+        with TempRepo({"test/X_test.py": "assert 1\n", "test/[X]_test.py": "assert 2\nassert 3\n"}) as root:
+            base = git(root, "rev-parse", "HEAD")
+            (root / "test/X_test.py").write_text("assert 1\nassert 4\n")         # only gains a line
+            (root / "test/[X]_test.py").write_text("assert 2\n")                 # loses one
+            git(root, "commit", "-qam", "change")
+            problems, _ = protected_test_changes(root, base, git(root, "rev-parse", "HEAD"))
+            self.assertIn("1 existing line(s) changed or removed: test/[X]_test.py", problems)

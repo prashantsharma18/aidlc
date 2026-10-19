@@ -44,6 +44,15 @@ def load_config(repo: Path) -> RepoConfig:
     if not path.is_file():
         raise FileNotFoundError(f"{path} not found: run `aidlc init-repo` first")
     data = load_yaml(path)
+    if not isinstance(data, dict):
+        raise ValueError(f"{CONFIG}: must be a mapping, got {type(data).__name__}")
+    if not isinstance(data.get("profile"), str):
+        raise ValueError(f"{CONFIG}: 'profile' must be a string, got {data.get('profile')!r}")
+    steps = data.get("check_steps")
+    if steps is None:
+        steps = []
+    if not isinstance(steps, list) or not all(isinstance(step, str) for step in steps):
+        raise ValueError(f"{CONFIG}: 'check_steps' must be a list of step names, got {steps!r}")
     ctx = {"rules_file": "AGENTS.md", "map": "docs/codebase-map.md", "review_interval_days": 30}
     ctx.update(_mapping(data, "context"))
     harness = {"auto_memory": False, "disable_user_plugins": [], "base_branch": "main"}
@@ -57,7 +66,7 @@ def load_config(repo: Path) -> RepoConfig:
         raise ValueError(f"{CONFIG}: 'test_reports' must be a list of relative paths or globs inside the "
                          f"repository, got {reports!r}")
     return RepoConfig(data["name"], data["owner"], data["profile"], data.get("purpose", ""),
-                      _mapping(data, "commands"), list(data.get("check_steps") or []), ctx,
+                      _mapping(data, "commands"), list(steps), ctx,
                       harness=harness, tool_names=_mapping(data, "tool_names"), test_reports=reports)
 
 
