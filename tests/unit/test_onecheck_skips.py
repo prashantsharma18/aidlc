@@ -111,12 +111,12 @@ class SkipStepTest(unittest.TestCase):
     def test_report_outside_the_checkout_is_ignored(self):
         outside = Path(tempfile.mkdtemp())
         (self.root / "link").symlink_to(outside)
-        text = "<testsuite><testcase name='a'/></testsuite>"
-        cmd = py(f"open('{outside}/r.xml','w').write('{text}')")
+        b64 = base64.b64encode(b"<testsuite><testcase name='a'/></testsuite>").decode("ascii")
+        cmd = py(f"import base64; open('{outside}/r.xml','wb').write(base64.b64decode('{b64}'))")
         step = self.skips(reports=("link/r.xml",), command=cmd)
+        self.assertTrue((outside / "r.xml").is_file())      # the command really wrote the report
         self.assertEqual(step.status, FAIL)
         self.assertIn("did the tests run?", step.detail)
-
 
     def test_symlinked_report_file_never_counts(self):
         (self.root / "real").mkdir()
