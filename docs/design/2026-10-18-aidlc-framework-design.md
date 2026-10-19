@@ -45,6 +45,7 @@ A demo workspace with two repositories shows one change moving through every sta
 | D6 | OpenWiki uses Anthropic through an `ANTHROPIC_API_KEY` that the user provides. Repositories are small, to bound cost. | §6.4. The key is never pasted into a session. |
 | D7 | Observability maps onto the existing local platform (OTel Collector → Langfuse, Loki, Mimir). | §10. The framework conforms to the platform's attribute contract and does not redefine it. |
 | D8 | Copilot is deferred. Only the extension points are built now. | §4.3 |
+| D9 | Policy-as-code and MCP gateway (2026-10-19): **agentgateway** replaces ContextForge as the MCP gateway; CEL allowlists generated from `permissions.yaml`; OPA/Rego via Conftest for configuration rules in trusted CI; Python guard hook; Cedar deferred. | [ADR 0001](../adr/0001-policy-as-code.md); Plans 2 and 3 |
 
 ## 3. Principles carried from the guide
 
@@ -324,7 +325,7 @@ GitHub Actions templates mirror it one-to-one and stay inactive until the reposi
 - **Policy files.** Every file in `core/policy/` has an owner and a review date:
   - `data-classes.yaml` and `model-routes.yaml`: demo code is Internal; Restricted data never reaches a model; credentials never do;
   - `dependency-policy.yaml`: exact versions, lockfiles, a 14-day minimum release age, install scripts off, licence allow-list;
-  - `tool-register.yaml`: Claude Code, OpenWiki, lab-jira through ContextForge, Langfuse;
+  - `tool-register.yaml`: Claude Code, OpenWiki, lab-jira (today through ContextForge; agentgateway from Plan 2, ADR 0001), Langfuse;
   - `branch-protection.yaml`: tool-neutral, mapped for later GitHub use.
 - **Procedure skills.** A: secret leak. B: verify package or API. C: add dependency. D: security review of an agent-written change. Each produces its record template.
 - **Secrets.** Unavailable to sessions. A scan step in the check (pattern scan in the demo; documented hand-off to the organisation's scanner).

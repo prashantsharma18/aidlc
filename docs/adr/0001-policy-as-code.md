@@ -1,0 +1,112 @@
+<!-- aidlc template: adr -->
+# 0001 · Policy-as-code: one source of policy data, an engine only where it fits
+
+Status: Accepted (2026-10-19) · Decider: Prashant Sharma (framework owner)
+Agreed: — (platform and security owners to confirm the gateway and CI parts before Plans 2 and 3 build them)
+Work item: none (framework decision) · Tier: 2 (affects every installed repository's controls)
+
+## Context
+
+The framework holds policy as YAML data in `core/policy/`, validated by JSON Schema
+(`core/schemas/`). Must-hold rules are enforced at the point where the action happens
+(guide 3.3, 13.3): Claude Code permissions and sandbox, the pre-tool guard hook, trusted CI
+checks and branch protection. Two gaps remain:
+
+- **Cross-document rules.** JSON Schema checks the shape of one file. It cannot express "a
+  repository's settings never weaken the organisation baseline" or "every secret path is denied in
+  both the sandbox and the Read rules". Guide 3 step 9 requires exactly these checks.
+- **Tool-call authorisation outside the agent.** Claude Code permissions are one layer. For serious
+  harm the guide asks for two (3.4, 13.4). MCP calls (Jira and future tools) need a second,
+  identity-aware layer that the agent cannot configure.
+
+The MCP gateway is **agentgateway** (Apache-2.0; a Linux Foundation project under the Agentic AI
+Foundation since June 2026), not ContextForge. This is the decider's choice.
+
+## Drivers
+
+- One source of truth for policy data (guide 2.4, "link, don't copy").
+- Fail closed (guide 3.4): an engine error or timeout blocks.
+- Each must-hold rule is enforced where the action happens, with two layers for serious harm (3.4, 13.3).
+- Every decision is logged with its reason and reaches observability (3 step 7, 13.3).
+- New tools pass the dependency policy (pinned version, checksum, register entry) (13.9).
+- The pre-tool hook stays under one second and runs inside the sandbox (3 step 5).
+- Owners can change policy without changing framework code (16.3, 16.4).
+
+## Options
+
+A. **Python everywhere** (status quo). Rejected for cross-document configuration rules: every new
+   rule means framework code, and security or platform owners cannot own the rules.
+
+B. **One engine everywhere (OPA/Rego in the hook, CI and gateway).** Rejected for the hook. An extra
+   binary on every machine and in every sandbox, a process start on every tool call, and the hook's
+   hard parts are procedural code, not policy logic: path normalisation and chained-command
+   splitting.
+
+C. **An engine per enforcement point, all reading the same YAML data.** Chosen. See the decision.
+
+D. **ContextForge's policy-decision-point plugin at the MCP layer.** Rejected: agentgateway is the
+   chosen gateway.
+
+E. **Cedar as the primary engine.** Deferred, not rejected. Cedar is purpose-built for
+   principal/action/resource authorisation and can be checked before deployment. agentgateway has
+   no native Cedar engine that we could verify, so Cedar would need an external-authorisation
+   service. Revisit when the organisation standardises an authorisation language.
+
+## Decision
+
+Policy **data** stays in `core/policy/*.yaml`, the single source. Policy **logic** lives in the engine
+that serves each enforcement point, and reads that data. It never repeats values.
+
+| Enforcement point | Engine | What it decides | Plan |
+|---|---|---|---|
+| Policy data and file shape | YAML + JSON Schema (existing) | Every policy is well formed | Plan 1 (done) |
+| Pre-tool guard hook (in session) | Python, standard library only | Protected paths, task scope, chained commands, destructive git. Its input is a JSON document in the generic hook contract, so a policy engine could evaluate the same input later. | Plan 2 |
+| MCP gateway | **agentgateway** `mcpAuthorization` (CEL) | Which agent identity (JWT `sub`/claims) may list or call which MCP tool. Written as an **allowlist**: allow and require rules only, never deny-only (a `deny` whose CEL errors does not match, so it fails open). Unauthorised tools are filtered from `tools/list`. Rules are **generated** from the `tools:` section of `core/policy/permissions.yaml` by a new adapter function (`render_gateway`). | Plan 2 |
+| MCP gateway, data-dependent decisions | agentgateway external authorisation → **OPA (Rego)**, `failureMode: FailClosed` | Decisions that need more than the tool name and claims, such as tier- or data-class-dependent tool use | Later (only when a rule needs it) |
+| Trusted CI: configuration | **OPA/Rego via Conftest** | Rendered `.claude/settings.json` keeps the sandbox on (`failIfUnavailable`, no unsandboxed fallback) and denies every `secret_paths` entry for both commands and the Read tool. A repository's `.aidlc/permissions.yaml` only narrows the baseline. CI workflows use read-only tokens and SHA-pinned actions. Branch-protection config matches its policy. Dependency manifests follow the dependency policy. | Plan 3 |
+| Trusted CI: source code | Stack-native linters first (ESLint and dependency-cruiser; Roslyn analyzers and NetArchTest); **Semgrep** only for rules that span languages | No personal data in logs; boundary rules (for example, controllers never touch data access) | Plan 3 mechanism, Plan 5 demo rules |
+
+Layout:
+- `core/policy-as-code/rego/` holds the Rego logic and its `opa test` unit tests.
+- `core/policy-as-code/gateway/` holds the gateway rendering templates.
+- Data stays in `core/policy/`.
+
+## Consequences
+
+- **New dependencies.** `opa` and `conftest` (Plan 3) and the agentgateway container (Plan 2) enter
+  the dependency policy: exact versions, recorded checksums or image digests, and entries in
+  `core/policy/tool-register.yaml`. They are installed for CI and the lab, never inside an agent
+  session. Enforced by: the tool-register policy and the Plan 3 dependency check.
+- **One logic language for organisation policy (Rego).** Owned by the platform and security teams
+  through CODEOWNERS on `core/policy-as-code/`. Advised by: the rules file; enforced by: code owners.
+- **Policy tests.** Every Rego rule has an `opa test` case that fails on a known bad input. Every
+  gateway rule has a fixture proving a forbidden tool call is refused and hidden from `tools/list`.
+  Enforced by: `make test` and trusted CI.
+- **Decision logs.** agentgateway exports MCP traces and metrics. Conftest results are recorded as
+  `aidlc.check.result`. OPA decision logs (when external authorisation is used) are shipped to the
+  platform OTel collector, and from there to Loki and Langfuse. Enforced by: the observability
+  mapping (design §10).
+- **Two layers for MCP tools.** Claude Code tool permissions, then the agentgateway allowlist. A tool
+  allowed in one and denied in the other is denied. Enforced by: the Plan 2 attack tests.
+- **The telemetry contract** (`normalised-attributes.yaml`, `tool: contextforge`) needs an
+  agentgateway value. This is a proposed patch for the platform owner, not changed by the framework.
+- **Revisit** Cedar if the organisation adopts it for agent-identity authorisation (through an
+  external-authorisation service). Revisit Kubernetes admission (Gatekeeper or Kyverno) when the
+  framework covers deployment. Revisit LLM-route enforcement (data class to approved model route)
+  in agentgateway's LLM gateway when model traffic is centralised.
+
+## Open questions (owners)
+
+- Q1 Does agentgateway replace ContextForge in the lab for `lab-jira`, and where do the Atlassian
+  credentials live: in the gateway's backend auth, never in agent sessions? Owner: platform owner.
+  Blocks the Plan 2 gateway slice only.
+- Q2 What does `mcpAuthorization` do by default when no rule matches? Not documented. Plan 2
+  verifies it with a test before relying on it; the generated rules are an explicit allowlist either way.
+
+## Sources
+
+- agentgateway: MCP authorization (CEL variables `mcp.tool.name`, `mcp.tool.target`, `jwt.*`;
+  tools/list filtering), HTTP authorization semantics (deny before allow; CEL errors on deny fail
+  open), external authorization (OPA; FailClosed). Checked 2026-10-19.
+- Guide chapters 3 (enforcement boundary, step 9), 13 (four layers, MCP as supply chain, governance
+  register), 16.4 (who owns organisation policy).
