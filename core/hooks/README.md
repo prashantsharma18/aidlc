@@ -38,12 +38,14 @@ Runs after `Edit`, `Write`, `MultiEdit`, `NotebookEdit`, `Bash`, `Monitor` and `
 `post_check.record_check` counts runs of the one-command check (`aidlc check` without a named check), and the guard enforces the limit. Claude Code does not fire `PostToolUse` for a Bash call that exits non-zero, so the shim also handles `PostToolUseFailure` (phase `post-failure`).
 
 - A shell call counts only when some part of it runs the check, including inside a substitution, `bash -c` or `eval`.
-- It is a PASS only when all hold: the whole command is exactly `aidlc check` (any path to `aidlc`, optionally `--repo <path>`, no assignment prefix, no wrapper); it exited 0; the last `check  result` line says `PASS`; no step line says `SKIPPED`; and the single `check  context` line names this repository, the base the post-check computes, the scope file the guard reads, and `mode=require`.
+- It is a PASS only when all hold: the whole command is exactly `aidlc check` (optionally `--repo <path>`, no assignment prefix, no wrapper) and its first word resolves (PATH for a bare word, the call's cwd for a path) to the framework's own entry point recorded in `$AIDLC_HOME_DIR/cli.json` by `aidlc render` (a missing, symlinked or malformed `cli.json` means no PASS); it exited 0; the last `check  result` line says `PASS`; no step line says `SKIPPED`; and the single `check  context` line names this repository, the base the post-check computes, the scope file the guard reads, and `mode=require`.
+- Runs the parser cannot see (`python3 -m aidlc check`, `$A check`, make or npm wrappers) are still counted once: every check writes a fresh `run` id to `.check/result.json`, and an id the counter has not seen (`last_run` in the record) counts as one failing attempt on any shell call.
+- Named checks (`context-drift`, `openwiki`) anywhere after `check`, other than as the value of `--repo`, are not the one-command check.
 - Anything else that runs the check is a failing attempt. An unknown exit code (`None`) is never a PASS.
 - A PASS resets the counter. Each failing attempt adds one. At `retry_cap` (`harness.json`, from `routing.yaml`, default 3) the post hook flags `retry-limit`, and the guard denies every `edit` and `shell` call with `retry-limit`. Reads stay allowed.
 - Rule ids: `check-recorded` (post, pass) and `retry-limit` (post flag, pre deny).
 - The record is `$AIDLC_HOME_DIR/attempts/<repo name>-<8 hex of the repo path hash>/<branch with / as __>.json`; a detached HEAD uses `__detached__.json`. Updates hold an exclusive `flock`, so parallel hooks lose no count.
-- Fail closed: an unreadable record, or one that is a symlink, counts as at the limit.
+- Fail closed: an unreadable record, a record, its directories (`attempts/`, `<repo>-<hash>/`) or its `.lock` being a symlink or not a regular file, counts as at the limit.
 - Only hooks write the record. The sandbox denies `~/.aidlc` to agent shells, and `aidlc attempts*--reset*` is a shell deny rule, so an agent cannot reset its own counter. A person runs `aidlc attempts --reset`.
 
 ## claude_shim.py (Claude Code adapter shim)
@@ -58,7 +60,7 @@ Usage: `claude_shim.py pre|post|post-failure`. Post events carry `text` (stdout 
 | `AIDLC_UNATTENDED` | Any non-empty value except `0`, `false` or `no` (case-insensitive) makes every `ask` a `deny`. |
 | `AIDLC_SCOPE=off` | Edit scope is not enforced. Refused when unattended. Logged. |
 | `AIDLC_SCOPE_FILE` | Explicit scope file. Ignored if it lives inside the repository. |
-| `AIDLC_HOME_DIR` | Base for scope files. Default: `~/.aidlc`. Scope files live at `scopes/<repo>/<branch with / as __>.scope`. |
+| `AIDLC_HOME_DIR` | Base for scope files. Default: `~/.aidlc`. Scope files live at `scopes/<repo>/<branch with / as __>.scope`. The retry counter lives at `attempts/<repo>-<hash>/<branch>.json`, and `cli.json` records the framework's own `aidlc` entry point. |
 | `AIDLC_LOG_DIR` | Log directory. Default: `~/.aidlc/logs`. |
 
 ## Deliberate limits

@@ -16,6 +16,8 @@ import hashlib
 import json
 import os
 import re
+import shutil
+import stat
 import sys
 import time
 from pathlib import Path
@@ -843,7 +845,21 @@ def _check_segment(words: list[str], piped: bool, stdin: bool, patterns: list[st
 
 
 def _is_one_check(argv: list[str]) -> bool:
-    return argv[:2] == ["aidlc", "check"] and not (len(argv) > 2 and argv[2] in NAMED_CHECKS)
+    """`aidlc check` with no named check anywhere after it. The value after `--repo` is skipped
+    (`--repo X` and `--repo=X`), so a repository called "context-drift" is not a named check."""
+    if argv[:2] != ["aidlc", "check"]:
+        return False
+    skip = False
+    for word in argv[2:]:
+        if skip:
+            skip = False
+        elif word == "--repo":
+            skip = True
+        elif word.startswith("--repo="):
+            continue
+        elif word in NAMED_CHECKS:
+            return False
+    return True
 
 
 def _inner_strings(argv: list[str]) -> list[str]:
@@ -858,7 +874,38 @@ def _inner_strings(argv: list[str]) -> list[str]:
     return []
 
 
-def check_segments(command) -> tuple[bool, bool]:
+def cli_entry() -> str | None:
+    """The framework's own `aidlc` entry point (realpath), as the CLI recorded it in
+    $AIDLC_HOME_DIR/cli.json when it rendered the harness. None: missing, a symlink, unreadable
+    or malformed. A PASS needs it (a fake `aidlc` on PATH must never reset the counter)."""
+    path = _home_dir() / "cli.json"
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, "rb") as fh:
+            data = json.loads(fh.read(65537)[:65536].decode("utf-8"))
+    except Exception:  # noqa: BLE001 - fail closed: no entry point, no PASS
+        return None
+    entry = data.get("entry") if isinstance(data, dict) else None
+    return entry if isinstance(entry, str) and entry else None
+
+
+def _is_entry_point(word: str, cwd: str | None) -> bool:
+    entry = cli_entry()
+    if entry is None:
+        return False
+    try:
+        if "/" in word:
+            found = Path(word) if word.startswith("/") else Path(cwd or os.getcwd()) / word
+        else:
+            found = shutil.which(word)
+            if found is None:
+                return False
+        return os.path.realpath(found) == entry
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def check_segments(command, cwd: str | None = None) -> tuple[bool, bool]:
     """(contains, exact) for the one-command check in a shell command. `contains`: some part of it
     runs `aidlc check` (also inside a substitution, `bash -c` or `eval`). `exact`: the whole
     command is `aidlc check`, optionally with `--repo <path>`. Only an exact, passing run resets
@@ -886,7 +933,7 @@ def check_segments(command) -> tuple[bool, bool]:
             return True, False
         words = segments[0]["words"]                      # raw words: no prefix or wrapper is stripped
         exact = (len(words) in (2, 4) and words[0].rsplit("/", 1)[-1] == "aidlc" and words[1] == "check"
-                 and (len(words) == 2 or words[2] == "--repo"))
+                 and (len(words) == 2 or words[2] == "--repo") and _is_entry_point(words[0], cwd))
         return True, exact
     except (ValueError, _TooComplex):
         return bool(re.search(r"aidlc\S*\s+check", command)), False
@@ -895,24 +942,50 @@ def check_segments(command) -> tuple[bool, bool]:
 DETACHED = "__detached__"
 
 
+def _home_dir() -> Path:
+    return Path(os.environ.get("AIDLC_HOME_DIR") or "~/.aidlc").expanduser()
+
+
 def attempts_file(root: Path, branch: str | None) -> Path:
     """One record per repository (name plus a hash of its path, so same-named clones never collide)
     and branch. A detached HEAD has its own key, so detaching never escapes the counter."""
-    home = Path(os.environ.get("AIDLC_HOME_DIR") or "~/.aidlc").expanduser()
+    home = _home_dir()
     tag = hashlib.sha256(str(root.resolve()).encode("utf-8")).hexdigest()[:8]
     name = DETACHED if branch is None else branch.replace("/", "__")
     return home / "attempts" / f"{root.name}-{tag}" / f"{name}.json"
 
 
+def attempts_unsafe(path: Path) -> bool:
+    """True when the record's directories or its lock are links or not what they should be.
+    Such a record cannot be trusted or updated, so it counts as at the limit."""
+    try:
+        for directory in (path.parent.parent, path.parent):
+            if directory.is_symlink():
+                return True
+        lock = path.parent / ".lock"
+        try:
+            mode = os.lstat(lock).st_mode
+        except FileNotFoundError:
+            return False
+        return not stat.S_ISREG(mode)
+    except OSError:
+        return True
+
+
 def read_failures(root: Path, branch: str | None) -> int | None:
     """Failing checks in a row on this branch. None means the record is unreadable."""
     path = attempts_file(root, branch)
-    if path.is_symlink():                       # never trust, or write through, a link
+    if attempts_unsafe(path):
         return None
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     except FileNotFoundError:
         return 0
+    except OSError:
+        return None
+    try:
+        with os.fdopen(fd, "rb") as fh:
+            data = json.loads(fh.read(65537)[:65536].decode("utf-8"))
     except Exception:  # noqa: BLE001 - an unreadable record fails closed at the caller
         return None
     count = data.get("failures") if isinstance(data, dict) else None

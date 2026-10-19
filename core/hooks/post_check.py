@@ -138,28 +138,66 @@ def _context_ok(root: Path, branch: str, text: str) -> bool:
             and scope == str(guard.scope_file(root, branch)) and mode == "require")
 
 
-def _update_attempts(path: Path, passed: bool, cap: int) -> int:
-    """Read-modify-write under an exclusive lock (parallel hooks never lose a count)."""
+MAX_ARTEFACT_BYTES = 1 << 20
+
+
+def check_run_id(root: Path) -> str | None:
+    """The `run` id in <root>/.check/result.json, the check's own record of its latest run. None:
+    absent, a symlink, too big or malformed. That is "no signal", never an error."""
+    try:
+        if (root / ".check").is_symlink():
+            return None
+        fd = os.open(root / ".check" / "result.json", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, "rb") as fh:
+            raw = fh.read(MAX_ARTEFACT_BYTES + 1)
+        if len(raw) > MAX_ARTEFACT_BYTES:
+            return None
+        run = json.loads(raw.decode("utf-8")).get("run")
+    except Exception:  # noqa: BLE001
+        return None
+    return run if isinstance(run, str) and run else None
+
+
+def _update_attempts(path: Path, counted_call: bool, passed: bool, run: str | None, cap: int) -> int | None:
+    """Read-modify-write under an exclusive lock (parallel hooks never lose a count).
+    `counted_call`: the command itself runs the check. Otherwise the call counts (as one failing
+    attempt) only when the check's own record shows a run this counter has not seen. Returns the
+    failures in a row, or None when the call did not count. Unsafe or unreadable: at the limit."""
+    if guard.attempts_unsafe(path):
+        return cap
     path.parent.mkdir(parents=True, exist_ok=True)
-    lock_fd = os.open(path.parent / ".lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    if guard.attempts_unsafe(path):
+        return cap
+    try:
+        lock_fd = os.open(path.parent / ".lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+    except OSError:
+        return cap
     with os.fdopen(lock_fd, "r+", encoding="utf-8") as lock:   # never opened through a symlink
         fcntl.flock(lock, fcntl.LOCK_EX)
         try:
+            before, last_run = None, None
             try:
                 if path.is_symlink():                       # never trust a link: fail closed
                     raise OSError("attempts record is a symlink")
                 data = json.loads(path.read_text(encoding="utf-8"))
                 before = data.get("failures") if isinstance(data, dict) else None
                 before = before if isinstance(before, int) and not isinstance(before, bool) and before >= 0 else None
+                last_run = data.get("last_run") if isinstance(data, dict) else None
+                last_run = last_run if isinstance(last_run, str) else None
             except FileNotFoundError:
                 before = 0
             except Exception:  # noqa: BLE001 - unreadable: fail closed (counts as at the limit)
                 before = None
+            if not counted_call and not (run is not None and run != last_run):
+                return None
             failures = 0 if passed else (cap if before is None else before + 1)
+            record = {"failures": failures, "last": "PASS" if passed else "FAIL",
+                      "updated": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+            if run is not None or last_run is not None:
+                record["last_run"] = run if run is not None else last_run
             fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".attempts-")
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
-                json.dump({"failures": failures, "last": "PASS" if passed else "FAIL",
-                           "updated": datetime.now(timezone.utc).isoformat(timespec="seconds")}, fh)
+                json.dump(record, fh)
             os.replace(tmp, path)
             return failures
         finally:
@@ -168,23 +206,29 @@ def _update_attempts(path: Path, passed: bool, cap: int) -> int:
 
 def record_check(event: dict) -> dict | None:
     """Count runs of the one-command check (guide 8.8: the harness enforces the retry limit). A run
-    is a PASS only when the command is exactly `aidlc check`, it exited 0 and its last result line
-    says PASS. Any other command that runs the check is a failing attempt."""
+    is a PASS only when the command is exactly the framework's own `aidlc check`, it exited 0 and
+    its last result line says PASS. Any other command that runs the check is a failing attempt. A
+    command the parser cannot see (`python3 -m aidlc check`, `$A check`, make) is still counted
+    once, from the new run id in the check's own record."""
     if event.get("tool") != "shell":
         return None
-    contains, exact = guard.check_segments((event.get("args") or {}).get("command"))
-    if not contains:
-        return None
-    root = guard.repo_root(Path(event.get("cwd") or os.getcwd()))
+    cwd = event.get("cwd") or os.getcwd()
+    contains, exact = guard.check_segments((event.get("args") or {}).get("command"), cwd)
+    root = guard.repo_root(Path(cwd))
     if root is None:
+        return None
+    run = check_run_id(root)
+    if not contains and run is None:
         return None
     branch = guard.current_branch(root)                      # None: counted under the detached key
     text = str(event.get("text") or "")
     results = guard.CHECK_RESULT_RE.findall(text)
-    passed = (exact and branch is not None and event.get("exit_code") == 0 and bool(results)
+    passed = (contains and exact and branch is not None and event.get("exit_code") == 0 and bool(results)
               and results[-1] == "PASS" and not SKIPPED_RE.search(text) and _context_ok(root, branch, text))
     cap = guard.load_harness()["retry_cap"]
-    failures = _update_attempts(guard.attempts_file(root, branch), passed, cap)
+    failures = _update_attempts(guard.attempts_file(root, branch), contains, passed, run, cap)
+    if failures is None:
+        return None
     if failures >= cap:
         return _result("flag", "retry-limit", guard.retry_limit_reason(failures, cap))
     return _result("pass", "check-recorded",

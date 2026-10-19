@@ -1,10 +1,14 @@
 # tests/unit/test_retry_limit.py
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
+import uuid
 from datetime import date
+from pathlib import Path
 
 from aidlc.adapters import get_adapter
 from aidlc.checks.doctor import run_doctor
@@ -33,6 +37,25 @@ def pass_text(root, **kw):
     return context(root, **kw) + "check  lint            ok\ncheck  result PASS  (0 of 6 steps failed)\n"
 
 
+def install_entry(base, name="real"):
+    """A stub `aidlc` (the framework's entry point) on PATH, recorded in cli.json. The ambient
+    PATH is never relied on. Call inside GuardEnv (it sets AIDLC_HOME_DIR and restores the env)."""
+    stub = Path(base) / name / "aidlc"
+    stub.parent.mkdir(parents=True, exist_ok=True)
+    stub.write_text("#!/bin/sh\nexit 0\n")
+    stub.chmod(0o755)
+    home = Path(os.environ["AIDLC_HOME_DIR"])
+    home.mkdir(parents=True, exist_ok=True)
+    (home / "cli.json").write_text(json.dumps({"entry": str(stub.resolve())}))
+    os.environ["PATH"] = f"{stub.parent}{os.pathsep}/usr/bin{os.pathsep}/bin"
+    return stub
+
+
+def write_run(root, run):
+    (root / ".check").mkdir(exist_ok=True)
+    (root / ".check" / "result.json").write_text(json.dumps({"result": "FAIL", "run": run}))
+
+
 def ran(root, command, text, exit_code):
     return {"session": "s", "call": "c", "tool": "shell", "args": {"command": command},
             "cwd": str(root), "output": text, "text": text, "exit_code": exit_code}
@@ -57,19 +80,62 @@ class CheckSegmentsTest(unittest.TestCase):
     ]
 
     def test_cases(self):
-        for command, expected in self.CASES:
+        with GuardEnv(), tempfile.TemporaryDirectory() as tmp:
+            stub = install_entry(tmp)
+            (Path(tmp) / "bin").mkdir()
+            (Path(tmp) / "bin" / "aidlc").symlink_to(stub)       # `bin/aidlc` relative to cwd
+            for command, expected in self.CASES:
+                with self.subTest(command=command):
+                    self.assertEqual(guard.check_segments(command, tmp), expected)
+
+    def test_named_checks_after_repo_are_not_the_one_check(self):
+        for command in ("aidlc check --repo . context-drift", "aidlc check --repo=. openwiki",
+                        "aidlc check context-drift --repo ."):
             with self.subTest(command=command):
-                self.assertEqual(guard.check_segments(command), expected)
+                self.assertEqual(guard.check_segments(command), (False, False))
+        self.assertEqual(guard.check_segments("aidlc check --repo context-drift")[0], True)
+
+    def test_only_the_framework_entry_point_is_exact(self):
+        with GuardEnv(), tempfile.TemporaryDirectory() as tmp:
+            install_entry(tmp)
+            fake = Path(tmp) / "fakebin" / "aidlc"
+            fake.parent.mkdir()
+            fake.write_text("#!/bin/sh\nexit 0\n")
+            fake.chmod(0o755)
+            self.assertEqual(guard.check_segments(f"{fake} check", tmp), (True, False))     # by path
+            self.assertEqual(guard.check_segments("../fakebin/aidlc check", f"{tmp}/real"), (True, False))
+            os.environ["PATH"] = f"{fake.parent}{os.pathsep}{os.environ['PATH']}"           # earlier on PATH
+            self.assertEqual(guard.check_segments("aidlc check", tmp), (True, False))
+            os.environ["PATH"] = f"{Path(tmp) / 'real'}{os.pathsep}{os.environ['PATH']}"
+            self.assertEqual(guard.check_segments("aidlc check", tmp), (True, True))
+
+    def test_missing_or_bad_cli_json_is_never_exact(self):
+        with GuardEnv(), tempfile.TemporaryDirectory() as tmp:
+            install_entry(tmp)
+            cli = Path(os.environ["AIDLC_HOME_DIR"]) / "cli.json"
+            cli.write_text(json.dumps({"entry": 5}))
+            self.assertEqual(guard.check_segments("aidlc check", tmp), (True, False))
+            cli.write_text("{nope")
+            self.assertEqual(guard.check_segments("aidlc check", tmp), (True, False))
+            cli.unlink()
+            self.assertEqual(guard.check_segments("aidlc check", tmp), (True, False))
+            elsewhere = Path(tmp) / "elsewhere.json"
+            elsewhere.write_text(json.dumps({"entry": str((Path(tmp) / "real" / "aidlc").resolve())}))
+            cli.symlink_to(elsewhere)                                                        # a symlinked cli.json
+            self.assertEqual(guard.check_segments("aidlc check", tmp), (True, False))
 
 
 class CounterTest(unittest.TestCase):
     def setUp(self):
         self.env = GuardEnv().__enter__()
         self.repo, self.root = repo_on_branch()
+        self.stubs = tempfile.TemporaryDirectory()
+        install_entry(self.stubs.name)
 
     def tearDown(self):
         self.repo.__exit__(None, None, None)
         self.env.__exit__(None, None, None)
+        self.stubs.cleanup()
 
     def failures(self):
         return guard.read_failures(self.root, "feat/SHIP-1-x")
@@ -268,3 +334,127 @@ class SymlinkedRecordTest(unittest.TestCase):
                 self.assertEqual(target.read_text(), '{"failures": 0}')
             finally:
                 repo.__exit__(None, None, None)
+
+
+class ArtefactCountingTest(unittest.TestCase):
+    """Runs the command parser cannot see (python3 -m aidlc check, $A check, make) still count, once,
+    from the new run id in the check's own record."""
+
+    def setUp(self):
+        self.env = GuardEnv().__enter__()
+        self.repo, self.root = repo_on_branch()
+        self.stubs = tempfile.TemporaryDirectory()
+        install_entry(self.stubs.name)
+
+    def tearDown(self):
+        self.repo.__exit__(None, None, None)
+        self.env.__exit__(None, None, None)
+        self.stubs.cleanup()
+
+    def failures(self):
+        return guard.read_failures(self.root, "feat/SHIP-1-x")
+
+    def test_unseen_run_counts_once(self):
+        for command in ("python3 -m aidlc check", "A=aidlc; $A check"):
+            with self.subTest(command=command):
+                before = self.failures()
+                write_run(self.root, uuid.uuid4().hex)
+                r = post.record_check(ran(self.root, command, "", 1))
+                self.assertEqual(r["rule"], "check-recorded")
+                self.assertEqual(self.failures(), before + 1)
+                self.assertIsNone(post.record_check(ran(self.root, "ls", "", 0)))   # same run: not again
+                self.assertEqual(self.failures(), before + 1)
+
+    def test_post_phase_counts_too(self):
+        write_run(self.root, "r1")
+        post.record_check(ran(self.root, "make check", "", 0))
+        self.assertEqual(self.failures(), 1)
+
+    def test_canonical_pass_stores_the_run(self):
+        post.record_check(ran(self.root, "aidlc check", FAIL_TEXT, 1))
+        write_run(self.root, "r2")
+        post.record_check(ran(self.root, "aidlc check", pass_text(self.root), 0))
+        self.assertEqual(self.failures(), 0)
+        self.assertIsNone(post.record_check(ran(self.root, "ls", "", 0)))
+        self.assertEqual(self.failures(), 0)
+
+    def test_bad_artefacts_are_no_signal(self):
+        (self.root / ".check").mkdir(exist_ok=True)
+        result = self.root / ".check" / "result.json"
+        for body in ("{nope", json.dumps({"run": 5}), json.dumps([1]), json.dumps({"x": "y" * (1 << 21), "run": "a"})):
+            result.write_text(body)
+            self.assertIsNone(post.record_check(ran(self.root, "ls", "", 0)))
+        result.unlink()
+        other = self.root / "other.json"
+        other.write_text(json.dumps({"run": "linked"}))
+        result.symlink_to(other)
+        self.assertIsNone(post.record_check(ran(self.root, "ls", "", 0)))
+        self.assertEqual(self.failures(), 0)
+
+    def test_forged_pass_from_a_fake_entry_point_is_a_failure(self):
+        fake = Path(self.stubs.name) / "fakebin" / "aidlc"
+        fake.parent.mkdir()
+        fake.write_text("#!/bin/sh\nexit 0\n")
+        fake.chmod(0o755)
+        post.record_check(ran(self.root, "aidlc check", FAIL_TEXT, 1))
+        post.record_check(ran(self.root, f"{fake} check", pass_text(self.root), 0))
+        self.assertEqual(self.failures(), 2)
+
+
+class RecordIntegrityTest(unittest.TestCase):
+    def setUp(self):
+        self.env = GuardEnv().__enter__()
+        self.repo, self.root = repo_on_branch()
+        self.path = guard.attempts_file(self.root, "feat/SHIP-1-x")
+
+    def tearDown(self):
+        self.repo.__exit__(None, None, None)
+        self.env.__exit__(None, None, None)
+
+    def test_symlinked_lock_or_directory_is_at_the_limit(self):
+        post.record_check(ran(self.root, "aidlc check", FAIL_TEXT, 1))
+        self.assertEqual(guard.read_failures(self.root, "feat/SHIP-1-x"), 1)
+        lock = self.path.parent / ".lock"
+        lock.unlink()
+        lock.symlink_to(self.root / "src" / "a.ts")
+        self.assertIsNone(guard.read_failures(self.root, "feat/SHIP-1-x"))
+        r = post.record_check(ran(self.root, "aidlc check", FAIL_TEXT, 1))
+        self.assertEqual(r["rule"], "retry-limit")
+        self.assertEqual((self.root / "src" / "a.ts").read_text(), "x\n")
+
+    def test_symlinked_attempts_directory_is_at_the_limit_and_never_written(self):
+        real = Path(tempfile.mkdtemp())
+        home = Path(os.environ["AIDLC_HOME_DIR"])
+        home.mkdir(parents=True, exist_ok=True)
+        (home / "attempts").symlink_to(real)
+        self.assertIsNone(guard.read_failures(self.root, "feat/SHIP-1-x"))
+        r = post.record_check(ran(self.root, "aidlc check", FAIL_TEXT, 1))
+        self.assertEqual(r["rule"], "retry-limit")
+        self.assertEqual(list(real.iterdir()), [])
+
+    def test_symlinked_repository_directory_is_at_the_limit(self):
+        real = Path(tempfile.mkdtemp())
+        self.path.parent.parent.mkdir(parents=True)
+        self.path.parent.symlink_to(real)
+        self.assertIsNone(guard.read_failures(self.root, "feat/SHIP-1-x"))
+
+
+class CliEntryTest(unittest.TestCase):
+    def test_render_records_the_entry_point(self):
+        with TempRepo({"package.json": "{}\n"}) as root, tempfile.TemporaryDirectory() as home:
+            init_repo(root, "svc", "team", "node", "purpose", date(2026, 10, 19))
+            saved = dict(os.environ)
+            os.environ["AIDLC_HOME_DIR"] = home
+            try:
+                self.assertEqual(run_cli("render", "--tool", "claude-code", str(root))[0], 0)
+                entry = json.loads((Path(home) / "cli.json").read_text())["entry"]
+                self.assertEqual(entry, str((Path(__file__).resolve().parents[2] / "bin" / "aidlc").resolve()))
+                self.assertEqual(guard.cli_entry(), entry)
+            finally:
+                os.environ.clear()
+                os.environ.update(saved)
+
+    def test_check_record_carries_a_run_id(self):
+        from aidlc.checks.onecheck import CheckResult
+        rec = CheckResult([]).record(type("C", (), {"branch": "b", "base": "x"})())
+        self.assertRegex(rec["run"], r"^[0-9a-f]{32}$")

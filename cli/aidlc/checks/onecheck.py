@@ -14,6 +14,7 @@ import re
 import signal
 import subprocess
 import time
+import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -82,7 +83,7 @@ class CheckResult:
     def record(self, ctx: CheckContext, **extra) -> dict:
         return {"result": "PASS" if self.passed else "FAIL", "failures": self.failures,
                 "total": len(self.steps), "steps": step_records(self.steps),
-                "branch": ctx.branch, "base": ctx.base,
+                "branch": ctx.branch, "base": ctx.base, "run": uuid.uuid4().hex,
                 "time": datetime.now(timezone.utc).isoformat(timespec="seconds"), **extra}
 
 

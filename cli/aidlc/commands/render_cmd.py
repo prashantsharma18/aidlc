@@ -8,6 +8,7 @@ from pathlib import Path
 from ..adapters import adapter_names, get_adapter
 from ..adapters.base import AdapterNotImplemented, write_rendered
 from ..cli import command
+from ..cliinfo import write_cli_entry
 from ..harness import HarnessError
 from ..paths import find_repo_root
 
@@ -32,6 +33,13 @@ def _run(args: argparse.Namespace) -> int:
                               managed_dirs=adapter.managed_dirs)
     for problem in problems:
         print(problem)
+    if not problems and not args.check and args.tool == "claude-code":
+        try:
+            write_cli_entry()      # next to harness.json: the hooks trust a PASS only from this entry point
+        except OSError as exc:
+            print(f"aidlc render: cannot record the aidlc entry point ({exc}); a passing check "
+                  "will not reset the retry counter")
+            return 1
     if not problems:
         print(f"render ({adapter.name}): {len(files)} file(s) {'current' if args.check else 'written'}")
     return 1 if problems else 0

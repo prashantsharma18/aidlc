@@ -44,10 +44,20 @@ class TempRepo:
         self._tmp.cleanup()
 
 
+_CLI_HOME = tempfile.TemporaryDirectory(prefix="aidlc-test-home-")
+
+
 def run_cli(*args: str, cwd: Path | None = None) -> tuple[int, str, str]:
-    """Run aidlc.cli.main in-process; returns (exit code, stdout, stderr)."""
+    """Run aidlc.cli.main in-process; returns (exit code, stdout, stderr). Unless the caller set
+    AIDLC_HOME_DIR, the run uses a throwaway one: `aidlc render` records the entry point there."""
     from aidlc.cli import main
 
+    if "AIDLC_HOME_DIR" not in os.environ:
+        os.environ["AIDLC_HOME_DIR"] = _CLI_HOME.name
+        try:
+            return run_cli(*args, cwd=cwd)
+        finally:
+            del os.environ["AIDLC_HOME_DIR"]
     out, err = io.StringIO(), io.StringIO()
     old = Path.cwd()
     try:
