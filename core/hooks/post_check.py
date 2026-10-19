@@ -17,8 +17,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import guard  # noqa: E402  (same directory)
 
 ASSERT_RE = re.compile(r"(expect\(|\bassert|Assert\.|\.Should\(|Should\.|\.toBe\(|\.toEqual\(|"
-                       r"\.toMatch|\.toThrow|Verify\()")
-TEST_FILE_RE = re.compile(r"(^|/)(test|tests|__tests__)/|\.(test|spec)\.[cm]?[jt]sx?$|Tests?\.cs$")
+                       r"\.toMatch|\.toThrow|Verify\(|\.(not\.)?to[A-Z]\w*\(|\.Should\w*\()")
+TEST_FILE_RE = re.compile(
+    r"(^|/)(test|tests|spec|__tests__)/|(^|/)[^/]*\.Tests?/|\.(test|spec)\.[cm]?[jt]sx?$"
+    r"|(Test|Tests|Spec)\.(cs|java|kt)$|(^|/)test_[^/]*\.py$|_test\.py$|_test\.go$")
+SKIP_RE = re.compile(r"\b(it|test|describe)\.skip\(|\bx(it|describe|test)\(|\[(Fact|Theory)\([^)]*Skip\s*=|"
+                     r"\[Ignore\b|@pytest\.mark\.skip|@unittest\.skip|\bt\.Skip\(")
 
 
 def _result(decision: str, rule: str, reason: str) -> dict:
@@ -27,7 +31,7 @@ def _result(decision: str, rule: str, reason: str) -> dict:
 
 def _git(root: Path, *args: str) -> str:
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-    out = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, env=env, timeout=10)
+    out = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, errors="replace", env=env, timeout=10)
     if out.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)}: {out.stderr.strip()[:200]}")
     return out.stdout
@@ -52,14 +56,19 @@ def check(event: dict) -> dict:
             return _result("flag", "no-scope", "no readable task scope; changes cannot be checked")
         for path in sorted(changed):
             if scope is not None and not guard.matches(path, scope, any_depth_names=False):
-                return _result("flag", "outside-scope", f"{path} was written outside the task's "
+                return _result("flag", "outside-scope", f"{guard._redact(path)} was written outside the task's "
                                "MAY CHANGE list. Revert it, or stop and ask.")
             if TEST_FILE_RE.search(path) and _exists_at(root, base, path):
-                removed = [line for line in _git(root, "diff", "--no-renames", "-U0", base, "--", path).splitlines()
-                           if line.startswith("-") and not line.startswith("---") and ASSERT_RE.search(line)]
+                lines = _git(root, "diff", "--no-renames", "-U0", base, "--", path).splitlines()
+                removed = [ln for ln in lines if ln.startswith("-") and not ln.startswith("---")
+                           and ASSERT_RE.search(ln)]
                 if removed:
-                    return _result("flag", "changed-assertion", f"an existing assertion in {path} was "
-                                   f"changed or removed. Restore it, or stop and ask: {removed[0][:120]}")
+                    return _result("flag", "changed-assertion", f"an existing assertion in {guard._redact(path)} "
+                                   f"was changed or removed. Restore it, or stop and ask: "
+                                   f"{guard._redact(removed[0])[:120]}")
+                if any(ln.startswith("+") and not ln.startswith("+++") and SKIP_RE.search(ln) for ln in lines):
+                    return _result("flag", "skipped-test", f"a test was disabled in {guard._redact(path)}. "
+                                   "Re-enable it, or stop and ask.")
         return _result("pass", "no-rule-broken", "no rule broken")
     except Exception as exc:  # noqa: BLE001 - fail closed
         return _result("flag", "fail-safe", f"post-tool check failed ({type(exc).__name__}); "
