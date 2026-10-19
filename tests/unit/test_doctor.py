@@ -149,6 +149,77 @@ class DoctorTest(unittest.TestCase):
         code, out, _ = run_cli("doctor", str(self.root))
         self.assertIn("doctor:", out)
 
+    def d_fails(self, code):
+        return [m for m in self.fails() if f" {code} " in m]
+
+    def plant_guard(self, text):
+        (self.root / ".aidlc/hooks/guard.py").write_text(text)
+
+    def test_guard_systemexit_is_d4_fail(self):
+        self.plant_guard("raise SystemExit(3)\n")
+        self.assertTrue(self.d_fails("D4"))
+
+    def test_guard_infinite_loop_is_d4_fail_in_time(self):
+        import time
+        self.plant_guard("def decide(event):\n    while True:\n        pass\n")
+        start = time.monotonic()
+        self.assertTrue(self.d_fails("D4"))
+        self.assertLess(time.monotonic() - start, 15)
+
+    def test_guard_sys_path_change_does_not_leak(self):
+        self.plant_guard("import sys\nsys.path.insert(0, '/x')\n"
+                         "def decide(event):\n    return {'decision': 'allow'}\n")
+        before = list(sys.path)
+        self.assertTrue(self.d_fails("D4"))
+        self.assertEqual(sys.path, before)
+
+    def test_d2_isolated(self):
+        self.edit_settings(lambda s: s["sandbox"]["filesystem"]["denyRead"].pop())
+        self.assertTrue(self.d_fails("D2"))
+
+    def test_d3_isolated(self):
+        self.edit_settings(lambda s: s["sandbox"].update(allowUnsandboxedCommands=True))
+        self.assertTrue(self.d_fails("D3"))
+
+    def test_d3_bypass_mode_must_be_disabled(self):
+        self.edit_settings(lambda s: s["permissions"].pop("disableBypassPermissionsMode"))
+        self.assertTrue(self.d_fails("D3"))
+
+    def test_d3_bare_tool_allow_fails(self):
+        for bare in ("Bash", "Edit", "Write", "WebFetch", "mcp__x"):
+            with self.subTest(bare=bare):
+                self.edit_settings(lambda s, b=bare: s["permissions"]["allow"].append(b))
+                self.assertTrue(self.d_fails("D3"))
+                run_cli("render", "--tool", "claude-code", str(self.root))
+
+    def test_d3_bare_read_is_allowed(self):
+        self.assertFalse(self.d_fails("D3"))
+
+    def test_d8_home_and_absolute_imports_fail(self):
+        for token in ("~/x.md", "/etc/x.md"):
+            with self.subTest(token=token):
+                (self.root / ".aidlc/claude.md").write_text(f"@{token}\n")
+                run_cli("render", "--tool", "claude-code", str(self.root))
+                self.assertTrue(any("D8" in m and "outside the repository" in m for m in self.fails()))
+
+    def test_literal_predicate_matches_deny_write(self):
+        from aidlc.adapters.claude_code import _deny_write, _is_literal_protected
+        entries = [".git/**", "~/.ssh/**", "dir/**", "*.pem", "a/*/b/**", "AGENTS.md",
+                   "**/AGENTS.md", "scripts/check*"]
+        (self.root / "x.pem").write_text("k")
+        from tests.helpers import git
+        git(self.root, "add", "-A")
+        for e in entries:
+            with self.subTest(entry=e):
+                out = _deny_write(self.root, [e])
+                if _is_literal_protected(e):
+                    self.assertTrue(out and all(o.startswith(("./", "~")) for o in out) or out == [])
+                    self.assertNotIn("./x.pem", out)
+                else:
+                    self.assertNotIn(f"./{e}", out)
+        self.assertEqual([e for e in entries if not _is_literal_protected(e)],
+                         ["*.pem", "a/*/b/**", "**/AGENTS.md", "scripts/check*"])
+
 
 class DoctorFrameworkRepoTest(unittest.TestCase):
     def test_uninstalled_repository_exits_2_cleanly(self):

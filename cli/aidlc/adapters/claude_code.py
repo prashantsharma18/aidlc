@@ -71,6 +71,13 @@ def _tracked_files(repo: Path) -> list[str]:
     return [p for p in result.stdout.decode("utf-8", errors="surrogateescape").split("\0") if p]
 
 
+def _is_literal_protected(entry: str) -> bool:
+    """True when a protected path maps to literal sandbox denyWrite entries; False when it is a
+    glob that must be expanded to tracked files."""
+    return (entry == ".git/**" or entry.startswith("~") or not _has_glob(entry)
+            or (entry.endswith("/**") and not _has_glob(entry[:-3])))
+
+
 def _deny_write(repo: Path, protected: list[str]) -> list[str]:
     """Sandbox denyWrite supports only literal files and directories (verified 2026-10-19), so
     glob entries are expanded to the tracked files they match."""
@@ -78,12 +85,12 @@ def _deny_write(repo: Path, protected: list[str]) -> list[str]:
     for pattern in protected:
         if pattern == ".git/**":
             out += ["./.git/hooks", "./.git/config"]     # a full .git deny would break commits
+        elif not _is_literal_protected(pattern):
+            globs.append(pattern)
         elif pattern.startswith("~"):
             out.append(pattern[:-3] if pattern.endswith("/**") else pattern)
-        elif pattern.endswith("/**") and not _has_glob(pattern[:-3]):
+        elif pattern.endswith("/**"):
             out.append(f"./{pattern[:-3]}")
-        elif _has_glob(pattern):
-            globs.append(pattern)
         else:
             out.append(f"./{pattern}")
     if globs:

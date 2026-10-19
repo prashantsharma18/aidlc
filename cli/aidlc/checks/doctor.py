@@ -7,13 +7,14 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 from ..adapters import get_adapter
 from ..adapters.base import write_rendered
-from ..adapters.claude_code import (HOOK_FILES, POST_MATCHER, PRE_MATCHER, _deny_write, _has_glob,
-                                    _sandbox_path)
+from ..adapters.claude_code import (HOOK_FILES, POST_MATCHER, PRE_MATCHER, _deny_write,
+                                    _is_literal_protected, _sandbox_path)
 from ..harness import HarnessError, effective_permissions, map_tools
 from ..policy import PolicyError, load_policy
 from ..repo import load_config
@@ -85,40 +86,56 @@ def check_d3(settings: dict) -> list[Finding]:
                       ("allowUnsandboxedCommands", False)):
         if sandbox.get(key) is not want:
             out.append(_fail(SETTINGS, f"D3 sandbox.{key} must be {str(want).lower()}"))
+    perms = settings.get("permissions") if isinstance(settings.get("permissions"), dict) else {}
+    if perms.get("disableBypassPermissionsMode") != "disable":
+        out.append(_fail(SETTINGS, 'D3 permissions.disableBypassPermissionsMode must be "disable"'))
+    allow = perms.get("allow") if isinstance(perms.get("allow"), list) else []
+    for rule in allow:
+        if isinstance(rule, str) and "(" not in rule and rule != "Read":
+            out.append(_fail(SETTINGS, f"D3 permissions.allow has bare tool rule '{rule}'; "
+                                       "it allows every use of the tool"))
     return out
 
 
-def _load_guard(path: Path):
-    spec = importlib.util.spec_from_file_location("aidlc_doctor_guard", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)       # deliberately not placed in sys.modules
-    return module
+DRIVER = r"""
+import importlib.util, json, sys
+guard_path, cases = sys.argv[1], json.loads(sys.argv[2])
+spec = importlib.util.spec_from_file_location("aidlc_doctor_guard", guard_path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+print(json.dumps([module.decide(c).get("decision") for c in cases]))
+"""
+SELFTEST_TIMEOUT = 10
 
 
 def _selftest(repo: Path) -> list[str]:
+    """Run the rendered (possibly tampered) guard in an isolated child process."""
     hooks = repo / ".aidlc" / "hooks"
+    push = {"session": "doctor", "call": "1", "tool": "shell",
+            "args": {"command": "git push origin main"}, "cwd": str(repo)}
+    cases = [(push, "harness.json", "does not deny `git push`"),
+             (push, "missing-harness-doctor.json", "does not deny when its harness data is unreadable"),
+             ({"tool": None, "args": "garbage"}, "harness.json", "does not deny unreadable input")]
     problems = []
-    old = os.environ.get("AIDLC_HARNESS_FILE")
-    try:
-        guard = _load_guard(hooks / "guard.py")
-        os.environ["AIDLC_HARNESS_FILE"] = str(hooks / "harness.json")
-        push = {"session": "doctor", "call": "1", "tool": "shell",
-                "args": {"command": "git push origin main"}, "cwd": str(repo)}
-        if guard.decide(push).get("decision") != "deny":
-            problems.append("guard does not deny `git push`")
-        os.environ["AIDLC_HARNESS_FILE"] = str(hooks / "missing-harness-doctor.json")
-        if guard.decide(push).get("decision") != "deny":
-            problems.append("guard does not deny when its harness data is unreadable")
-        os.environ["AIDLC_HARNESS_FILE"] = str(hooks / "harness.json")
-        if guard.decide({"tool": None, "args": "garbage"}).get("decision") != "deny":
-            problems.append("guard does not deny unreadable input")
-    except Exception as exc:  # noqa: BLE001 - any failure here is a finding
-        problems.append(f"guard self-test crashed ({type(exc).__name__}: {exc})")
-    finally:
-        if old is None:
-            os.environ.pop("AIDLC_HARNESS_FILE", None)
-        else:
-            os.environ["AIDLC_HARNESS_FILE"] = old
+    for event, harness, label in cases:
+        env = {k: v for k, v in os.environ.items() if k != "AIDLC_HARNESS_FILE"}
+        env["AIDLC_HARNESS_FILE"] = str(hooks / harness)
+        try:
+            run = subprocess.run([sys.executable, "-I", "-c", DRIVER, str(hooks / "guard.py"),
+                                  json.dumps([event])], capture_output=True, text=True,
+                                 timeout=SELFTEST_TIMEOUT, env=env, cwd=repo)
+        except subprocess.TimeoutExpired:
+            return [f"guard self-test timed out after {SELFTEST_TIMEOUT}s"]
+        except OSError as exc:
+            return [f"guard self-test could not start ({type(exc).__name__})"]
+        if run.returncode != 0:
+            return [f"guard self-test exited {run.returncode}: {run.stderr.strip()[-200:]}"]
+        try:
+            decisions = json.loads(run.stdout.strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            return ["guard self-test printed unparseable output"]
+        if decisions != ["deny"]:
+            problems.append(f"guard {label}")
     return problems
 
 
@@ -183,6 +200,9 @@ def _imports(repo: Path, rel: str) -> list[Finding]:
             token = token.rstrip(".,;:)")
             if "/" not in token and "." not in token:
                 continue                       # @team, @handle: not a path
+            if token.startswith(("~", "/")):
+                out.append(Finding("FAIL", rel, lineno, f"D8 import @{token} resolves outside the repository"))
+                continue
             target = (root / token).resolve()
             if root != target and root not in target.parents:
                 out.append(Finding("FAIL", rel, lineno, f"D8 import @{token} resolves outside the repository"))
@@ -242,9 +262,7 @@ def check_d11(repo: Path, settings: dict, eff: dict) -> list[Finding]:
     for entry in eff["protected_paths"]:
         if f"Edit({entry})" not in deny:
             out.append(_fail(SETTINGS, f"D11 protected path '{entry}' has no Edit({entry}) deny rule"))
-        literal = entry == ".git/**" or entry.startswith("~") or not _has_glob(
-            entry[:-3] if entry.endswith("/**") else entry)
-        if not literal:
+        if not _is_literal_protected(entry):
             out.append(_warn(SETTINGS, f"D11 {entry}: sandbox denyWrite covers only files tracked at "
                                        "render time; new matching files rely on Edit rules and the guard"))
             continue
