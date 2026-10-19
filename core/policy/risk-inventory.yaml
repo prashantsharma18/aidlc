@@ -12,6 +12,7 @@ risks:
   - {id: edit-shared, action: "Edit shared modules outside the task scope", harm: "Changes other features' behaviour", reversible: true, severity: medium, controls: [hook-pre, ci]}
   - {id: add-dependency, action: "Add or upgrade a dependency", harm: "Supply-chain risk; invented package names", reversible: true, severity: medium, controls: [permission, ci]}
   - {id: destructive-git, action: "Force push, push to main, hard reset, clean", harm: "Lost work; bypassed review", reversible: false, severity: high, controls: [hook-pre, permission, no-credential, branch-protection]}
+  - {id: move-base-branch, action: "Move, delete or recreate the local base branch (git branch -f, update-ref, checkout -B, fetch . x:main)", harm: "Changes hidden from the post-check or forged local approvals; the local base branch is a simulated trust root", reversible: true, severity: high, controls: [hook-pre, hook-post, branch-protection]}
   - {id: recursive-delete, action: "rm -rf / rm -fr", harm: "Lost work", reversible: false, severity: high, controls: [hook-pre, permission, sandbox]}
   - {id: log-personal-data, action: "Log a plain email address or other personal data", harm: "Personal data in logs", reversible: false, severity: medium, controls: [rule, ci]}
   - {id: tracker-write, action: "Comment on, transition or delete tracker issues", harm: "False status; noise for other people", reversible: true, severity: medium, controls: [permission, gateway]}

@@ -208,3 +208,26 @@ class F9NestedEnvDenyReadTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class F2ClaudeLocalProtectedTest(unittest.TestCase):
+    def test_policy_protects_claude_local_md(self):
+        from aidlc.policy import load_policy
+        base = load_policy("permissions")
+        for entry in ("CLAUDE.local.md", "**/CLAUDE.local.md"):
+            self.assertIn(entry, base["protected_paths"])
+            self.assertIn(entry, base["deny"]["edit"])
+
+    def test_rendered_harness_protects_claude_local_md(self):
+        with Scaffold() as root:
+            self.assertIn("CLAUDE.local.md", harness_data(root)["protected_paths"])
+            self.assertIn("Edit(**/CLAUDE.local.md)", settings(root)["permissions"]["deny"])
+
+
+class F3RiskInventoryTest(unittest.TestCase):
+    def test_base_branch_risk_is_listed_with_its_controls(self):
+        from aidlc.policy import load_policy
+        risks = {r["id"]: r for r in load_policy("risk-inventory")["risks"]}
+        risk = risks["move-base-branch"]
+        self.assertEqual(set(risk["controls"]), {"hook-pre", "hook-post", "branch-protection"})
+        self.assertIn("base branch", risk["action"])

@@ -1,6 +1,8 @@
 # Framework baseline permission policy (tool-neutral). Adapters render it; repositories may
 # only narrow it (.aidlc/permissions.yaml). Precedence: deny > ask > allow; unmatched calls
-# fall to the default. Must-hold rules are also enforced by the sandbox and the guard hook.
+# fall to the default, except that the Claude Code adapter enables autoAllowBashIfSandboxed:
+# an unmatched shell command runs inside the sandbox without asking (its ask and deny rules and
+# the guard hook still apply). Must-hold rules are also enforced by the sandbox and the guard hook.
 meta:
   id: policy-permissions
   owner: "@framework-owners"
@@ -9,7 +11,7 @@ meta:
 
 precedence: "deny > ask > allow"
 defaults:
-  interactive: ask
+  interactive: ask          # unmatched non-shell calls; sandboxed shell: see the header
   unattended: deny          # CI and background runs: "ask" becomes deny
 
 # Rendered twice (verified 2026-10-18, docs/verification/2026-10-18-sandbox-wsl2.md):
@@ -35,6 +37,8 @@ protected_paths:
   - "**/AGENTS.md"
   - "CLAUDE.md"
   - "**/CLAUDE.md"
+  - "CLAUDE.local.md"
+  - "**/CLAUDE.local.md"
   - ".claude/**"
   - ".mcp.json"
   - ".github/**"
@@ -68,6 +72,8 @@ deny:
     - "**/AGENTS.md"
     - "CLAUDE.md"
     - "**/CLAUDE.md"
+    - "CLAUDE.local.md"
+    - "**/CLAUDE.local.md"
     - ".claude/**"
     - ".mcp.json"
     - ".github/**"

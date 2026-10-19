@@ -45,6 +45,8 @@
       "Edit(**/AGENTS.md)",
       "Edit(CLAUDE.md)",
       "Edit(**/CLAUDE.md)",
+      "Edit(CLAUDE.local.md)",
+      "Edit(**/CLAUDE.local.md)",
       "Edit(.claude/**)",
       "Edit(.mcp.json)",
       "Edit(.github/**)",
