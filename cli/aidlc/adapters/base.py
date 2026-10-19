@@ -35,6 +35,10 @@ class Adapter(Protocol):
 
     def render_folder_rules(self, repo: Path) -> list[RenderedFile]: ...
 
+    def render_permissions(self, repo: Path) -> list[RenderedFile]: ...
+
+    def render_hooks(self, repo: Path) -> list[RenderedFile]: ...
+
 
 def _is_generated(text: str) -> bool:
     """Generated files carry a marker on one of their first lines (rule files start

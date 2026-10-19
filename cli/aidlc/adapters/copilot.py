@@ -18,3 +18,9 @@ class CopilotAdapter:
 
     def render_folder_rules(self, repo: Path) -> list[RenderedFile]:
         raise AdapterNotImplemented(_MSG)
+
+    def render_permissions(self, repo: Path) -> list[RenderedFile]:
+        raise AdapterNotImplemented(_MSG)
+
+    def render_hooks(self, repo: Path) -> list[RenderedFile]:
+        raise AdapterNotImplemented(_MSG)

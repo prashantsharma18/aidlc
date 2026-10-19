@@ -54,3 +54,26 @@ Settings under test (run 1):
    - chained commands;
    - hook crash, timeout and missing-interpreter behaviour with `onFailure: block`;
    - MCP and WebFetch, which also run outside the sandbox.
+
+## Addendum 2026-10-19: glob support in `sandbox.filesystem`
+
+Verified live on 2026-10-19 (Claude Code 2.1.296, Haiku, WSL2). Each result was checked on disk.
+
+| Setting | Probe | Result |
+|---|---|---|
+| `denyRead "./.env*"` | `cat .env.local` | Permission denied |
+| `denyRead "./**/*.pem"` | read of a nested `.pem` | Permission denied |
+| `denyWrite "./AGENTS.md"` | write | Read-only file system; file unchanged |
+| `denyWrite "./.git/hooks"` | write | Read-only file system; file unchanged |
+| `denyWrite "./.aidlc"` (a directory) | existing and new files | blocked |
+| `denyWrite "./a/AGENTS.md"` (a nested literal) | write | blocked |
+| `"./.git/hooks"` and `"./.git/config"` denied | `git commit` | still succeeds |
+| `denyWrite "./**/AGENTS.md"` | write | **not enforced** |
+| `denyWrite "./scripts/check*"` | write | **not enforced** |
+
+Conclusions:
+
+1. `denyRead` supports globs, including `**`. The renderer keeps glob secret paths as `./<glob>`.
+2. `denyWrite` supports only literal files and directories. The renderer emits literals, and expands glob entries of `protected_paths` to the tracked files they match at render time. A new matching file therefore shows as drift in `aidlc render --check` until you render again.
+3. Denying all of `.git` would break commits, so only `.git/hooks` and `.git/config` are denied.
+4. The guard still denies agent Edit and Write calls to every protected path. `denyWrite` closes the shell route (`echo >> AGENTS.md`).

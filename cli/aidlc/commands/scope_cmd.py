@@ -5,14 +5,14 @@ import argparse
 from pathlib import Path
 
 from ..cli import command
-from ..scope import ScopeError, approved_ref, bundle_at, parse_may_change, write_scope
+from ..scope import ScopeError, approved_ref, bundle_at, default_scope_path, parse_may_change, write_scope
 
 PROTECTED_BRANCH = "main"   # approvals are read only from here, never from the working branch
 
 
 def _run(args: argparse.Namespace) -> int:
     repo = Path(args.repo).resolve()
-    out = Path(args.out).resolve()
+    out = (Path(args.out) if args.out else default_scope_path(repo, args.branch)).resolve()
     try:
         if out.is_relative_to(repo):
             raise ScopeError(f"--out {out} is inside the repository; write the scope outside it")
@@ -32,5 +32,6 @@ def register(sub: argparse._SubParsersAction) -> None:
     parser.add_argument("--branch", required=True, help="the task branch, as recorded in "
                         "plans/approved-bundles.txt on main")
     parser.add_argument("--repo", default=".")
-    parser.add_argument("--out", required=True, help="scope file; must be outside the repository")
+    parser.add_argument("--out", help="scope file; must be outside the repository "
+                        "(default: where the guard looks, ~/.aidlc/scopes/<repo>/<branch>.scope)")
     parser.set_defaults(func=_run)

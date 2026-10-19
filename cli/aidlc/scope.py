@@ -81,6 +81,12 @@ def approved_ref(repo: Path, branch: str, approvals_ref: str = "main") -> str:
     return match
 
 
+def default_scope_path(repo: Path, branch: str) -> Path:
+    """Where the guard looks for the scope (core/hooks/guard.py scope_file)."""
+    home = Path(os.environ.get("AIDLC_HOME_DIR") or "~/.aidlc").expanduser()
+    return home / "scopes" / repo.name / (branch.replace("/", "__") + ".scope")
+
+
 def write_scope(patterns: list[str], out: Path) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=out.parent, prefix=".scope-")
