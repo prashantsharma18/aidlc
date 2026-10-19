@@ -1,0 +1,20 @@
+# Framework data: default commands per repository profile. A repository
+# edits its own .aidlc/config.yaml afterwards. Commands must be deterministic and non-interactive.
+node:
+  commands:
+    install: npm ci
+    lint: npm run lint
+    typecheck: npm run typecheck
+    test: npm test
+    build: npm run build
+  check_steps: [lint, typecheck, test]
+dotnet:
+  commands:
+    restore: dotnet restore --locked-mode
+    build: dotnet build --nologo --no-restore -warnaserror
+    format: dotnet format --verify-no-changes --no-restore
+    test: dotnet test --nologo --no-build
+  check_steps: [build, format, test]
+generic:
+  commands: {}
+  check_steps: []

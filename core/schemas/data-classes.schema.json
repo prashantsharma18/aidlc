@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "data-classes.schema.json",
+  "type": "object",
+  "required": [
+    "meta",
+    "classes",
+    "credentials",
+    "when_unsure"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object"
+    },
+    "classes": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "examples",
+          "to_model"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "enum": [
+              "public",
+              "internal",
+              "confidential",
+              "restricted"
+            ]
+          },
+          "examples": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "to_model": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "credentials": {
+      "type": "string"
+    },
+    "when_unsure": {
+      "type": "string"
+    }
+  }
+}

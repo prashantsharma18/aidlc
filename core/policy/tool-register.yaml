@@ -1,0 +1,38 @@
+meta: {id: policy-tool-register, owner: "@security-and-privacy", review_by: "2027-04-18", guide: ["13.4", "16.4"]}
+tools:
+  - id: claude-code
+    status: approved
+    owner: "@platform-team"
+    purpose: Coding agent (terminal, IDE, headless for evals and AI review)
+    data_flows: Repository content and tool output to Anthropic on an approved route
+    route: claude-subscription (local), anthropic-api (CI)
+    telemetry: OTLP to the platform collector (managed settings); content stripped at the collector
+    permissions: Rendered from core/policy/permissions.yaml; sandbox required
+    review_by: "2027-01-18"
+  - id: openwiki
+    status: pilot
+    owner: "@framework-owners"
+    purpose: Generated repository wiki (derived knowledge, class 5)
+    data_flows: Repository content (minus .openwikiignore) to Anthropic
+    route: anthropic-api
+    telemetry: "Disabled: OPENWIKI_TELEMETRY_DISABLED=1; LangSmith tracing off"
+    permissions: Runs as a job that writes openwiki/ and the AGENTS.md block on its own branch; PR reviewed by code owners
+    review_by: "2027-01-18"
+  - id: lab-jira
+    status: approved
+    owner: "@platform-team"
+    purpose: Work items as the system of record (MCP through the ContextForge gateway)
+    data_flows: Issue content to and from the agent session
+    route: n/a (no model)
+    telemetry: ContextForge traces and audit to the platform collector
+    permissions: read and search allowed; comments and issue creation ask; transitions and deletes denied
+    review_by: "2027-01-18"
+  - id: platform-observability
+    status: approved
+    owner: "@platform-team"
+    purpose: OTel Collector, Langfuse, Loki, Mimir, Grafana
+    data_flows: Telemetry metadata; content stripped except allow-listed cohorts
+    route: n/a (no model)
+    telemetry: n/a
+    permissions: Agents have no write access; read-only views for diagnosis
+    review_by: "2027-01-18"

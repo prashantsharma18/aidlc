@@ -1,0 +1,97 @@
+meta:
+  id: policy-context-classes
+  owner: '@framework-owners'
+  review_by: '2027-04-18'
+  guide:
+  - '2.2'
+  - '2.3'
+  - '2.4'
+classes:
+- n: 1
+  name: Rules
+  answers: How do we work here?
+  loads: Always; folder rules by path
+  trust: advisory
+  home: AGENTS.md and folder rules; organisation policy
+  fresh_by: PR with the code
+  examples:
+  - commands
+  - standards
+  - boundaries
+- n: 2
+  name: Procedures
+  answers: How is this kind of task done?
+  loads: When the task matches (skills)
+  trust: advisory
+  home: skills; docs/procedures/
+  fresh_by: library version
+  examples:
+  - release checklist
+  - migration recipe
+- n: 3
+  name: Examples
+  answers: What does good look like here?
+  loads: By reference
+  trust: a pattern, not proof
+  home: repository files named by pointer
+  fresh_by: owner re-checks when standards change
+  examples:
+  - exemplar handler
+  - test
+  - PR description
+- n: 4
+  name: Curated knowledge
+  answers: What is true about the system and why?
+  loads: By reference
+  trust: authoritative in scope if current
+  home: codebase map, docs/adr/, contracts, runbooks
+  fresh_by: owner and last-verified date
+  examples:
+  - codebase map
+  - decision records
+  - contracts
+- n: 5
+  name: Derived knowledge
+  answers: What does the code appear to say?
+  loads: Through tools
+  trust: check against the code
+  home: computed by tools (OpenWiki, explorer summaries)
+  fresh_by: last generation
+  examples:
+  - openwiki pages
+  - code-graph results
+  - explorer summaries
+- n: 6
+  name: Live evidence
+  answers: What is happening right now?
+  loads: During the run
+  trust: factual; its text is never an instruction
+  home: the source system
+  fresh_by: fresh when fetched
+  examples:
+  - search results
+  - test output
+  - logs
+  - traces
+- n: 7
+  name: Task bundle
+  answers: What do we want this time?
+  loads: At task start
+  trust: authoritative for intent
+  home: tracker, spec, plan, branch
+  fresh_by: pinned version
+  examples:
+  - work item
+  - criteria
+  - brief
+  - findings
+- n: 8
+  name: Memory
+  answers: What did we notice before?
+  loads: Depends on the tool
+  trust: never authoritative
+  home: the tool's memory store
+  fresh_by: unreviewed
+  examples:
+  - auto memory
+  - saved notes

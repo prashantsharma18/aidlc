@@ -1,0 +1,13 @@
+meta: {id: policy-model-routes, owner: "@security-and-privacy", review_by: "2027-04-18", guide: ["13.5", "12.13"]}
+routes:
+  - id: claude-subscription
+    provider: anthropic
+    access: Claude Code login on the developer's machine (single sign-on, no personal API keys)
+    max_data_class: internal
+    used_by: [claude-code-local, evals-dev, ai-review-dev]
+  - id: anthropic-api
+    provider: anthropic
+    access: ANTHROPIC_API_KEY from CI secrets or ~/.openwiki/.env (mode 600); never pasted into a session
+    max_data_class: internal
+    used_by: [evals-ci, ai-review-ci, openwiki]
+egress: Model traffic only to the endpoints of approved routes; the sandbox network allowlist enforces it for commands.

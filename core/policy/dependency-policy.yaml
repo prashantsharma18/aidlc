@@ -1,0 +1,24 @@
+meta: {id: policy-dependency-policy, owner: "@security-and-privacy", review_by: "2027-04-18", guide: ["13.9", "13.8"]}
+ecosystems:
+  npm:
+    registry: https://registry.npmjs.org (a mirror in production)
+    install: npm ci (exact lockfile); .npmrc ignore-scripts=true
+    exact_versions: true
+  nuget:
+    registry: https://api.nuget.org/v3/index.json
+    install: dotnet restore --locked-mode (packages.lock.json committed)
+    exact_versions: true
+adding:
+  agent: propose only (ask when interactive, deny when unattended)
+  needs: [reason, alternatives considered, verification note (Procedure B)]
+  approver: Tech lead; security for auth, crypto, parsing untrusted input, or Tier 3
+rules:
+  minimum_release_age_days: 14
+  install_scripts: off unless reviewed as an exception
+  licences: {allow: [MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC], review: [MPL-2.0, "LGPL-*"], deny: ["AGPL-*", unknown]}
+  vulnerabilities: No known high or critical advisory without a recorded exception
+  review_first: [no source repository, repository link mismatch, maintainer changed since the last approved version]
+monitoring:
+  advisories: Daily scan of lockfiles on main; a new high or critical opens a work item
+  review: Quarterly; unused, deprecated or unowned packages are removed
+exceptions: .aidlc/dependency-exceptions.yaml, each with an owner, a reason and an expiry

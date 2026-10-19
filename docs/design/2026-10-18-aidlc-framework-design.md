@@ -45,6 +45,7 @@ A demo workspace with two repositories shows one change moving through every sta
 | D6 | OpenWiki uses Anthropic through an `ANTHROPIC_API_KEY` that the user provides. Repositories are small, to bound cost. | §6.4. The key is never pasted into a session. |
 | D7 | Observability maps onto the existing local platform (OTel Collector → Langfuse, Loki, Mimir). | §10. The framework conforms to the platform's attribute contract and does not redefine it. |
 | D8 | Copilot is deferred. Only the extension points are built now. | §4.3 |
+| D9 | Policy-as-code and MCP gateway (2026-10-19): **agentgateway** replaces ContextForge as the MCP gateway; CEL allowlists generated from `permissions.yaml`; OPA/Rego via Conftest for configuration rules in trusted CI; Python guard hook; Cedar deferred. | [ADR 0001](../adr/0001-policy-as-code.md); Plans 2 and 3 |
 
 ## 3. Principles carried from the guide
 
@@ -131,11 +132,11 @@ aidlc/
     observability/ attribute map, emitters (hook decisions, check results, eval runs)
     ci/            local trusted-CI runner; GitHub Actions templates (inactive)
   adapters/
-    interface.md   the contract every adapter implements (§4.3)
-    claude-code/   plugin, settings renderer, managed-settings drop-in, hook shims
-    copilot/       README with the mapping only; no code this phase
+    claude-code/   plugin assets, managed-settings drop-in, hook shims (Plan 2)
   cli/aidlc/       init-repo, render, scope, check, ci, eval, review, workspace,
                    doctor, openwiki, telemetry
+    adapters/      adapter code: base (interface), claude_code, copilot (extension point)
+  (docs/adapters/  interface.md and copilot.md: the adapter contract and the Copilot mapping)
   tests/           unit tests, hook fixtures, harness attack tests (Ch 3 step 8)
 ```
 
@@ -204,12 +205,12 @@ One skill per procedure. Each skill names its inputs, produces its template arte
 
 The framework implements Chapter 2's model and the procedures below. It does not just describe them.
 
-- **Eight classes, each with a home.** `core/context/classes.yaml` gives each class its home, load moment, trust level and freshness mechanism. The `aidlc-context-setup` skill asks the A2 placement questions in order.
+- **Eight classes, each with a home.** `core/policy/context-classes.yaml` gives each class its home, load moment, trust level and freshness mechanism. The `aidlc-context-setup` skill asks the A2 placement questions in order.
 - **Order of authority.** `core/context/authority.md` sets three ladders. The agent's conflict protocol is: flag the conflict, cite both sources, never choose silently.
 - **Budget.** `aidlc doctor` warns when:
   - `AGENTS.md` exceeds about 80 lines;
   - a skill description exceeds its limit;
-  - an `@import` pulls in long reference material.
+  - an `@import` pulls in long reference material (built in `aidlc doctor`, Plan 2).
 
 ### 6.2 Repository context (Procedure A)
 
@@ -217,7 +218,7 @@ The framework implements Chapter 2's model and the procedures below. It does not
 
 | File | Standard | Enforcement |
 |---|---|---|
-| `AGENTS.md` | Five sections (map pointer, standards with a named exemplar, exact commands with the one-command check, tool usage, guardrails) plus "where to look". Each rule is specific, testable and stable. | Drift check: every path and command named exists. Removal-test lint. Code-owned. Agent edit denied. |
+| `AGENTS.md` | Five sections (map pointer, standards with a named exemplar, exact commands with the one-command check, tool usage, guardrails) plus "where to look". Each rule is specific, testable and stable. | Drift check: every path and command named exists; line budget (warn > 80, fail > 200). The removal test stays a reviewer's judgement. Code-owned. Agent edit denied. |
 | `CLAUDE.md` | `@AGENTS.md` plus Claude-only lines | Rendered and checked to stay thin. Agent edit denied. |
 | `docs/codebase-map.md` | Purpose, areas with owner and allowed dependencies, key flows, where changes go, shared capabilities, traps, tests, plus owner, last-verified date and commit | Drift check: paths exist; last-verified older than the interval gives a warning |
 | `.aidlc/rules/*.md` | Folder rules with `paths:` (one source for both tools) | Rendered per adapter |
@@ -324,7 +325,7 @@ GitHub Actions templates mirror it one-to-one and stay inactive until the reposi
 - **Policy files.** Every file in `core/policy/` has an owner and a review date:
   - `data-classes.yaml` and `model-routes.yaml`: demo code is Internal; Restricted data never reaches a model; credentials never do;
   - `dependency-policy.yaml`: exact versions, lockfiles, a 14-day minimum release age, install scripts off, licence allow-list;
-  - `tool-register.yaml`: Claude Code, OpenWiki, lab-jira through ContextForge, Langfuse;
+  - `tool-register.yaml`: Claude Code, OpenWiki, lab-jira (today through ContextForge; agentgateway from Plan 2, ADR 0001), Langfuse;
   - `branch-protection.yaml`: tool-neutral, mapped for later GitHub use.
 - **Procedure skills.** A: secret leak. B: verify package or API. C: add dependency. D: security review of an agent-written change. Each produces its record template.
 - **Secrets.** Unavailable to sessions. A scan step in the check (pattern scan in the demo; documented hand-off to the organisation's scanner).
