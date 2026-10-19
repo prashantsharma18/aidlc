@@ -7,3 +7,4 @@ from . import render_cmd  # noqa: F401
 from . import check_cmd  # noqa: F401
 from . import scope_cmd  # noqa: F401
 from . import doctor_cmd  # noqa: F401
+from . import attempts_cmd  # noqa: F401

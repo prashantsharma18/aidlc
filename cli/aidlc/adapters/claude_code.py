@@ -1,14 +1,13 @@
 """Claude Code adapter: CLAUDE.md imports AGENTS.md; folder rules become .claude/rules/."""
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import subprocess
-import sys
 from pathlib import Path
 
 from ..harness import HarnessError, effective_permissions, harness_data, map_tools
+from ..hookbridge import hooks
 from ..paths import framework_root
 from ..policy import load_yaml
 from ..repo import CONFIG, load_config
@@ -60,18 +59,8 @@ def _sandbox_paths(pattern: str) -> list[str]:
 
 
 def _guard_matcher():
-    """The guard's own matcher, so the sandbox and the guard agree on what a pattern covers.
-    Loaded without writing bytecode, so no __pycache__ appears next to the hook sources."""
-    path = framework_root() / "core" / "hooks" / "guard.py"
-    spec = importlib.util.spec_from_file_location("aidlc_render_guard", path)
-    module = importlib.util.module_from_spec(spec)
-    saved = sys.dont_write_bytecode
-    sys.dont_write_bytecode = True
-    try:
-        spec.loader.exec_module(module)
-    finally:
-        sys.dont_write_bytecode = saved
-    return module.matches
+    """The guard's own matcher, so the sandbox and the guard agree on what a pattern covers."""
+    return hooks().guard.matches
 
 
 def _tracked_files(repo: Path) -> list[str]:
@@ -206,7 +195,8 @@ class ClaudeCodeAdapter:
                                                       + [e["value"] for e in eff["network_allow_add"]])},
             },
             "hooks": {"PreToolUse": [{"matcher": PRE_MATCHER, "hooks": [_hook("pre")]}],
-                      "PostToolUse": [{"matcher": POST_MATCHER, "hooks": [_hook("post")]}]},
+                      "PostToolUse": [{"matcher": POST_MATCHER, "hooks": [_hook("post")]}],
+                      "PostToolUseFailure": [{"matcher": POST_MATCHER, "hooks": [_hook("post-failure")]}]},
             "autoMemoryEnabled": bool(cfg.harness.get("auto_memory", False)),
         }
         plugins = cfg.harness.get("disable_user_plugins") or []

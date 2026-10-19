@@ -142,8 +142,8 @@ def _selftest(repo: Path) -> list[str]:
 
 def check_d4(repo: Path, settings: dict) -> list[Finding]:
     out = []
-    for event, matcher, phase in (("PreToolUse", PRE_MATCHER, "pre"),
-                                  ("PostToolUse", POST_MATCHER, "post")):
+    for event, matcher, phase in (("PreToolUse", PRE_MATCHER, "pre"), ("PostToolUse", POST_MATCHER, "post"),
+                                  ("PostToolUseFailure", POST_MATCHER, "post-failure")):
         entries = _get(settings, "hooks", event, default=[])
         if not isinstance(entries, list) or len(entries) != 1 or not isinstance(entries[0], dict):
             out.append(_fail(SETTINGS, f"D4 {event} must have exactly one hook entry"))
@@ -153,7 +153,8 @@ def check_d4(repo: Path, settings: dict) -> list[Finding]:
             out.append(_fail(SETTINGS, f"D4 {event} matcher must equal the adapter's '{matcher}' "
                                        f"(found '{entry.get('matcher')}'); tools outside it bypass the guard"))
         hooks = [h for h in entry.get("hooks", []) if isinstance(h, dict)
-                 and f"claude_shim.py\" {phase}" in str(h.get("command", ""))]
+                 and str(h.get("command", "")).rsplit(" ", 1)[-1] == phase
+                 and "claude_shim.py" in str(h.get("command", ""))]
         if not hooks:
             out.append(_fail(SETTINGS, f"D4 {event} has no claude_shim.py {phase} hook"))
         for hook in hooks:

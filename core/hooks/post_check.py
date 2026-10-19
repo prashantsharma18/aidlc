@@ -8,11 +8,14 @@ file, so moving the local base branch does not hide changes. Trusted CI is the r
 the fast first line. Fails closed: errors give "flag"."""
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.dont_write_bytecode = True  # never leave __pycache__ in the repository (post-check would flag it)
@@ -112,6 +115,80 @@ def _exists_at(root: Path, base: str, path: str) -> bool:
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     return subprocess.run(["git", "cat-file", "-e", f"{base}:{path}"], cwd=root, env=env,
                           capture_output=True, timeout=10).returncode == 0
+
+
+CONTEXT_RE = re.compile(r"^check  context  repo=(.*?)  base=([0-9a-f]{40,64})  scope=(.*?)  mode=(\w+)$", re.M)
+SKIPPED_RE = re.compile(r"^check  \S+\s+SKIPPED\b", re.M)
+
+
+def _context_ok(root: Path, branch: str, text: str) -> bool:
+    """The run judged exactly what the hooks judge: this repository, the base the post-check uses,
+    the scope file the guard reads, and a required scope. Any override fails this."""
+    found = CONTEXT_RE.findall(text)
+    if len(found) != 1:
+        return False
+    repo, base, scope, mode = found[0]
+    read = guard._read_scope(root)
+    ref = os.environ.get("AIDLC_BASE_REF") or (read[1] if read else None) or guard.load_harness()["base_branch"]
+    try:
+        expected = _git(root, "merge-base", ref, "HEAD").strip()
+    except Exception:  # noqa: BLE001 - no expected base: the run cannot be a clean pass
+        return False
+    return (Path(repo).resolve() == root.resolve() and base == expected
+            and scope == str(guard.scope_file(root, branch)) and mode == "require")
+
+
+def _update_attempts(path: Path, passed: bool, cap: int) -> int:
+    """Read-modify-write under an exclusive lock (parallel hooks never lose a count)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_fd = os.open(path.parent / ".lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(lock_fd, "r+", encoding="utf-8") as lock:   # never opened through a symlink
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            try:
+                if path.is_symlink():                       # never trust a link: fail closed
+                    raise OSError("attempts record is a symlink")
+                data = json.loads(path.read_text(encoding="utf-8"))
+                before = data.get("failures") if isinstance(data, dict) else None
+                before = before if isinstance(before, int) and not isinstance(before, bool) and before >= 0 else None
+            except FileNotFoundError:
+                before = 0
+            except Exception:  # noqa: BLE001 - unreadable: fail closed (counts as at the limit)
+                before = None
+            failures = 0 if passed else (cap if before is None else before + 1)
+            fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".attempts-")
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                json.dump({"failures": failures, "last": "PASS" if passed else "FAIL",
+                           "updated": datetime.now(timezone.utc).isoformat(timespec="seconds")}, fh)
+            os.replace(tmp, path)
+            return failures
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def record_check(event: dict) -> dict | None:
+    """Count runs of the one-command check (guide 8.8: the harness enforces the retry limit). A run
+    is a PASS only when the command is exactly `aidlc check`, it exited 0 and its last result line
+    says PASS. Any other command that runs the check is a failing attempt."""
+    if event.get("tool") != "shell":
+        return None
+    contains, exact = guard.check_segments((event.get("args") or {}).get("command"))
+    if not contains:
+        return None
+    root = guard.repo_root(Path(event.get("cwd") or os.getcwd()))
+    if root is None:
+        return None
+    branch = guard.current_branch(root)                      # None: counted under the detached key
+    text = str(event.get("text") or "")
+    results = guard.CHECK_RESULT_RE.findall(text)
+    passed = (exact and branch is not None and event.get("exit_code") == 0 and bool(results)
+              and results[-1] == "PASS" and not SKIPPED_RE.search(text) and _context_ok(root, branch, text))
+    cap = guard.load_harness()["retry_cap"]
+    failures = _update_attempts(guard.attempts_file(root, branch), passed, cap)
+    if failures >= cap:
+        return _result("flag", "retry-limit", guard.retry_limit_reason(failures, cap))
+    return _result("pass", "check-recorded",
+                   f"check {'PASS' if passed else 'FAIL'}; {failures} failing in a row (limit {cap})")
 
 
 def main() -> int:

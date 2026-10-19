@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import fnmatch
+import hashlib
 import json
 import os
 import re
@@ -86,6 +87,9 @@ def load_harness() -> dict:
     base = data.setdefault("base_branch", "main")     # harness.json files before Plan 2 F4
     if not isinstance(base, str) or not BRANCH_RE.fullmatch(base):
         raise ValueError("harness data has an invalid 'base_branch'")
+    cap = data.setdefault("retry_cap", DEFAULT_RETRY_CAP)   # harness.json files before Plan 3
+    if isinstance(cap, bool) or not isinstance(cap, int) or cap < 1:
+        raise ValueError("harness data has an invalid 'retry_cap'")
     return data
 
 
@@ -241,6 +245,9 @@ def _decide_edit(event: dict, data: dict) -> dict:
 MAX_COMMAND_CHARS = 65536
 TIME_BUDGET_S = 0.5
 MAX_DEPTH = 40
+CHECK_RESULT_RE = re.compile(r"^check  result (PASS|FAIL)  \(", re.M)
+NAMED_CHECKS = {"context-drift", "openwiki"}
+DEFAULT_RETRY_CAP = 3
 
 
 class _TooComplex(Exception):
@@ -835,6 +842,101 @@ def _check_segment(words: list[str], piped: bool, stdin: bool, patterns: list[st
     return None
 
 
+def _is_one_check(argv: list[str]) -> bool:
+    return argv[:2] == ["aidlc", "check"] and not (len(argv) > 2 and argv[2] in NAMED_CHECKS)
+
+
+def _inner_strings(argv: list[str]) -> list[str]:
+    """The command text a nested shell or eval runs."""
+    if argv and argv[0] in SHELLS:
+        for index, tok in enumerate(argv[1:], start=1):
+            if tok.startswith("-") and not tok.startswith("--") and "c" in tok:
+                return [argv[index + 1]] if index + 1 < len(argv) else []
+        return []
+    if argv and argv[0] == "eval":
+        return [" ".join(argv[1:])]
+    return []
+
+
+def check_segments(command) -> tuple[bool, bool]:
+    """(contains, exact) for the one-command check in a shell command. `contains`: some part of it
+    runs `aidlc check` (also inside a substitution, `bash -c` or `eval`). `exact`: the whole
+    command is `aidlc check`, optionally with `--repo <path>`. Only an exact, passing run resets
+    the retry counter (guide 8.8); any other command that runs the check is a failing attempt."""
+    if not isinstance(command, str) or not command.strip() or len(command) > MAX_COMMAND_CHARS:
+        return False, False
+    deadline = time.monotonic() + TIME_BUDGET_S
+    contains = False
+    queue: list[tuple[str, int]] = [(command, 0)]
+    try:
+        while queue:
+            text, depth = queue.pop()
+            if depth > MAX_DEPTH:
+                return True, False
+            for d, tokens in _lex(text, deadline, depth):
+                for seg in _segments(tokens, deadline):
+                    argv, nested = _argv(seg["words"])
+                    contains = contains or _is_one_check(argv)
+                    queue += [(s, d + 1) for s in _inner_strings(argv) + nested]
+        if not contains:
+            return False, False
+        top = _lex(command, deadline)
+        segments = _segments(top[0][1], deadline) if len(top) == 1 else []
+        if len(segments) != 1:
+            return True, False
+        words = segments[0]["words"]                      # raw words: no prefix or wrapper is stripped
+        exact = (len(words) in (2, 4) and words[0].rsplit("/", 1)[-1] == "aidlc" and words[1] == "check"
+                 and (len(words) == 2 or words[2] == "--repo"))
+        return True, exact
+    except (ValueError, _TooComplex):
+        return bool(re.search(r"aidlc\S*\s+check", command)), False
+
+
+DETACHED = "__detached__"
+
+
+def attempts_file(root: Path, branch: str | None) -> Path:
+    """One record per repository (name plus a hash of its path, so same-named clones never collide)
+    and branch. A detached HEAD has its own key, so detaching never escapes the counter."""
+    home = Path(os.environ.get("AIDLC_HOME_DIR") or "~/.aidlc").expanduser()
+    tag = hashlib.sha256(str(root.resolve()).encode("utf-8")).hexdigest()[:8]
+    name = DETACHED if branch is None else branch.replace("/", "__")
+    return home / "attempts" / f"{root.name}-{tag}" / f"{name}.json"
+
+
+def read_failures(root: Path, branch: str | None) -> int | None:
+    """Failing checks in a row on this branch. None means the record is unreadable."""
+    path = attempts_file(root, branch)
+    if path.is_symlink():                       # never trust, or write through, a link
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return 0
+    except Exception:  # noqa: BLE001 - an unreadable record fails closed at the caller
+        return None
+    count = data.get("failures") if isinstance(data, dict) else None
+    return count if isinstance(count, int) and not isinstance(count, bool) and count >= 0 else None
+
+
+def retry_limit_reason(failures: int, cap: int) -> str:
+    return (f"retry limit reached: {failures} failing checks in a row (limit {cap}). Stop. Report what "
+            "you tried and the failure; a person reviews it and runs `aidlc attempts --reset`.")
+
+
+def _retry_block(event: dict, data: dict) -> dict | None:
+    root = repo_root(Path(event.get("cwd") or os.getcwd()))
+    if root is None:
+        return None
+    failures = read_failures(root, current_branch(root))     # None branch: the detached key
+    if failures is None:
+        return _result("deny", "retry-limit", "the attempts record is unreadable; a person checks it "
+                       "and runs `aidlc attempts --reset`")
+    if failures >= data["retry_cap"]:
+        return _result("deny", "retry-limit", retry_limit_reason(failures, data["retry_cap"]))
+    return None
+
+
 def _decide_shell(event: dict, data: dict) -> dict:
     command = (event.get("args") or {}).get("command")
     if not isinstance(command, str) or not command.strip():
@@ -893,6 +995,10 @@ def _decide_with(event: dict, data: dict) -> dict:
         tool = event.get("tool")
         if tool == "read":
             return _result("allow", "read", "read-only; secrets are left to permissions and sandbox")
+        if tool in ("edit", "shell"):
+            blocked = _retry_block(event, data)
+            if blocked:
+                return blocked
         if tool == "edit":
             return _decide_edit(event, data)
         if tool == "shell":

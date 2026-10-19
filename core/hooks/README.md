@@ -33,9 +33,22 @@ Runs after `Edit`, `Write`, `MultiEdit`, `NotebookEdit`, `Bash`, `Monitor` and `
 3. Any new or changed path (diff against the merge base, plus untracked files that are not ignored) that matches `protected_paths` or has a `.git` segment flags `protected-path`.
 4. Then the scope, changed assertions and skipped tests.
 
+### Retry limit (guide 8.8, 8.13)
+
+`post_check.record_check` counts runs of the one-command check (`aidlc check` without a named check), and the guard enforces the limit. Claude Code does not fire `PostToolUse` for a Bash call that exits non-zero, so the shim also handles `PostToolUseFailure` (phase `post-failure`).
+
+- A shell call counts only when some part of it runs the check, including inside a substitution, `bash -c` or `eval`.
+- It is a PASS only when all hold: the whole command is exactly `aidlc check` (any path to `aidlc`, optionally `--repo <path>`, no assignment prefix, no wrapper); it exited 0; the last `check  result` line says `PASS`; no step line says `SKIPPED`; and the single `check  context` line names this repository, the base the post-check computes, the scope file the guard reads, and `mode=require`.
+- Anything else that runs the check is a failing attempt. An unknown exit code (`None`) is never a PASS.
+- A PASS resets the counter. Each failing attempt adds one. At `retry_cap` (`harness.json`, from `routing.yaml`, default 3) the post hook flags `retry-limit`, and the guard denies every `edit` and `shell` call with `retry-limit`. Reads stay allowed.
+- Rule ids: `check-recorded` (post, pass) and `retry-limit` (post flag, pre deny).
+- The record is `$AIDLC_HOME_DIR/attempts/<repo name>-<8 hex of the repo path hash>/<branch with / as __>.json`; a detached HEAD uses `__detached__.json`. Updates hold an exclusive `flock`, so parallel hooks lose no count.
+- Fail closed: an unreadable record, or one that is a symlink, counts as at the limit.
+- Only hooks write the record. The sandbox denies `~/.aidlc` to agent shells, and `aidlc attempts*--reset*` is a shell deny rule, so an agent cannot reset its own counter. A person runs `aidlc attempts --reset`.
+
 ## claude_shim.py (Claude Code adapter shim)
 
-Translates Claude Code hook payloads to the generic contract and back. `CLASSES` maps tool names to classes; an unlisted tool is `unknown`. On any internal error it exits 2 (a block) and writes one best-effort `fail-safe` record to the decision log.
+Usage: `claude_shim.py pre|post|post-failure`. Post events carry `text` (stdout and stderr, or the error text) and `exit_code` (0 for `post`; parsed from `Exit code N` for `post-failure`, else `None`). Translates Claude Code hook payloads to the generic contract and back. `CLASSES` maps tool names to classes; an unlisted tool is `unknown`. On any internal error it exits 2 (a block) and writes one best-effort `fail-safe` record to the decision log.
 
 ## Environment
 

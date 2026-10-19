@@ -162,6 +162,7 @@ def harness_data(repo: Path) -> dict:
         "shell_deny": eff["deny"]["shell"],
         "tool_deny": map_tools(eff["deny"]["tools"], tool_names)[0],
         "tool_ask": map_tools(eff["ask"]["tools"], tool_names)[0],
+        "retry_cap": load_policy("routing")["retry_cap"],
     }
     digest = hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()[:12]
     return {"version": f"{__version__}+{digest}", **data}
