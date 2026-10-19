@@ -17,6 +17,10 @@ class ScopeError(Exception):
     """No usable scope: the task must not start."""
 
 
+class ScopeUsageError(ScopeError):
+    """The command was used wrongly (not a repository, malformed approval line): exit 2."""
+
+
 def _validate(patterns: list[str]) -> None:
     """Refuse patterns that reach outside the repository, into .git, or allow everything."""
     for pattern in patterns:
@@ -27,6 +31,8 @@ def _validate(patterns: list[str]) -> None:
             raise ScopeError(f"pattern '{pattern}' leaves the repository")
         if parts[0] == ".git":
             raise ScopeError(f"pattern '{pattern}' reaches into .git")
+        if any(ch in pattern for ch in "<>()"):
+            raise ScopeError(f"pattern '{pattern}' looks like an unfilled placeholder")
         if not pattern.strip("*/"):
             raise ScopeError(f"pattern '{pattern}' would allow every file")
 
@@ -37,7 +43,7 @@ def parse_may_change(text: str) -> list[str]:
     for line in lines:
         if line.startswith("MAY CHANGE"):
             active, found = True, True
-            collected.append(line[len("MAY CHANGE"):])
+            collected.append(line[len("MAY CHANGE"):].lstrip().removeprefix(":"))
             continue
         if active and line and not line[0].isspace():
             break  # continuation lines are indented; anything else starts a new field
@@ -54,10 +60,20 @@ def parse_may_change(text: str) -> list[str]:
 
 
 def _git(repo: Path, *args: str) -> str:
-    result = subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    result = subprocess.run(["git", *args], cwd=repo, env=env, capture_output=True, text=True)
     if result.returncode != 0:
         raise ScopeError(f"git {' '.join(args)}: {result.stderr.strip()}")
     return result.stdout
+
+
+def require_repository(repo: Path) -> None:
+    if not repo.is_dir():
+        raise ScopeUsageError(f"{repo} is not a directory")
+    try:
+        _git(repo, "rev-parse", "--git-dir")
+    except ScopeError as exc:
+        raise ScopeUsageError(f"{repo} is not a git repository") from exc
 
 
 def bundle_at(repo: Path, ref: str) -> str:
@@ -77,7 +93,7 @@ def approved_ref(repo: Path, branch: str, approvals_ref: str = "main") -> str:
         raise ScopeError(f"no approved bundle for branch '{branch}' in "
                          f"{approvals_ref}:plans/approved-bundles.txt")
     if not PINNED_REF.match(match):
-        raise ScopeError(f"approval for '{branch}' must pin a commit sha (<sha>:<path>), got '{match}'")
+        raise ScopeUsageError(f"approval for '{branch}' must pin a commit sha (<sha>:<path>), got '{match}'")
     return match
 
 

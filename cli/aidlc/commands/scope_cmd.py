@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 from ..cli import command
-from ..scope import ScopeError, approved_ref, bundle_at, default_scope_path, parse_may_change, write_scope
+from ..scope import (ScopeError, ScopeUsageError, approved_ref, bundle_at, default_scope_path,
+                     parse_may_change, require_repository, write_scope)
 
 PROTECTED_BRANCH = "main"   # approvals are read only from here, never from the working branch
 
@@ -14,13 +16,17 @@ def _run(args: argparse.Namespace) -> int:
     repo = Path(args.repo).resolve()
     out = (Path(args.out) if args.out else default_scope_path(repo, args.branch)).resolve()
     try:
+        require_repository(repo)
         if out.is_relative_to(repo):
             raise ScopeError(f"--out {out} is inside the repository; write the scope outside it")
         ref = approved_ref(repo, args.branch, PROTECTED_BRANCH)
         patterns = parse_may_change(bundle_at(repo, ref))
         write_scope(patterns, out)
+    except ScopeUsageError as exc:
+        print(f"aidlc scope: {exc}", file=sys.stderr)
+        return 2
     except ScopeError as exc:
-        print(f"aidlc scope: {exc}; refusing to start")
+        print(f"aidlc scope: {exc}; refusing to start", file=sys.stderr)
         return 1
     print(f"scope: {len(patterns)} pattern(s) from {ref} -> {out}")
     return 0

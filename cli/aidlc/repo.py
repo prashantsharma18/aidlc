@@ -29,18 +29,27 @@ class RepoConfig:
     tool_names: dict = field(default_factory=dict)
 
 
+def _mapping(data: dict, key: str) -> dict:
+    value = data.get(key)
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f"{CONFIG}: '{key}' must be a mapping, got {type(value).__name__}")
+    return dict(value)
+
+
 def load_config(repo: Path) -> RepoConfig:
     path = repo / CONFIG
     if not path.is_file():
         raise FileNotFoundError(f"{path} not found: run `aidlc init-repo` first")
     data = load_yaml(path)
     ctx = {"rules_file": "AGENTS.md", "map": "docs/codebase-map.md", "review_interval_days": 30}
-    ctx.update(data.get("context") or {})
+    ctx.update(_mapping(data, "context"))
     harness = {"auto_memory": False, "disable_user_plugins": [], "base_branch": "main"}
-    harness.update(data.get("harness") or {})
+    harness.update(_mapping(data, "harness"))
     return RepoConfig(data["name"], data["owner"], data["profile"], data.get("purpose", ""),
-                      dict(data.get("commands") or {}), list(data.get("check_steps") or []), ctx,
-                      harness=harness, tool_names=dict(data.get("tool_names") or {}))
+                      _mapping(data, "commands"), list(data.get("check_steps") or []), ctx,
+                      harness=harness, tool_names=_mapping(data, "tool_names"))
 
 
 def _write(repo: Path, rel: str, text: str, report: list[tuple[str, str]]) -> None:

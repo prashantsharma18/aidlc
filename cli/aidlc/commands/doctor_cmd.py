@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 import subprocess
 from pathlib import Path
 
@@ -24,10 +25,10 @@ def _run(args: argparse.Namespace) -> int:
     try:
         repo = find_repo_root(Path(args.path))
     except FileNotFoundError as exc:
-        print(f"aidlc doctor: {exc}")
+        print(f"aidlc doctor: {exc}", file=sys.stderr)
         return 2
     if not (repo / CONFIG).is_file():
-        print(f"aidlc doctor: {repo} is not an installed repository; run aidlc init-repo")
+        print(f"aidlc doctor: {repo} is not an installed repository; run aidlc init-repo", file=sys.stderr)
         return 2
     return report(run_doctor(repo, claude_version=_claude_version()), "doctor")
 

@@ -13,7 +13,7 @@ import jsonschema
 import yaml
 
 from . import __version__
-from .paths import framework_root
+from .paths import framework_root, safe_target
 from .policy import PolicyError, load_policy, load_yaml
 from .repo import load_config
 
@@ -34,7 +34,10 @@ def _dedupe(items: list[str]) -> list[str]:
 
 
 def load_narrowing(repo: Path) -> dict:
-    path = repo / ".aidlc" / "permissions.yaml"
+    try:
+        path = safe_target(repo, ".aidlc/permissions.yaml")   # refuses a symlinked file or folder
+    except ValueError as exc:
+        raise HarnessError(f"{exc}; keep the narrowing file inside the repository") from exc
     if not path.is_file():
         return {}
     try:

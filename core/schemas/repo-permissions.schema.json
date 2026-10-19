@@ -5,13 +5,16 @@
   "additionalProperties": false,
   "$defs": {
     "strs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "set3": {"type": "object", "additionalProperties": false,
+             "properties": {"edit": {"$ref": "#/$defs/strs"}, "shell": {"$ref": "#/$defs/strs"},
+                            "tools": {"$ref": "#/$defs/strs"}}},
     "set4": {"type": "object", "additionalProperties": false,
              "properties": {"read": {"$ref": "#/$defs/strs"}, "edit": {"$ref": "#/$defs/strs"},
                             "shell": {"$ref": "#/$defs/strs"}, "tools": {"$ref": "#/$defs/strs"}}}
   },
   "properties": {
     "deny_add": {"$ref": "#/$defs/set4"},
-    "ask_add": {"$ref": "#/$defs/set4"},
+    "ask_add": {"$ref": "#/$defs/set3"},
     "allow_remove": {"$ref": "#/$defs/set4"},
     "secret_paths_add": {"$ref": "#/$defs/strs"},
     "protected_paths_add": {"$ref": "#/$defs/strs"},

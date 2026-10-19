@@ -2,12 +2,15 @@
 never appears in CLAUDE.md, and the ignore file keeps the framework baseline."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from ..paths import framework_root
 from .findings import Finding
 
 START, END = "<!-- OPENWIKI:START -->", "<!-- OPENWIKI:END -->"
+# A pointer is a Markdown link or a path under openwiki/, not prose that mentions the folder.
+POINTER = re.compile(r"\[[^\]]+\]\([^)\s]+\)|(?<![\w/.-])openwiki/[\w.\-/]*[\w]")
 
 
 def _read(path: Path) -> str:
@@ -39,7 +42,7 @@ def check_openwiki(repo: Path, max_lines: int = 15) -> list[Finding]:
             stripped = line.strip()
             if stripped.startswith("```"):
                 findings.append(Finding("FAIL", "AGENTS.md", 0, "code fence inside the OpenWiki block"))
-            elif not stripped.startswith("#") and "openwiki/" not in stripped:
+            elif not stripped.startswith("#") and not POINTER.search(stripped):
                 findings.append(Finding("FAIL", "AGENTS.md", 0,
                                         f"OpenWiki block line is not a pointer: {stripped[:60]}"))
     if claude.is_file() and (START in _read(claude) or END in _read(claude)):
@@ -47,7 +50,7 @@ def check_openwiki(repo: Path, max_lines: int = 15) -> list[Finding]:
                                 "contains an OpenWiki block; CLAUDE.md only imports AGENTS.md"))
 
     if (repo / "openwiki").is_dir():
-        if block is None and not findings:
+        if block is None:
             findings.append(Finding("WARN", "AGENTS.md", 0, "openwiki/ exists but AGENTS.md has no pointer block"))
         ignore = repo / ".openwikiignore"
         baseline = [l for l in _read(framework_root() / "core" / "context" / "openwiki"

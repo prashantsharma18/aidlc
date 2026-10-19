@@ -24,8 +24,10 @@ never overwrites a file without the marker.
 
 ## Generic hook contract (guide 3, step 5)
 
-- Input on stdin: `{"session": ..., "call": ..., "tool": "read|edit|write|delete|shell|mcp", "args": {...}}`
+- Input on stdin: `{"session": ..., "call": ..., "tool": "<class>", "args": {...}}`
 - Output on stdout: `{"decision": "allow|ask|deny", "reason": "..."}`
-- Tool classes: `read | analyse | modify | execute | external`.
+- Tool classes (the wire value of `tool`): `read | edit | shell | mcp | external`. Tool names live
+  in `args`, never in `tool`. Any other value is denied with rule `unknown-tool`; the Claude shim
+  emits `unknown` for tools it cannot classify.
 - Fail closed: any error, missing scope or unreadable input is `deny`, and the shim exits 2.
   Claude Code hooks also set `"onFailure": "block"`; with that set, a crash or timeout blocks the action.
