@@ -57,6 +57,7 @@ class CheckContext:
     scope_source: str = ""            # the scope file read (shown in the context line)
     head: str | None = None           # CI: judge git objects base..head instead of the working tree
     steering: dict[str, str] | None = None   # CI: the base's steering files, read before the change runs
+    rerun_base: dict[str, bytes] = field(default_factory=dict)   # CI: base versions of changed test files
     wrap: Callable[[str, str], list[str]] | None = None   # CI: argv that runs a command step (sandbox)
     today: date = field(default_factory=date.today)
     timeout_s: int = STEP_TIMEOUT_S
@@ -425,11 +426,18 @@ def _guarded(name: str, fn: Callable[[], StepResult]) -> StepResult:
         return StepResult(name, FAIL, f"could not run ({type(exc).__name__}: {exc})")
 
 
-def run_check(ctx: CheckContext, builtins=None) -> CheckResult:
-    """Run the command steps, then the built-in steps; every step runs."""
+def begin_command_steps(ctx: CheckContext) -> None:
+    """The moment before the command steps run: .check/ exists, the clock starts, and the report
+    files already present are recorded, so a previous run's report never counts as fresh.
+    `aidlc check` and `aidlc ci` both call it, so they keep one contract."""
     prepare_check_dir(ctx.repo)
     ctx.started = time.time()
     ctx.reports_before = _report_snapshot(ctx) if "test" in ctx.config.check_steps else {}
+
+
+def run_check(ctx: CheckContext, builtins=None) -> CheckResult:
+    """Run the command steps, then the built-in steps; every step runs."""
+    begin_command_steps(ctx)
     steps = [_guarded(name, lambda n=name: run_command(ctx, n)) for name in ctx.config.check_steps]
     for name, fn in (BUILTINS if builtins is None else builtins):
         steps.append(_guarded(name, lambda f=fn: f(ctx)))

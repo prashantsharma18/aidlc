@@ -100,19 +100,24 @@ def bundle_at(repo: Path, ref: str) -> str:
     return _git(repo, "show", ref)
 
 
-def approved_ref(repo: Path, branch: str, approvals_ref: str = "main") -> str:
-    text = _git(repo, "show", f"{approvals_ref}:plans/approved-bundles.txt")
+def parse_approvals(text: str, branch: str, source: str) -> str:
+    """The pinned `<sha>:<path>` approved for `branch` in an approvals file's text (the last
+    matching line wins). Lines split on "\\n" only: \\f, \\v or U+2028 never start a new line."""
     match = None
     for line in text.split("\n"):
         parts = line.split()
         if len(parts) >= 2 and not line.startswith("#") and parts[0] == branch:
             match = parts[1]
     if match is None:
-        raise ScopeError(f"no approved bundle for branch '{branch}' in "
-                         f"{approvals_ref}:plans/approved-bundles.txt")
-    if not PINNED_REF.match(match):
+        raise ScopeError(f"no approved bundle for branch '{branch}' in {source}")
+    if not PINNED_REF.fullmatch(match):
         raise ScopeUsageError(f"approval for '{branch}' must pin a commit sha (<sha>:<path>), got '{match}'")
     return match
+
+
+def approved_ref(repo: Path, branch: str, approvals_ref: str = "main") -> str:
+    text = _git(repo, "show", f"{approvals_ref}:plans/approved-bundles.txt")
+    return parse_approvals(text, branch, f"{approvals_ref}:plans/approved-bundles.txt")
 
 
 def default_scope_path(repo: Path, branch: str) -> Path:
