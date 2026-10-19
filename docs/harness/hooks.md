@@ -31,7 +31,7 @@ and back. The full contract is in [the adapter interface](../adapters/interface.
 | Piping into a shell is denied; a nested shell asks | The inner command cannot be judged |
 | MCP tools are matched against `tool_deny` and `tool_ask` | Tracker writes need a person |
 | External reach always asks | Retrieved text may be hostile |
-| Post-check: secret-shaped output, writes outside scope, a changed or removed assertion | The fast first line before trusted CI |
+| Post-check: secret-shaped output, writes outside scope, a changed or removed assertion, a disabled test or narrowed suite (`skipped-test`: `.skip`, `.only`, `[Fact(Skip=...)]`, `@Disabled` and similar) | The fast first line before trusted CI |
 
 ## What the guard leaves to others
 

@@ -46,7 +46,7 @@ Doctor check D2 fails if either half is missing.
 ## What the sandbox enforces
 
 These facts were verified live on 2026-10-19. The evidence is the addendum in
-[the sandbox verification](../verification/2026-10-18-sandbox-wsl2.md) and the rows in [the
+[the sandbox verification](../verification/2026-10-18-sandbox-wsl2.md) (see its subsection "2026-10-19, checks 3 and 4" for the ask-rule and missing-literal-file results) and the rows in [the
 attack run](../verification/2026-10-19-harness-attacks.md).
 
 - **`denyRead` enforces globs**, including `**`. Secret-path globs are rendered as they are.
@@ -92,7 +92,9 @@ When nobody can answer a prompt, an ask has no one to go to. Run unattended agen
 - Start the tool with `--permission-mode dontAsk`.
 - Set `AIDLC_UNATTENDED=1`, so the guard turns every `ask` into `deny` as well.
 
-Then nothing waits for a human, and nothing is approved by default. Details are in
+Then nothing waits for a human, and nothing is approved by default.
+
+> ⚠️ **Watch out:** In a workspace Claude Code has not trusted, project `permissions.allow` entries are ignored. `--permission-mode dontAsk` then refuses every Bash command that is not otherwise allowed. Run unattended sessions in a trusted workspace, such as the CI checkout. See [the attack run](../verification/2026-10-19-harness-attacks.md), notes on rows 2a-2c and 6. Details are in
 [hooks](hooks.md).
 
 > 🎯 **What this means for you:** Change the policy in `core/policy/permissions.yaml` only with

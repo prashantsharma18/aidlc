@@ -7,7 +7,7 @@ has three layers: permissions, a sandbox and hooks. This page maps the guide's c
 | Step | What it is | Where it lives |
 |---|---|---|
 | 1 Risk inventory | What can go wrong, how bad, which control answers it | `core/policy/risk-inventory.yaml` |
-| 2 Tool classes | Every tool call is `read`, `edit`, `shell`, `mcp` or `external` | `cli/aidlc/harness.py`, [adapter interface](../adapters/interface.md) |
+| 2 Tool classes | Every tool call is `read`, `edit`, `shell`, `mcp` or `external`; any other class (the shim's `unknown`) is denied with rule `unknown-tool` | `core/hooks/claude_shim.py` (`CLASSES`), [adapter interface](../adapters/interface.md) |
 | 3 Effective permissions | Baseline policy narrowed by the repository | `core/policy/permissions.yaml`, `cli/aidlc/harness.py` |
 | 4 Sandbox | Operating-system limits on commands | `cli/aidlc/adapters/claude_code.py` |
 | 5 Hooks | Pre-tool guard, post-tool check, tool shim | `core/hooks/` |
@@ -53,7 +53,7 @@ Know what the harness trusts before you rely on it.
 - **The manifest and the hooks are protected.** `.aidlc/generated.json` and `.aidlc/hooks/`
   have an `Edit` deny and a sandbox `denyWrite`. A forged manifest entry would let `aidlc render`
   overwrite a file a person wrote, because render trusts the manifest to know what it generated.
-- **Hooks run outside the sandbox.** They are ordinary processes with your permissions. This is
+- **Hooks run outside the sandbox.** Claude Code's sandbox applies to Bash commands only; the Read tool already bypasses it ([sandbox verification](../verification/2026-10-18-sandbox-wsl2.md)). Hooks are ordinary processes with your permissions. This is
   why they are standard-library only, offline and short, and why a repository must not be able to
   edit them.
 - **The decision log lives outside the repository.** Guard decisions go to `~/.aidlc/logs`, so

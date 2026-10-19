@@ -77,3 +77,21 @@ Conclusions:
 2. `denyWrite` supports only literal files and directories. The renderer emits literals, and expands glob entries of `protected_paths` to the tracked files they match at render time. A new matching file therefore shows as drift in `aidlc render --check` until you render again.
 3. Denying all of `.git` would break commits, so only `.git/hooks` and `.git/config` are denied.
 4. The guard still denies agent Edit and Write calls to every protected path. `denyWrite` closes the shell route (`echo >> AGENTS.md`).
+
+### 2026-10-19, checks 3 and 4
+
+Claude Code 2.1.296, model Haiku, in a scratch git repository that was untrusted, run with `claude -p --setting-sources project --strict-mcp-config`. Results were verified on disk.
+
+**Check 3: ask rules, deny rules and missing literal paths.** Settings: `permissions.ask: ["Bash(npm install*)"]`, `permissions.deny: ["Bash(git push*)"]`, sandbox enabled with `failIfUnavailable: true`, `allowUnsandboxedCommands: false`, `autoAllowBashIfSandboxed: true`, and `filesystem.denyWrite: ["./.mcp.json", "./nope/dir"]`. Neither path existed.
+
+| Bash call | Result |
+|---|---|
+| `echo hello` | Ran normally: denyWrite entries for paths that do not exist do not break the sandbox |
+| `echo x > .mcp.json` | "Permission denied"; `.mcp.json` does not exist on disk: creating a missing literal file is blocked |
+| `npm install left-pad` | Not run; Claude reported the call needed a permission that was not granted, and there was no `node_modules`: the ask rule is enforced with `autoAllowBashIfSandboxed: true` |
+
+**Check 4: hook failure blocks.** Settings: a project PreToolUse hook on Bash with `onFailure: "block"`, run with `--setting-sources project,local --permission-mode dontAsk`.
+
+- The hook ran and received the payload, even though the workspace was untrusted.
+- A hook that printed invalid JSON blocked the call: "failed; blocking because onFailure is block".
+- The model did not try to bypass it.

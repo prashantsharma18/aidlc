@@ -1,7 +1,7 @@
 # Doctor
 
 `aidlc doctor [path]` checks that the harness in a repository is intact and enforceable. It
-reads the rendered files, not the policy, so it catches edits and drift. The code is
+compares the rendered files with what render would write now, and checks them against the effective policy, so it catches edits and drift. The code is
 `cli/aidlc/checks/doctor.py`. A FAIL exits non-zero. A WARN is information you should read.
 
 Run it after every render, after upgrading Claude Code and in CI.
