@@ -9,6 +9,7 @@ import io
 import os
 import platform
 import shutil
+import stat
 import sys
 import tarfile
 import tempfile
@@ -61,7 +62,11 @@ def which_tool(name: str, pinned_only: bool = False) -> Path | None:
     """The pinned install first (what `aidlc tools install` verified), then PATH unless pinned_only.
     Trusted CI uses pinned_only=True: an unverified binary on PATH never judges a change."""
     pinned = tools_dir() / name
-    if pinned.is_file() and os.access(pinned, os.X_OK):
+    try:
+        regular = stat.S_ISREG(pinned.lstat().st_mode)  # a symlink or device is not a verified install
+    except OSError:
+        regular = False
+    if regular and os.access(pinned, os.X_OK):
         return pinned
     if pinned_only:
         return None
@@ -111,7 +116,17 @@ def _member(data: bytes, member: str) -> bytes:
             handle = tar.extractfile(info)
             if handle is None:
                 raise ToolError(f"archive member '{member}' cannot be read")
-            return handle.read()
+            if info.size > MAX_DOWNLOAD:
+                raise ToolError(f"archive member '{member}' is larger than {MAX_DOWNLOAD // (1024 * 1024)} MB")
+            out = bytearray()
+            while True:  # the header size can lie, so count what is actually read
+                chunk = handle.read(CHUNK)
+                if not chunk:
+                    break
+                out += chunk
+                if len(out) > MAX_DOWNLOAD:
+                    raise ToolError(f"archive member '{member}' is larger than {MAX_DOWNLOAD // (1024 * 1024)} MB")
+            return bytes(out)
     except tarfile.TarError as exc:
         raise ToolError(f"archive cannot be read: {exc}") from None
 

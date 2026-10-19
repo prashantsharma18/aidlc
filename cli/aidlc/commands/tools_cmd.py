@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 import urllib.error
 from pathlib import Path
@@ -31,8 +32,12 @@ def _install(args: argparse.Namespace) -> int:
 
 def _status(_args: argparse.Namespace) -> int:
     for tool in _pinned():
-        found = which_tool(tool["id"])
-        where = f"{found}" if found else f"not installed (run: aidlc tools install {tool['id']})"
+        found = which_tool(tool["id"], pinned_only=True)
+        if found:
+            where = f"installed (pinned) {found}"
+        else:
+            other = shutil.which(tool["id"])
+            where = f"not installed; unverified {other} on PATH" if other else "not installed"
         print(f"tools: {tool['id']} {tool['version']} pinned; {where}")
     print(f"tools: install directory {tools_dir()}")
     return 0

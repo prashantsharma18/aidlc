@@ -185,3 +185,64 @@ class HardeningTest(unittest.TestCase):
         with mock.patch.dict(os.environ, env, clear=True):
             self.assertEqual(tools.tools_dir(), Path("/tmp/h/bin"))
 
+
+
+class ReviewFixesTest(unittest.TestCase):
+    def setUp(self):
+        self.dest = Path(tempfile.mkdtemp())
+
+    def test_oversized_member_refused_and_nothing_left(self):
+        with mock.patch.object(tools, "MAX_DOWNLOAD", 50 * 1024):
+            data = tarball("demo", b"x" * (60 * 1024))  # compresses far below the cap
+            with self.assertRaisesRegex(tools.ToolError, "larger than"):
+                tools.install("demo", self.dest, register("tar.gz", data, member="demo"), opener_for(data))
+        self.assertEqual(list(self.dest.iterdir()), [])
+
+    def test_hardlink_member_refused(self):
+        info = tarfile.TarInfo("demo")
+        info.type = tarfile.LNKTYPE
+        info.linkname = "other"
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+            tar.addfile(info)
+        data = buf.getvalue()
+        with self.assertRaisesRegex(tools.ToolError, "not a regular file"):
+            tools.install("demo", self.dest, register("tar.gz", data, member="demo"), opener_for(data))
+        self.assertEqual(list(self.dest.iterdir()), [])
+
+    def test_uppercase_schemes_refused(self):
+        for url in ("HTTPS://example.invalid/t", "HTTP://example.invalid/t"):
+            with self.assertRaisesRegex(tools.ToolError, "non-https"):
+                tools.install("demo", self.dest, register("binary", b"x", url=url), opener_for(b"x"))
+
+    def test_pinned_lookup_refuses_a_symlink(self):
+        target = self.dest / "real"
+        target.write_text("#!/bin/sh\n")
+        target.chmod(0o755)
+        bindir = Path(tempfile.mkdtemp())
+        (bindir / "demo").symlink_to(target)
+        with mock.patch.dict(os.environ, {tools.TOOLS_DIR_ENV: str(bindir)}):
+            self.assertIsNone(tools.which_tool("demo", pinned_only=True))
+
+
+class StatusTest(unittest.TestCase):
+    def _status(self, bindir: Path, on_path: str | None) -> str:
+        with mock.patch.dict(os.environ, {tools.TOOLS_DIR_ENV: str(bindir)}), \
+                mock.patch("shutil.which", side_effect=lambda n: on_path):
+            code, out, _ = run_cli("tools", "status")
+        self.assertEqual(code, 0)
+        return "\n".join(line for line in out.splitlines() if " opa " in line)
+
+    def test_installed_pinned(self):
+        bindir = Path(tempfile.mkdtemp())
+        (bindir / "opa").write_text("#!/bin/sh\n")
+        (bindir / "opa").chmod(0o755)
+        self.assertIn(f"installed (pinned) {bindir / 'opa'}", self._status(bindir, None))
+
+    def test_path_binary_is_unverified(self):
+        line = self._status(Path(tempfile.mkdtemp()), "/usr/bin/opa")
+        self.assertIn("not installed; unverified /usr/bin/opa on PATH", line)
+
+    def test_not_installed(self):
+        line = self._status(Path(tempfile.mkdtemp()), None)
+        self.assertTrue(line.endswith("not installed"), line)
