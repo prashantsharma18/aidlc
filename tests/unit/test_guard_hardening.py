@@ -251,3 +251,76 @@ class Round3ShellTest(unittest.TestCase):
                     r = guard.decide(shell(cmd))
                     self.assertLess(time.monotonic() - start, 1.0)
                     self.assertEqual((r["decision"], r["rule"]), ("deny", "fail-safe"))
+
+
+class Round4ShellTest(unittest.TestCase):
+    """Fix round 4: linear brace handling, deadline inside the lexer, arithmetic-aware and
+    quote/comment-aware heredocs, several heredocs on one line."""
+    DENY = [
+        # F2: '<<' inside (( )) and $(( )) is a shift, not a heredoc
+        "(( n = 1 << 4 ))\ngit push", "(( n <<= 2 ))\nrm -rf src", "echo $(( 1 << 4 ))\ngit push",
+        # F3: '<<' in a comment or inside quotes opens no heredoc
+        "ls # see <<'EOF'\necho \"$(git push)\"", "echo \"use <<'EOF' here\"\necho \"$(git push)\"",
+        # F4: every heredoc on a line is queued; only quoted bodies are skipped
+        "cat <<A <<'B'\n$(git push)\nA\nb\nB", "cat <<'A' <<B\nx\nA\n$(git push)\nB",
+    ]
+    ALLOW = ["(( n = 1 << 4 ))", "echo $(( 1 << 4 ))"]
+    # Found while unifying the scanner; each matches bash 5.2 behaviour.
+    SCANNER_DENY = [
+        "((ls); git push)", "echo \"$((ls); git push)\"", "(( x #)); git push",
+        "for (( i = 1 << 1; i < 3; i++ ))\ndo git push; done",
+        "echo ${x/<<EOF/}\ngit push", "echo ${x:- #}; git push", "echo \"$(echo ${x:-)}; git push)\"",
+        "echo \"$(case x in x) echo IN;; esac; git push)\"",
+        "echo \"$(case x in a) echo esac;; b) git push;; esac)\"",
+        "echo \"${x:-'}\"\ngit push\necho \"'}\"",
+        "echo \"$(cat <<EOF)\nX\"\nEOF\n\"\ngit push\necho \"",
+        "cat <<E\\\nOF\nbody\nEOF\ngit push", "cat <<\\\n-EOF\n\tbody\n\tEOF\ngit push",
+        "cat <<EOF\nbody\nE\\\nOF\ngit push\nEOF", "echo \"$\\\n(git push)\"",
+        "cat <\\\n<'EOF'\nit's\nEOF\ngit push\necho '",
+        "echo $'\\''\ngit push\necho '", "git $'push'",
+    ]
+    SCANNER_ALLOW = ["echo '$(git push)'", "echo '`git push`'", "echo $'it\\'s'",
+                     "cat <<EOF\na \\\nEOF\ngit push\nEOF", "echo $(( 16#ff ))", "echo ${HOME##*/}",
+                     "x=$(case a in (a) ls;; esac)", "diff <(ls a) <(ls b)"]
+
+    def run_each(self, cmds, expected, extra):
+        with GuardEnv(extra_env=extra):
+            for cmd in cmds:
+                with self.subTest(cmd=cmd, extra=extra):
+                    self.assertEqual(guard.decide(shell(cmd))["decision"], expected)
+
+    def test_deny(self):
+        for extra in ({}, {"AIDLC_UNATTENDED": "1"}):
+            self.run_each(self.DENY, "deny", extra)
+
+    def test_allow(self):
+        for extra in ({}, {"AIDLC_UNATTENDED": "1"}):
+            self.run_each(self.ALLOW, "allow", extra)
+
+    def test_scanner_deny(self):
+        for extra in ({}, {"AIDLC_UNATTENDED": "1"}):
+            self.run_each(self.SCANNER_DENY, "deny", extra)
+
+    def test_scanner_allow(self):
+        for extra in ({}, {"AIDLC_UNATTENDED": "1"}):
+            self.run_each(self.SCANNER_ALLOW, "allow", extra)
+
+    def test_time_budget(self):
+        """F1: each probe gets the correct decision, or a fail-safe deny, in under 1 s."""
+        import time
+        probes = [("echo " + "{ " * 32760, "allow"), ("git " + "{ " * 32760, "allow"),
+                  ("git " + "{ " * 20000, "allow"), ("git push " + "{ " * 30000, "deny"),
+                  ("eval " * 13000 + "ls", "ask"), ("$(" * 16000 + "ls" + ")" * 16000, "deny"),
+                  ("((" * 32000, "deny")]
+        for extra in ({}, {"AIDLC_UNATTENDED": "1"}):
+            with GuardEnv(extra_env=extra):
+                for cmd, correct in probes:
+                    if extra and correct == "ask":
+                        correct = "deny"
+                    with self.subTest(cmd=cmd[:24], n=len(cmd), extra=extra):
+                        self.assertLess(len(cmd), guard.MAX_COMMAND_CHARS)
+                        start = time.monotonic()
+                        r = guard.decide(shell(cmd))
+                        self.assertLess(time.monotonic() - start, 1.0)
+                        if r["decision"] != correct:
+                            self.assertEqual((r["decision"], r["rule"]), ("deny", "fail-safe"))

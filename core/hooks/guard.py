@@ -26,7 +26,7 @@ SECRET_RE = re.compile(
     r"|-----BEGIN [A-Z ]*PRIVATE KEY"
     r"|(?i:bearer)\s+[A-Za-z0-9._~+/=-]{12,}"
     r"|(?i:password|passwd|secret|token|api[_-]?key)\s*[=:]\s*\S{6,})")
-OP_RE = re.compile(r"&>>?|[<>][<>&|]*|[;&|()]+")
+OP_RE = re.compile(r"&>>?|[<>][<>&|]*|[;&|]+|[()]")
 ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 RESERVED = {"{", "}", "!", "if", "then", "else", "elif", "fi", "do", "done", "while", "until"}
 SHELLS = {"bash", "sh", "zsh", "dash", "ksh", "fish"}
@@ -206,13 +206,16 @@ def _tick(deadline: float | None) -> None:
         raise _TooComplex
 
 
-def _heredoc_head(text: str, i: int) -> tuple[str, bool, bool, int] | None:
-    """Parse `<<[-]DELIM` at text[i:]. Returns (delimiter, quoted, strip_tabs, end index)."""
+def _heredoc_head(text: str, i: int) -> tuple[str, bool, bool] | None:
+    """Parse `<<[-]DELIM` at text[i:]. Returns (delimiter, quoted, strip_tabs). Line
+    continuations (backslash-newline) are removed first, as bash does."""
     j = i + 2
+    while text.startswith("\\\n", j):
+        j += 2
     strip = text[j:j + 1] == "-"
     j += 1 if strip else 0
-    while j < len(text) and text[j] in " \t":
-        j += 1
+    while j < len(text) and (text[j] in " \t" or text.startswith("\\\n", j)):
+        j += 1 if text[j] in " \t" else 2
     delim, quoted = [], False
     while j < len(text) and text[j] not in " \t\n;&|<>()":
         c = text[j]
@@ -222,238 +225,427 @@ def _heredoc_head(text: str, i: int) -> tuple[str, bool, bool, int] | None:
                 return None
             delim.append(text[j + 1:k])
             quoted, j = True, k + 1
+        elif c == "\\" and text[j + 1:j + 2] == "\n":
+            j += 2                                    # line continuation, as in the lexer
         elif c == "\\" and j + 1 < len(text):
             delim.append(text[j + 1])
             quoted, j = True, j + 2
         else:
             delim.append(c)
             j += 1
-    return ("".join(delim), quoted, strip, j) if delim else None
-
-
-def _skip_bodies(text: str, k: int, pending: list[tuple[str, bool]]) -> int:
-    """Index after the terminator lines of all pending heredocs (or the end of the text)."""
-    for delim, strip in pending:
-        while k < len(text):
-            end = text.find("\n", k)
-            end = len(text) if end == -1 else end
-            line = text[k:end].lstrip("\t") if strip else text[k:end]
-            k = min(end + 1, len(text))
-            if line == delim:
-                break
-    return k
-
-
-def _find_close(command: str, start: int, deadline: float | None) -> int:
-    """Index of the ')' closing a '(' opened just before `start`; len(command) when unclosed.
-    Quotes and heredoc bodies are skipped; an unterminated quote swallows the rest (which is
-    then analysed, never ignored)."""
-    depth, j, n = 1, start, len(command)
-    pending: list[tuple[str, bool]] = []
-    while j < n:
-        if j % 512 == 0:
-            _tick(deadline)
-        c = command[j]
-        if c == "'":
-            k = command.find("'", j + 1)
-            if k == -1:
-                return n
-            j = k + 1
-        elif c == '"':
-            j += 1
-            while j < n and command[j] != '"':
-                j += 2 if command[j] == "\\" else 1
-            j += 1
-        elif c == "\\":
-            j += 2
-        elif command.startswith("<<<", j):
-            j += 3
-        elif command.startswith("<<", j):
-            head = _heredoc_head(command, j)
-            if head:
-                pending.append((head[0], head[2]))
-                j = head[3]
-            else:
-                j += 2
-        elif c == "\n" and pending:
-            j = _skip_bodies(command, j + 1, pending)
-            pending = []
-        else:
-            if c == "(":
-                depth += 1
-            elif c == ")":
-                depth -= 1
-                if depth == 0:
-                    return j
-            j += 1
-    return n
-
-
-def _substitutions(command: str, deadline: float | None = None) -> tuple[str, list[str]]:
-    """Return the command with $(..), <(..), >(..) and `..` replaced by a placeholder, plus
-    the inner texts. It may over-detect inside quotes (the safe direction). Bodies of heredocs
-    with a quoted delimiter are data and are copied through untouched."""
-    outer: list[str] = []
-    inners: list[str] = []
-    pending: list[tuple[str, bool]] = []
-    i, n = 0, len(command)
-    while i < n:
-        if i % 512 == 0:
-            _tick(deadline)
-        two = command[i:i + 2]
-        if two in ("$(", "<(", ">("):
-            end = _find_close(command, i + 2, deadline)
-            inners.append(command[i + 2:end])
-            outer.append(" SUBST ")
-            i = end + 1
-        elif command[i] == "`":
-            j = command.find("`", i + 1)
-            j = n if j == -1 else j
-            inners.append(command[i + 1:j])
-            outer.append(" SUBST ")
-            i = j + 1
-        elif command.startswith("<<<", i):
-            outer.append("<<<")
-            i += 3
-        elif two == "<<":
-            head = _heredoc_head(command, i)
-            if head and head[1]:
-                pending.append((head[0], head[2]))
-            outer.append("<<")
-            i += 2
-        elif command[i] == "\n" and pending:
-            end = _skip_bodies(command, i + 1, pending)
-            outer.append(command[i:end])
-            pending = []
-            i = end
-        else:
-            outer.append(command[i])
-            i += 1
-    return "".join(outer), inners
+    return ("".join(delim), quoted, strip) if delim else None
 
 
 FD_VAR_RE = re.compile(r"^\{[A-Za-z_][A-Za-z0-9_]*\}$")
+# Runs of characters with no meaning in each context, consumed in one step.
+CMD_RUN = re.compile(r"[^ \t\n'\"\\`$;&|<>()]+")
+DQ_RUN = re.compile(r"[^\"\\$`]+")
+HEREDOC_RUN = re.compile(r"[^\\$`]+")
+ARITH_RUN = re.compile(r"[^'\"\\$`()]+")
+PARAM_RUN = re.compile(r"[^'\"\\$`}]+")
 
 
-def _lex(text: str) -> list[tuple[str, str]]:
-    """Quote-aware tokeniser: ("word", value), ("sep", op) or ("redir", op). Raises ValueError
-    on unbalanced quotes. Quoted operators stay words; an unquoted newline is a separator; an
-    unquoted '#' at the start of a word is a comment; heredoc bodies are skipped."""
-    out: list[tuple[str, str]] = []
-    buf: list[str] = []
-    state = {"in": False, "quoted": False}
-    heredocs: list[tuple[str, bool]] = []
+class _Frame:
+    """One nesting level. Kinds: "top" (a command text), "sub" ($(..), <(..), >(..)),
+    "arith" ((( .. )) and $(( .. ))), "param" (${ .. }) and "heredoc" (an unquoted heredoc
+    body, read like a double-quoted string). Only "top" and "sub" produce tokens."""
+    __slots__ = ("kind", "depth", "start", "mark", "tokens", "buf", "in_word", "quoted",
+                 "dq", "heredocs", "parens", "cases", "in_dq")
 
-    def flush(next_char: str = "") -> None:
-        if state["in"]:
-            word = "".join(buf)
-            fd = (not state["quoted"] and next_char in ("<", ">")
+    def __init__(self, kind: str, depth: int, start: int = 0, mark: int = 0) -> None:
+        self.kind, self.depth, self.start, self.mark = kind, depth, start, mark
+        self.tokens: list[tuple[str, str]] = []
+        self.buf: list[str] = []
+        self.heredocs: list[tuple[str, bool, bool]] = []
+        self.in_word = self.quoted = False
+        self.dq = kind == "heredoc"
+        self.in_dq = False                        # param: opened inside "..." or a heredoc body
+        self.parens = self.cases = 0
+
+
+class _Scanner:
+    """The one shell scanner. A single left-to-right pass with a stack of frames tracks
+    quotes, comments, substitutions, arithmetic, ${..} and heredocs together, so each of
+    them is recognised only where bash recognises it: '<<' opens a heredoc only when it is
+    unquoted, uncommented and outside (( )), $(( )) and ${ }. Backtick bodies and unquoted
+    heredoc bodies are scanned recursively. Every closed substitution becomes its own
+    token stream in `streams`."""
+
+    def __init__(self, deadline: float | None) -> None:
+        self.deadline = deadline
+        self.streams: list[tuple[int, list[tuple[str, str]]]] = []
+        self.steps = 0
+
+    def scan(self, text: str, kind: str, depth: int) -> list[tuple[str, str]]:
+        if depth > MAX_DEPTH:
+            raise _TooComplex
+        frames = [_Frame(kind, depth)]
+        no_arith: set[int] = set()               # '((' positions that proved not arithmetic
+        i, n = 0, len(text)
+        while True:
+            self.steps += 1
+            if not self.steps & 511:
+                _tick(self.deadline)
+            f = frames[-1]
+            if i < n and text.startswith("\\\n", i + 1) and (text[i] == "$" or (
+                    text[i] in "<>()&|;" and not f.dq and f.kind != "param")):
+                # bash joins the lines first, so this would be one operator ('<<', '$(' ...)
+                raise ValueError("line continuation inside an operator")
+            if i >= n:
+                if f.dq and f.kind != "heredoc":
+                    raise ValueError("unterminated double quote")
+                if f.kind == "arith":
+                    i = self._backtrack(frames, no_arith)
+                elif f.kind == "param":
+                    raise ValueError("unterminated ${")
+                elif len(frames) == 1:
+                    self._flush(f)
+                    return f.tokens
+                else:
+                    self._close_sub(frames)      # an unclosed $( is analysed, never ignored
+                continue
+            if f.dq:
+                i = self._quoted(text, i, frames, no_arith)
+            elif f.kind == "arith":
+                i = self._arith(text, i, frames, no_arith)
+            elif f.kind == "param":
+                i = self._param(text, i, frames, no_arith)
+            else:
+                i = self._command(text, i, frames, no_arith)
+
+    # -- frames -------------------------------------------------------------------------
+    def _push(self, frames: list[_Frame], kind: str, start: int) -> None:
+        frame = _Frame(kind, frames[-1].depth + 1, start, len(self.streams))
+        frame.in_dq = frames[-1].dq
+        if frame.depth > MAX_DEPTH:
+            raise _TooComplex
+        frames.append(frame)
+
+    def _close_sub(self, frames: list[_Frame]) -> None:
+        frame = frames.pop()
+        self._flush(frame)
+        if frame.heredocs:
+            # bash then reads the body from the next raw newline, even inside quotes
+            raise ValueError("here-document left open inside a substitution")
+        self.streams.append((frame.depth, frame.tokens))
+        frames[-1].in_word = True                # the substitution is (part of) a word
+
+    def _backtrack(self, frames: list[_Frame], no_arith: set[int]) -> int:
+        """'((' or '$((' not closed by '))' is a subshell or a command substitution, as in
+        bash: forget what the arithmetic reading produced and scan it again."""
+        frame = frames.pop()
+        del self.streams[frame.mark:]
+        no_arith.add(frame.start)
+        return frame.start
+
+    @staticmethod
+    def _flush(f: _Frame, next_char: str = "") -> None:
+        if f.in_word:
+            word = "".join(f.buf)
+            fd = (not f.quoted and next_char in ("<", ">")
                   and (word.isdigit() or FD_VAR_RE.match(word)))
             if not fd:
-                out.append(("word", word))
-        buf.clear()
-        state["in"] = state["quoted"] = False
+                if word in ("case", "esac") and not f.quoted and (
+                        not f.tokens or f.tokens[-1][0] == "sep" or f.tokens[-1][1] in RESERVED):
+                    f.cases = f.cases + 1 if word == "case" else max(f.cases - 1, 0)
+                f.tokens.append(("word", word))
+        f.buf.clear()
+        f.in_word = f.quoted = False
 
-    i, n = 0, len(text)
-    while i < n:
-        c = text[i]
+    # -- contexts -----------------------------------------------------------------------
+    def _command(self, text: str, i: int, frames: list[_Frame], no_arith: set[int]) -> int:
+        f, c, nxt = frames[-1], text[i], text[i + 1:i + 2]
         if c == "\\":
-            if i + 1 < n and text[i + 1] == "\n":
-                i += 2
-                continue
-            buf.append(text[i + 1] if i + 1 < n else "\\")
-            state["in"] = state["quoted"] = True
-            i += 2
-        elif c == "'":
+            if nxt == "\n":
+                return i + 2                      # line continuation
+            f.buf.append(nxt or "\\")
+            f.in_word = f.quoted = True
+            return i + 2
+        if c == "'":
             j = text.find("'", i + 1)
             if j == -1:
                 raise ValueError("unterminated single quote")
-            buf.append(text[i + 1:j])
-            state["in"] = state["quoted"] = True
-            i = j + 1
-        elif c == '"':
-            j = i + 1
-            while j < n and text[j] != '"':
-                if text[j] == "\\" and j + 1 < n:
-                    if text[j + 1] in '"\\$`':
-                        buf.append(text[j + 1])
-                    elif text[j + 1] != "\n":
-                        buf.append(text[j:j + 2])
-                    j += 2
-                else:
-                    buf.append(text[j])
-                    j += 1
-            if j >= n:
-                raise ValueError("unterminated double quote")
-            state["in"] = state["quoted"] = True
-            i = j + 1
-        elif c in " \t":
-            flush()
-            i += 1
-        elif c == "#" and not state["in"]:
+            f.buf.append(text[i + 1:j])
+            f.in_word = f.quoted = True
+            return j + 1
+        if c == '"':
+            f.dq = f.in_word = f.quoted = True
+            return i + 1
+        if c == "$":
+            return self._dollar(text, i, frames, no_arith)
+        if c == "`":
+            return self._backtick(text, i, f)
+        if c in " \t":
+            self._flush(f)
+            return i + 1
+        if c == "#" and not f.in_word:
             j = text.find("\n", i)
-            i = n if j == -1 else j
-        elif c == "\n":
-            flush()
-            out.append(("sep", "\n"))
-            i += 1
-            if heredocs:
-                i = _skip_bodies(text, i, heredocs)
-                heredocs = []
-        elif c in ";&|<>()":
-            flush(c if c in "<>" else "")
+            return len(text) if j == -1 else j    # a comment; the newline still separates
+        if c == "\n":
+            self._flush(f)
+            f.tokens.append(("sep", "\n"))
+            return self._bodies(text, i + 1, f) if f.heredocs else i + 1
+        if c in "<>" and nxt == "(":
+            self._flush(f)
+            self._push(frames, "sub", i)
+            return i + 2
+        if c == "(" and nxt == "(" and i not in no_arith:
+            self._flush(f)
+            self._push(frames, "arith", i)
+            return i + 2
+        if c == ")" and f.kind == "sub" and not f.parens and not f.cases:
+            self._close_sub(frames)
+            return i + 1
+        if c in ";&|<>()":
+            self._flush(f, c if c in "<>" else "")
             op = OP_RE.match(text, i).group(0)
-            if op == "<<":
+            if op == "(":
+                f.parens += 1
+            elif op == ")" and f.parens:
+                f.parens -= 1
+            elif op == "<<":
                 head = _heredoc_head(text, i)
                 if head:
-                    heredocs.append((head[0], head[2]))
-            out.append(("redir" if op[0] in "<>" or op.startswith("&>") else "sep", op))
-            i += len(op)
-        else:
-            buf.append(c)
-            state["in"] = True
-            i += 1
-    flush()
-    return out
+                    f.heredocs.append(head)
+            f.tokens.append(("redir" if op[0] in "<>" or op.startswith("&>") else "sep", op))
+            return i + len(op)
+        end = CMD_RUN.match(text, i).end()
+        f.buf.append(text[i:end])
+        f.in_word = True
+        return end
+
+    def _quoted(self, text: str, i: int, frames: list[_Frame], no_arith: set[int]) -> int:
+        """Inside "..." or an unquoted heredoc body (where '"' is an ordinary character)."""
+        f, c = frames[-1], text[i]
+        heredoc = f.kind == "heredoc"
+        if c == '"' and not heredoc:
+            f.dq = False
+            return i + 1
+        if c == "\\":
+            nxt = text[i + 1:i + 2]
+            if nxt and nxt in ("\\$`\n" if heredoc else "\\$`\n\""):
+                if nxt != "\n":
+                    f.buf.append(nxt)
+            else:
+                f.buf.append(text[i:i + 2])
+            return i + 2
+        if c == "$":
+            return self._dollar(text, i, frames, no_arith)
+        if c == "`":
+            return self._backtick(text, i, f)
+        end = (HEREDOC_RUN if heredoc else DQ_RUN).match(text, i).end()
+        f.buf.append(text[i:end])
+        return end
+
+    def _arith(self, text: str, i: int, frames: list[_Frame], no_arith: set[int]) -> int:
+        """Inside (( .. )) or $(( .. )): '<<' is a shift and '#' is not a comment; only
+        quotes, nested parentheses and substitutions matter."""
+        f, c = frames[-1], text[i]
+        if c == "'":
+            return self._skip_single(text, i)
+        if c == '"':
+            f.dq = True
+            return i + 1
+        if c == "\\":
+            return i + 2
+        if c == "$":
+            return self._dollar(text, i, frames, no_arith)
+        if c == "`":
+            return self._backtick(text, i, f)
+        if c == "(":
+            f.parens += 1
+            return i + 1
+        if c == ")":
+            if f.parens:
+                f.parens -= 1
+                return i + 1
+            if text[i + 1:i + 2] != ")":
+                return self._backtrack(frames, no_arith)
+            frames.pop()
+            if text[f.start] == "$":
+                frames[-1].in_word = True
+            return i + 2
+        return ARITH_RUN.match(text, i).end()
+
+    def _param(self, text: str, i: int, frames: list[_Frame], no_arith: set[int]) -> int:
+        """Inside ${ .. }: blanks, '#', '<<', ';' and ')' are literal; quotes and
+        substitutions nest; the first unquoted '}' closes it. A "'" inside "${ .. }" is a
+        quote to bash but a plain character to sh (dash), so it is not guessed."""
+        f, c = frames[-1], text[i]
+        if c == "'":
+            if f.in_dq:
+                raise ValueError("a ' inside \"${..}\" is read differently by bash and sh")
+            return self._skip_single(text, i)
+        if c == '"':
+            f.dq = True
+            return i + 1
+        if c == "\\":
+            return i + 2
+        if c == "$":
+            return self._dollar(text, i, frames, no_arith)
+        if c == "`":
+            return self._backtick(text, i, f)
+        if c == "}":
+            frames.pop()
+            frames[-1].in_word = True
+            return i + 1
+        return PARAM_RUN.match(text, i).end()
+
+    # -- shared pieces ------------------------------------------------------------------
+    @staticmethod
+    def _skip_single(text: str, i: int) -> int:
+        j = text.find("'", i + 1)
+        if j == -1:
+            raise ValueError("unterminated single quote")
+        return j + 1
+
+    def _dollar(self, text: str, i: int, frames: list[_Frame], no_arith: set[int]) -> int:
+        f, nxt = frames[-1], text[i + 1:i + 2]
+        f.in_word = True
+        if nxt == "(":
+            if text[i + 2:i + 3] == "(" and i not in no_arith:
+                self._push(frames, "arith", i)
+                return i + 3
+            self._push(frames, "sub", i)
+            return i + 2
+        if nxt == "{":
+            self._push(frames, "param", i)
+            return i + 2
+        if not f.dq and nxt == "'":               # $'..': backslash escapes do not end it
+            j = i + 2
+            while j < len(text) and text[j] != "'":
+                j += 2 if text[j] == "\\" else 1
+            if j >= len(text):
+                raise ValueError("unterminated $' quote")
+            f.buf.append(text[i + 2:j])
+            f.quoted = True
+            return j + 1
+        if not f.dq and nxt == '"':
+            return i + 1                          # $"..": a double-quoted string
+        f.buf.append("$")
+        return i + 1
+
+    def _backtick(self, text: str, i: int, f: _Frame) -> int:
+        """`..`: ends at the next unescaped backtick (an unclosed one takes the rest).
+        The body is a command, scanned recursively."""
+        j = i + 1
+        while j < len(text) and text[j] != "`":
+            j += 2 if text[j] == "\\" else 1
+        body = re.sub(r"\\([\\`$])", r"\1", text[i + 1:j])
+        self.streams.append((f.depth + 1, self.scan(body, "top", f.depth + 1)))
+        f.in_word = True
+        return j + 1
+
+    def _bodies(self, text: str, i: int, f: _Frame) -> int:
+        """Read the bodies of every heredoc opened on the line just ended, in order. Bodies
+        with a quoted delimiter are data; unquoted bodies are scanned for substitutions, and
+        in them a backslash-newline joins two lines before the terminator test, as in bash."""
+        n = len(text)
+        for delim, quoted, strip in f.heredocs:
+            start, body_end = i, n
+            while i < n:
+                _tick(self.deadline)
+                line_start, parts = i, []
+                while True:
+                    end = text.find("\n", i)
+                    end = n if end == -1 else end
+                    piece, i = text[i:end], min(end + 1, n)
+                    if quoted or end == n or (len(piece) - len(piece.rstrip("\\"))) % 2 == 0:
+                        parts.append(piece)
+                        break
+                    parts.append(piece[:-1])
+                line = "".join(parts)
+                if (line.lstrip("\t") if strip else line) == delim:
+                    body_end = line_start
+                    break
+            if not quoted:
+                self.scan(text[start:body_end], "heredoc", f.depth)
+        f.heredocs = []
+        return i
+
+
+def _lex(text: str, deadline: float | None = None, depth: int = 0) -> list[tuple[int, list[tuple[str, str]]]]:
+    """Tokenise a command: ("word", value), ("sep", op) or ("redir", op). Returns (depth,
+    tokens) for the command itself first, then for every substitution inside it. Raises
+    ValueError on unbalanced quotes and _TooComplex past the deadline or nesting limit."""
+    scanner = _Scanner(deadline)
+    top = scanner.scan(text, "top", depth)
+    return [(depth, top), *scanner.streams]
+
+
+class _Prefix:
+    """Incremental prefix stripping (assignments, reserved words, `function NAME`, wrappers
+    with their options), O(1) per word. Drives both _argv and the command-position test
+    for '{' and '}' in _segments."""
+    __slots__ = ("count", "mode", "wrapper", "start", "nested", "coproc_at", "function_at", "keywords")
+
+    def __init__(self) -> None:
+        self.count, self.mode, self.wrapper = 0, "cmd", ""
+        self.start = self.function_at = None
+        self.coproc_at = -2                       # where `coproc` stood as a reserved word
+        self.keywords = True                      # only reserved words so far
+        self.nested: list[str] = []
+
+    @property
+    def at_command(self) -> bool:
+        """True when the next word would start a command (so a bare '{' or '}' is a keyword)."""
+        return self.mode in ("cmd", "wrap") or self.count == self.coproc_at + 2
+
+    def feed(self, word: str) -> None:
+        mode, leading = self.mode, self.keywords
+        self.keywords = leading and word in RESERVED
+        if mode == "fname":
+            self.mode = "cmd"
+        elif mode == "optarg":
+            self.mode = "wrap"
+        elif mode != "args":
+            if mode == "wrap":
+                if word.startswith("-") or ASSIGN_RE.match(word):
+                    split = self.wrapper == "env" and _is_split_string(word)
+                    if split:
+                        self.nested.append(word)
+                    if word in WRAPPERS[self.wrapper] or (split and word.endswith("S")):
+                        self.mode = "optarg"
+                    self.count += 1
+                    return
+                self.mode = "cmd"
+                if self.wrapper == "timeout" or (self.wrapper == "nice" and re.fullmatch(r"-?\d+", word)):
+                    self.count += 1                   # the duration or the niceness
+                    return
+            if ASSIGN_RE.match(word) or word in RESERVED:
+                pass
+            elif word == "function":
+                self.mode, self.function_at = "fname", self.count
+            elif word.rsplit("/", 1)[-1] in WRAPPERS:
+                self.mode, self.wrapper = "wrap", word.rsplit("/", 1)[-1]
+                if self.wrapper == "coproc" and leading:
+                    self.coproc_at = self.count       # `coproc NAME {` opens a group
+            else:
+                self.mode, self.start = "args", self.count
+        self.count += 1
 
 
 def _argv(tokens: list[str]) -> tuple[list[str], list[str]]:
     """Strip assignments, reserved words and wrappers; normalise argv0 and git options.
     The list holds command strings supplied by `env -S`; it only drives an ask."""
-    nested: list[str] = []
-    changed = True
-    while tokens and changed:
-        changed = False
-        head = tokens[0]
-        if ASSIGN_RE.match(head) or head in RESERVED:
-            tokens, changed = tokens[1:], True
-            continue
-        if head == "function" and len(tokens) >= 2:
-            tokens, changed = tokens[2:], True
-            continue
-        name = head.rsplit("/", 1)[-1]
-        if name in WRAPPERS:
-            takes_arg, rest = WRAPPERS[name], tokens[1:]
-            while rest and (rest[0].startswith("-") or ASSIGN_RE.match(rest[0])):
-                opt = rest[0]
-                if name == "env" and _is_split_string(opt):
-                    nested.append(opt)
-                rest = rest[2:] if opt in takes_arg or (
-                    name == "env" and _is_split_string(opt) and opt.endswith("S")) else rest[1:]
-            if name == "timeout" and rest:
-                rest = rest[1:]                       # the duration
-            elif name == "nice" and rest and re.fullmatch(r"-?\d+", rest[0]):
-                rest = rest[1:]
-            tokens, changed = rest, True
-    if not tokens:
-        return tokens, nested
-    tokens = [tokens[0].rsplit("/", 1)[-1], *tokens[1:]]
-    if tokens[0] == "git":
-        rest = tokens[1:]
-        while rest and rest[0].startswith("-"):
-            rest = rest[2:] if rest[0] in GIT_ARG_OPTS else rest[1:]
-        tokens = ["git", *rest]
-    return tokens, nested
+    prefix = _Prefix()
+    for word in tokens:
+        if prefix.mode == "args":
+            break
+        prefix.feed(word)
+    if prefix.mode == "args":
+        start = prefix.start
+    elif prefix.mode == "fname":
+        start = prefix.function_at                    # a lone `function` is the command
+    else:
+        return [], prefix.nested
+    argv0 = tokens[start].rsplit("/", 1)[-1]
+    if argv0 != "git":
+        return [argv0, *tokens[start + 1:]], prefix.nested
+    k = start + 1
+    while k < len(tokens) and tokens[k].startswith("-"):
+        k += 2 if tokens[k] in GIT_ARG_OPTS else 1
+    return ["git", *tokens[k:]], prefix.nested
 
 
 def _is_split_string(opt: str) -> bool:
@@ -464,32 +656,26 @@ def _is_split_string(opt: str) -> bool:
     return opt.startswith("-") and "S" in opt
 
 
-def _command_position(words: list[str]) -> bool:
-    """True when the next word would start a command (so a bare '{' or '}' is a keyword)."""
-    if not words:
-        return True
-    if words[0] in ("function", "coproc") and len(words) == 2:
-        return True
-    return not _argv(words)[0]
-
-
-def _segments(text: str) -> list[dict]:
-    """Split a command into segments of words; redirections and their targets are dropped."""
+def _segments(tokens: list[tuple[str, str]], deadline: float | None = None) -> list[dict]:
+    """Split a token stream into segments of words; redirections and their targets are dropped."""
     segments: list[dict] = []
     current = {"words": [], "piped": False, "stdin": False}
-    piped_next = False
+    prefix = _Prefix()
     skip_target = False
-    for kind, value in _lex(text):
+    for count, (kind, value) in enumerate(tokens):
+        if not count & 255:
+            _tick(deadline)
         if skip_target:
             skip_target = False
             if kind == "word":
                 continue
         if kind == "word":
-            if value in ("{", "}") and _command_position(current["words"]):
+            if value in ("{", "}") and prefix.at_command:
                 segments.append(current)
-                current = {"words": [], "piped": False, "stdin": False}
+                current, prefix = {"words": [], "piped": False, "stdin": False}, _Prefix()
             else:
                 current["words"].append(value)
+                prefix.feed(value)
         elif kind == "redir":
             current["stdin"] = current["stdin"] or value.startswith("<")
             skip_target = True
@@ -498,8 +684,8 @@ def _segments(text: str) -> list[dict]:
             if bare == "" and not current["words"]:
                 continue                              # keeps the piped flag across '('
             segments.append(current)
-            piped_next = bare in ("|", "|&")
-            current = {"words": [], "piped": piped_next, "stdin": False}
+            current = {"words": [], "piped": bare in ("|", "|&"), "stdin": False}
+            prefix = _Prefix()
     segments.append(current)
     return [seg for seg in segments if seg["words"]]
 
@@ -563,21 +749,20 @@ def _decide_shell(event: dict, data: dict) -> dict:
             text, depth = queue.pop()
             if seen > 200 or depth > MAX_DEPTH:
                 return too_complex
-            outer, inners = _substitutions(text, deadline)
-            queue += [(inner, depth + 1) for inner in inners]
             try:
-                segments = _segments(outer)
+                streams = [(d, _segments(tokens, deadline)) for d, tokens in _lex(text, deadline, depth)]
             except ValueError:
                 asks.append(_ask("unparseable", "a command part could not be parsed; a person must read it"))
-                crude = re.sub(r"[\"']", " ", outer)
-                segments = [{"words": part.split(), "piped": False, "stdin": False}
-                            for part in re.split(r"[;&|()<>\n]+", crude)]
-            for seg in segments:
-                found: list[str] = []
-                denied = _check_segment(seg["words"], seg["piped"], seg["stdin"], patterns, asks, found)
-                if denied:
-                    return denied
-                queue += [(t, depth + 1) for t in found]
+                crude = re.sub(r"[\"']", " ", text)
+                streams = [(depth, [{"words": part.split(), "piped": False, "stdin": False}
+                                    for part in re.split(r"[;&|()<>\n`]+", crude)])]
+            for d, segments in streams:
+                for seg in segments:
+                    found: list[str] = []
+                    denied = _check_segment(seg["words"], seg["piped"], seg["stdin"], patterns, asks, found)
+                    if denied:
+                        return denied
+                    queue += [(t, d + 1) for t in found]
     except _TooComplex:
         return too_complex
     return asks[0] if asks else _result("allow", "no-guarded-command", "no guarded command found")
