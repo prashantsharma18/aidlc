@@ -112,8 +112,9 @@ refs/heads/<base>` is allowed.
 
 The post-check flags every untracked file that matches a protected path. A file you created
 yourself, such as an uncommitted `CLAUDE.local.md` or a folder `AGENTS.md`, therefore flags
-`protected-path` after each modifying call. Commit it, or gitignore it. The flag message tells
-the agent the same: "commit it, gitignore it, or stop and ask if you did not create it".
+`protected-path` after each modifying call. Commit it on the base branch (a commit on the task
+branch still differs from the base), or gitignore it. The flag message tells the agent the same:
+"commit it, gitignore it, or stop and ask if you did not create it".
 
 ## What the guard leaves to others
 
