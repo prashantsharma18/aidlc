@@ -13,6 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # never leave __pycache__ in the repository (post-check would flag it)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import guard  # noqa: E402  (same directory)
 

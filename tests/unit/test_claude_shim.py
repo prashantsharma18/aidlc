@@ -172,3 +172,24 @@ class FixRound1Test(unittest.TestCase):
         self.assertEqual(rc, 2)
         self.assertNotIn(key, err.getvalue())
         self.assertIn("ValueError", err.getvalue())
+
+
+class NoBytecodeTest(unittest.TestCase):
+    """Task 10 finding: a hook run left .aidlc/hooks/__pycache__ in the repository, which the
+    post-tool check then reported as a write outside the task scope on every call."""
+
+    def test_hooks_write_no_bytecode_next_to_themselves(self):
+        import shutil
+        import tempfile
+        from pathlib import Path
+        for phase, payload in (("pre", {"tool_name": "Bash", "tool_input": {"command": "echo ok"}}),
+                               ("post", {"tool_name": "Bash", "tool_input": {}, "tool_response": {}})):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as tmp:
+                hooks = Path(tmp) / "hooks"
+                shutil.copytree(HOOKS, hooks, ignore=shutil.ignore_patterns("__pycache__", "README.md"))
+                env = {k: v for k, v in os.environ.items() if k != "PYTHONDONTWRITEBYTECODE"}
+                env["AIDLC_LOG_DIR"] = str(Path(tmp) / "logs")
+                subprocess.run([sys.executable, str(hooks / "claude_shim.py"), phase],
+                               input=json.dumps({**payload, "cwd": tmp}), capture_output=True,
+                               text=True, env=env, timeout=10)
+                self.assertFalse((hooks / "__pycache__").exists())

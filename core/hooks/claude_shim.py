@@ -10,6 +10,7 @@ import os
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # never leave __pycache__ in the repository (post-check would flag it)
 MAX_OUTPUT_CHARS = 5_000_000  # larger output is flagged unscanned, never passed
 CLASSES = {"Read": "read", "Glob": "read", "Grep": "read", "LS": "read",
            "Edit": "edit", "Write": "edit", "MultiEdit": "edit", "NotebookEdit": "edit",

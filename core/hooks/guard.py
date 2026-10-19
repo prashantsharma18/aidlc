@@ -18,6 +18,7 @@ import sys
 import time
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # never leave __pycache__ in the repository (post-check would flag it)
 HERE = Path(__file__).resolve().parent
 SECRET_RE = re.compile(
     r"(AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36,}"
