@@ -1,4 +1,5 @@
 import os
+import pwd
 import socket
 import subprocess
 import sys
@@ -48,7 +49,7 @@ class ArgvTest(unittest.TestCase):
     def test_layout_and_order(self):
         argv = self.box.argv("npm test", "test")
         work, gitlink = str(self.work), str(self.work / ".git")
-        self.assertIn(("/", "/"), self.pairs(argv, "--ro-bind"))
+        self.assertIn(("/usr", "/usr"), self.pairs(argv, "--ro-bind"))   # was ("/", "/"): Task 5 fix round 1
         self.assertIn("/run", [argv[i + 1] for i, a in enumerate(argv) if a == "--tmpfs"])
         self.assertIn((work, work), self.pairs(argv, "--bind"))
         self.assertIn((gitlink, gitlink), self.pairs(argv, "--ro-bind"))
@@ -108,6 +109,97 @@ class ArgvTest(unittest.TestCase):
         self.assertEqual([p.name for p in sandbox.toolchain_paths("dotnet")], [".dotnet"])
         self.assertEqual(sandbox.toolchain_paths("generic"), [])
         self.assertIn("DOTNET_ROOT", sandbox.toolchain_env("dotnet"))
+
+
+class ProfileDataTest(unittest.TestCase):
+    def patched(self, data):
+        return mock.patch.object(sandbox, "load_yaml", return_value=data)
+
+    def test_unknown_profile_raises(self):
+        for fn in (sandbox.toolchain_paths, sandbox.toolchain_env):
+            with self.assertRaises(sandbox.SandboxError):
+                fn("no-such-profile")
+
+    def test_malformed_values_raise(self):
+        for bad in ("~/.nvm", None, 5, [1], {"a": "b"}):
+            with self.subTest(bad=bad), self.patched({"p": {"ci_sandbox_read": bad}}):
+                if bad is None:
+                    self.assertEqual(sandbox.toolchain_paths("p"), [])      # null means absent
+                else:
+                    with self.assertRaises(sandbox.SandboxError):
+                        sandbox.toolchain_paths("p")
+            with self.subTest(env=bad), self.patched({"p": {"ci_sandbox_env": bad}}):
+                if bad is None:
+                    self.assertEqual(sandbox.toolchain_env("p"), [])
+                else:
+                    with self.assertRaises(sandbox.SandboxError):
+                        sandbox.toolchain_env("p")
+
+    def test_absent_means_empty(self):
+        with self.patched({"p": {}}):
+            self.assertEqual(sandbox.toolchain_paths("p"), [])
+            self.assertEqual(sandbox.toolchain_env("p"), [])
+
+    def test_paths_must_be_strictly_under_home(self):
+        for bad in ("~", "/etc", "~/../x", ""):
+            with self.subTest(bad=bad), self.patched({"p": {"ci_sandbox_read": [bad]}}):
+                with self.assertRaises(sandbox.SandboxError):
+                    sandbox.toolchain_paths("p")
+
+
+class RootLayoutTest(unittest.TestCase):
+    def setUp(self):
+        p = mock.patch.object(sandbox, "bwrap_path", return_value="/usr/bin/bwrap")
+        p.start()
+        self.addCleanup(p.stop)
+        self.tmp, d = dirs()
+        self.box = sandbox.Sandbox(work=d["work"], private_home=d["private"], home=d["home"])
+
+    def test_no_whole_root_bind(self):
+        argv = self.box.argv("x", "test")
+        self.assertNotIn(("/", "/"), [(argv[i + 1], argv[i + 2]) for i, a in enumerate(argv) if a == "--ro-bind"])
+        binds = {argv[i + 2] for i, a in enumerate(argv) if a == "--ro-bind"}
+        self.assertTrue(binds.isdisjoint({"/mnt", "/home", "/root", "/var", "/media", "/srv", "/snap"}))
+        self.assertIn("/usr", binds)
+
+    def test_symlinked_top_level_dirs_are_recreated(self):
+        argv = self.box.argv("x", "test")
+        links = {argv[i + 2]: argv[i + 1] for i, a in enumerate(argv) if a == "--symlink"}
+        for name in ("/bin", "/lib"):
+            if os.path.islink(name):
+                self.assertEqual(links[name], os.readlink(name))
+
+    def test_resolver_file_only_on_network_steps(self):
+        real = os.path.realpath("/etc/resolv.conf")
+        if not os.path.exists(real):
+            self.skipTest("no /etc/resolv.conf on this host")
+        install = self.box.argv("x", "install")
+        pairs = [(install[i + 1], install[i + 2]) for i, a in enumerate(install) if a == "--ro-bind"]
+        self.assertIn((real, real), pairs)
+        self.assertNotIn(str(Path(real).parent), [b for _, b in pairs])
+        test = self.box.argv("x", "test")
+        self.assertNotIn(real, test)
+
+
+SOCKET_WALK = r"""
+import os, socket, stat
+hits = []
+for top, dirs, files in os.walk('/'):
+    dirs[:] = [d for d in dirs if os.path.join(top, d) not in ('/proc', '/sys', '/dev')]
+    for name in dirs + files:
+        path = os.path.join(top, name)
+        try:
+            if not stat.S_ISSOCK(os.lstat(path).st_mode):
+                continue
+            s = socket.socket(socket.AF_UNIX)
+            s.settimeout(2)
+            if s.connect_ex(path) == 0:
+                hits.append(path)
+            s.close()
+        except OSError:
+            pass
+print('REACHABLE', sorted(hits))
+"""
 
 
 @unittest.skipUnless(sandbox.available(), "bubblewrap cannot start a sandbox here (sudo apt install bubblewrap)")
@@ -193,3 +285,39 @@ class LiveTest(unittest.TestCase):
         run_command(ctx, "test")
         self.assertEqual((work / ".git").read_text(), gitlink)
         self.assertNotIn("[x]", (repo / ".git" / "config").read_text())
+
+    def run_script(self, script, step="test", box=None):
+        path = self.work / "walk.py"
+        path.write_text(script)
+        ctx = CheckContext(repo=self.work, config=config(f'"{PY}" walk.py', step), branch=None,
+                           base="0" * 40, scope=None, wrap=(box or self.box).argv)
+        run_command(ctx, step)
+        return (self.work / f".check/{step}.log").read_text()
+
+    def test_no_host_socket_is_reachable_even_with_the_real_home(self):
+        box = sandbox.Sandbox(work=self.work, private_home=self.private, home=Path.home())
+        log = self.run_script(SOCKET_WALK, box=box)
+        self.assertIn("REACHABLE []", log)
+
+    def test_mnt_and_the_real_home_are_absent(self):
+        real_names = [n for n in os.listdir(Path.home()) if not n.startswith(".")][:20]
+        script = ("import os, pwd\n"
+                  "print('MNT', os.path.exists('/mnt'))\n"
+                  "pw = pwd.getpwuid(os.getuid()).pw_dir\n"
+                  "print('PWHOME', os.path.exists(pw), sorted(os.listdir(pw)) if os.path.isdir(pw) else [])\n")
+        with mock.patch.dict(os.environ, {"HOME": str(self.home)}):
+            box = sandbox.Sandbox(work=self.work, private_home=self.private)   # default home
+            self.assertEqual(box.home, self.home)
+            log = self.run_script(script, box=box)
+        self.assertIn("MNT False", log)
+        for name in real_names:                                   # nothing from the real home is visible
+            self.assertNotIn(repr(name), log)
+        pw = pwd.getpwuid(os.getuid()).pw_dir
+        if pw != str(self.home):
+            self.assertIn("PWHOME False", log)
+
+    def test_install_step_can_read_the_resolver(self):
+        if not Path("/etc/resolv.conf").exists():
+            self.skipTest("no /etc/resolv.conf on this host")
+        log = self.run_script("print('RESOLV', len(open('/etc/resolv.conf').read()) > 0)", step="install")
+        self.assertIn("RESOLV True", log)

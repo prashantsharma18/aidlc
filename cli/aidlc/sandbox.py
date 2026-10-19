@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -36,37 +37,80 @@ def bwrap_path() -> str | None:
 
 
 def available() -> bool:
-    """True only if a sandbox actually starts here (bwrap present and user namespaces allowed)."""
-    exe = bwrap_path()
-    if not exe:
+    """True only if a sandbox actually starts here. The probe uses the real argv builder, so it
+    exercises the flags a run would use. Any failure means False."""
+    if not bwrap_path():
         return False
+    tmp = Path(tempfile.mkdtemp(prefix="aidlc-probe-"))
     try:
-        probe = subprocess.run([exe, "--die-with-parent", "--unshare-net", "--ro-bind", "/", "/",
-                                "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/run", "true"],
-                               capture_output=True, timeout=10)
-    except (OSError, subprocess.TimeoutExpired):
+        dirs = {name: tmp / name for name in ("work", "private", "home")}
+        for d in dirs.values():
+            d.mkdir()
+        box = Sandbox(work=dirs["work"], private_home=dirs["private"], home=dirs["home"])
+        probe = subprocess.run(box.argv("true", "probe"), capture_output=True, timeout=10)
+        return probe.returncode == 0
+    except (OSError, subprocess.SubprocessError, SandboxError):
         return False
-    return probe.returncode == 0
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def _profile(profile: str) -> dict:
-    return load_yaml(framework_root() / "core" / "context" / "profiles.yaml").get(profile) or {}
+    data = load_yaml(framework_root() / "core" / "context" / "profiles.yaml")
+    if not isinstance(data, dict) or not isinstance(data.get(profile), dict):
+        raise SandboxError(f"profile '{profile}' is not in core/context/profiles.yaml")
+    return data[profile]
+
+
+def _string_list(profile: str, key: str) -> list[str]:
+    value = _profile(profile).get(key)
+    if value is None:
+        return []
+    if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+        raise SandboxError(f"profile '{profile}': {key} must be a list of strings")
+    return value
 
 
 def toolchain_paths(profile: str) -> list[Path]:
-    """Toolchain directories under home to bind read-only (framework data, never the branch's)."""
-    return [Path(p).expanduser() for p in _profile(profile).get("ci_sandbox_read", [])]
+    """Toolchain directories strictly under home to bind read-only (framework data, never the branch's)."""
+    home = Path.home()
+    paths = []
+    for raw in _string_list(profile, "ci_sandbox_read"):
+        path = Path(os.path.normpath(Path(raw).expanduser()))
+        if not raw or not path.is_absolute() or path == home or home not in path.parents:
+            raise SandboxError(f"profile '{profile}': ci_sandbox_read entry '{raw}' must be under {home}")
+        paths.append(path)
+    return paths
 
 
 def toolchain_env(profile: str) -> list[str]:
     """Extra environment names a toolchain needs inside the sandbox (framework data)."""
-    return list(_profile(profile).get("ci_sandbox_env", []))
+    return _string_list(profile, "ci_sandbox_env")
 
 
-def _resolver_dir() -> Path | None:
-    """The directory /etc/resolv.conf resolves into, when that is under /run (systemd-resolved)."""
-    target = Path("/etc/resolv.conf").resolve()
-    return target.parent if str(target).startswith("/run/") and target.exists() else None
+# The root is an allow-list. A whole-root read-only bind would leave unix sockets reachable
+# (Docker Desktop and proxy sockets under /mnt/wsl) and expose the real home (/mnt/wslg, /mnt/c).
+ROOT_BINDS = ("/usr", "/etc", "/opt")
+ROOT_LINKS = ("/bin", "/sbin", "/lib", "/lib64", "/lib32", "/libx32")
+
+
+def _root_args() -> list[str]:
+    args: list[str] = []
+    for path in ROOT_BINDS:
+        if os.path.isdir(path):
+            args += ["--ro-bind", path, path]
+    for path in ROOT_LINKS:
+        if os.path.islink(path):
+            args += ["--symlink", os.readlink(path), path]
+        elif os.path.isdir(path):
+            args += ["--ro-bind", path, path]
+    return args
+
+
+def _resolver_file() -> str | None:
+    """The file /etc/resolv.conf resolves to. Only the file is bound, never its directory."""
+    real = os.path.realpath("/etc/resolv.conf")
+    return real if os.path.isfile(real) else None
 
 
 @dataclass
@@ -87,11 +131,12 @@ class Sandbox:
                             ("home", self.home), ("git directory", self.git_dir)):
             if path is not None and not Path(path).exists():
                 raise SandboxError(f"the {label} {path} does not exist; refusing to run without it")
-        args = [exe, "--die-with-parent", "--new-session", "--unshare-pid", "--unshare-ipc", "--unshare-uts",
-                "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp", "--tmpfs", "/run"]
-        resolver = _resolver_dir() if network else None
+        args = [exe, "--die-with-parent", "--new-session", "--unshare-pid", "--unshare-ipc", "--unshare-uts"]
+        args += _root_args()
+        args += ["--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp", "--tmpfs", "/run"]
+        resolver = _resolver_file() if network else None
         if resolver is not None:
-            args += ["--ro-bind", str(resolver), str(resolver)]
+            args += ["--ro-bind", resolver, resolver]
         args += ["--bind", str(self.private_home), str(self.home)]
         for path in self.readable:
             if path.exists():
