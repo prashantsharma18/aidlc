@@ -27,6 +27,7 @@ class RepoConfig:
     context: dict = field(default_factory=dict)
     harness: dict = field(default_factory=dict)
     tool_names: dict = field(default_factory=dict)
+    test_reports: list[str] = field(default_factory=list)
 
 
 def _mapping(data: dict, key: str) -> dict:
@@ -47,9 +48,17 @@ def load_config(repo: Path) -> RepoConfig:
     ctx.update(_mapping(data, "context"))
     harness = {"auto_memory": False, "disable_user_plugins": [], "base_branch": "main"}
     harness.update(_mapping(data, "harness"))
+    reports = data.get("test_reports")
+    if reports is None:
+        reports = []
+    if not isinstance(reports, list) or not all(
+            isinstance(p, str) and p.strip() and not p.startswith(("/", "~")) and ".." not in Path(p).parts
+            for p in reports):
+        raise ValueError(f"{CONFIG}: 'test_reports' must be a list of relative paths or globs inside the "
+                         f"repository, got {reports!r}")
     return RepoConfig(data["name"], data["owner"], data["profile"], data.get("purpose", ""),
                       _mapping(data, "commands"), list(data.get("check_steps") or []), ctx,
-                      harness=harness, tool_names=_mapping(data, "tool_names"))
+                      harness=harness, tool_names=_mapping(data, "tool_names"), test_reports=reports)
 
 
 def _write(repo: Path, rel: str, text: str, report: list[tuple[str, str]]) -> None:
@@ -77,6 +86,7 @@ def init_repo(repo: Path, name: str, owner: str, profile: str, purpose: str,
 
     config = {"name": name, "owner": owner, "profile": profile, "purpose": purpose,
               "commands": chosen["commands"], "check_steps": chosen["check_steps"],
+              "test_reports": chosen.get("test_reports", []),
               "context": {"rules_file": "AGENTS.md", "map": "docs/codebase-map.md",
                           "review_interval_days": 30},
               "openwiki": {"adopted": False},

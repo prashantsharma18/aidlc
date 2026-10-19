@@ -22,6 +22,7 @@ from typing import Callable
 from ..hookbridge import hooks
 from ..paths import safe_target
 from ..repo import RepoConfig
+from .test_reports import NOTRUN, ReportError, parse_report
 
 CHECK_DIR = ".check"
 RECORD = f"{CHECK_DIR}/result.json"
@@ -59,6 +60,7 @@ class CheckContext:
     today: date = field(default_factory=date.today)
     timeout_s: int = STEP_TIMEOUT_S
     started: float = 0.0              # set by run_check
+    reports_before: dict = field(default_factory=dict)   # report files before the command steps ran
 
 
 @dataclass
@@ -321,9 +323,92 @@ def step_secrets(ctx: CheckContext) -> StepResult:
     return StepResult("secrets", OK)
 
 
+def _inside(path: Path, root: Path) -> Path | None:
+    """The resolved path of a matched report file, or None when it is not a file inside the checkout
+    (for example reached through a symlinked directory)."""
+    try:
+        real = path.resolve()
+        return real if real.is_file() and real.is_relative_to(root) else None
+    except OSError:
+        return None
+
+
+def _report_snapshot(ctx: CheckContext) -> dict[str, tuple[int, int, int]]:
+    """(mtime_ns, size, inode) of every existing report file, taken before the command steps run."""
+    snap = {}
+    root = ctx.repo.resolve()
+    for pattern in ctx.config.test_reports:
+        for path in ctx.repo.glob(pattern):
+            real = _inside(path, root)
+            if real is not None:
+                st = os.stat(real)
+                snap[str(real)] = (st.st_mtime_ns, st.st_size, st.st_ino)
+    return snap
+
+
+def _allowed_skips(ctx: CheckContext) -> set[str]:
+    """Declared skips. CI: the base branch's text (ctx.steering); locally: the working copy's file."""
+    if ctx.steering is not None:
+        text = ctx.steering.get(ALLOWED_SKIPS, "")
+    else:
+        path = ctx.repo / ALLOWED_SKIPS
+        text = path.read_text(encoding="utf-8") if path.is_file() and not path.is_symlink() else ""
+    out = set()
+    for line in text.splitlines():
+        if line.lstrip().startswith("#") or " # " not in line:
+            continue
+        name, reason = line.split(" # ", 1)
+        if name.strip() and reason.strip():
+            out.add(name.strip())
+    return out
+
+
+def _fresh_reports(ctx: CheckContext) -> list[Path]:
+    """Reports this run wrote: new files, or files whose snapshot changed. A previous run's file
+    never counts, however recent."""
+    found: list[Path] = []
+    root = ctx.repo.resolve()
+    for pattern in ctx.config.test_reports:
+        for path in sorted(ctx.repo.glob(pattern)):
+            real = _inside(path, root)
+            if real is None or real in found:
+                continue
+            st = os.stat(real)
+            if ctx.reports_before.get(str(real)) != (st.st_mtime_ns, st.st_size, st.st_ino):
+                found.append(real)
+    return found
+
+
+def step_skips(ctx: CheckContext) -> StepResult:
+    if "test" not in ctx.config.check_steps:
+        return StepResult("skips", NA, "no test step in check_steps")
+    if not ctx.config.test_reports:
+        return StepResult("skips", FAIL, "test_reports is empty in .aidlc/config.yaml: say where the "
+                          "test step writes its report, so skipped tests are visible")
+    reports = _fresh_reports(ctx)
+    if not reports:
+        return StepResult("skips", FAIL, "no test report written by this run (looked for: "
+                          + ", ".join(ctx.config.test_reports) + "): did the tests run?")
+    try:
+        results = [entry for path in reports for entry in parse_report(path)]
+    except ReportError as exc:
+        return StepResult("skips", FAIL, str(exc))
+    if not results:
+        return StepResult("skips", FAIL, "the test report lists no tests")
+    allowed = _allowed_skips(ctx)
+    not_run = [name for name, status in results if status == NOTRUN]
+    unexpected = [name for name in not_run if name not in allowed]
+    detail = f"{len(results)} tests, {len(not_run)} not run, {len(unexpected)} unexpected"
+    if unexpected:
+        return StepResult("skips", FAIL, detail + ": " + "; ".join(unexpected[:5]) +
+                          f". A test that cannot run must fail; declared skips go in {ALLOWED_SKIPS}")
+    return StepResult("skips", OK, detail)
+
+
 BUILTINS: list[tuple[str, Callable[[CheckContext], StepResult]]] = [
     ("scope", step_scope),
     ("protected-tests", step_protected_tests),
+    ("skips", step_skips),
     ("context-drift", step_context_drift),
     ("secrets", step_secrets),
 ]
@@ -340,6 +425,7 @@ def run_check(ctx: CheckContext, builtins=None) -> CheckResult:
     """Run the command steps, then the built-in steps; every step runs."""
     prepare_check_dir(ctx.repo)
     ctx.started = time.time()
+    ctx.reports_before = _report_snapshot(ctx) if "test" in ctx.config.check_steps else {}
     steps = [_guarded(name, lambda n=name: run_command(ctx, n)) for name in ctx.config.check_steps]
     for name, fn in (BUILTINS if builtins is None else builtins):
         steps.append(_guarded(name, lambda f=fn: f(ctx)))

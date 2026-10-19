@@ -8,6 +8,7 @@ node:
     test: npm test
     build: npm run build
   check_steps: [lint, typecheck, test]
+  test_reports: [".check/test-report.json"]
   network_allow: [registry.npmjs.org]
   sandbox_allow_write: ["~/.npm"]
 dotnet:
@@ -15,12 +16,14 @@ dotnet:
     restore: dotnet restore --locked-mode
     build: dotnet build --nologo --no-restore -warnaserror
     format: dotnet format --verify-no-changes --no-restore
-    test: dotnet test --nologo --no-build
+    test: dotnet test --nologo --no-build --logger "trx;LogFilePrefix=results" --results-directory .check/trx
   check_steps: [build, format, test]
+  test_reports: [".check/trx/*.trx"]
   network_allow: [api.nuget.org, globalcdn.nuget.org]
   sandbox_allow_write: ["~/.nuget/packages", "~/.local/share/NuGet", "~/.dotnet"]
 generic:
   commands: {}
   check_steps: []
+  test_reports: []
   network_allow: []
   sandbox_allow_write: []
