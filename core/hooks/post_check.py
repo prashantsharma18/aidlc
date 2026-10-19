@@ -21,8 +21,9 @@ ASSERT_RE = re.compile(r"(expect\(|\bassert|Assert\.|\.Should\(|Should\.|\.toBe\
 TEST_FILE_RE = re.compile(
     r"(^|/)(test|tests|spec|__tests__)/|(^|/)[^/]*\.Tests?/|\.(test|spec)\.[cm]?[jt]sx?$"
     r"|(Test|Tests|Spec)\.(cs|java|kt)$|(^|/)test_[^/]*\.py$|_test\.py$|_test\.go$")
-SKIP_RE = re.compile(r"\b(it|test|describe)\.skip\(|\bx(it|describe|test)\(|\[(Fact|Theory)\([^)]*Skip\s*=|"
-                     r"\[Ignore\b|@pytest\.mark\.skip|@unittest\.skip|\bt\.Skip\(")
+SKIP_RE = re.compile(r"\.skip\b|\bx(it|describe|test)\s*\(|\.fixme\s*\(|@(Disabled|Ignore)\b|\[Ignore\b|"
+                     r"\[(Fact|Theory)\([^)]*Skip\s*=|@pytest\.mark\.skip|@unittest\.skip|\bt\.Skip\w*\(|"
+                     r"\.only\b|\b(fit|fdescribe|ftest)\s*\(")
 
 
 def _result(decision: str, rule: str, reason: str) -> dict:
@@ -67,8 +68,8 @@ def check(event: dict) -> dict:
                                    f"was changed or removed. Restore it, or stop and ask: "
                                    f"{guard._redact(removed[0])[:120]}")
                 if any(ln.startswith("+") and not ln.startswith("+++") and SKIP_RE.search(ln) for ln in lines):
-                    return _result("flag", "skipped-test", f"a test was disabled in {guard._redact(path)}. "
-                                   "Re-enable it, or stop and ask.")
+                    return _result("flag", "skipped-test", f"a test was disabled or the suite was narrowed in "
+                                   f"{guard._redact(path)}. Revert it, or stop and ask.")
         return _result("pass", "no-rule-broken", "no rule broken")
     except Exception as exc:  # noqa: BLE001 - fail closed
         return _result("flag", "fail-safe", f"post-tool check failed ({type(exc).__name__}); "

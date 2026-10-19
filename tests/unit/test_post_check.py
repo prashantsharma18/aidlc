@@ -238,3 +238,24 @@ class PostCheckRound1Test(unittest.TestCase):
             env.write_scope(self.root, ["**"])
             git(self.root, "checkout", "-q", "--detach")
             self.assertEqual(post.check(ev(self.root))["decision"], "flag")
+
+    def test_skip_and_focus_styles_flagged(self):
+        cases = ("test.skip.each([1])('a', () => {});", "describe.skip.each([1])('a', () => {});",
+                 "@Disabled", 't.Skipf("x")', "test.fixme('a', () => {});", "it.skip ('a', () => {});",
+                 "it.only('a', () => {});", "fit('a', () => {});", "fdescribe('a', () => {});")
+        for line in cases:
+            path = "test/ATests.cs" if line == "@Disabled" else "test/a.test.ts"
+            with self.subTest(line=line), GuardEnv() as env:
+                env.write_scope(self.root, ["**"])
+                with (self.root / path).open("a") as fh:
+                    fh.write(line + "\n")
+                r = post.check(ev(self.root))
+                self.assertEqual((r["decision"], r["rule"]), ("flag", "skipped-test"))
+                git(self.root, "checkout", "--", path)
+
+    def test_skip_lookalike_passes(self):
+        with GuardEnv() as env:
+            env.write_scope(self.root, ["**"])
+            with (self.root / "test" / "a.test.ts").open("a") as fh:
+                fh.write("const skipLimit = 3;\n")
+            self.assertEqual(post.check(ev(self.root))["decision"], "pass")
