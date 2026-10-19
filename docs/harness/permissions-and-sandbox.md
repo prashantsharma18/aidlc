@@ -110,7 +110,8 @@ by `core/schemas/repo-permissions.schema.json`. Three keys loosen: `allow_add`,
 `network_allow_add` and `sandbox_allow_write_add`. Each entry needs a reason and an owner, and
 doctor D6 warns on each one. Render refuses a sandbox write grant that would reach the harness or
 your executables: `/`, `~`, anything under `~/.claude` or `~/.aidlc`, `~/.local/bin`, `~/bin`,
-`/usr`, `/bin`, any parent of these, and any path containing `..`.
+`/usr`, `/bin`, any parent of these, a symlink to any of them, and any path containing `..`,
+a variable such as `$HOME`, or a `~user` form.
 
 ```yaml
 # .aidlc/permissions.yaml

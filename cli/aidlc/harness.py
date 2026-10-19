@@ -9,6 +9,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import posixpath
 import re
 from pathlib import Path
@@ -68,7 +69,7 @@ def _absolute(value: str) -> str | None:
     """A sandbox path as an absolute POSIX path ('~' expanded); None for a repository-relative one."""
     if value.startswith("~"):
         value = Path.home().as_posix() + "/" + value[1:].lstrip("/")
-    return posixpath.normpath(value) if value.startswith("/") else None
+    return posixpath.normpath("/" + value.lstrip("/")) if value.startswith("/") else None
 
 
 def _covers(outer: str, inner: str) -> bool:
@@ -80,15 +81,20 @@ def check_write_grant(value: str) -> None:
     one of REFUSED_WRITE, anything under it, or any ancestor of it (such as '~' or '/')."""
     if ".." in value.replace("\\", "/").split("/"):
         raise HarnessError(f"sandbox_allow_write_add '{value}' refused: '..' is not allowed")
+    if "$" in value or "\\" in value or (value.startswith("~") and value != "~" and not value.startswith("~/")):
+        raise HarnessError(f"sandbox_allow_write_add '{value}' refused: write a literal path "
+                           "('~/...' or '/...'), not a variable, '~user' or a backslash")
     prefix = re.split(r"[*?\[]", value, maxsplit=1)[0]          # a glob: judge its static prefix
     path = _absolute(prefix)
     if path is None:
         return
     if prefix != value and not prefix.endswith("/"):
         path = posixpath.dirname(path)                           # '~/.c*' starts in '~'
+    candidates = {path, os.path.realpath(path)}                  # a symlink to a refused place
     for refused in REFUSED_WRITE:
         target = _absolute(refused)
-        if _covers(path, target) or _covers(target, path):
+        targets = {target, os.path.realpath(target)}
+        if any(_covers(p, t) or _covers(t, p) for p in candidates for t in targets):
             raise HarnessError(f"sandbox_allow_write_add '{value}' refused: it would let the agent "
                                f"write to {refused} (harness, executables or system files)")
 

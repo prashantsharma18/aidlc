@@ -161,12 +161,23 @@ class F7SandboxLooseningTest(unittest.TestCase):
         home = str(Path.home())
         for value in ("~", "/", "~/", "~/.claude", "~/.claude/x", "~/.aidlc/scopes", "~/.local/bin",
                       "~/bin", "/usr", "/usr/local/lib", "/bin", "~/x/../.claude", "../x",
-                      "~/.local", f"{home}/.claude", f"{home}/.aidlc/logs", "~/.c*", "/*"):
+                      "~/.local", f"{home}/.claude", f"{home}/.aidlc/logs", "~/.c*", "/*",
+                      "$HOME/.claude", "${HOME}", "//usr/bin", "~//.claude", "~root/x"):
             with self.subTest(value=value), Scaffold() as root:
                 self.narrow(root, "sandbox_allow_write_add:\n"
                                   f"  - {{value: {json.dumps(value)}, reason: r, owner: o}}\n")
                 with self.assertRaisesRegex(HarnessError, "refused"):
                     effective_permissions(root)
+
+    def test_symlink_to_refused_location_refused(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp, Scaffold() as root:
+            link = Path(tmp) / "bin-link"
+            os.symlink("/usr/bin", link)
+            self.narrow(root, "sandbox_allow_write_add:\n"
+                              f"  - {{value: {json.dumps(str(link))}, reason: r, owner: o}}\n")
+            with self.assertRaisesRegex(HarnessError, "refused"):
+                effective_permissions(root)
 
     def test_valid_entries_render_and_warn(self):
         with Scaffold() as root:
