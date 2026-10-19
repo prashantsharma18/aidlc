@@ -18,6 +18,7 @@ rules:
   licences: {allow: [MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC], review: [MPL-2.0, "LGPL-*"], deny: ["AGPL-*", unknown]}
   vulnerabilities: No known high or critical advisory without a recorded exception
   review_first: [no source repository, repository link mismatch, maintainer changed since the last approved version]
+  binaries: "Exact version and SHA-256 of the release asset in core/policy/tool-register.yaml; installed only by `aidlc tools install`, which verifies the checksum before writing; never inside an agent session"
 monitoring:
   advisories: Daily scan of lockfiles on main; a new high or critical opens a work item
   review: Quarterly; unused, deprecated or unowned packages are removed

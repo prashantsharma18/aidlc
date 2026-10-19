@@ -9,3 +9,4 @@ from . import scope_cmd  # noqa: F401
 from . import doctor_cmd  # noqa: F401
 from . import attempts_cmd  # noqa: F401
 from . import ci_cmd  # noqa: F401
+from . import tools_cmd  # noqa: F401

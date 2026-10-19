@@ -117,6 +117,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "binaries": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },

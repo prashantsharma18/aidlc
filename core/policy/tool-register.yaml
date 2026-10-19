@@ -36,3 +36,34 @@ tools:
     telemetry: n/a
     permissions: Agents have no write access; read-only views for diagnosis
     review_by: "2027-01-18"
+  - id: opa
+    status: approved
+    owner: "@platform-team"
+    purpose: Policy engine; runs the Rego unit tests of the framework's policy-as-code pack (CI and lab)
+    data_flows: None; evaluates local files only
+    route: n/a (no model)
+    telemetry: n/a
+    permissions: Installed by `aidlc tools install` for people and CI; never inside an agent session
+    review_by: "2027-01-19"
+    version: "1.21.2"
+    artifacts:
+      - platform: linux-x86_64
+        kind: binary
+        url: https://github.com/open-policy-agent/opa/releases/download/v1.21.2/opa_linux_amd64_static
+        sha256: 830ab11f61ffec760b5e19db0d7ad02bf037e13f5ef4d665faeaf17632177527
+  - id: conftest
+    status: approved
+    owner: "@platform-team"
+    purpose: Runs the Rego pack against rendered settings, narrowing files and CI workflows (trusted CI)
+    data_flows: None; evaluates local files only
+    route: n/a (no model)
+    telemetry: Results recorded in aidlc ci records (Plan 4 ships them as aidlc.check.result)
+    permissions: Installed by `aidlc tools install` for people and CI; never inside an agent session
+    review_by: "2027-01-19"
+    version: "0.71.1"
+    artifacts:
+      - platform: linux-x86_64
+        kind: tar.gz
+        member: conftest
+        url: https://github.com/open-policy-agent/conftest/releases/download/v0.71.1/conftest_0.71.1_Linux_x86_64.tar.gz
+        sha256: c3f6b2a753bd56e377a1e51a95ae3e057f926f2e9139f7d5b5dfbbaf810f7985
