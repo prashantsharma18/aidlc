@@ -37,13 +37,15 @@ Every decision appends one JSON line to `decisions.jsonl`. Secret-shaped values 
 
 ## Deliberate limits
 
-The guard is a fast, pattern-based layer. It normalises commands (wrappers such as `env`, `timeout` and `xargs`, absolute paths, git global options, reserved words, substitutions) and then matches `shell_deny`. It deliberately cedes these to the permissions and the sandbox backstop:
+The guard is a fast, pattern-based layer, not a shell. A small quote-aware tokeniser (`_lex`) reads the whole command once. It handles single and double quotes, backslashes, comments, newlines, operators, redirections (including `N>` and `{var}>`), and heredoc bodies. Substitutions (`$(..)`, backticks, `<(..)`, `>(..)`) and `bash -c`/`eval` strings are analysed recursively. Wrappers (`env`, `timeout`, `xargs`, `coproc` and similar), absolute paths, git global options and function bodies are normalised before `shell_deny` is matched.
 
-- Quoting and escaping obfuscation beyond what `shlex` resolves.
-- Variable indirection, for example `X=push; git $X`.
+It deliberately cedes these to the permissions and the sandbox backstop:
+
+- Quoting forms the tokeniser does not model: ANSI-C quoting such as `git $'push'`, and locale quoting `$"..."`.
+- Brace expansion such as `git {push,x}`.
+- Variable indirection, for example `X=push; git $X` or `${IFS}` tricks.
 - Interpreters running code, for example `python3 -c`, `node -e`.
 
-Anything it cannot parse asks a person (denies when unattended). `SECRET_RE` is a best-effort list of secret shapes. It redacts the log and the returned reason, and it is not a guarantee that no secret ever appears.
+Anything it cannot parse asks a person (denies when unattended). A command longer than 65,536 characters, nested deeper than 40 levels, or taking more than 0.5 s to analyse is denied (`fail-safe`). `SECRET_RE` is a best-effort list of secret shapes. It redacts the log and the returned reason, and it is not a guarantee that no secret ever appears.
 
 Edits are also denied for anything under `.git/`, for files with more than one hard link, and when the scope file lives inside the repository or names absolute, `..` or `.git` patterns.
-- ANSI-C quoting such as `git $'push'`.

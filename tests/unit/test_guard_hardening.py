@@ -205,3 +205,49 @@ class Round2ShellTest(unittest.TestCase):
                 for cmd in self.ALLOW:
                     with self.subTest(cmd=cmd, extra=extra):
                         self.assertEqual(guard.decide(shell(cmd))["decision"], "allow")
+
+
+class Round3ShellTest(unittest.TestCase):
+    NL = "\n"
+    COMMIT = ("git commit -m \"$(cat <<'EOF'\nfix: don't over-ask\nEOF\n)\"")
+    COMMIT2 = ("git commit -m \"$(cat <<'EOF'\nfix: run git push later\nEOF\n)\"")
+    DENY = ["echo x # '\ngit push\n#'", "echo x # \"\ngit push\n\"", "echo x # \\\ngit push",
+            "function f { git push; }; f", "function f { rm -rf src; }; f", "function f { sudo ls; }",
+            "f() { git push; }", "function f () { git push; }", "git -c a={b} push",
+            "rm { -rf src }", "coproc git push", "coproc X { git push; }",
+            "{x}>/dev/null git push", "git {x}>/dev/null push", "{x}>f rm -rf src",
+            "cat <<EOF\n$(git push)\nEOF", "(cat x)|bash", "cat x |(bash)", "cat x | (bash)"]
+    ASK = ["bash <<'EOF'\ngit push\nEOF", "env -vS'git push'", "env --split-s='git push'"]
+    ALLOW = [COMMIT, COMMIT2, "echo x # git push", "ls # it's\ngit status", "echo a#b",
+             "git commit -m \"$(cat <<'EOF'\nfix(api): 1) handle it\nEOF\n)\"",
+             "cat <<-EOF\n\tbody it's\n\tEOF\nls"]
+
+    def run_each(self, cmds, expected, extra):
+        with GuardEnv(extra_env=extra):
+            for cmd in cmds:
+                with self.subTest(cmd=cmd, extra=extra):
+                    self.assertEqual(guard.decide(shell(cmd))["decision"], expected)
+
+    def test_deny(self):
+        for extra in ({}, {"AIDLC_UNATTENDED": "1"}):
+            self.run_each(self.DENY, "deny", extra)
+
+    def test_ask(self):
+        self.run_each(self.ASK, "ask", {})
+        self.run_each(self.ASK, "deny", {"AIDLC_UNATTENDED": "1"})
+
+    def test_allow(self):
+        for extra in ({}, {"AIDLC_UNATTENDED": "1"}):
+            self.run_each(self.ALLOW, "allow", extra)
+
+    def test_time_budget(self):
+        import time
+        probes = ["eval " * 2000 + "ls", "eval " * 20000 + "ls",
+                  "$(" * 30000 + "ls" + ")" * 30000, "ls " * 24000]
+        with GuardEnv():
+            for cmd in probes:
+                with self.subTest(n=len(cmd)):
+                    start = time.monotonic()
+                    r = guard.decide(shell(cmd))
+                    self.assertLess(time.monotonic() - start, 1.0)
+                    self.assertEqual((r["decision"], r["rule"]), ("deny", "fail-safe"))
