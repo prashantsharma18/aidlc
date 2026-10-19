@@ -56,9 +56,19 @@ deny contains msg if {
 	msg := sprintf("protected path %s has no Edit() deny rule", [path])
 }
 
+# Hooks that can actually run for an event: the inner hooks, not the outer matcher entries.
+inner_hooks(event) := [hook |
+	some entry in object.get(hook_config, event, [])
+	some hook in object.get(entry, "hooks", [])
+]
+
+deny contains "disableAllHooks must not be true: no hook would run" if {
+	input.disableAllHooks == true
+}
+
 deny contains msg if {
 	some event in hook_events
-	count(object.get(hook_config, event, [])) == 0
+	count(inner_hooks(event)) == 0
 	msg := sprintf("hooks.%s has no entry", [event])
 }
 
@@ -75,5 +85,11 @@ deny contains msg if {
 	not contains(rule, "(")
 	rule != "Read"
 	not startswith(rule, "mcp__") # a mapped MCP tool name is a specific tool, not a whole class
+	msg := sprintf("permissions.allow has the bare tool rule '%s': it allows every use of the tool", [rule])
+}
+
+deny contains msg if {
+	some rule in object.get(permissions, "allow", [])
+	regex.match(`^\s*[A-Za-z_][A-Za-z0-9_]*\s*\(\s*(\*|:\*|\*\*)\s*\)\s*$`, rule)
 	msg := sprintf("permissions.allow has the bare tool rule '%s': it allows every use of the tool", [rule])
 }

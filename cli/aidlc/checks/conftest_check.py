@@ -17,19 +17,39 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from ..adapters import get_adapter
+from ..adapters.base import AdapterNotImplemented, write_rendered
 from ..adapters.claude_code import _sandbox_paths
-from ..harness import REFUSED_WRITE, effective_permissions
+from ..harness import REFUSED_WRITE, HarnessError, effective_permissions
 from ..paths import framework_root
-from ..policy import load_policy
+from ..policy import PolicyError, load_policy, load_yaml
+from ..repo import CONFIG
 from ..tools import which_tool
 from .findings import Finding
 
 TIMEOUT_S = 120
+MAX_INPUTS = 200
+DEFAULT_TOOLS = ["claude-code"]
 NOT_INSTALLED = "conftest is not installed: run `aidlc tools install conftest`"
 
 
 def rego_dir() -> Path:
     return framework_root() / "core" / "policy-as-code" / "rego"
+
+
+def _workflow_entries(repo: Path) -> tuple[list[str], list[str]]:
+    """(workflow files, other non-directory entries) under .github/workflows, repository-relative."""
+    workflows = repo / ".github" / "workflows"
+    if not workflows.is_dir():
+        return [], []
+    files, others = [], []
+    for p in sorted(workflows.iterdir()):
+        rel = str(p.relative_to(repo))
+        if p.name.lower().endswith((".yml", ".yaml")):
+            files.append(rel)                                  # also a link or FIFO: refused later with a finding
+        elif not (p.is_dir() and not p.is_symlink()):
+            others.append(rel)
+    return files, others
 
 
 def inputs(repo: Path) -> list[tuple[str, str]]:
@@ -38,11 +58,7 @@ def inputs(repo: Path) -> list[tuple[str, str]]:
     out = [("aidlc.settings", ".claude/settings.json")]
     if os.path.lexists(repo / ".aidlc/permissions.yaml"):
         out.append(("aidlc.narrowing", ".aidlc/permissions.yaml"))
-    workflows = repo / ".github" / "workflows"
-    if workflows.is_dir():
-        out += [("aidlc.workflows", str(p.relative_to(repo))) for p in sorted(workflows.iterdir())
-                if p.suffix in (".yml", ".yaml")]
-    return out
+    return out + [("aidlc.workflows", rel) for rel in _workflow_entries(repo)[0]]
 
 
 def policy_data(repo: Path) -> dict:
@@ -95,8 +111,10 @@ def _parse(proc: subprocess.CompletedProcess, rel: str, namespace: str) -> list[
     evaluated = sum(int(r.get("successes") or 0) + len(r.get("failures") or []) + len(r.get("warnings") or [])
                     for r in results if r.get("namespace") == namespace)
     if evaluated == 0:
+        tail = proc.stderr.strip()[-200:] if isinstance(proc.stderr, str) else ""
         out.append(Finding("FAIL", rel, 0, f"the policy namespace {namespace} evaluated no rules; "
-                                            "the pack or its data did not load"))
+                                            "the pack or its data did not load"
+                           + (f"; stderr: {tail}" if tail else "")))
     for result in results:
         for failure in result.get("failures") or []:
             out.append(Finding("FAIL", rel, 0, str(failure.get("msg", failure))))
@@ -107,22 +125,39 @@ def _parse(proc: subprocess.CompletedProcess, rel: str, namespace: str) -> list[
     return out
 
 
+def _same_repo(a: Path, b: Path) -> bool:
+    try:
+        return a.resolve() == b.resolve()
+    except OSError:
+        return False
+
+
 def run_conftest(repo: Path, binary: Path | None = None, runner=subprocess.run,
                  pinned_only: bool = False, data_repo: Path | None = None) -> list[Finding]:
     """Judge `repo`'s files. The policy data is computed from `data_repo` (default `repo`); trusted CI
-    passes the base checkout so the change cannot widen what it is judged against."""
+    passes the base checkout so the change cannot widen what it is judged against. The head's own
+    narrowing file is then validated here too (schema and write-grant checks), since the data no
+    longer comes from it."""
     data = policy_data(data_repo or repo)   # first: a policy or narrowing error surfaces as itself
+    findings: list[Finding] = []
+    if data_repo is not None and not _same_repo(repo, data_repo):
+        try:
+            effective_permissions(repo)
+        except (HarnessError, PolicyError, ValueError, OSError) as exc:
+            findings.append(Finding("FAIL", ".aidlc/permissions.yaml", 0, str(exc)))
     binary = binary or which_tool("conftest", pinned_only=pinned_only)
     if binary is None:
-        return [Finding("FAIL", "", 0, NOT_INSTALLED)]
-    findings: list[Finding] = []
+        return findings + [Finding("FAIL", "", 0, NOT_INSTALLED)]
+    targets = inputs(repo)
+    if len(targets) > MAX_INPUTS:
+        return findings + [Finding("FAIL", "", 0, f"too many inputs ({len(targets)} > {MAX_INPUTS})")]
+    findings += [Finding("WARN", rel, 0, "not a workflow file (.yml or .yaml); it is not judged")
+                 for rel in _workflow_entries(repo)[1]]
     with tempfile.TemporaryDirectory(prefix="aidlc-conftest-") as tmp:
         work, home, datadir = (Path(tmp) / n for n in ("cwd", "home", "data"))
         for directory in (work, home, datadir):
             directory.mkdir()
-        data_file = datadir / "aidlc.json"
-        data_file.write_text(json.dumps(data), encoding="utf-8")
-        for namespace, rel in inputs(repo):
+        for number, (namespace, rel) in enumerate(targets):
             problem = _refusal(repo, rel)
             if problem == "missing":
                 findings.append(Finding("FAIL", rel, 0, f"{rel} is missing; run aidlc render"))
@@ -130,6 +165,8 @@ def run_conftest(repo: Path, binary: Path | None = None, runner=subprocess.run,
             if problem:
                 findings.append(Finding("FAIL", rel, 0, f"{rel} {problem}"))
                 continue
+            data_file = datadir / f"aidlc-{number}.json"          # data.aidlc.input_file names the file judged
+            data_file.write_text(json.dumps({"aidlc": {**data["aidlc"], "input_file": rel}}), encoding="utf-8")
             cmd = [str(binary), "test", str(repo / rel), "--policy", str(rego_dir()), "--data", str(data_file),
                    "--namespace", namespace, "--output", "json"]
             try:
@@ -138,6 +175,35 @@ def run_conftest(repo: Path, binary: Path | None = None, runner=subprocess.run,
                 findings.append(Finding("FAIL", rel, 0, f"conftest could not run: {exc}"))
                 continue
             findings += _parse(proc, rel, namespace)
+    return findings
+
+
+def judge_generated(head: Path, trusted: Path) -> list[Finding]:
+    """Render every generated file from the head's sources with the trusted framework code and compare
+    it with what the head committed. Each stale, missing, edited or orphaned file is a FAIL. The tools
+    come from the trusted configuration (default: claude-code). Reads only: write_rendered(check=True)
+    never writes, and nothing here records an entry point or a trusted base. Nothing from the head runs."""
+    try:
+        raw = load_yaml(trusted / CONFIG)
+    except (OSError, ValueError, FileNotFoundError) as exc:
+        return [Finding("FAIL", str(CONFIG), 0, f"cannot read the trusted configuration: {exc}")]
+    tools = raw.get("tools") if isinstance(raw, dict) else None
+    if tools is None:
+        tools = DEFAULT_TOOLS
+    if not isinstance(tools, list) or not tools or not all(isinstance(t, str) for t in tools):
+        return [Finding("FAIL", str(CONFIG), 0, f"the trusted configuration's 'tools' must be a list of tool names, got {tools!r}")]
+    findings: list[Finding] = []
+    for name in tools:
+        try:
+            adapter = get_adapter(name)
+            files = (adapter.render_rules(head) + adapter.render_folder_rules(head)
+                     + adapter.render_permissions(head) + adapter.render_hooks(head))
+            problems = write_rendered(head, files, check=True, managed_dirs=adapter.managed_dirs)
+        except (AdapterNotImplemented, ValueError, HarnessError, PolicyError, OSError) as exc:
+            findings.append(Finding("FAIL", "", 0, f"cannot render the {name} files to compare: {exc}"))
+            continue
+        for problem in problems:
+            findings.append(Finding("FAIL", problem.split(":", 1)[0] if ": " in problem else "", 0, problem))
     return findings
 
 

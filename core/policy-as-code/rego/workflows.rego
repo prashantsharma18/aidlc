@@ -25,8 +25,21 @@ deny contains "workflows must not run on pull_request_target: it runs with secre
 	"pull_request_target" in triggers
 }
 
+deny contains "workflows must not run on workflow_run: it runs with secrets on the output of untrusted code" if {
+	"workflow_run" in triggers
+}
+
+# Top-level permissions: an object, or the string read-all. Missing, null, a list or any other string is denied.
+valid_permissions if {
+	is_object(input.permissions)
+}
+
+valid_permissions if {
+	input.permissions == "read-all"
+}
+
 deny contains "set top-level permissions explicitly (contents: read)" if {
-	not input.permissions
+	not valid_permissions
 }
 
 deny contains msg if {
@@ -73,4 +86,43 @@ deny contains msg if {
 	some step in object.get(job, "steps", [])
 	regex.match(`\$\{\{\s*github\.(head_ref|event\.)`, step.run)
 	msg := sprintf("job %s: untrusted pull request text is expanded inside run:; pass it through env", [job_id])
+}
+
+# A reusable workflow called by a job is code too: pin it like an action. A local path is allowed.
+deny contains msg if {
+	some job_id, job in jobs
+	uses := job.uses
+	not startswith(uses, "./")
+	not regex.match(`^[^@\s]+@[0-9a-f]{40}$`, uses)
+	msg := sprintf("job %s: '%s' is not pinned to a full commit SHA", [job_id, uses])
+}
+
+# Expressions are expanded into the script before the shell sees it. Only values the change cannot
+# choose may appear in run: or a script; everything else goes through env: and "$VAR".
+safe_expression := `^(secrets\.[a-z0-9_]+|matrix\.[a-z0-9_.-]+|runner\.[a-z_]+|github\.(sha|run_id|run_number|run_attempt|repository|workspace|event_name|job|action))$`
+
+input_file := data.aidlc.input_file if {
+	is_string(data.aidlc.input_file)
+} else := "<file>"
+
+script_texts contains text if {
+	some job in jobs
+	some step in object.get(job, "steps", [])
+	text := step.run
+	is_string(text)
+}
+
+script_texts contains text if {
+	some job in jobs
+	some step in object.get(job, "steps", [])
+	text := step.with.script
+	is_string(text)
+}
+
+deny contains msg if {
+	some text in script_texts
+	some match in regex.find_n(`(?s)\$\{\{(.*?)\}\}`, text, -1)
+	expr := trim_space(trim_suffix(trim_prefix(match, "${{"), "}}"))
+	not regex.match(safe_expression, lower(expr))
+	msg := sprintf("workflow %s: expression '${{ %s }}' in run/script; pass it through env: and use \"$VAR\"", [input_file, expr])
 }

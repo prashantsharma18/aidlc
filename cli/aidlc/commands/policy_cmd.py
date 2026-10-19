@@ -28,7 +28,7 @@ def _conftest(args: argparse.Namespace) -> int:
     try:
         repo = find_repo_root(Path(args.repo))
         findings = run_conftest(repo)
-    except (FileNotFoundError, HarnessError, PolicyError, ValueError) as exc:
+    except (FileNotFoundError, HarnessError, PolicyError, ValueError, OSError) as exc:
         print(f"aidlc policy: {exc}", file=sys.stderr)
         return 2
     return report(findings, "conftest")
@@ -37,7 +37,9 @@ def _conftest(args: argparse.Namespace) -> int:
 def _rego_test(_args: argparse.Namespace) -> int:
     code, output = verify_pack()
     print(output)
-    return 2 if code == 2 and "not installed" in output else (0 if code == 0 else 1)
+    if code == 2 and ("not installed" in output or "could not run" in output):
+        return 2
+    return 0 if code == 0 else 1
 
 
 @command

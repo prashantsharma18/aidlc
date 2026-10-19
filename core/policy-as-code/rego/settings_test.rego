@@ -84,3 +84,32 @@ test_missing_sandbox_deny_read_is_denied if {
 test_mcp_tool_allow_is_not_a_bare_class if {
 	count(denials(object.union(good, {"permissions": {"allow": ["Read", "mcp__lab-jira__getjiraissue"]}}))) == 0
 }
+
+test_disable_all_hooks_is_denied if {
+	"disableAllHooks must not be true: no hook would run" in denials(object.union(good, {"disableAllHooks": true}))
+}
+
+test_disable_all_hooks_false_passes if {
+	count(denials(object.union(good, {"disableAllHooks": false}))) == 0
+}
+
+test_event_with_empty_inner_hook_list_is_denied if {
+	bad := object.union(good, {"hooks": {"PostToolUse": [{"hooks": []}]}})
+	"hooks.PostToolUse has no entry" in denials(bad)
+}
+
+test_event_with_entries_but_no_inner_hook_is_denied if {
+	bad := object.union(good, {"hooks": {"PreToolUse": [{"matcher": "X"}, {"hooks": []}]}})
+	"hooks.PreToolUse has no entry" in denials(bad)
+}
+
+test_wildcard_argument_allows_are_bare_tool_rules if {
+	every rule in ["Bash(*)", "Bash(:*)", "Edit(**)", "WebFetch(*)"] {
+		some msg in denials(object.union(good, {"permissions": {"allow": ["Read", rule]}}))
+		contains(msg, sprintf("bare tool rule '%s'", [rule]))
+	}
+}
+
+test_specific_argument_allow_is_not_bare if {
+	count(denials(object.union(good, {"permissions": {"allow": ["Read", "Bash(git status:*)"]}}))) == 0
+}

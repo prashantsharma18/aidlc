@@ -29,7 +29,8 @@ from pathlib import Path
 from typing import Callable, Iterator
 
 from . import __version__
-from .checks.conftest_check import run_conftest
+from .checks.findings import Finding
+from .checks.conftest_check import judge_generated, run_conftest
 from .checks.onecheck import (DIFF_FLAGS, FAIL, OK, STEERING, CheckContext, CheckError, CheckResult, StepResult,
                               _excepted, prepare_check_dir,
                               begin_command_steps, git, print_result, run_command, step_context_drift,
@@ -228,9 +229,14 @@ def step_config_policy(ctx: CheckContext) -> StepResult:
     """ADR 0001: the change's rendered settings, narrowing and workflows pass the Rego pack. A judge
     step: it runs before any of the change's code, with the pinned (checksum-verified) conftest. The
     files judged come from the head checkout; the policy data comes from the base (ctx.trusted), so
-    the change cannot widen what it is judged against. Nothing from the head is executed."""
-    data_repo = getattr(ctx, "trusted", None) or ctx.repo
-    findings = run_conftest(ctx.repo, pinned_only=True, data_repo=data_repo)
+    the change cannot widen what it is judged against. The generated files are re-rendered from the
+    head's sources and compared (nothing is written). Nothing from the head is executed."""
+    trusted = getattr(ctx, "trusted", None)
+    findings = run_conftest(ctx.repo, pinned_only=True, data_repo=trusted or ctx.repo)
+    if trusted is None:
+        findings.append(Finding("FAIL", "", 0, "no trusted checkout; policy data must come from the base"))
+    else:
+        findings += judge_generated(ctx.repo, trusted)
     fails = [str(f) for f in findings if f.level == "FAIL"]
     if fails:
         return StepResult("config-policy", FAIL, f"{len(fails)} violation(s): " + "; ".join(fails[:5]))
