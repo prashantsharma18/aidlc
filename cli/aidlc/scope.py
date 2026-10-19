@@ -51,7 +51,13 @@ def parse_may_change(text: str) -> list[str]:
             collected.append(line)
     if not found:
         raise ScopeError("no MAY CHANGE field in the bundle")
-    joined = re.sub(r"\([^)]*\)", "", " ".join(collected))
+    joined = " ".join(collected)
+    # A paren group is an annotation only when whitespace (or a comma) separates it from the paths.
+    glued = re.search(r"\S*[^\s,(]\([^)]*\)\S*|\S*\([^)]*\)[^\s,]\S*", joined)
+    if glued:
+        raise ScopeError(f"'{glued.group(0)}': parentheses in a glob are not supported; write the "
+                         "path without them or quote it in a note")
+    joined = re.sub(r"\([^)]*\)", "", joined)
     patterns = [p.strip() for p in re.split(r"[,\s]+", joined) if p.strip()]
     if not patterns:
         raise ScopeError("MAY CHANGE field is empty")

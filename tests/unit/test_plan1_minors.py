@@ -109,6 +109,45 @@ class M4MayChangeParsing(unittest.TestCase):
                 parse_may_change(text)
 
 
+class FixRound1(unittest.TestCase):
+    def test_i1_bad_context_values_are_findings_not_tracebacks(self):
+        for ctx in ("{rules_file: 5}", "{map: [a]}", "{rules_file: ../x.md}", "{rules_file: /etc/hosts}",
+                    "{map: '~/m.md'}", "{rules_file: ''}"):
+            with self.subTest(ctx=ctx), drift_repo({".aidlc/config.yaml": (
+                    f"name: s\nowner: o\nprofile: node\ncontext: {ctx}\n")}) as root:
+                fails = drift_fails(root)
+                self.assertTrue(any(".aidlc/config.yaml" in m and
+                                    ("rules_file" in m or "map" in m) for m in fails), fails)
+
+    def test_m1_parentheses_inside_a_glob_are_refused(self):
+        with self.assertRaises(ScopeError) as ctx:
+            parse_may_change("MAY CHANGE: src/(group)/**\n")
+        self.assertIn("src/(group)/**", str(ctx.exception))
+        self.assertIn("parentheses in a glob are not supported", str(ctx.exception))
+        self.assertEqual(parse_may_change("MAY CHANGE: src/** (the API)\n"), ["src/**"])
+
+    def test_m2_non_mapping_context_and_commands_are_clear_errors(self):
+        for key in ("context", "commands"):
+            with self.subTest(key=key), TempRepo() as root:
+                scaffold(root)
+                path = root / ".aidlc/config.yaml"
+                data = yaml.safe_load(path.read_text(encoding="utf-8"))
+                data[key] = [1, 2]
+                path.write_text(yaml.safe_dump(data), encoding="utf-8")
+                with self.assertRaises(ValueError) as ctx:
+                    load_config(root)
+                self.assertIn(".aidlc/config.yaml", str(ctx.exception))
+
+    def test_m3_drift_ignores_exported_git_variables(self):
+        with drift_repo({"AGENTS.md": "# svc\n- see `dist/out.js` and `docs/codebase-map.md`\n",
+                         ".gitignore": "dist/\n"}) as root:
+            sha = git(root, "rev-parse", "--short", "HEAD")
+            (root / "docs/codebase-map.md").write_text(GOOD_MAP.format(sha=sha), encoding="utf-8")
+            with mock.patch.dict(os.environ, {"GIT_DIR": "/nonexistent"}):
+                fails = [f for f in check_context_drift(root, TODAY) if f.level == "FAIL"]
+            self.assertEqual(fails, [])
+
+
 class M5TraceRefusesHandWrittenDoc(unittest.TestCase):
     def test_m5_unmarked_generated_doc_is_not_overwritten(self):
         tmp = Path(tempfile.mkdtemp())

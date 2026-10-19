@@ -51,10 +51,14 @@ def _exists(repo: Path, span: str) -> bool:
     return target.is_dir() if span.endswith("/") else target.exists()
 
 
+def _git_env() -> dict[str, str]:
+    return {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+
+
 def _ignored(repo: Path, span: str) -> bool:
     """Gitignored paths (build output such as dist/) legitimately do not exist in CI."""
     result = subprocess.run(["git", "check-ignore", "-q", "--no-index", span], cwd=repo,
-                            capture_output=True)
+                            env=_git_env(), capture_output=True)
     return result.returncode == 0
 
 
@@ -126,7 +130,7 @@ def _scan(repo: Path, path: Path, text: str, subcommands: set[str]) -> list[Find
 
 def _commit_exists(repo: Path, sha: str) -> bool:
     result = subprocess.run(["git", "cat-file", "-e", f"{sha}^{{commit}}"], cwd=repo,
-                            capture_output=True)
+                            env=_git_env(), capture_output=True)
     return result.returncode == 0
 
 
@@ -140,9 +144,17 @@ def check_context_drift(repo: Path, today: date) -> list[Finding]:
         try:
             ctx = load_config(repo).context
             interval = int(ctx.get("review_interval_days", 30))
-            rules_file, map_file = ctx.get("rules_file", rules_file), ctx.get("map", map_file)
+            for key, default in (("rules_file", rules_file), ("map", map_file)):
+                value = ctx.get(key, default)
+                if (not isinstance(value, str) or not value.strip() or value.startswith(("/", "~"))
+                        or ".." in value.replace("\\", "/").split("/")):
+                    raise ValueError(f"context.{key} must be a relative path inside the repository "
+                                     f"(no '..', no leading '/' or '~'), got {value!r}")
+                ctx[key] = value
+            rules_file, map_file = ctx["rules_file"], ctx["map"]
         except Exception as exc:   # any malformed config is a finding, never a traceback
             findings.append(Finding("FAIL", ".aidlc/config.yaml", 0, f"unusable: {exc}"))
+            rules_file, map_file = "AGENTS.md", "docs/codebase-map.md"
 
     subcommands = _aidlc_subcommands()
     texts: dict[Path, str] = {}
