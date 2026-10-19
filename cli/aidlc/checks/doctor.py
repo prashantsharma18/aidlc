@@ -339,28 +339,43 @@ def _read_override(path: Path) -> object:
     return json.loads(raw.decode("utf-8"))
 
 
+class _Unresolved(Exception):
+    """A grant doctor cannot turn into a path; it is treated as reaching."""
+
+
+def _resolve_grant(raw: str, repo: Path) -> Path:
+    path = Path(raw).expanduser()
+    return (path if path.is_absolute() else repo / path).resolve()
+
+
 def _reaches_framework(grant: str, repo: Path, entry: Path) -> bool:
     """A write grant or extra directory that covers the recorded framework entry, its directory or
-    any parent of it. Relative grants are taken from the repository."""
+    any parent of it. Relative grants are taken from the repository. Raises _Unresolved."""
     raw = grant.strip()
     if not raw:
         return False
-    path = Path(raw).expanduser()
-    path = (path if path.is_absolute() else repo / path).resolve()
-    return any(path == t or path in t.parents for t in (entry, entry.parent))
+    try:
+        path = _resolve_grant(raw, repo)
+        return any(path == t or path in t.parents for t in (entry, entry.parent))
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise _Unresolved from exc
 
 
 def _reaches_harness(grant: str, repo: Path) -> bool:
-    """A sandbox write grant that covers the harness (.aidlc, .claude, ~/.aidlc, ~/.claude) or a
-    parent of it. Relative grants are taken from the repository; `~` and absolute paths as given."""
+    """A sandbox write grant that covers the harness (.aidlc, .claude, ~/.aidlc, the Claude config
+    directory) or a parent of it. Relative grants are taken from the repository; `~` and absolute
+    paths as given. Raises _Unresolved."""
     raw = grant.strip()
     if raw in ("", ".", "./", "/", "~", "~/"):
         return True
-    path = Path(raw).expanduser()
-    path = (path if path.is_absolute() else repo / path).resolve()
-    home = Path.home().resolve()
-    targets = [repo.resolve() / ".aidlc", repo.resolve() / ".claude", home / ".aidlc", home / ".claude"]
-    return any(path == t or path in t.parents or t in path.parents for t in targets)
+    try:
+        path = _resolve_grant(raw, repo)
+        home = Path.home().resolve()
+        config = Path(os.environ.get("CLAUDE_CONFIG_DIR") or "~/.claude").expanduser().resolve()
+        targets = [repo.resolve() / ".aidlc", repo.resolve() / ".claude", home / ".aidlc", home / ".claude", config]
+        return any(path == t or path in t.parents or t in path.parents for t in targets)
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise _Unresolved from exc
 
 
 def check_d13(repo: Path) -> list[Finding]:
@@ -375,7 +390,7 @@ def check_d13(repo: Path) -> list[Finding]:
             data = _read_override(path)
         except _Missing:
             continue
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, RuntimeError) as exc:
             out.append(_warn(label, f"D13 cannot read {label} ({type(exc).__name__}); its overrides are not checked"))
             continue
         if not isinstance(data, dict):
@@ -403,17 +418,23 @@ def check_d13(repo: Path) -> list[Finding]:
         if sandbox.get("excludedCommands"):
             out.append(_fail(label, f"D13 {label} sets sandbox.excludedCommands; those commands run unsandboxed"))
         filesystem = sandbox.get("filesystem") if isinstance(sandbox.get("filesystem"), dict) else {}
-        for grant in filesystem.get("allowWrite") or []:
-            if isinstance(grant, str) and _reaches_harness(grant, repo):
-                out.append(_fail(label, f"D13 {label} sandbox.filesystem.allowWrite '{grant}' reaches the harness"))
-        if entry is not None:
-            grants = [("sandbox.filesystem.allowWrite", filesystem.get("allowWrite")),
-                      ("permissions.additionalDirectories", perms.get("additionalDirectories"))]
-            for key, values in grants:
-                for value in values if isinstance(values, list) else []:
-                    if isinstance(value, str) and _reaches_framework(value, repo, entry):
+        grants = [("sandbox.filesystem.allowWrite", filesystem.get("allowWrite")),
+                  ("permissions.additionalDirectories", perms.get("additionalDirectories"))]
+        for key, values in grants:
+            for value in values if isinstance(values, list) else []:
+                if not isinstance(value, str):
+                    continue
+                if "$" in value:
+                    out.append(_fail(label, f"D13 {label}: {key} entry '{value}' contains a variable doctor cannot resolve"))
+                    continue
+                try:
+                    if key.endswith("allowWrite") and _reaches_harness(value, repo):
+                        out.append(_fail(label, f"D13 {label} {key} '{value}' reaches the harness"))
+                    if entry is not None and _reaches_framework(value, repo, entry):
                         out.append(_fail(label, f"D13 {label}: {key} entry '{value}' lets the agent write the "
                                                 f"aidlc framework ({entry.parent}); a forged check could then earn PASS credit"))
+                except _Unresolved:
+                    out.append(_fail(label, f"D13 {label}: {key} entry {value!r} could not be resolved; treated as reaching"))
         for rule in perms.get("allow") or []:
             if isinstance(rule, str) and "(" not in rule and rule != "Read":
                 out.append(_warn(label, f"D13 {label} allows '{rule}' without a pattern; deny and ask rules still apply"))

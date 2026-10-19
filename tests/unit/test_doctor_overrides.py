@@ -11,6 +11,8 @@ from tests.unit.test_doctor import ready_repo
 
 class _Base(unittest.TestCase):
     def setUp(self):
+        self.home = mock.patch.dict(os.environ, {"AIDLC_HOME_DIR": tempfile.mkdtemp()})
+        self.home.start()
         self.repo, self.root = ready_repo()
         self.tmp = Path(tempfile.mkdtemp())
         self.user, self.managed = self.tmp / "user.json", self.tmp / "managed.json"
@@ -20,6 +22,7 @@ class _Base(unittest.TestCase):
 
     def tearDown(self):
         self.env.stop()
+        self.home.stop()
         self.repo.__exit__(None, None, None)
 
     def d13(self):
@@ -102,13 +105,6 @@ class OverrideTest(_Base):
 class EntryAndReadTest(_Base):
     """R1 (framework entry), R2 (more env names), R3 (how override files are read)."""
 
-    def setUp(self):
-        super().setUp()
-        from tests.helpers import _CLI_HOME  # where ready_repo's render recorded the entry
-        home = mock.patch.dict(os.environ, {"AIDLC_HOME_DIR": _CLI_HOME.name})
-        home.start()
-        self.addCleanup(home.stop)
-
     def entry_dir(self):
         from aidlc.hookbridge import hooks
         entry = hooks().guard.recorded_entry(self.root)
@@ -179,4 +175,33 @@ class EntryAndReadTest(_Base):
 
     def test_missing_file_is_silent(self):
         self.assertEqual(self.d13(), [])
+
+    def test_unresolvable_grants_fail_closed(self):
+        for grant in ("~nosuchuser/x", "a\u0000b"):
+            for data in ({"sandbox": {"filesystem": {"allowWrite": [grant]}}},
+                         {"permissions": {"additionalDirectories": [grant]}}):
+                with self.subTest(grant=grant, data=data):
+                    self.write(self.user, data)
+                    self.assertTrue(any(m.startswith("FAIL") and "could not be resolved; treated as reaching" in m
+                                        for m in self.d13()))
+
+    def test_deeply_nested_json_is_unreadable_not_a_crash(self):
+        self.write(self.user, "[" * 100000)
+        self.assertTrue(any(m.startswith("WARN") and "cannot read user settings" in m for m in self.d13()))
+
+    def test_variable_in_a_grant_fails(self):
+        for grant in ("$HOME/.aidlc", "${HOME}/.aidlc"):
+            for data in ({"sandbox": {"filesystem": {"allowWrite": [grant]}}},
+                         {"permissions": {"additionalDirectories": [grant]}}):
+                with self.subTest(grant=grant, data=data):
+                    self.write(self.user, data)
+                    self.assertTrue(any(m.startswith("FAIL") and "contains a variable doctor cannot resolve" in m
+                                        for m in self.d13()))
+
+    def test_claude_config_dir_grant_fails(self):
+        cfg = self.tmp / "cfg"
+        cfg.mkdir()
+        with mock.patch.dict(os.environ, {"CLAUDE_CONFIG_DIR": str(cfg)}):
+            self.write(self.user, {"sandbox": {"filesystem": {"allowWrite": [str(cfg)]}}})
+            self.assertTrue(any(m.startswith("FAIL") and "reaches the harness" in m for m in self.d13()))
 
