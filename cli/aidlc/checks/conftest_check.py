@@ -10,6 +10,7 @@ an explicit data file and explicit absolute input paths. Inputs the change chose
 special files, paths leaving the checkout) are findings, never read."""
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import stat
@@ -18,7 +19,7 @@ import tempfile
 from pathlib import Path
 
 from ..adapters import get_adapter
-from ..adapters.base import AdapterNotImplemented, write_rendered
+from ..adapters.base import AdapterNotImplemented, RenderedFile, write_rendered
 from ..adapters.claude_code import _sandbox_paths
 from ..harness import REFUSED_WRITE, HarnessError, effective_permissions
 from ..paths import framework_root
@@ -178,11 +179,107 @@ def run_conftest(repo: Path, binary: Path | None = None, runner=subprocess.run,
     return findings
 
 
+SETTINGS = ".claude/settings.json"
+UNMANAGED = "agent configuration not managed by aidlc"
+# Everything an adapter reads from the head to render. Each is lstat'ed, with its parent folders,
+# before the render: the judge never follows a link the change chose.
+RENDER_INPUTS = ("AGENTS.md", ".aidlc/config.yaml", ".aidlc/permissions.yaml", ".aidlc/claude.md",
+                 ".aidlc/generated.json")
+RENDER_DIRS = (".aidlc/rules",)
+UNMANAGED_FILES = (".claude/settings.local.json", "CLAUDE.local.md", ".mcp.json")
+
+
+def _kind(path: Path) -> str:
+    """"missing", "link", "file", "dir" or "other" for the path itself, never following a link."""
+    try:
+        mode = os.lstat(path).st_mode
+    except FileNotFoundError:
+        return "missing"
+    except OSError:
+        return "other"
+    if stat.S_ISLNK(mode):
+        return "link"
+    return "file" if stat.S_ISREG(mode) else "dir" if stat.S_ISDIR(mode) else "other"
+
+
+def _unfollowed(repo: Path, rel: str, want: str) -> str:
+    """"" when rel (absent, or a `want` kind) and every parent folder inside the checkout is a plain
+    entry; else why the judge refuses to read it."""
+    parts = Path(rel).parts
+    for i in range(1, len(parts) + 1):
+        sub = "/".join(parts[:i])
+        kind = _kind(repo / sub)
+        if kind == "missing":
+            return ""
+        if kind == "link":
+            return f"{sub} is a symlink; the judge does not follow it"
+        if i < len(parts) and kind != "dir":
+            return f"{sub} is not a directory; the judge does not follow it"
+        if i == len(parts) and kind != want:
+            return f"{sub} is not a regular file; the judge does not follow it" if want == "file" else \
+                f"{sub} is not a directory; the judge does not follow it"
+    return ""
+
+
+def _check_render_inputs(head: Path) -> list[Finding]:
+    problems = [_unfollowed(head, rel, "file") for rel in RENDER_INPUTS]
+    for rel in RENDER_DIRS:
+        problems.append(_unfollowed(head, rel, "dir"))
+        if _kind(head / rel) == "dir":
+            with os.scandir(head / rel) as entries:
+                problems += [_unfollowed(head, f"{rel}/{e.name}", "file") for e in entries]
+    return [Finding("FAIL", p.split(" is ")[0], 0, p) for p in problems if p]
+
+
+def _settings_compatible(rendered_text: str, committed_text: str) -> bool:
+    """True when the committed settings equal the render, except that sandbox.filesystem.denyWrite may
+    list more entries. A local `aidlc render` also lists untracked files that match a protected glob;
+    a clean CI checkout renders fewer. A denyWrite entry only restricts, so extra ones are harmless;
+    a missing one, or any other difference, is not."""
+    try:
+        want, have = json.loads(rendered_text), json.loads(committed_text)
+        want_deny = want["sandbox"]["filesystem"].pop("denyWrite", [])
+        have_deny = have["sandbox"]["filesystem"].pop("denyWrite", [])
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return False
+    return (isinstance(want_deny, list) and isinstance(have_deny, list) and set(want_deny) <= set(have_deny)
+            and want == have)
+
+
+def _walk_extras(head: Path, rendered: set[str], dirs: tuple[str, ...], unmanaged: bool) -> list[Finding]:
+    """Entries the render does not produce: any extension, link, folder or special file. With
+    `unmanaged`, the folder is walked recursively and each extra is agent configuration no one judges."""
+    out: list[Finding] = []
+    ancestors = {str(p) for r in rendered for p in Path(r).parents}
+    stack = [d for d in dirs if _kind(head / d) != "missing"]
+    while stack:
+        rel_dir = stack.pop()
+        if _kind(head / rel_dir) != "dir":
+            out.append(Finding("FAIL", rel_dir, 0, f"{rel_dir} is not a plain directory; the judge does not follow it"))
+            continue
+        with os.scandir(head / rel_dir) as entries:
+            names = sorted(e.name for e in entries)
+        for name in names:
+            rel = f"{rel_dir}/{name}"
+            kind = _kind(head / rel)
+            if rel in rendered and kind == "file":
+                continue
+            if unmanaged and kind == "dir":
+                if rel in ancestors or os.listdir(head / rel):
+                    stack.append(rel)              # report the leaves
+                    continue
+            what = f"{rel}: {UNMANAGED}" if unmanaged else f"{rel} is not produced by the render (a {kind}); remove it"
+            out.append(Finding("FAIL", rel, 0, what))
+    return out
+
+
 def judge_generated(head: Path, trusted: Path) -> list[Finding]:
     """Render every generated file from the head's sources with the trusted framework code and compare
-    it with what the head committed. Each stale, missing, edited or orphaned file is a FAIL. The tools
-    come from the trusted configuration (default: claude-code). Reads only: write_rendered(check=True)
-    never writes, and nothing here records an entry point or a trusted base. Nothing from the head runs."""
+    it with what the head committed. Each stale, missing, edited or orphaned file is a FAIL, and so is
+    an extra entry in a managed folder or unmanaged agent configuration. The tools come from the
+    trusted configuration (default: claude-code). Reads only: write_rendered(check=True) never
+    writes, and nothing here records an entry point or a trusted base. Nothing from the head runs,
+    and no link in the head is followed."""
     try:
         raw = load_yaml(trusted / CONFIG)
     except (OSError, ValueError, FileNotFoundError) as exc:
@@ -192,19 +289,45 @@ def judge_generated(head: Path, trusted: Path) -> list[Finding]:
         tools = DEFAULT_TOOLS
     if not isinstance(tools, list) or not tools or not all(isinstance(t, str) for t in tools):
         return [Finding("FAIL", str(CONFIG), 0, f"the trusted configuration's 'tools' must be a list of tool names, got {tools!r}")]
+    refused = _check_render_inputs(head)
+    if refused:
+        return refused
     findings: list[Finding] = []
     for name in tools:
         try:
             adapter = get_adapter(name)
             files = (adapter.render_rules(head) + adapter.render_folder_rules(head)
                      + adapter.render_permissions(head) + adapter.render_hooks(head))
+            files = [_with_committed_settings(head, f) for f in files]
             problems = write_rendered(head, files, check=True, managed_dirs=adapter.managed_dirs)
         except (AdapterNotImplemented, ValueError, HarnessError, PolicyError, OSError) as exc:
             findings.append(Finding("FAIL", "", 0, f"cannot render the {name} files to compare: {exc}"))
             continue
         for problem in problems:
             findings.append(Finding("FAIL", problem.split(":", 1)[0] if ": " in problem else "", 0, problem))
+        rendered = {f.path for f in files}
+        findings += _walk_extras(head, rendered, tuple(dict.fromkeys((*adapter.managed_dirs, ".aidlc/hooks"))), False)
+        if name == "claude-code":
+            findings += [Finding("FAIL", rel, 0, f"{rel}: {UNMANAGED}") for rel in UNMANAGED_FILES
+                         if _kind(head / rel) != "missing"]
+            findings += _walk_extras(head, rendered, (".claude",), True)
     return findings
+
+
+def _with_committed_settings(head: Path, rendered: RenderedFile) -> RenderedFile:
+    """For .claude/settings.json only: when the committed file is field-wise compatible (see
+    _settings_compatible), compare the committed bytes with themselves, so write_rendered raises no
+    "stale" for it. This replaces the byte and manifest-hash comparison for that one file; every other
+    generated file stays byte-exact."""
+    if rendered.path != SETTINGS or _kind(head / SETTINGS) != "file":
+        return rendered
+    try:
+        committed = (head / SETTINGS).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return rendered
+    if committed != rendered.content and _settings_compatible(rendered.content, committed):
+        return dataclasses.replace(rendered, content=committed)
+    return rendered
 
 
 def verify_pack(binary: Path | None = None, runner=subprocess.run) -> tuple[int, str]:

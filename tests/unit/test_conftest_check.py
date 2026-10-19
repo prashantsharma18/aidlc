@@ -489,3 +489,105 @@ class RealConftestWorkflowTest(unittest.TestCase):
             path.write_text(json.dumps(settings))
             self.assertIn("disableAllHooks must not be true: no hook would run",
                           [f.message for f in run_conftest(root) if f.level == "FAIL"])
+
+
+class GeneratedFilesJudgeRound2Test(GeneratedFilesJudgeTest):  # inherits (and re-runs) the round 1 cases
+    """Re-review: field-wise settings compare, links, extras and unmanaged agent configuration."""
+
+    def failing(self, head, trusted, *needles):
+        from aidlc import ci
+        step = self.step(head, trusted)
+        self.assertEqual(step.status, ci.FAIL, step.detail)
+        for needle in needles:
+            self.assertIn(needle, step.detail)
+        return step
+
+    def test_untracked_files_in_a_local_render_do_not_fail_a_clean_checkout(self):
+        from tests.helpers import git
+        with Rendered() as trusted, Rendered() as root:
+            git(root, "add", "-A")
+            git(root, "commit", "-q", "-m", "baseline")
+            for rel in ("api/draft.yaml", "scripts/check-local.sh", "docs/AGENTS.md"):
+                (root / rel).parent.mkdir(parents=True, exist_ok=True)
+                (root / rel).write_text("wip\n")                         # untracked, not ignored
+            run_cli("render", "--tool", "claude-code", str(root))
+            local = json.loads((root / ".claude/settings.json").read_text())
+            git(root, "add", ".claude", ".aidlc", "CLAUDE.md")
+            git(root, "commit", "-q", "-m", "render")
+            with tempfile.TemporaryDirectory() as d:
+                wt = Path(d) / "wt"
+                git(root, "worktree", "add", "-q", "--detach", str(wt), "HEAD")
+                try:
+                    step = self.step(wt, trusted)
+                    from aidlc import ci
+                    self.assertEqual(step.status, ci.OK, step.detail)
+                finally:
+                    git(root, "worktree", "remove", "--force", str(wt))
+        self.assertTrue(local["sandbox"]["filesystem"]["denyWrite"])
+
+    def test_deny_write_may_be_a_superset_but_not_a_subset(self):
+        from aidlc import ci
+        with Rendered() as trusted, Rendered() as head:
+            self.edit_settings(head, lambda s: s["sandbox"]["filesystem"]["denyWrite"].append("./extra/untracked.txt"))
+            self.assertEqual(self.step(head, trusted).status, ci.OK)
+        with Rendered() as trusted, Rendered() as head:
+            self.edit_settings(head, lambda s: s["sandbox"]["filesystem"]["denyWrite"].pop())
+            self.failing(head, trusted, ".claude/settings.json")
+        with Rendered() as trusted, Rendered() as head:
+            self.edit_settings(head, lambda s: s["sandbox"]["filesystem"].setdefault("allowWrite", []).append("./x"))
+            self.failing(head, trusted, ".claude/settings.json")
+
+    def test_a_symlinked_input_is_refused_and_never_read(self):
+        secret = "HOST-FILE-CONTENT-7f3a"
+        for rel in ("AGENTS.md", ".aidlc/config.yaml", ".aidlc/permissions.yaml", ".aidlc/claude.md"):
+            with self.subTest(rel), Rendered() as trusted, Rendered() as head, tempfile.TemporaryDirectory() as host:
+                target = Path(host) / "host.txt"
+                target.write_text(f"{secret}: [unclosed\n")
+                (head / rel).unlink(missing_ok=True)
+                (head / rel).symlink_to(target)
+                step = self.failing(head, trusted, rel, "does not follow")
+                self.assertNotIn(secret, step.detail)
+
+    def test_a_symlinked_directory_or_rule_entry_is_refused(self):
+        with Rendered() as trusted, Rendered() as head, tempfile.TemporaryDirectory() as host:
+            (Path(host) / "r.md").write_text("---\npaths: ['**']\n---\nSECRET-RULE\n")
+            (head / ".aidlc/rules/r.md").symlink_to(Path(host) / "r.md")
+            step = self.failing(head, trusted, ".aidlc/rules/r.md")
+            self.assertNotIn("SECRET-RULE", step.detail)
+        with Rendered() as trusted, Rendered() as head, tempfile.TemporaryDirectory() as host:
+            import shutil
+            shutil.rmtree(head / ".aidlc/rules")
+            (head / ".aidlc/rules").symlink_to(host)
+            self.failing(head, trusted, ".aidlc/rules")
+
+    def test_extras_under_managed_directories_fail(self):
+        with Rendered() as trusted, Rendered() as head:
+            (head / ".claude/rules").mkdir(exist_ok=True)
+            (head / ".claude/rules/evil.md").write_text("no marker\n")
+            self.failing(head, trusted, ".claude/rules/evil.md")
+        with Rendered() as trusted, Rendered() as head, tempfile.TemporaryDirectory() as host:
+            (head / ".claude/rules").mkdir(exist_ok=True)
+            (head / ".claude/rules/link.md").symlink_to(Path(host))
+            self.failing(head, trusted, ".claude/rules/link.md")
+        with Rendered() as trusted, Rendered() as head:
+            (head / ".aidlc/hooks/json.py").write_text("raise SystemExit(0)\n")
+            self.failing(head, trusted, ".aidlc/hooks/json.py")
+        with Rendered() as trusted, Rendered() as head:
+            (head / ".aidlc/hooks/sub").mkdir()
+            self.failing(head, trusted, ".aidlc/hooks/sub")
+        with Rendered() as trusted, Rendered() as head:
+            os.mkfifo(head / ".aidlc/hooks/pipe")
+            self.failing(head, trusted, ".aidlc/hooks/pipe")
+
+    def test_unmanaged_agent_configuration_fails(self):
+        for rel, content in ((".claude/settings.local.json", '{"disableAllHooks": true}'), ("CLAUDE.local.md", "x"),
+                             (".mcp.json", "{}"), (".claude/agents/x.md", "x"), (".claude/commands/y.md", "y")):
+            with self.subTest(rel), Rendered() as trusted, Rendered() as head:
+                (head / rel).parent.mkdir(parents=True, exist_ok=True)
+                (head / rel).write_text(content)
+                self.failing(head, trusted, rel, "agent configuration not managed by aidlc")
+
+    def test_a_clean_render_has_no_extras(self):
+        from aidlc import ci
+        with Rendered() as trusted, Rendered() as head:
+            self.assertEqual(self.step(head, trusted).status, ci.OK)
