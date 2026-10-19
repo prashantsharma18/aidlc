@@ -4,7 +4,11 @@ agent shells cannot (sandbox denyWrite on ~/.aidlc, and a shell deny rule)."""
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import sys
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 from ..cli import command
@@ -24,7 +28,18 @@ def _run(args: argparse.Namespace) -> int:
     path = guard.attempts_file(repo, branch)
     branch = branch or guard.DETACHED
     if args.reset:
-        path.unlink(missing_ok=True)
+        if guard.attempts_unsafe(path):
+            print(f"attempts: {path.parent} or its lock is a symlink or not a regular file; inspect it", file=sys.stderr)
+            return 1
+        run = hooks().post_check.check_run_id(repo)          # the run already on disk is not a new attempt
+        record = {"failures": 0, "last": "RESET", "updated": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+        if run is not None:
+            record["last_run"] = run
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".attempts-")
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(record, fh)
+        os.replace(tmp, path)
         print(f"attempts: reset for {branch}")
         return 0
     cap = load_policy("routing")["retry_cap"]

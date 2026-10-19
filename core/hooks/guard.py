@@ -889,20 +889,56 @@ def cli_entry() -> str | None:
     return entry if isinstance(entry, str) and entry else None
 
 
-def _is_entry_point(word: str, cwd: str | None) -> bool:
-    entry = cli_entry()
-    if entry is None:
-        return False
+MAX_HOPS = 40
+
+
+def writable_roots(cwd: str | None) -> list[str]:
+    """Where an agent shell can write: the repository, the temp directories and $TMPDIR."""
+    roots = ["/tmp", "/var/tmp", "/dev/shm"]
+    if os.environ.get("TMPDIR"):
+        roots.append(os.environ["TMPDIR"])
+    top = repo_root(Path(cwd or os.getcwd()))
+    if top is not None:
+        roots.append(str(top))
+    return sorted({os.path.realpath(r) for r in roots})
+
+
+def _under(path: str, roots: list[str]) -> bool:
+    return any(path == r or path.startswith(r.rstrip("/") + "/") for r in roots)
+
+
+def trusted_entry(word: str, cwd: str | None, entry: str) -> bool:
+    """True when `word` (the first word of a command) is the framework's entry point and the agent
+    could not have put it there: its path, every symlink hop on the way and the directory holding
+    each hop are all outside the writable roots, and the last hop is `entry`. A fake that is
+    replaced by a link to the entry after it ran (`ln -sf <entry> "$0"`) fails this."""
     try:
+        base = cwd or os.getcwd()
         if "/" in word:
-            found = Path(word) if word.startswith("/") else Path(cwd or os.getcwd()) / word
+            current = os.path.abspath(os.path.join(base, word))
         else:
-            found = shutil.which(word)
+            absolute = os.pathsep.join(p for p in os.environ.get("PATH", "").split(os.pathsep)
+                                       if p.startswith("/"))     # a relative PATH entry is never trusted
+            found = shutil.which(word, path=absolute)
             if found is None:
                 return False
-        return os.path.realpath(found) == entry
-    except Exception:  # noqa: BLE001
+            current = os.path.abspath(found)
+        roots = writable_roots(cwd)
+        for _ in range(MAX_HOPS + 1):
+            if _under(current, roots) or _under(os.path.realpath(os.path.dirname(current)), roots):
+                return False
+            if not os.path.islink(current):
+                return current == entry and os.path.realpath(current) == entry
+            target = os.readlink(current)
+            current = os.path.abspath(os.path.join(os.path.dirname(current), target))
         return False
+    except OSError:
+        return False
+
+
+def _is_entry_point(word: str, cwd: str | None) -> bool:
+    entry = cli_entry()
+    return entry is not None and trusted_entry(word, cwd, entry)
 
 
 def check_segments(command, cwd: str | None = None) -> tuple[bool, bool]:

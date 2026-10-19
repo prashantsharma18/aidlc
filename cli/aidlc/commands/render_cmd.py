@@ -35,7 +35,10 @@ def _run(args: argparse.Namespace) -> int:
         print(problem)
     if not problems and not args.check and args.tool == "claude-code":
         try:
-            write_cli_entry()      # next to harness.json: the hooks trust a PASS only from this entry point
+            if write_cli_entry() is None:
+                print("aidlc render: warning: framework entry point not found; the retry limit will "
+                      "never credit a PASS", file=sys.stderr)
+            # next to harness.json: the hooks trust a PASS only from this entry point
         except OSError as exc:
             print(f"aidlc render: cannot record the aidlc entry point ({exc}); a passing check "
                   "will not reset the retry counter")

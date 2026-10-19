@@ -70,7 +70,8 @@ def _one(args: argparse.Namespace) -> int:
 
 @command
 def register(sub: argparse._SubParsersAction) -> None:
-    parser = sub.add_parser("check", help="the one-command check, or a named deterministic check")
+    parser = sub.add_parser("check", help="the one-command check, or a named deterministic check",
+                            allow_abbrev=False)
     parser.add_argument("--repo", default=".", help="repository to check (default: current directory)")
     parser.set_defaults(func=_one)
     names = parser.add_subparsers(dest="check_name", metavar="<check>")

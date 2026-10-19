@@ -175,7 +175,7 @@ def _update_attempts(path: Path, counted_call: bool, passed: bool, run: str | No
     with os.fdopen(lock_fd, "r+", encoding="utf-8") as lock:   # never opened through a symlink
         fcntl.flock(lock, fcntl.LOCK_EX)
         try:
-            before, last_run = None, None
+            before, last_run, fresh = None, None, False
             try:
                 if path.is_symlink():                       # never trust a link: fail closed
                     raise OSError("attempts record is a symlink")
@@ -185,9 +185,18 @@ def _update_attempts(path: Path, counted_call: bool, passed: bool, run: str | No
                 last_run = data.get("last_run") if isinstance(data, dict) else None
                 last_run = last_run if isinstance(last_run, str) else None
             except FileNotFoundError:
-                before = 0
+                before, fresh = 0, True
             except Exception:  # noqa: BLE001 - unreadable: fail closed (counts as at the limit)
                 before = None
+            if not counted_call and fresh and run is not None:
+                run_adopted = {"failures": 0, "last": "NONE",
+                               "updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                               "last_run": run}                  # the first sight of a run: not counted
+                fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".attempts-")
+                with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                    json.dump(run_adopted, fh)
+                os.replace(tmp, path)
+                return None
             if not counted_call and not (run is not None and run != last_run):
                 return None
             failures = 0 if passed else (cap if before is None else before + 1)

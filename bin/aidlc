@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
 # Run the aidlc CLI from this checkout without installing it.
+# -P keeps the current directory off sys.path: a repository's own ./aidlc package must never replace the CLI.
 here="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
-PYTHONPATH="$here/cli${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m aidlc "$@"
+PYTHONPATH="$here/cli${PYTHONPATH:+:$PYTHONPATH}" exec python3 -P -m aidlc "$@"
