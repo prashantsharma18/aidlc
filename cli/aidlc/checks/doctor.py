@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -15,6 +16,7 @@ from ..adapters import get_adapter
 from ..adapters.base import write_rendered
 from ..adapters.claude_code import (HOOK_FILES, POST_MATCHER, PRE_MATCHER, _deny_write,
                                     _is_literal_protected, _sandbox_paths, _tracked_files)
+from ..hookbridge import hooks as load_hooks
 from ..harness import HarnessError, base_branch, effective_permissions, map_tools
 from ..policy import PolicyError, load_policy
 from ..repo import load_config
@@ -301,6 +303,127 @@ def check_d12(repo: Path) -> list[Finding]:
     return []
 
 
+def _override_sources(repo: Path) -> list[tuple[str, Path, bool]]:
+    """(label, path, outranks the project file). Claude Code precedence: managed > local > project > user."""
+    config_dir = Path(os.environ.get("CLAUDE_CONFIG_DIR") or "~/.claude").expanduser()
+    user = Path(os.environ.get("AIDLC_USER_SETTINGS") or config_dir / "settings.json").expanduser()
+    managed = Path(os.environ.get("AIDLC_MANAGED_SETTINGS") or "/etc/claude-code/managed-settings.json")
+    return [(".claude/settings.local.json", repo / ".claude" / "settings.local.json", True),
+            ("user settings", user, False),
+            ("managed settings", managed, True)]
+
+
+HARNESS_ENV = {"AIDLC_HARNESS_FILE", "AIDLC_HOME_DIR", "AIDLC_SCOPE_FILE", "AIDLC_BASE_REF", "AIDLC_LOG_DIR",
+               "CHECK_SCOPE", "AIDLC_TOOLS_DIR", "AIDLC_USER_SETTINGS", "AIDLC_MANAGED_SETTINGS"}
+OVERRIDE_MAX_BYTES = 1024 * 1024
+
+
+class _Missing(Exception):
+    """The override file does not exist, which is the normal case."""
+
+
+def _read_override(path: Path) -> object:
+    """Parse one override file. Follows symlinks (dotfile managers link user settings), never blocks
+    (O_NONBLOCK, so a FIFO cannot hang doctor), accepts only a regular file of at most 1 MiB.
+    Raises _Missing when absent, OSError/ValueError when unreadable."""
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+    except FileNotFoundError as exc:
+        raise _Missing from exc
+    with os.fdopen(fd, "rb") as fh:
+        if not stat.S_ISREG(os.fstat(fh.fileno()).st_mode):
+            raise OSError("not a regular file")
+        raw = fh.read(OVERRIDE_MAX_BYTES + 1)
+    if len(raw) > OVERRIDE_MAX_BYTES:
+        raise OSError("larger than 1 MiB")
+    return json.loads(raw.decode("utf-8"))
+
+
+def _reaches_framework(grant: str, repo: Path, entry: Path) -> bool:
+    """A write grant or extra directory that covers the recorded framework entry, its directory or
+    any parent of it. Relative grants are taken from the repository."""
+    raw = grant.strip()
+    if not raw:
+        return False
+    path = Path(raw).expanduser()
+    path = (path if path.is_absolute() else repo / path).resolve()
+    return any(path == t or path in t.parents for t in (entry, entry.parent))
+
+
+def _reaches_harness(grant: str, repo: Path) -> bool:
+    """A sandbox write grant that covers the harness (.aidlc, .claude, ~/.aidlc, ~/.claude) or a
+    parent of it. Relative grants are taken from the repository; `~` and absolute paths as given."""
+    raw = grant.strip()
+    if raw in ("", ".", "./", "/", "~", "~/"):
+        return True
+    path = Path(raw).expanduser()
+    path = (path if path.is_absolute() else repo / path).resolve()
+    home = Path.home().resolve()
+    targets = [repo.resolve() / ".aidlc", repo.resolve() / ".claude", home / ".aidlc", home / ".claude"]
+    return any(path == t or path in t.parents or t in path.parents for t in targets)
+
+
+def check_d13(repo: Path) -> list[Finding]:
+    """D13: settings files that override the harness. Keys the rendered project settings set can
+    only be overridden by higher-precedence files (local, managed); keys it does not set can be
+    overridden by any file."""
+    out: list[Finding] = []
+    recorded = load_hooks().guard.recorded_entry(repo)
+    entry = Path(recorded).resolve() if recorded else None
+    for label, path, outranks in _override_sources(repo):
+        try:
+            data = _read_override(path)
+        except _Missing:
+            continue
+        except (OSError, ValueError) as exc:
+            out.append(_warn(label, f"D13 cannot read {label} ({type(exc).__name__}); its overrides are not checked"))
+            continue
+        if not isinstance(data, dict):
+            out.append(_warn(label, f"D13 cannot read {label} (not a JSON object); its overrides are not checked"))
+            continue
+        sandbox = data.get("sandbox") if isinstance(data.get("sandbox"), dict) else {}
+        perms = data.get("permissions") if isinstance(data.get("permissions"), dict) else {}
+        if outranks:
+            if sandbox.get("enabled") is False:
+                out.append(_fail(label, f"D13 {label} sets sandbox.enabled: false, which turns off the harness sandbox"))
+            if sandbox.get("failIfUnavailable") is False:
+                out.append(_fail(label, f"D13 {label} sets sandbox.failIfUnavailable: false; commands may run unsandboxed"))
+            if sandbox.get("allowUnsandboxedCommands") is True:
+                out.append(_fail(label, f"D13 {label} sets sandbox.allowUnsandboxedCommands: true"))
+            if perms.get("disableBypassPermissionsMode") not in (None, "disable"):
+                out.append(_fail(label, f"D13 {label} re-enables bypass permissions mode"))
+        if data.get("disableAllHooks") is True:
+            out.append(_fail(label, f"D13 {label} sets disableAllHooks: true; the guard and post-tool check never run"))
+        if perms.get("defaultMode") == "bypassPermissions":
+            out.append(_fail(label, f"D13 {label} sets permissions.defaultMode: bypassPermissions"))
+        env = data.get("env") if isinstance(data.get("env"), dict) else {}
+        for name in sorted(env):
+            if name in HARNESS_ENV or (name == "AIDLC_SCOPE" and str(env[name]).lower() == "off"):
+                out.append(_fail(label, f"D13 {label} sets env {name}, which redirects or disables the harness"))
+        if sandbox.get("excludedCommands"):
+            out.append(_fail(label, f"D13 {label} sets sandbox.excludedCommands; those commands run unsandboxed"))
+        filesystem = sandbox.get("filesystem") if isinstance(sandbox.get("filesystem"), dict) else {}
+        for grant in filesystem.get("allowWrite") or []:
+            if isinstance(grant, str) and _reaches_harness(grant, repo):
+                out.append(_fail(label, f"D13 {label} sandbox.filesystem.allowWrite '{grant}' reaches the harness"))
+        if entry is not None:
+            grants = [("sandbox.filesystem.allowWrite", filesystem.get("allowWrite")),
+                      ("permissions.additionalDirectories", perms.get("additionalDirectories"))]
+            for key, values in grants:
+                for value in values if isinstance(values, list) else []:
+                    if isinstance(value, str) and _reaches_framework(value, repo, entry):
+                        out.append(_fail(label, f"D13 {label}: {key} entry '{value}' lets the agent write the "
+                                                f"aidlc framework ({entry.parent}); a forged check could then earn PASS credit"))
+        for rule in perms.get("allow") or []:
+            if isinstance(rule, str) and "(" not in rule and rule != "Read":
+                out.append(_warn(label, f"D13 {label} allows '{rule}' without a pattern; deny and ask rules still apply"))
+        hooks = data.get("hooks")
+        if isinstance(hooks, dict) and hooks:
+            out.append(_warn(label, f"D13 {label} defines its own hooks ({', '.join(sorted(hooks))}); "
+                                    "they run alongside the harness hooks"))
+    return out
+
+
 def run_doctor(repo: Path, which=shutil.which, claude_version: str | None = None) -> list[Finding]:
     findings = check_d1(repo)
     settings, problems = _settings(repo)
@@ -321,6 +444,7 @@ def run_doctor(repo: Path, which=shutil.which, claude_version: str | None = None
     findings += check_d9(repo)
     findings += check_d10(claude_version)
     findings += check_d12(repo)
+    findings += check_d13(repo)
     if settings is not None:
         try:
             findings += check_d11(repo, settings, eff)
