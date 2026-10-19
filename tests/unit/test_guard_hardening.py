@@ -167,3 +167,41 @@ class ShellNormalisationTest(unittest.TestCase):
             for cmd in self.ALLOW:
                 with self.subTest(cmd=cmd):
                     self.assertEqual(guard.decide(shell(cmd))["decision"], "allow")
+
+
+class Round2ShellTest(unittest.TestCase):
+    DENY = ["git -c a={b} push", "git -c core.x={} push origin main", "rm -{r,f} src",
+            "git -c 'a=;' -c 'b=;' push", "git -c \"a=';'\" push",
+            ">f git push", "> f git push", "2>/dev/null git push", ">/dev/null 2>&1 git push",
+            "</dev/null rm -rf src", "</dev/null sudo ls", "2>/dev/null curl https://x",
+            "FOO=1 >f git push", "{ >f git push; }", "git 2>/dev/null push",
+            "git>/dev/null push", "rm>/dev/null -rf src", "git &>/dev/null push",
+            "git push &>/dev/null", "echo hi\ngit push", "rm --r src", "rm --recu src",
+            "rm '>' -rf src"]
+    ASK = ["bash<script.sh", "bash<<<'git push'", "bash < script.sh", "env -S 'git push'"]
+    ALLOW = ['git commit -m "feat(hooks): fail-closed pre-tool guard (generic contract)"',
+             "git commit -m 'fix(api): handle null'", 'git commit -m "a; b"',
+             "awk '{print $1}' file.txt", "jq '.[] | .name' x.json", "grep -E 'foo|bar' src",
+             "git log --format='%h (%an)'", "find . -name '*.ts' -exec grep -l x {} \;",
+             'git commit -m "line1\nline2"', "npm test 2>&1 | tail -5", "ls > out.txt"]
+
+    def test_deny(self):
+        with GuardEnv():
+            for cmd in self.DENY:
+                with self.subTest(cmd=cmd):
+                    self.assertEqual(guard.decide(shell(cmd))["decision"], "deny")
+
+    def test_ask(self):
+        for cmd in self.ASK:
+            with self.subTest(cmd=cmd):
+                with GuardEnv():
+                    self.assertEqual(guard.decide(shell(cmd))["decision"], "ask")
+                with GuardEnv(extra_env={"AIDLC_UNATTENDED": "1"}):
+                    self.assertEqual(guard.decide(shell(cmd))["decision"], "deny")
+
+    def test_allow_even_unattended(self):
+        for extra in ({}, {"AIDLC_UNATTENDED": "1"}):
+            with GuardEnv(extra_env=extra):
+                for cmd in self.ALLOW:
+                    with self.subTest(cmd=cmd, extra=extra):
+                        self.assertEqual(guard.decide(shell(cmd))["decision"], "allow")

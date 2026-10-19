@@ -26,12 +26,12 @@ SECRET_RE = re.compile(
     r"|-----BEGIN [A-Z ]*PRIVATE KEY"
     r"|(?i:bearer)\s+[A-Za-z0-9._~+/=-]{12,}"
     r"|(?i:password|passwd|secret|token|api[_-]?key)\s*[=:]\s*\S{6,})")
-SPLIT_RE = re.compile(r"(&&|\|\||;|\|&|\||&|\n|[(){}])")
+OP_RE = re.compile(r"&>>?|[<>][<>&|]*|[;&|()]+")
 ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 RESERVED = {"{", "}", "!", "if", "then", "else", "elif", "fi", "do", "done", "while", "until"}
 SHELLS = {"bash", "sh", "zsh", "dash", "ksh", "fish"}
 # wrapper -> options that take a separate argument
-WRAPPERS = {"command": set(), "builtin": set(), "exec": {"-a"}, "env": {"-u", "-C", "-S"},
+WRAPPERS = {"command": set(), "builtin": set(), "exec": {"-a"}, "env": {"-u", "-C", "-S", "--split-string"},
             "nohup": set(), "nice": {"-n"}, "time": {"-f", "-o"},
             "timeout": {"-s", "-k"}, "xargs": {"-n", "-L", "-I", "-P", "-s", "-d", "-E", "-a"},
             "stdbuf": {"-i", "-o", "-e"}, "watch": {"-n"}}
@@ -218,8 +218,105 @@ def _substitutions(command: str) -> tuple[str, list[str]]:
     return "".join(outer), inners
 
 
-def _argv(tokens: list[str]) -> list[str]:
-    """Strip assignments, reserved words and wrappers; normalise argv0 and git options."""
+def _lex(text: str) -> list[tuple[str, str]]:
+    """Quote-aware tokeniser: ("word", value), ("sep", op) or ("redir", op). Raises ValueError
+    on unbalanced quotes. Quoted operators stay words; unquoted newlines are separators."""
+    out: list[tuple[str, str]] = []
+    buf: list[str] = []
+    state = {"in": False, "quoted": False}
+
+    def flush(next_char: str = "") -> None:
+        if state["in"]:
+            word = "".join(buf)
+            fd_number = word.isdigit() and not state["quoted"] and next_char in ("<", ">")
+            if not fd_number:
+                out.append(("word", word))
+        buf.clear()
+        state["in"] = state["quoted"] = False
+
+    i, n = 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == "\\":
+            if i + 1 < n and text[i + 1] == "\n":
+                i += 2
+                continue
+            buf.append(text[i + 1] if i + 1 < n else "\\")
+            state["in"] = state["quoted"] = True
+            i += 2
+        elif c == "'":
+            j = text.find("'", i + 1)
+            if j == -1:
+                raise ValueError("unterminated single quote")
+            buf.append(text[i + 1:j])
+            state["in"] = state["quoted"] = True
+            i = j + 1
+        elif c == '"':
+            j = i + 1
+            while j < n and text[j] != '"':
+                if text[j] == "\\" and j + 1 < n:
+                    if text[j + 1] in '"\\$`':
+                        buf.append(text[j + 1])
+                    elif text[j + 1] != "\n":
+                        buf.append(text[j:j + 2])
+                    j += 2
+                else:
+                    buf.append(text[j])
+                    j += 1
+            if j >= n:
+                raise ValueError("unterminated double quote")
+            state["in"] = state["quoted"] = True
+            i = j + 1
+        elif c in " \t":
+            flush()
+            i += 1
+        elif c == "\n":
+            flush()
+            out.append(("sep", "\n"))
+            i += 1
+        elif c in ";&|<>()":
+            flush(c if c in "<>" else "")
+            match = OP_RE.match(text, i)
+            op = match.group(0)
+            out.append(("redir" if op[0] in "<>" or op.startswith("&>") else "sep", op))
+            i += len(op)
+        else:
+            buf.append(c)
+            state["in"] = True
+            i += 1
+    flush()
+    return out
+
+
+def _segments(text: str) -> list[dict]:
+    """Split a command into segments of words; redirections and their targets are dropped."""
+    segments: list[dict] = []
+    current = {"words": [], "piped": False, "stdin": False}
+    piped_next = False
+    tokens = _lex(text)
+    skip_target = False
+    for kind, value in tokens:
+        if skip_target:
+            skip_target = False
+            if kind == "word":
+                continue
+        if kind == "word":
+            current["words"].append(value)
+        elif kind == "redir":
+            current["stdin"] = current["stdin"] or value.startswith("<")
+            skip_target = True
+        else:
+            segments.append(current)
+            piped_next = value in ("|", "|&")
+            current = {"words": [], "piped": piped_next, "stdin": False}
+    segments.append(current)
+    return [seg for seg in segments if seg["words"]]
+
+
+def _argv(tokens: list[str]) -> tuple[list[str], list[str]]:
+    """Strip assignments, reserved words and wrappers; normalise argv0 and git options.
+    The list holds command strings supplied by `env -S`, which are analysed too."""
+    nested: list[str] = []
     changed = True
     while tokens and changed:
         changed = False
@@ -231,6 +328,11 @@ def _argv(tokens: list[str]) -> list[str]:
         if name in WRAPPERS:
             takes_arg, rest = WRAPPERS[name], tokens[1:]
             while rest and (rest[0].startswith("-") or ASSIGN_RE.match(rest[0])):
+                if name == "env" and (rest[0].startswith("-S") or rest[0].startswith("--split-string")):
+                    opt = rest[0]
+                    nested.append(opt[2:] if opt.startswith("-S") and len(opt) > 2 else
+                                  opt.split("=", 1)[1] if "=" in opt else
+                                  (rest[1] if len(rest) > 1 else ""))
                 rest = rest[2:] if rest[0] in takes_arg else rest[1:]
             if name == "timeout" and rest:
                 rest = rest[1:]                       # the duration
@@ -238,24 +340,54 @@ def _argv(tokens: list[str]) -> list[str]:
                 rest = rest[1:]
             tokens, changed = rest, True
     if not tokens:
-        return tokens
+        return tokens, nested
     tokens = [tokens[0].rsplit("/", 1)[-1], *tokens[1:]]
     if tokens[0] == "git":
         rest = tokens[1:]
         while rest and rest[0].startswith("-"):
             rest = rest[2:] if rest[0] in GIT_ARG_OPTS else rest[1:]
         tokens = ["git", *rest]
-    return tokens
+    return tokens, nested
 
 
 def _is_recursive_rm(argv: list[str]) -> bool:
     for tok in argv[1:]:
         if tok == "--":
             return False
-        if tok == "--recursive" or (tok.startswith("-") and not tok.startswith("--")
-                                    and re.search("[rR]", tok)):
+        if tok.startswith("--"):
+            if len(tok) >= 3 and "--recursive".startswith(tok.split("=")[0]):
+                return True
+        elif tok.startswith("-") and ("{" in tok or re.search("[rR]", tok)):
             return True
     return False
+
+
+def _check_segment(words: list[str], piped: bool, stdin: bool, patterns: list[str],
+                   asks: list[dict], pending: list[str]) -> dict | None:
+    argv, env_split = _argv(words)
+    if not argv:
+        if env_split:
+            asks.append(_ask("nested-shell", "a nested shell hides its command; a person must read it"))
+        return None
+    joined = " ".join(argv)
+    for pat in patterns:
+        if fnmatch.fnmatchcase(joined, pat):
+            return _result("deny", "shell-deny", f"'{_redact(joined)[:80]}' matches the denied pattern '{pat}'")
+    if argv[0] == "rm" and _is_recursive_rm(argv):
+        return _result("deny", "recursive-delete", "recursive rm is not allowed")
+    if argv[0] in SHELLS and piped:
+        return _result("deny", "pipe-to-shell", "piping into a shell is not allowed")
+    if argv[0] in SHELLS:
+        for index, tok in enumerate(argv[1:], start=1):
+            if tok.startswith("-") and not tok.startswith("--") and "c" in tok:
+                if index + 1 < len(argv):
+                    pending.append(argv[index + 1])        # the script text is analysed too
+                break
+    elif argv[0] == "eval":
+        pending.append(" ".join(argv[1:]))
+    if (argv[0] in SHELLS and (len(argv) > 1 or stdin)) or argv[0] in ("eval", "source", ".") or env_split:
+        asks.append(_ask("nested-shell", "a nested shell hides its command; a person must read it"))
+    return None
 
 
 def _decide_shell(event: dict, data: dict) -> dict:
@@ -271,31 +403,17 @@ def _decide_shell(event: dict, data: dict) -> dict:
             return _result("deny", "fail-safe", "command too deeply nested to inspect")
         outer, inners = _substitutions(pending.pop())
         pending += inners
-        pieces = SPLIT_RE.split(outer)
-        previous = ""
-        for index in range(0, len(pieces), 2):
-            text = pieces[index].strip()
-            sep = pieces[index - 1] if index else ""
-            if not text:
-                continue
-            try:
-                tokens = shlex.split(text)
-            except ValueError:
-                asks.append(_ask("unparseable", "a command part could not be parsed; a person must read it"))
-                tokens = text.replace("'", " ").replace('"', " ").split()
-            argv = _argv(tokens)
-            if not argv:
-                continue
-            joined = " ".join(argv)
-            for pat in patterns:
-                if fnmatch.fnmatchcase(joined, pat):
-                    return _result("deny", "shell-deny", f"'{_redact(joined)[:80]}' matches the denied pattern '{pat}'")
-            if argv[0] == "rm" and _is_recursive_rm(argv):
-                return _result("deny", "recursive-delete", "recursive rm is not allowed")
-            if argv[0] in SHELLS and sep in ("|", "|&"):
-                return _result("deny", "pipe-to-shell", "piping into a shell is not allowed")
-            if (argv[0] in SHELLS and len(argv) > 1) or argv[0] in ("eval", "source", "."):
-                asks.append(_ask("nested-shell", "a nested shell hides its command; a person must read it"))
+        try:
+            segments = _segments(outer)
+        except ValueError:
+            asks.append(_ask("unparseable", "a command part could not be parsed; a person must read it"))
+            crude = re.sub(r"[\"']", " ", outer)
+            segments = [{"words": part.split(), "piped": False, "stdin": False}
+                        for part in re.split(r"[;&|()<>\n]+", crude)]
+        for seg in segments:
+            denied = _check_segment(seg["words"], seg["piped"], seg["stdin"], patterns, asks, pending)
+            if denied:
+                return denied
     return asks[0] if asks else _result("allow", "no-guarded-command", "no guarded command found")
 
 

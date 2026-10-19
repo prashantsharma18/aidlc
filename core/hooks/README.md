@@ -46,3 +46,4 @@ The guard is a fast, pattern-based layer. It normalises commands (wrappers such 
 Anything it cannot parse asks a person (denies when unattended). `SECRET_RE` is a best-effort list of secret shapes. It redacts the log and the returned reason, and it is not a guarantee that no secret ever appears.
 
 Edits are also denied for anything under `.git/`, for files with more than one hard link, and when the scope file lives inside the repository or names absolute, `..` or `.git` patterns.
+- ANSI-C quoting such as `git $'push'`.
