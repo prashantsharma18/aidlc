@@ -81,7 +81,9 @@
     "filesystem": {
       "denyRead": [
         "./.env",
+        "./**/.env",
         "./.env.*",
+        "./**/.env.*",
         "./**/*.pem",
         "./**/*.key",
         "./secrets",
@@ -98,16 +100,8 @@
         "./AGENTS.md",
         "./CLAUDE.md",
         "./.claude",
-        "./.mcp.json",
-        "./.github",
-        "./ci",
         "./plans",
-        "./architecture",
-        "./api",
-        "./test/protected-exceptions.txt",
-        "./test/allowed-skips.txt",
-        "./.openwikiignore",
-        "./openwiki"
+        "./.openwikiignore"
       ],
       "allowWrite": [
         "~/.npm"

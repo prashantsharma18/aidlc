@@ -10,7 +10,12 @@
                             "tools": {"$ref": "#/$defs/strs"}}},
     "set4": {"type": "object", "additionalProperties": false,
              "properties": {"read": {"$ref": "#/$defs/strs"}, "edit": {"$ref": "#/$defs/strs"},
-                            "shell": {"$ref": "#/$defs/strs"}, "tools": {"$ref": "#/$defs/strs"}}}
+                            "shell": {"$ref": "#/$defs/strs"}, "tools": {"$ref": "#/$defs/strs"}}},
+    "loosen": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false, "required": ["value", "reason", "owner"],
+      "properties": {"value": {"type": "string", "minLength": 1},
+                     "reason": {"type": "string", "minLength": 1},
+                     "owner": {"type": "string", "minLength": 1}}}}
   },
   "properties": {
     "deny_add": {"$ref": "#/$defs/set4"},
@@ -18,8 +23,8 @@
     "allow_remove": {"$ref": "#/$defs/set4"},
     "secret_paths_add": {"$ref": "#/$defs/strs"},
     "protected_paths_add": {"$ref": "#/$defs/strs"},
-    "network_allow_add": {"$ref": "#/$defs/strs"},
-    "sandbox_allow_write_add": {"$ref": "#/$defs/strs"},
+    "network_allow_add": {"$ref": "#/$defs/loosen"},
+    "sandbox_allow_write_add": {"$ref": "#/$defs/loosen"},
     "allow_add": {"type": "array", "items": {
       "type": "object", "additionalProperties": false,
       "required": ["kind", "pattern", "reason", "owner"],

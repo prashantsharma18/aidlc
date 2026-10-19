@@ -1,4 +1,4 @@
-"""aidlc doctor: is the harness in this repository intact and enforceable? Checks D1-D11.
+"""aidlc doctor: is the harness in this repository intact and enforceable? Checks D1-D12.
 Each check returns findings whose message starts with its id."""
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ from pathlib import Path
 from ..adapters import get_adapter
 from ..adapters.base import write_rendered
 from ..adapters.claude_code import (HOOK_FILES, POST_MATCHER, PRE_MATCHER, _deny_write,
-                                    _is_literal_protected, _sandbox_path)
-from ..harness import HarnessError, effective_permissions, map_tools
+                                    _is_literal_protected, _sandbox_paths, _tracked_files)
+from ..harness import HarnessError, base_branch, effective_permissions, map_tools
 from ..policy import PolicyError, load_policy
 from ..repo import load_config
 from .findings import Finding
@@ -73,9 +73,10 @@ def check_d2(repo: Path, settings: dict, eff: dict) -> list[Finding]:
     for entry in eff["secret_paths"]:
         if f"Read({entry})" not in deny:
             out.append(_fail(SETTINGS, f"D2 secret path '{entry}' has no Read({entry}) deny rule"))
-        if _sandbox_path(entry) not in deny_read:
-            out.append(_fail(SETTINGS, f"D2 secret path '{entry}' has no sandbox denyRead entry "
-                                       f"'{_sandbox_path(entry)}'"))
+        for want in _sandbox_paths(entry):
+            if want not in deny_read:
+                out.append(_fail(SETTINGS, f"D2 secret path '{entry}' has no sandbox denyRead entry "
+                                           f"'{want}'"))
     return out
 
 
@@ -121,7 +122,7 @@ def _selftest(repo: Path) -> list[str]:
         env = {k: v for k, v in os.environ.items() if k != "AIDLC_HARNESS_FILE"}
         env["AIDLC_HARNESS_FILE"] = str(hooks / harness)
         try:
-            run = subprocess.run([sys.executable, "-I", "-c", DRIVER, str(hooks / "guard.py"),
+            run = subprocess.run([sys.executable, "-I", "-B", "-c", DRIVER, str(hooks / "guard.py"),
                                   json.dumps([event])], capture_output=True, text=True,
                                  timeout=SELFTEST_TIMEOUT, env=env, cwd=repo)
         except subprocess.TimeoutExpired:
@@ -174,9 +175,14 @@ def check_d5(which) -> list[Finding]:
 
 
 def check_d6(eff: dict) -> list[Finding]:
-    return [_warn(".aidlc/permissions.yaml",
-                  f"D6 allow_add '{e['pattern']}' ({e['kind']}) loosens the baseline: "
-                  f"{e.get('reason')} (owner {e.get('owner')})") for e in eff["allow_added"]]
+    out = [_warn(".aidlc/permissions.yaml",
+                 f"D6 allow_add '{e['pattern']}' ({e['kind']}) loosens the baseline: "
+                 f"{e.get('reason')} (owner {e.get('owner')})") for e in eff["allow_added"]]
+    for key, what in (("network_allow_add", "network access"), ("sandbox_allow_write_add", "sandbox writes")):
+        out += [_warn(".aidlc/permissions.yaml",
+                      f"D6 {key} '{e['value']}' loosens {what}: {e['reason']} (owner {e['owner']})")
+                for e in eff[key]]
+    return out
 
 
 def check_d7(eff: dict, tool_names: dict) -> list[Finding]:
@@ -258,19 +264,40 @@ def check_d10(claude_version: str | None) -> list[Finding]:
 def check_d11(repo: Path, settings: dict, eff: dict) -> list[Finding]:
     deny = _get(settings, "permissions", "deny", default=[])
     deny_write = _get(settings, "sandbox", "filesystem", "denyWrite", default=[])
+    files = _tracked_files(repo)
     out = []
     for entry in eff["protected_paths"]:
         if f"Edit({entry})" not in deny:
             out.append(_fail(SETTINGS, f"D11 protected path '{entry}' has no Edit({entry}) deny rule"))
         if not _is_literal_protected(entry):
             out.append(_warn(SETTINGS, f"D11 {entry}: sandbox denyWrite covers only files tracked at "
-                                       "render time; new matching files rely on Edit rules and the guard"))
+                                       "render time (or present and not ignored); new matching files "
+                                       "rely on the Edit deny rule, the guard (Edit tools) and the "
+                                       "post-check (shell)"))
             continue
-        for want in _deny_write(repo, [entry]):
+        for want in _deny_write(repo, [entry], files):
             if want not in deny_write:
                 out.append(_fail(SETTINGS, f"D11 protected path '{entry}' has no sandbox denyWrite "
                                            f"entry '{want}'"))
     return out
+
+
+def check_d12(repo: Path) -> list[Finding]:
+    """The base branch is the trust root for approvals, scope generation and the post-check."""
+    try:
+        base = base_branch(repo)
+    except (HarnessError, ValueError, OSError) as exc:
+        return [_fail(".aidlc/config.yaml", f"D12 {exc}")]
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    try:
+        found = subprocess.run(["git", "rev-parse", "--verify", "-q", f"refs/heads/{base}^{{commit}}"],
+                               cwd=repo, env=env, capture_output=True, timeout=SELFTEST_TIMEOUT)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return [_fail(".aidlc/config.yaml", f"D12 cannot check base branch '{base}' ({type(exc).__name__})")]
+    if found.returncode != 0:
+        return [_fail(".aidlc/config.yaml", f"D12 base branch '{base}' does not exist; create it or set "
+                                            "harness.base_branch")]
+    return []
 
 
 def run_doctor(repo: Path, which=shutil.which, claude_version: str | None = None) -> list[Finding]:
@@ -292,6 +319,7 @@ def run_doctor(repo: Path, which=shutil.which, claude_version: str | None = None
     findings += check_d8(repo)
     findings += check_d9(repo)
     findings += check_d10(claude_version)
+    findings += check_d12(repo)
     if settings is not None:
         try:
             findings += check_d11(repo, settings, eff)

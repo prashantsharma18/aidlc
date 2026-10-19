@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 from ..harness import HarnessError, effective_permissions, harness_data, map_tools
@@ -26,6 +27,10 @@ POST_MATCHER = "^(Edit|Write|MultiEdit|NotebookEdit|Bash|Monitor|BashOutput)$"
 HOOK_FILES = ("guard.py", "post_check.py", "claude_shim.py")
 GLOB_CHARS = "*?["
 LS_FILES_TIMEOUT = 20
+# Files this render itself writes: they exist once it finishes, so protected paths covering them
+# get a denyWrite entry on the first render too (keeps render idempotent).
+RENDERED_PATHS = ("CLAUDE.md", ".claude/settings.json", ".aidlc/generated.json",
+                  *(f".aidlc/hooks/{n}" for n in (*HOOK_FILES, "harness.json")))
 
 
 def _dedupe(items):
@@ -40,30 +45,41 @@ def _has_glob(text: str) -> bool:
     return any(ch in text for ch in GLOB_CHARS)
 
 
-def _sandbox_path(pattern: str) -> str | None:
-    """A secret path as a sandbox denyRead entry (denyRead supports globs, verified
-    2026-10-19). Home globs ending in /** become the directory."""
+def _sandbox_paths(pattern: str) -> list[str]:
+    """A secret path as sandbox denyRead entries (denyRead supports globs, verified
+    2026-10-19). Home globs ending in /** become the directory. A bare name (no '/', such as
+    '.env' or '.env.*') is denied at the root and at any depth, as the guard reads it (nested
+    '**/.env.*' verified live 2026-10-19, check 5)."""
     if pattern.startswith("~"):
-        return pattern[:-3] if pattern.endswith("/**") else pattern
+        return [pattern[:-3] if pattern.endswith("/**") else pattern]
     if pattern.endswith("/**") and not _has_glob(pattern[:-3]):
-        return f"./{pattern[:-3]}"
-    return pattern if pattern.startswith("./") else f"./{pattern}"
+        return [f"./{pattern[:-3]}"]
+    if "/" not in pattern:
+        return [f"./{pattern}", f"./**/{pattern}"]
+    return [pattern if pattern.startswith("./") else f"./{pattern}"]
 
 
 def _guard_matcher():
-    """The guard's own matcher, so the sandbox and the guard agree on what a pattern covers."""
+    """The guard's own matcher, so the sandbox and the guard agree on what a pattern covers.
+    Loaded without writing bytecode, so no __pycache__ appears next to the hook sources."""
     path = framework_root() / "core" / "hooks" / "guard.py"
     spec = importlib.util.spec_from_file_location("aidlc_render_guard", path)
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    saved = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = saved
     return module.matches
 
 
 def _tracked_files(repo: Path) -> list[str]:
+    """Files that exist for git at render time: tracked, or untracked and not ignored."""
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     try:
-        result = subprocess.run(["git", "ls-files", "-z"], cwd=repo, env=env, capture_output=True,
-                                timeout=LS_FILES_TIMEOUT)
+        result = subprocess.run(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                                cwd=repo, env=env, capture_output=True, timeout=LS_FILES_TIMEOUT)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise HarnessError(f"cannot list tracked files in {repo} ({type(exc).__name__}); "
                            "the sandbox write denies need them") from exc
@@ -81,10 +97,21 @@ def _is_literal_protected(entry: str) -> bool:
             or (entry.endswith("/**") and not _has_glob(entry[:-3])))
 
 
-def _deny_write(repo: Path, protected: list[str]) -> list[str]:
+def _exists(rel: str, files: list[str]) -> bool:
+    """True when a repository path exists for git (a listed file, or a directory holding one)
+    or is written by this render."""
+    prefix = rel + "/"
+    return any(f == rel or f.startswith(prefix) for f in (*files, *RENDERED_PATHS))
+
+
+def _deny_write(repo: Path, protected: list[str], files: list[str] | None = None) -> list[str]:
     """Sandbox denyWrite supports only literal files and directories (verified 2026-10-19), so
-    glob entries are expanded to the tracked files they match."""
+    glob entries are expanded to the existing files they match. Repository entries are rendered
+    only for paths that exist at render time (tracked, or present and not ignored): for a
+    missing path the sandbox creates a placeholder in the worktree (verified 2026-10-19, check 6).
+    The post-check flags creation of a missing protected path instead."""
     out, globs = [], []
+    files = _tracked_files(repo) if files is None else files
     for pattern in protected:
         if pattern == ".git/**":
             out += ["./.git/hooks", "./.git/config"]     # a full .git deny would break commits
@@ -92,15 +119,14 @@ def _deny_write(repo: Path, protected: list[str]) -> list[str]:
             globs.append(pattern)
         elif pattern.startswith("~"):
             out.append(pattern[:-3] if pattern.endswith("/**") else pattern)
-        elif pattern.endswith("/**"):
-            out.append(f"./{pattern[:-3]}")
         else:
-            out.append(f"./{pattern}")
+            rel = pattern[:-3] if pattern.endswith("/**") else pattern
+            if _exists(rel, files):
+                out.append(f"./{rel}")
     if globs:
         matches = _guard_matcher()
-        tracked = _tracked_files(repo)
         for pattern in globs:
-            out += [f"./{p}" for p in tracked if matches(p, [pattern], any_depth_names=True)]
+            out += [f"./{p}" for p in (*files, *RENDERED_PATHS) if matches(p, [pattern], any_depth_names=True)]
     return _dedupe(out)
 
 
@@ -172,12 +198,12 @@ class ClaudeCodeAdapter:
                 "enabled": True, "failIfUnavailable": True, "allowUnsandboxedCommands": False,
                 "autoAllowBashIfSandboxed": True,
                 "filesystem": {
-                    "denyRead": _dedupe([_sandbox_path(s) for s in eff["secret_paths"]]),
+                    "denyRead": _dedupe([p for s in eff["secret_paths"] for p in _sandbox_paths(s)]),
                     "denyWrite": _deny_write(repo, eff["protected_paths"]),
                     "allowWrite": _dedupe(profile.get("sandbox_allow_write", [])
-                                          + eff["sandbox_allow_write_add"])},
+                                          + [e["value"] for e in eff["sandbox_allow_write_add"]])},
                 "network": {"allowedDomains": _dedupe(profile.get("network_allow", [])
-                                                      + eff["network_allow_add"])},
+                                                      + [e["value"] for e in eff["network_allow_add"]])},
             },
             "hooks": {"PreToolUse": [{"matcher": PRE_MATCHER, "hooks": [_hook("pre")]}],
                       "PostToolUse": [{"matcher": POST_MATCHER, "hooks": [_hook("post")]}]},

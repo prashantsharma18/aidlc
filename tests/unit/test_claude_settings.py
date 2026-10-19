@@ -123,7 +123,8 @@ class SandboxDenyWriteTest(unittest.TestCase):
         self.assertEqual(len(dw), len(set(dw)))
 
     def test_untracked_not_listed(self):
-        self.assertNotIn("./b/AGENTS.md", self.deny_write()["denyWrite"])
+        # Ruling C2 (final fix pass): an untracked, non-ignored protected file is listed.
+        self.assertIn("./b/AGENTS.md", self.deny_write()["denyWrite"])
 
     def test_filesystem_key_order(self):
         self.assertEqual(list(self.deny_write()), ["denyRead", "denyWrite", "allowWrite"])
