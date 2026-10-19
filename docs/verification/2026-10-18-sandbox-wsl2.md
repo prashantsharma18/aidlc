@@ -95,3 +95,32 @@ Claude Code 2.1.296, model Haiku, in a scratch git repository that was untrusted
 - The hook ran and received the payload, even though the workspace was untrusted.
 - A hook that printed invalid JSON blocked the call: "failed; blocking because onFailure is block".
 - The model did not try to bypass it.
+
+### 2026-10-19, checks 5 and 6
+
+Claude Code 2.1.296, model Haiku. The controller ran these in scratch git repositories, and the results were verified on disk.
+
+| Sandbox setup | Probe | Result |
+|---|---|---|
+| `denyRead` `./**/.env.*` | A read of the nested file `apps/web/.env.local` | Permission denied |
+| `denyWrite` on an existing loose ref `./.git/refs/heads/main` | `git branch -f main HEAD`, `git update-ref refs/heads/main HEAD` | Both fail ("couldn't set 'refs/heads/main'"); `main` is unchanged |
+| `denyWrite` on a missing `./.git/packed-refs` | Any git command | The sandbox puts an unreadable placeholder at the path; every git command then fails ("couldn't read .git/packed-refs: Permission denied") |
+| `denyWrite` on missing literal paths (`./api`, `./ci`, `./.mcp.json`) | `git status` | Each placeholder shows as a character device in the worktree; `git status` lists them as untracked |
+| None. Claude Code's own sandbox already adds such placeholders for `.bashrc`, `.gitconfig`, `.vscode`, `.idea`, `.claude/settings.local.json`, `.mcp.json` and others | `git add -A` | Fails inside any sandboxed session, so nothing is staged; staging explicit paths works |
+| A loose base ref pinned with `denyWrite` | No probe | Not shippable: git packs loose refs during auto-gc, the pin would then become an unreadable placeholder, and every agent git command would break until the next render |
+
+Conclusions:
+
+1. Bare-name secret patterns are rendered at any depth (`./**/.env`, `./**/.env.*`) as well as at the root.
+2. Literal `denyWrite` entries are rendered only for paths that exist at render time. The post-check flags creation of a missing protected path (`protected-path`).
+3. Refs are not pinned with `denyWrite`. The base branch is protected by the base commit recorded in the scope file and by the guard's `base-ref` rule.
+4. Inside a sandboxed session, stage explicit paths. `git add -A` and `git add .` fail.
+
+### 2026-10-19, check 7
+
+Claude Code 2.1.296, model Haiku, run with `-p --setting-sources project,local`. A session started in a subdirectory of an installed repository does not load the repository-root `.claude/settings.json`.
+
+- From `sub/`, a PreToolUse hook with matcher `.*` did not fire for Read or Write, and the Write succeeded.
+- From the repository root, the same hook fired.
+
+Conclusion: permissions, the sandbox and the hooks apply only when the session starts at the repository root. `aidlc doctor` cannot detect where a session starts. Enforcing the start directory belongs to managed or user settings.

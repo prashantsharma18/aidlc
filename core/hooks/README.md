@@ -13,16 +13,29 @@ Generic contract:
 - stdin: `{"session": str, "call": str, "tool": "read|edit|shell|mcp|external", "args": {...}, "cwd": str}`
 - stdout: `{"decision": "allow|ask|deny", "rule": str, "reason": str}`
 
-Any other tool class is denied (`unknown-tool`). Unreadable input, missing or corrupt `harness.json`, and any internal error give `deny` (`fail-safe`).
+Any other tool class asks a person (`unknown-tool`), which is `deny` when unattended. Unreadable input, missing or corrupt `harness.json`, and any internal error give `deny` (`fail-safe`).
 
 What it checks:
 
 - Edits: paths are resolved (symlinks, `..`, absolute paths) and must stay inside the repository. Protected paths are always denied. Otherwise the path must match the task scope for the current branch.
-- Shell: each command in a chain, substitution or multi-line script is matched against `shell_deny`. Piping into a shell is denied. A nested shell (`bash -c`, `eval`) needs a person.
+- Shell: each command in a chain, substitution or multi-line script is matched against `shell_deny`. Git commands that move the base branch (`harness.json` `base_branch`, default `main`) are denied (`base-ref`). Piping into a shell is denied. A nested shell (`bash -c`, `eval`) needs a person.
 - MCP tools: matched against `tool_deny` (deny) and `tool_ask` (ask).
 - External reach: always asks.
 
 Every decision appends one JSON line to `decisions.jsonl`. Secret-shaped values are redacted.
+
+## post_check.py (post-tool check)
+
+Runs after `Edit`, `Write`, `MultiEdit`, `NotebookEdit`, `Bash`, `Monitor` and `BashOutput`. It cannot undo an action, so it flags. In order:
+
+1. Output with a high-confidence credential shape (`BLOCK_SECRET_RE`: provider key prefixes, PEM private-key headers, long `Bearer` tokens, and quoted literals assigned to `password`, `secret`, `token` or `api_key`) flags `secret-in-output`. Read-class tools such as `BashOutput` stop here.
+2. The base is `AIDLC_BASE_REF`, else the `base:` sha recorded in the scope file, else `base_branch`.
+3. Any new or changed path (diff against the merge base, plus untracked files that are not ignored) that matches `protected_paths` or has a `.git` segment flags `protected-path`.
+4. Then the scope, changed assertions and skipped tests.
+
+## claude_shim.py (Claude Code adapter shim)
+
+Translates Claude Code hook payloads to the generic contract and back. `CLASSES` maps tool names to classes; an unlisted tool is `unknown`. On any internal error it exits 2 (a block) and writes one best-effort `fail-safe` record to the decision log.
 
 ## Environment
 
@@ -57,6 +70,6 @@ It deliberately cedes these to the permissions and the sandbox backstop:
 - Interpreters running code, for example `python3 -c`, `node -e`.
 - Parsing differences between bash and other shells such as zsh or `sh`. The one known case that could hide a command, a `'` inside `"${..}"`, asks instead.
 
-Anything it cannot parse asks a person (denies when unattended). Unbalanced quotes are unparseable. So is a line continuation (backslash-newline) inside an operator, for example between the two `<` of `<<` or between `$` and `(`, because bash joins the lines first. A heredoc left open inside a substitution is unparseable too, because bash then takes its body from the next raw newline. So is a `'` inside `"${..}"`, which bash reads as a quote and `sh` (dash) as a plain character. A command longer than 65,536 characters, nested deeper than 40 levels, or taking more than 0.5 s to analyse is denied (`fail-safe`). The deadline is checked inside the scanner, the heredoc reader and the segment loop, so every input is decided well within one second. `SECRET_RE` is a best-effort list of secret shapes. It redacts the log and the returned reason. It does not guarantee that no secret ever appears.
+Anything it cannot parse asks a person (denies when unattended). Unbalanced quotes are unparseable. So is a line continuation (backslash-newline) inside an operator, for example between the two `<` of `<<` or between `$` and `(`, because bash joins the lines first. A heredoc left open inside a substitution is unparseable too, because bash then takes its body from the next raw newline. So is a `'` inside `"${..}"`, which bash reads as a quote and `sh` (dash) as a plain character. A command longer than 65,536 characters, nested deeper than 40 levels, or taking more than 0.5 s to analyse is denied (`fail-safe`). The deadline is checked inside the scanner, the heredoc reader and the segment loop, so every input is decided well within one second. `SECRET_RE` is a broad, best-effort list of secret shapes. It only redacts the log and the returned reason, and it does not guarantee that no secret ever appears. Blocking uses the narrower `BLOCK_SECRET_RE`, so ordinary code such as `password: string;` or `const token = getToken();` is not flagged.
 
 Edits are also denied for anything under `.git/`, for files with more than one hard link, and when the scope file lives inside the repository or names absolute, `..` or `.git` patterns.

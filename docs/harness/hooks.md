@@ -16,8 +16,30 @@ and back. The full contract is in [the adapter interface](../adapters/interface.
   sandbox still apply.
 - The shim prints nothing for "no objection". It never prints an `allow` decision.
 - Anything unexpected is a `deny` (pre) or a `flag` (post). The shim exits 2 on any internal
-  error, which the tool treats as a block. The settings also set `onFailure: block`, so a crash
-  or a timeout blocks too.
+  error, which the tool treats as a block, and writes a `fail-safe` record to the decision log.
+  The settings also set `onFailure: block`, so a crash or a timeout blocks too.
+
+## Which tools reach the hooks
+
+Every tool call reaches the pre-tool guard: the rendered `PreToolUse` matcher is `.*`. The shim
+sorts each tool into a class (`CLASSES` in `core/hooks/claude_shim.py`):
+
+- Read and control tools (`Read`, `Glob`, `Grep`, `LS`, `NotebookRead`, `TodoWrite`, `Task`,
+  `Agent`, `ToolSearch`, `BashOutput`, `KillShell`, `KillBash`, `ExitPlanMode`, `EnterPlanMode`,
+  `Skill`, `SlashCommand`, `AskUserQuestion`, `ListMcpResourcesTool`, `ReadMcpResourceTool`)
+  are class `read`. The guard allows them.
+- `Edit`, `Write`, `MultiEdit` and `NotebookEdit` are `edit`. `Bash` and `Monitor` are `shell`.
+  `WebFetch` and `WebSearch` are `external`. Every `mcp__*` tool is `mcp`.
+- Any other tool is `unknown`. The guard asks a person (rule `unknown-tool`), which is a deny in
+  unattended runs. A new tool therefore never runs silently, and never hard-breaks an
+  interactive session either.
+
+The `PostToolUse` matcher is `^(Edit|Write|MultiEdit|NotebookEdit|Bash|Monitor|BashOutput)$`.
+`BashOutput` returns a background command's output, so the post-check scans it for
+credentials only.
+
+> 💡 **Tip:** When a tool you use every day keeps asking with `unknown-tool`, add it to
+> `CLASSES` in the source, render, and add a test. Do not widen anything else.
 
 ## The rules and their reasons
 
@@ -25,13 +47,73 @@ and back. The full contract is in [the adapter interface](../adapters/interface.
 
 | Rule | Reason |
 |---|---|
-| Edits must stay inside the repository and inside the task scope | The task bundle approved on `main` defines what may change |
+| Edits must stay inside the repository and inside the task scope | The task bundle approved on the base branch defines what may change |
 | Protected paths are always denied | The agent must not weaken the controls that judge it |
 | Shell commands are matched against `shell_deny` after normalisation | Wrappers, substitutions and absolute paths must not hide `git push` |
+| Git commands that move the base branch are denied (`base-ref`) | The base branch is the trust root for approvals and the post-check |
 | Piping into a shell is denied; a nested shell asks | The inner command cannot be judged |
 | MCP tools are matched against `tool_deny` and `tool_ask` | Tracker writes need a person |
 | External reach always asks | Retrieved text may be hostile |
-| Post-check: secret-shaped output, writes outside scope, a changed or removed assertion, a disabled test or narrowed suite (`skipped-test`: `.skip`, `.only`, `[Fact(Skip=...)]`, `@Disabled` and similar) | The fast first line before trusted CI |
+| Post-check: a high-confidence credential in output, a new or changed protected path, writes outside scope, a changed or removed assertion, a disabled test or narrowed suite (`skipped-test`: `.skip`, `.only`, `[Fact(Skip=...)]`, `@Disabled` and similar) | The fast first line before trusted CI |
+
+## Rule ids
+
+Every decision carries a `rule`. It appears in the decision log and in the reason the agent
+sees, as `[aidlc <rule>]`. The ids below are the ones the code emits.
+
+| Rule | Hook | Decision | Meaning |
+|---|---|---|---|
+| `protected-path` | guard, post-check | deny, flag | The guard: an edit targets a protected path or `.git`. The post-check: a protected path is new or changed since the base, usually a shell write the `Edit` rules cannot see |
+| `outside-scope` | guard, post-check | deny, flag | The path is not in the task's MAY CHANGE list |
+| `outside-repo` | guard | deny | The edit resolves outside the repository, or the session is not in a git repository |
+| `shell-deny` | guard | deny | A command matches a `shell_deny` pattern |
+| `base-ref` | guard | deny | A git command would move, delete, rename or recreate the base branch |
+| `recursive-delete` | guard | deny | `rm` with a recursive flag in any spelling |
+| `nested-shell` | guard | ask | `bash -c`, `eval`, `source` or `env -S` hide the command that runs |
+| `pipe-to-shell` | guard | deny | Output piped into a shell |
+| `unparseable` | guard | ask | A part of the command could not be parsed |
+| `tool-deny` | guard | deny | An MCP tool matches `tool_deny` |
+| `tool-ask` | guard | ask | An MCP tool matches `tool_ask` |
+| `external` | guard | ask | `WebFetch` or `WebSearch` |
+| `unknown-tool` | guard | ask | The shim could not classify the tool |
+| `no-scope` | guard, post-check | deny, flag | No readable scope file for the branch, or `AIDLC_SCOPE=off` when unattended |
+| `hard-link` | guard | deny | The target file has more than one hard link |
+| `fail-safe` | guard, post-check, shim | deny, flag | Unreadable input or harness data, an internal error, a command too large or complex, or output too large to scan |
+| `changed-assertion` | post-check | flag | An existing assertion in a test file was changed or removed |
+| `skipped-test` | post-check | flag | A test was disabled or the suite narrowed |
+| `secret-in-output` | post-check | flag | Tool output contains a high-confidence credential shape |
+
+No-objection ids, for reading the log: `read`, `in-scope`, `scope-off`, `integration` and
+`no-guarded-command` (guard, allow), and `not-modifying` and `no-rule-broken` (post-check, pass).
+In an `ask` or `deny` the reason ends with "(unattended run: ask means deny)" when the run is
+unattended.
+
+## The base branch and the post-check
+
+The post-check diffs the branch against a base commit. The base comes from, in order:
+
+1. `AIDLC_BASE_REF`, when set.
+2. The `base:` line in the scope file. `aidlc scope` records the base branch's commit there when
+   it generates the scope, outside the repository.
+3. `harness.base_branch` (default `main`), only for scope files written before the base was
+   recorded.
+
+Moving the local base branch therefore hides nothing from the post-check. The guard denies the
+usual ways to move it anyway: `git branch -f|-d|-D|-m|-M|-c|-C <base>`, `git update-ref
+[-d] refs/heads/<base>` (and `update-ref --stdin`), `git checkout -b|-B <base>`, `git switch
+-c|-C <base>`, and `git fetch|push <remote> <x>:<base>`. `git symbolic-ref HEAD
+refs/heads/<base>` is allowed.
+
+> ⚠️ **Watch out:** A local base branch is a simulated trust root. A raw write such as
+> `echo <sha> > .git/refs/heads/main` before the scope is generated can still forge a local
+> approval. Once a remote exists, approvals and CI read the protected remote branch (Plan 3).
+
+## Protected files that a person owns
+
+The post-check flags every untracked file that matches a protected path. A file you created
+yourself, such as an uncommitted `CLAUDE.local.md` or a folder `AGENTS.md`, therefore flags
+`protected-path` after each modifying call. Commit it, or gitignore it. The flag message tells
+the agent the same: "commit it, gitignore it, or stop and ask if you did not create it".
 
 ## What the guard leaves to others
 
@@ -66,7 +148,7 @@ Read from `core/hooks/guard.py`, `core/hooks/post_check.py` and `core/hooks/clau
 | `AIDLC_SCOPE_FILE` | Explicit scope file; ignored if it lives inside the repository |
 | `AIDLC_HOME_DIR` | Base for scope files; default `~/.aidlc` |
 | `AIDLC_LOG_DIR` | Decision log directory; default `~/.aidlc/logs` |
-| `AIDLC_BASE_REF` | Base branch the post-check diffs against; default `main` |
+| `AIDLC_BASE_REF` | Base the post-check diffs against; overrides the scope's recorded `base:` and `harness.base_branch` |
 
 ## Adding a rule
 
