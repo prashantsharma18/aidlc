@@ -210,9 +210,117 @@ def step_context_drift(ctx: CheckContext) -> StepResult:
     return StepResult("context-drift", OK, f"{warns} warning(s)" if warns else "")
 
 
+EXCEPTIONS = "test/protected-exceptions.txt"
+ALLOWED_SKIPS = "test/allowed-skips.txt"
+STEERING = (EXCEPTIONS, ALLOWED_SKIPS)          # files that steer the checks: never judged as tests
+MAX_SCAN_BYTES = 1_000_000
+
+
+def _span(base: str, head: str | None) -> list[str]:
+    return [base] if head is None else [base, head]
+
+
+def added_lines_by_file(patch: str) -> dict[str, list[str]]:
+    """Added lines per file in a unified diff (one or more patches). The file name comes from the
+    `+++` header of each `diff --git` section; a `+++ ` line counts as a header only before the
+    section's first hunk, so content can never pose as a header."""
+    out: dict[str, list[str]] = {}
+    current, in_hunk = None, False
+    for line in patch.splitlines():
+        if line.startswith("diff --git "):
+            current, in_hunk = None, False
+        elif not in_hunk:
+            if line.startswith("+++ "):
+                name = line[4:].rstrip("\t")                # git appends a TAB to names with spaces
+                current = name[2:] if name.startswith("b/") else (None if name == "/dev/null" else name)
+            elif line.startswith("@@"):
+                in_hunk = True
+        elif line.startswith("+") and current is not None:
+            out.setdefault(current, []).append(line[1:])
+    return out
+
+
+def _excepted(repo: Path, base: str, head: str | None) -> set[str]:
+    """Files excused by lines THIS change adds to the exceptions file (guide 9.5)."""
+    patch = git(repo, "diff", "--no-renames", "-U0", *_span(base, head), "--", EXCEPTIONS)
+    out = set()
+    for line in added_lines_by_file(patch).get(EXCEPTIONS, []):
+        parts = line.split()
+        if len(parts) >= 3 and (parts[1].startswith("spec:") or parts[1] == "test-quality"):
+            out.add(parts[0])
+    return out
+
+
+def protected_test_changes(repo: Path, base: str, head: str | None = None) -> tuple[list[str], list[str]]:
+    """(problems, changed existing test files). An existing test file may only gain lines."""
+    test_file = hooks().post_check.TEST_FILE_RE
+    excepted = _excepted(repo, base, head)
+    fields = [f for f in git(repo, "diff", "--no-renames", "--name-status", "-z",
+                             "--diff-filter=DMT", *_span(base, head)).split("\0") if f]
+    problems, changed = [], []
+    for code, path in zip(fields[::2], fields[1::2]):
+        if path in STEERING or not test_file.search(path) or path in excepted:
+            continue
+        if code == "D":
+            problems.append(f"deleted or renamed: {path}")
+            continue
+        if code == "T":
+            problems.append(f"deleted or replaced: {path} is no longer a regular file")
+            continue
+        numstat = git(repo, "diff", "--numstat", "--no-renames", *_span(base, head), "--", path).split()
+        removed = numstat[1] if len(numstat) >= 2 else "?"
+        if removed != "0":
+            problems.append(f"{removed} existing line(s) changed or removed: {path}")
+        changed.append(path)
+    return problems, changed
+
+
+def step_protected_tests(ctx: CheckContext) -> StepResult:
+    problems, changed = protected_test_changes(ctx.repo, ctx.base, ctx.head)
+    if problems:
+        return StepResult("protected-tests", FAIL, "; ".join(problems[:10]) +
+                          f". Restore them, or record an approved exception in {EXCEPTIONS}")
+    return StepResult("protected-tests", OK, f"{len(changed)} existing test file(s) extended" if changed else "")
+
+
+def step_secrets(ctx: CheckContext) -> StepResult:
+    """Credential-shaped text in added lines (CI: in every commit of base..head) or untracked
+    files. Names files only, never the text."""
+    secret = hooks().guard.BLOCK_SECRET_RE
+    if ctx.head is not None:
+        patch = git(ctx.repo, "log", "-p", "--no-renames", "--format=", "-U0", f"{ctx.base}..{ctx.head}")
+    else:
+        patch = git(ctx.repo, "diff", "--no-renames", "-U0", ctx.base)
+    hits = {path for path, lines in added_lines_by_file(patch).items() if any(secret.search(l) for l in lines)}
+    unscannable: list[str] = []
+    untracked = [] if ctx.head is not None else \
+        git(ctx.repo, "ls-files", "--others", "--exclude-standard", "-z").split("\0")
+    for rel in filter(None, untracked):
+        path = ctx.repo / rel
+        if path.is_symlink() or not path.is_file():
+            continue
+        if path.stat().st_size > MAX_SCAN_BYTES:
+            unscannable.append(rel)
+            continue
+        data = path.read_bytes()
+        if b"\0" in data:
+            continue                                   # binary: not text a credential hides in
+        if secret.search(data.decode("utf-8", errors="replace")):
+            hits.add(rel)
+    problems = [f"credential-shaped text in {rel}" for rel in sorted(hits)]
+    problems += [f"{rel} is too large to scan (> 1 MB); gitignore it or commit it in its own change"
+                 for rel in unscannable]
+    if problems:
+        return StepResult("secrets", FAIL, "; ".join(problems[:10]) +
+                          (". Remove it and rotate the credential" if hits else ""))
+    return StepResult("secrets", OK)
+
+
 BUILTINS: list[tuple[str, Callable[[CheckContext], StepResult]]] = [
     ("scope", step_scope),
+    ("protected-tests", step_protected_tests),
     ("context-drift", step_context_drift),
+    ("secrets", step_secrets),
 ]
 
 
