@@ -115,7 +115,7 @@ def _selftest(repo: Path) -> list[str]:
             "args": {"command": "git push origin main"}, "cwd": str(repo)}
     cases = [(push, "harness.json", "does not deny `git push`"),
              (push, "missing-harness-doctor.json", "does not deny when its harness data is unreadable"),
-             ({"tool": None, "args": "garbage"}, "harness.json", "does not deny unreadable input")]
+             ({"tool": "shell", "args": "garbage"}, "harness.json", "does not deny unreadable input")]
     problems = []
     for event, harness, label in cases:
         env = {k: v for k, v in os.environ.items() if k != "AIDLC_HARNESS_FILE"}
@@ -150,7 +150,7 @@ def check_d4(repo: Path, settings: dict) -> list[Finding]:
         entry = entries[0]
         if entry.get("matcher") != matcher:
             out.append(_fail(SETTINGS, f"D4 {event} matcher must equal the adapter's '{matcher}' "
-                                       f"(found '{entry.get('matcher')}'); the guard denies unknown tools"))
+                                       f"(found '{entry.get('matcher')}'); tools outside it bypass the guard"))
         hooks = [h for h in entry.get("hooks", []) if isinstance(h, dict)
                  and f"claude_shim.py\" {phase}" in str(h.get("command", ""))]
         if not hooks:

@@ -12,9 +12,15 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True  # never leave __pycache__ in the repository (post-check would flag it)
 MAX_OUTPUT_CHARS = 5_000_000  # larger output is flagged unscanned, never passed
-CLASSES = {"Read": "read", "Glob": "read", "Grep": "read", "LS": "read",
+# Every tool reaches the pre hook (matcher ".*"). Read and control tools are class "read" and
+# allowed by the guard; a tool missing here is class "unknown", which asks a person (deny when
+# unattended). Keep this list in step with the tool's documented tool names.
+READ_TOOLS = ("Read", "Glob", "Grep", "LS", "NotebookRead", "TodoWrite", "Task", "Agent", "ToolSearch",
+              "BashOutput", "KillShell", "KillBash", "ExitPlanMode", "EnterPlanMode", "Skill",
+              "SlashCommand", "AskUserQuestion", "ListMcpResourcesTool", "ReadMcpResourceTool")
+CLASSES = {**{name: "read" for name in READ_TOOLS},
            "Edit": "edit", "Write": "edit", "MultiEdit": "edit", "NotebookEdit": "edit",
-           "Bash": "shell", "WebFetch": "external", "WebSearch": "external"}
+           "Bash": "shell", "Monitor": "shell", "WebFetch": "external", "WebSearch": "external"}
 
 
 def to_generic(payload: dict, phase: str) -> dict:
@@ -81,7 +87,11 @@ def main(argv: list[str]) -> int:
         if guard is not None:
             try:
                 detail = guard._redact(f"{type(exc).__name__}: {exc}")
-            except Exception:  # noqa: BLE001
+                pre = phase == "pre"
+                guard._log({"hook": "pre-tool-guard" if pre else "post-tool-check", "tool": None},
+                           {"decision": "deny" if pre else "flag", "rule": "fail-safe",
+                            "reason": f"aidlc hook failed ({detail}); blocked to be safe"})
+            except Exception:  # noqa: BLE001 - logging must never change the outcome
                 pass
         print(f"aidlc hook failed ({detail}); blocked to be safe", file=sys.stderr)
         return 2

@@ -5,7 +5,8 @@ Generic contract (docs/adapters/interface.md):
   stdin   {"session": str, "call": str, "tool": "read|edit|shell|mcp|external", "args": {...}, "cwd": str}
   stdout  {"decision": "allow|ask|deny", "rule": str, "reason": str}
 "allow" means "no objection": permissions and the sandbox still apply. Fails closed: any error,
-unreadable input, missing harness data or missing task scope gives "deny".
+unreadable input, missing harness data or missing task scope gives "deny". An unknown tool class
+gives "ask", which is "deny" in unattended runs.
 """
 from __future__ import annotations
 
@@ -27,6 +28,22 @@ SECRET_RE = re.compile(
     r"|-----BEGIN [A-Z ]*PRIVATE KEY"
     r"|(?i:bearer)\s+[A-Za-z0-9._~+/=-]{12,}"
     r"|(?i:password|passwd|secret|token|api[_-]?key)\s*[=:]\s*\S{6,})")
+# Output that blocks (post-check): only high-confidence credential shapes. SECRET_RE above stays
+# broad because it only redacts. Quotes may arrive JSON-escaped (\"), so an optional backslash
+# precedes each quote. The generic form needs a quoted literal of 12+ characters with a digit and
+# a letter that is not an environment reference (${..}, process.env, os.environ) or a plain
+# identifier such as "my_token_name2".
+BLOCK_SECRET_RE = re.compile(
+    r"(AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|gh[opsu]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{20,}"
+    r"|sk-ant-[A-Za-z0-9_-]{20,}|sk-proj-[A-Za-z0-9_-]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}"
+    r"|glpat-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{35}"
+    r"|-----BEGIN [A-Z ]*PRIVATE KEY-----"
+    r"|(?i:bearer)\s+[A-Za-z0-9._~+/=-]{20,}"
+    r"|(?i:password|passwd|secret|token|api[_-]?key)\\?[\"']?\s*[=:]\s*\\?([\"'])"
+    r"(?!\$\{|process\.env|os\.environ)"
+    r"(?![A-Za-z]+(?:[_.-][A-Za-z]+)+\d*\\?[\"'])"
+    r"(?=[^\"'\s\\]*\d)(?=[^\"'\s\\]*[A-Za-z])"
+    r"[^\"'\s\\]{12,}\\?\2)")
 OP_RE = re.compile(r"&>>?|[<>][<>&|]*|[;&|]+|[()]")
 ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 RESERVED = {"{", "}", "!", "if", "then", "else", "elif", "fi", "do", "done", "while", "until"}
@@ -37,6 +54,8 @@ WRAPPERS = {"command": set(), "builtin": set(), "exec": {"-a"}, "env": {"-u", "-
             "timeout": {"-s", "-k"}, "xargs": {"-n", "-L", "-I", "-P", "-s", "-d", "-E", "-a"},
             "stdbuf": {"-i", "-o", "-e"}, "watch": {"-n"}}
 GIT_ARG_OPTS = {"-C", "-c", "--git-dir", "--work-tree", "--namespace"}
+BRANCH_RE = re.compile(r"(?!-)[A-Za-z0-9._/-]+")
+SHA_RE = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 
 
 def _redact(text: str) -> str:
@@ -64,6 +83,9 @@ def load_harness() -> dict:
     for key in ("protected_paths", "shell_deny", "tool_deny", "tool_ask"):
         if not isinstance(data.get(key), list):
             raise ValueError(f"harness data lacks '{key}'")
+    base = data.setdefault("base_branch", "main")     # harness.json files before Plan 2 F4
+    if not isinstance(base, str) or not BRANCH_RE.fullmatch(base):
+        raise ValueError("harness data has an invalid 'base_branch'")
     return data
 
 
@@ -141,20 +163,43 @@ def scope_file(root: Path, branch: str) -> Path:
     return home / "scopes" / root.name / (branch.replace("/", "__") + ".scope")
 
 
-def load_scope(root: Path) -> list[str] | None:
+def _read_scope(root: Path) -> tuple[list[str], str | None] | None:
+    """(patterns, base sha or None), or None when there is no usable scope. A `base:` line
+    records the base commit at scope generation (aidlc scope); a malformed one voids the scope."""
     branch = current_branch(root)
     if not branch:
         return None
     path = scope_file(root, branch)
     if path.resolve().is_relative_to(root.resolve()) or not path.is_file():
         return None
-    patterns = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()
-                if line.strip() and not line.lstrip().startswith("#")]
+    patterns, base = [], None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        text = line.strip()
+        if not text or text.startswith("#"):
+            continue
+        if text.startswith("base:"):
+            value = text[len("base:"):].strip()
+            if base is not None or not SHA_RE.fullmatch(value):
+                return None
+            base = value
+            continue
+        patterns.append(text)
     for pat in patterns:
         segments = pat.replace("\\", "/").split("/")
         if pat.startswith(("/", "~")) or ".." in segments or ".git" in (x.casefold() for x in segments):
             return None                       # a scope may not reach outside or into .git
-    return patterns or None
+    return (patterns, base) if patterns else None
+
+
+def load_scope(root: Path) -> list[str] | None:
+    scope = _read_scope(root)
+    return scope[0] if scope else None
+
+
+def scope_base(root: Path) -> str | None:
+    """The base commit recorded in the scope file, or None (no scope, or an old scope file)."""
+    scope = _read_scope(root)
+    return scope[1] if scope else None
 
 
 def _decide_edit(event: dict, data: dict) -> dict:
@@ -703,13 +748,72 @@ def _is_recursive_rm(argv: list[str]) -> bool:
     return False
 
 
+def _moves_base(argv: list[str], base: str) -> bool:
+    """True for the git commands that move, delete, rename or recreate the base branch, the
+    trust root that the post-check and scope generation read (final-fixes F3)."""
+    if len(argv) < 2 or argv[0] != "git":
+        return False
+    sub, rest = argv[1], argv[2:]
+    names = {base.casefold(), f"refs/heads/{base}".casefold()}
+
+    def is_base(token: str) -> bool:
+        return token.lstrip("+").casefold() in names
+
+    positional = [t for t in rest if not t.startswith("-")]
+    if sub == "branch":
+        flags: set[str] = set()
+        for tok in rest:
+            if tok.startswith("--"):
+                flags.add({"--force": "f", "--delete": "d", "--move": "m", "--copy": "c"}.get(
+                    tok.split("=", 1)[0], ""))
+            elif tok.startswith("-"):
+                flags.update(tok[1:])
+        if flags & set("dDmMcC"):
+            return any(is_base(t) for t in positional)
+        return "f" in flags and bool(positional) and is_base(positional[0])
+    if sub == "update-ref":
+        if "--stdin" in rest:
+            return True                       # reads ref updates it cannot show us
+        args, i = [], 0
+        while i < len(rest):
+            if rest[i] == "-m":
+                i += 2
+                continue
+            if not rest[i].startswith("-"):
+                args.append(rest[i])
+            i += 1
+        return bool(args) and is_base(args[0])
+    if sub in ("checkout", "switch"):
+        creates = ("-b", "-B", "--orphan") if sub == "checkout" else (
+            "-c", "-C", "--create", "--force-create", "--orphan")
+        for i, tok in enumerate(rest):
+            for opt in creates:
+                if tok == opt:
+                    target = rest[i + 1] if i + 1 < len(rest) else ""
+                elif opt.startswith("--") and tok.startswith(opt + "="):
+                    target = tok[len(opt) + 1:]
+                elif not opt.startswith("--") and not tok.startswith("--") and tok.startswith(opt):
+                    target = tok[len(opt):]
+                else:
+                    continue
+                if is_base(target):
+                    return True
+        return False
+    if sub in ("fetch", "push"):
+        return any(":" in t and is_base(t.rsplit(":", 1)[1]) for t in positional)
+    return False
+
+
 def _check_segment(words: list[str], piped: bool, stdin: bool, patterns: list[str],
-                   asks: list[dict], pending: list[str]) -> dict | None:
+                   asks: list[dict], pending: list[str], base: str = "main") -> dict | None:
     argv, env_split = _argv(words)
     if not argv:
         if env_split:
             asks.append(_ask("nested-shell", "a nested shell hides its command; a person must read it"))
         return None
+    if _moves_base(argv, base):
+        return _result("deny", "base-ref", f"'{_redact(' '.join(argv))[:80]}' would move the base branch "
+                       f"'{base}', which approvals and checks trust. A person moves it, not the agent.")
     joined = " ".join(argv)
     for pat in patterns:
         if fnmatch.fnmatchcase(joined, pat):
@@ -760,7 +864,8 @@ def _decide_shell(event: dict, data: dict) -> dict:
             for d, segments in streams:
                 for seg in segments:
                     found: list[str] = []
-                    denied = _check_segment(seg["words"], seg["piped"], seg["stdin"], patterns, asks, found)
+                    denied = _check_segment(seg["words"], seg["piped"], seg["stdin"], patterns, asks, found,
+                                            data["base_branch"])
                     if denied:
                         return denied
                     queue += [(t, d + 1) for t in found]
@@ -804,7 +909,8 @@ def _decide_with(event: dict, data: dict) -> dict:
             return _result("allow", "integration", "integration call; permissions decide")
         if tool == "external":
             return _ask("external", "reaching outside the workspace needs a person's approval")
-        return _result("deny", "unknown-tool", f"unknown tool class '{tool}'")
+        return _ask("unknown-tool", f"unknown tool class '{tool}'; a person must approve it "
+                    "(add the tool to the adapter's classes if it is common)")
     except Exception as exc:  # noqa: BLE001
         return _result("deny", "fail-safe", f"guard error ({type(exc).__name__}); blocked to be safe")
 

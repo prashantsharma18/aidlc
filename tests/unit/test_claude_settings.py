@@ -13,6 +13,7 @@ from aidlc.repo import init_repo
 from aidlc.scope import default_scope_path
 from tests.helpers import TempRepo, git, run_cli
 from tests.hook_loader import load_hook
+from tests.unit.test_guard import GuardEnv
 
 FIX = Path(__file__).resolve().parents[1] / "fixtures" / "render" / "claude-code"
 
@@ -142,17 +143,40 @@ class SandboxDenyWriteTest(unittest.TestCase):
 
 
 class MatcherSyncTest(unittest.TestCase):
-    def test_matchers_follow_shim_classes(self):
+    """Final review ruling (final-fixes F1): every tool reaches the pre hook and the guard
+    classifies it; the post hook covers modifying tools and background shell output."""
+
+    def test_pre_matcher_matches_every_tool_name(self):
         shim = load_hook("claude_shim")
-        pre, post = re.compile(PRE_MATCHER), re.compile(POST_MATCHER)
-        for name, cls in shim.CLASSES.items():
-            self.assertEqual(bool(pre.search(name)), cls != "read", name)
-            self.assertEqual(bool(post.search(name)), cls in ("edit", "shell"), name)
-        self.assertTrue(pre.search("mcp__x__y"))
-        self.assertFalse(post.search("mcp__x__y"))
-        for name in ("Read", "TodoWrite", "Task", "Agent"):
-            self.assertFalse(pre.search(name), name)
-            self.assertFalse(post.search(name), name)
+        pre = re.compile(PRE_MATCHER)
+        for name in (*shim.CLASSES, "mcp__x__y", "Teleport", "SomeFutureTool", "TodoWrite", "Task"):
+            self.assertTrue(pre.search(name), name)
+
+    def test_read_class_tools_are_allowed_by_the_guard(self):
+        shim, guard = load_hook("claude_shim"), load_hook("guard")
+        with GuardEnv():
+            for name, cls in shim.CLASSES.items():
+                if cls == "read":
+                    event = shim.to_generic({"tool_name": name, "tool_input": {}, "cwd": "/tmp"}, "pre")
+                    self.assertEqual(guard.decide(event)["decision"], "allow", name)
+
+    def test_unknown_tool_asks(self):
+        shim, guard = load_hook("claude_shim"), load_hook("guard")
+        with GuardEnv():
+            event = shim.to_generic({"tool_name": "Teleport", "tool_input": {}, "cwd": "/tmp"}, "pre")
+            self.assertEqual((guard.decide(event)["decision"], guard.decide(event)["rule"]),
+                             ("ask", "unknown-tool"))
+
+    def test_monitor_is_shell(self):
+        shim = load_hook("claude_shim")
+        self.assertEqual(shim.CLASSES["Monitor"], "shell")
+
+    def test_post_matcher_is_exactly_the_modifying_set(self):
+        shim = load_hook("claude_shim")
+        post = re.compile(POST_MATCHER)
+        expected = {"Edit", "Write", "MultiEdit", "NotebookEdit", "Bash", "Monitor", "BashOutput"}
+        for name in (*shim.CLASSES, "mcp__x__y", "Teleport", "EditX", "XBash", "Read"):
+            self.assertEqual(bool(post.search(name)), name in expected, name)
 
 
 class FrameworkRepoTest(unittest.TestCase):

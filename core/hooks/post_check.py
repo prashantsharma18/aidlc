@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """aidlc post-tool check (guide chapter 3 step 5; 9.5). Standard library only; no network.
 Runs after a modifying or executing tool call. It cannot undo the action: it flags, and the
-adapter shows the reason to the agent. Flags: credential-shaped output, files written outside
-the task scope, an existing assertion changed or removed. Trusted CI is the real check; this is
+adapter shows the reason to the agent. Flags: high-confidence credential shapes in output, a new or
+changed protected path (shell writes the Edit deny rules cannot see), files written outside the
+task scope, an existing assertion changed or removed. The base is the commit recorded in the scope
+file, so moving the local base branch does not hide changes. Trusted CI is the real check; this is
 the fast first line. Fails closed: errors give "flag"."""
 from __future__ import annotations
 
@@ -41,7 +43,7 @@ def _git(root: Path, *args: str) -> str:
 
 def check(event: dict) -> dict:
     try:
-        if guard.SECRET_RE.search(str(event.get("output") or "")):
+        if guard.BLOCK_SECRET_RE.search(str(event.get("output") or "")):
             return _result("flag", "secret-in-output", "output contains something shaped like a "
                            "credential. Do not repeat it; stop and tell a person.")
         if event.get("tool") not in ("edit", "shell"):
@@ -49,13 +51,26 @@ def check(event: dict) -> dict:
         root = guard.repo_root(Path(event.get("cwd") or os.getcwd()))
         if root is None:
             return _result("flag", "fail-safe", "not inside a git repository")
-        base = _git(root, "merge-base", os.environ.get("AIDLC_BASE_REF") or "main", "HEAD").strip()
+        harness = guard.load_harness()
+        protected = [p.casefold() for p in harness["protected_paths"]]
+        scope_off = os.environ.get("AIDLC_SCOPE") == "off" and not guard._unattended()
+        read = None if scope_off else guard._read_scope(root)
+        if read is None and not scope_off:
+            return _result("flag", "no-scope", "no readable task scope; changes cannot be checked")
+        scope, recorded = read if read else (None, None)
+        # The base recorded at scope generation is the trust root; the branch name is only the
+        # fallback for scope files written before it was recorded.
+        ref = os.environ.get("AIDLC_BASE_REF") or recorded or harness["base_branch"]
+        base = _git(root, "merge-base", ref, "HEAD").strip()
         changed = {p for p in _git(root, "diff", "--no-renames", "--name-only", "-z", base).split("\0") if p}
         changed |= {p for p in _git(root, "ls-files", "--others", "--exclude-standard", "-z").split("\0") if p}
-        scope_off = os.environ.get("AIDLC_SCOPE") == "off" and not guard._unattended()
-        scope = None if scope_off else guard.load_scope(root)
-        if scope is None and not scope_off:
-            return _result("flag", "no-scope", "no readable task scope; changes cannot be checked")
+        for path in sorted(changed):
+            if (".git" in (seg.casefold() for seg in path.split("/"))
+                    or guard.matches(path.casefold(), protected)):
+                return _result("flag", "protected-path", f"{guard._redact(path)} is a protected path "
+                               "(harness, rules, CI, plans or contracts) and is new or changed on this "
+                               "branch. Do not change it through the shell; commit it, gitignore it, "
+                               "or stop and ask if you did not create it.")
         for path in sorted(changed):
             if scope is not None and not guard.matches(path, scope, any_depth_names=False):
                 return _result("flag", "outside-scope", f"{guard._redact(path)} was written outside the task's "

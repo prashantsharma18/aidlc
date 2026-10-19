@@ -114,8 +114,9 @@ class DoctorTest(unittest.TestCase):
         self.assertTrue(any("D9" in w and "mystery" in w for w in warns))
         self.assertFalse(any("D9" in w and "lab-jira" in w for w in warns))
 
-    def test_widened_matcher_fails_d4(self):
-        self.edit_settings(lambda s: s["hooks"]["PreToolUse"][0].update(matcher=".*"))
+    def test_narrowed_matcher_fails_d4(self):
+        narrowed = "^(Edit|Write|MultiEdit|NotebookEdit|Bash|WebFetch|WebSearch|mcp__.*)$"
+        self.edit_settings(lambda s: s["hooks"]["PreToolUse"][0].update(matcher=narrowed))
         self.assertTrue(any("D4" in m and "matcher" in m for m in self.fails()))
 
     def test_missing_hook_file_fails_d4(self):
