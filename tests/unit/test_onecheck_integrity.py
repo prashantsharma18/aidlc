@@ -160,3 +160,79 @@ class IntegrityStepsTest(unittest.TestCase):
         step = self.step("secrets")
         self.assertEqual(step.status, FAIL)
         self.assertIn("too large to scan", step.detail)
+
+
+KEY = "AKIAABCDEFGHIJKLMNOP"
+
+
+class IntegrityBypassTest(IntegrityStepsTest):
+    """Fix round 1: bypasses found in review. Inherits setUp and step(); its tests re-run harmlessly."""
+
+    def objects_secrets(self):
+        ctx = local_context(self.root, load_config(self.root))
+        ctx.head = git(self.root, "rev-parse", "HEAD")
+        return run_check(ctx, builtins=[("secrets", onecheck.step_secrets)]).steps[-1]
+
+    def test_parser_splits_on_newline_only(self):
+        for sep in ("\f", "\v", "\x1c", "\x85", " ", " ", "\r"):
+            patch = (f"diff --git a/s.txt b/s.txt\n--- a/s.txt\n+++ b/s.txt\n@@ -0,0 +1,2 @@\n"
+                     f"+x{sep}diff --git a/z b/z\n+{KEY}\n")
+            self.assertEqual(onecheck.added_lines_by_file(patch),
+                             {"s.txt": [f"x{sep}diff --git a/z b/z", KEY]}, repr(sep))
+
+    def test_separator_characters_do_not_hide_a_secret(self):
+        for sep in ("\f", " ", "\r"):
+            (self.root / "src/app.txt").write_text(f"a\nx{sep}diff --git a/z b/z\n{KEY}\n", encoding="utf-8", newline="")
+            self.assertEqual(self.step("secrets").status, FAIL, repr(sep))
+
+    def test_diff_attribute_does_not_hide_a_secret(self):
+        (self.root / ".gitattributes").write_text("g.txt -diff\n")
+        (self.root / "g.txt").write_text(KEY + "\n")
+        git(self.root, "add", "-A")
+        self.assertIn("g.txt", self.step("secrets").detail)
+        git(self.root, "commit", "-qm", "attr")
+        step = self.objects_secrets()
+        self.assertEqual(step.status, FAIL)
+        self.assertIn("g.txt", step.detail)
+
+    def test_evil_merge_secret_is_found_in_objects_mode(self):
+        git(self.root, "checkout", "-q", "-b", "side")
+        (self.root / "m.txt").write_text("side\n")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "side")
+        git(self.root, "checkout", "-q", "feat/SHIP-1-x")
+        (self.root / "m.txt").write_text("mine\n")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "mine")
+        subprocess_merge = __import__("subprocess").run(["git", "merge", "-q", "side"], cwd=self.root,
+                                                        capture_output=True)
+        self.assertNotEqual(subprocess_merge.returncode, 0)
+        (self.root / "m.txt").write_text(KEY + "\n")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "merge")
+        step = self.objects_secrets()
+        self.assertEqual(step.status, FAIL)
+        self.assertIn("m.txt", step.detail)
+
+    def test_combined_diff_headers_are_sections(self):
+        patch = "diff --cc m.txt\nindex 1,2..3\n--- a/m.txt\n+++ b/m.txt\n@@@ -1,1 -1,1 +1,1 @@@\n++" + KEY + "\n"
+        self.assertEqual(onecheck.added_lines_by_file(patch), {"m.txt": ["+" + KEY]})   # new against both parents
+
+    def test_noprefix_config_does_not_break_exceptions(self):
+        git(self.root, "config", "diff.noprefix", "true")
+        (self.root / TEST).write_text("it('a', () => { expect(f()).toBe(2); });\n")
+        with (self.root / "test/protected-exceptions.txt").open("a") as fh:
+            fh.write(f"{TEST} spec:1.7.0 AC4 changed by the approved spec\n")
+        self.assertEqual(self.step("protected-tests").status, OK)
+
+    def test_binary_test_file_change_is_named_as_binary(self):
+        git(self.root, "checkout", "-q", "main")
+        (self.root / "test/img.test.bin").write_bytes(b"\x00\x01")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "bin")
+        git(self.root, "checkout", "-q", "feat/SHIP-1-x")
+        git(self.root, "merge", "-q", "main")
+        self.env.write_scope(self.root, ["**"])
+        (self.root / "test/img.test.bin").write_bytes(b"\x00\x02")
+        detail = self.step("protected-tests").detail
+        self.assertIn("binary test file changed: test/img.test.bin", detail)

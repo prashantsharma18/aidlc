@@ -108,10 +108,10 @@ def git(repo: Path, *args: str) -> str:
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     out = subprocess.run(["git", "-c", "core.quotePath=false", "-c", "core.hooksPath=/dev/null", *args],
                          cwd=repo, env=env,
-                         capture_output=True, text=True, errors="replace", timeout=60)
+                         capture_output=True, timeout=60)
     if out.returncode != 0:
-        raise CheckError(f"git {' '.join(args)}: {out.stderr.strip()[:300]}")
-    return out.stdout
+        raise CheckError(f"git {' '.join(args)}: {out.stderr.decode('utf-8', 'replace').strip()[:300]}")
+    return out.stdout.decode("utf-8", "replace")      # bytes decoded here: \r and \f must survive
 
 
 def changed_paths(repo: Path, base: str, head: str | None = None) -> list[str]:
@@ -216,6 +216,9 @@ STEERING = (EXCEPTIONS, ALLOWED_SKIPS)          # files that steer the checks: n
 MAX_SCAN_BYTES = 1_000_000
 
 
+DIFF_FLAGS = ("--no-renames", "--text", "--src-prefix=a/", "--dst-prefix=b/")   # content always shown, labels fixed
+
+
 def _span(base: str, head: str | None) -> list[str]:
     return [base] if head is None else [base, head]
 
@@ -226,8 +229,8 @@ def added_lines_by_file(patch: str) -> dict[str, list[str]]:
     section's first hunk, so content can never pose as a header."""
     out: dict[str, list[str]] = {}
     current, in_hunk = None, False
-    for line in patch.splitlines():
-        if line.startswith("diff --git "):
+    for line in patch.split("\n"):                       # only \n separates diff lines, never \f, \r, U+2028...
+        if line.startswith(("diff --git ", "diff --cc ", "diff --combined ")):
             current, in_hunk = None, False
         elif not in_hunk:
             if line.startswith("+++ "):
@@ -242,7 +245,7 @@ def added_lines_by_file(patch: str) -> dict[str, list[str]]:
 
 def _excepted(repo: Path, base: str, head: str | None) -> set[str]:
     """Files excused by lines THIS change adds to the exceptions file (guide 9.5)."""
-    patch = git(repo, "diff", "--no-renames", "-U0", *_span(base, head), "--", EXCEPTIONS)
+    patch = git(repo, "diff", *DIFF_FLAGS, "-U0", *_span(base, head), "--", EXCEPTIONS)
     out = set()
     for line in added_lines_by_file(patch).get(EXCEPTIONS, []):
         parts = line.split()
@@ -269,7 +272,9 @@ def protected_test_changes(repo: Path, base: str, head: str | None = None) -> tu
             continue
         numstat = git(repo, "diff", "--numstat", "--no-renames", *_span(base, head), "--", path).split()
         removed = numstat[1] if len(numstat) >= 2 else "?"
-        if removed != "0":
+        if removed == "-":
+            problems.append(f"binary test file changed: {path}")
+        elif removed != "0":
             problems.append(f"{removed} existing line(s) changed or removed: {path}")
         changed.append(path)
     return problems, changed
@@ -288,9 +293,9 @@ def step_secrets(ctx: CheckContext) -> StepResult:
     files. Names files only, never the text."""
     secret = hooks().guard.BLOCK_SECRET_RE
     if ctx.head is not None:
-        patch = git(ctx.repo, "log", "-p", "--no-renames", "--format=", "-U0", f"{ctx.base}..{ctx.head}")
+        patch = git(ctx.repo, "log", "-p", "--cc", *DIFF_FLAGS, "--format=", "-U0", f"{ctx.base}..{ctx.head}")
     else:
-        patch = git(ctx.repo, "diff", "--no-renames", "-U0", ctx.base)
+        patch = git(ctx.repo, "diff", *DIFF_FLAGS, "-U0", ctx.base)
     hits = {path for path, lines in added_lines_by_file(patch).items() if any(secret.search(l) for l in lines)}
     unscannable: list[str] = []
     untracked = [] if ctx.head is not None else \
