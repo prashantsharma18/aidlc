@@ -126,9 +126,10 @@ class AttackTest(unittest.TestCase):
                 for hook in entry["hooks"]:
                     self.assertEqual(hook["onFailure"], "block")
                     self.assertTrue(hook["command"].startswith("python3 "))
-        empty = tempfile.mkdtemp(prefix="aidlc-nohome-")
+        empty = tempfile.TemporaryDirectory(prefix="aidlc-nohome-")
+        self.addCleanup(empty.cleanup)
         decision, reason = self.pre("Edit", {"file_path": str(self.root / "src/app.js")},
-                                    self.env(AIDLC_HOME_DIR=empty))
+                                    self.env(AIDLC_HOME_DIR=empty.name))
         self.assertEqual(decision, "deny")
         self.assertIn("[aidlc no-scope]", reason)
 
