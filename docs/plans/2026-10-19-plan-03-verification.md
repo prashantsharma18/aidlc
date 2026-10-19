@@ -14,13 +14,17 @@
 - `aidlc check` is a step runner (`cli/aidlc/checks/onecheck.py`). Command steps come from `.aidlc/config.yaml` (`commands` + `check_steps`). Built-in integrity steps always run after them: scope, protected tests, skips, context drift, secrets. The hook regexes, matcher and scope reader are reused from `core/hooks/` through one loader (`cli/aidlc/hookbridge.py`), so the hooks and the check never disagree.
 - The retry counter lives outside the repository (`~/.aidlc/attempts/…`). Only the post-tool hooks write it; they run outside the sandbox, and the sandbox denies `~/.aidlc` to the agent. The guard denies edits and shell calls at the limit. A person resets it.
 - `aidlc ci` (`cli/aidlc/ci.py`) runs in three phases. The order is the security property:
-  1. **Prepare** (no branch code has run yet). Check out the base commit (trusted) and the branch head (disposable) as detached worktrees. Read every piece of evidence the verdict depends on: the trusted configuration, approvals, merge approvals and the skip allow-list. Load every judge: the hook modules, the context-drift module, and a private copy of the Rego pack and the pinned conftest binary.
+  1. **Prepare** (no branch code has run yet). Check out the base commit (trusted) and the branch head (disposable) as detached worktrees. Read every piece of evidence the verdict depends on into memory: the trusted configuration, approvals, merge approvals and the steering files. Every judge's code is imported. The judges that read files (context drift, the Rego pack through the pinned conftest) run in step 2, before any branch code.
   2. **Judge from git objects.** Scope, protected tests, secrets (every commit in `base..head`), context drift and config policy all run before any branch code.
-  3. **Run the branch's code sandboxed.** Install and check steps, then the skip check and the re-run of the base versions of changed tests, each inside `bubblewrap` (`cli/aidlc/sandbox.py`):
-     - home hidden;
+  3. **Run the branch's code sandboxed.** Before it, the base versions of changed tests are read into memory. Then the install and check steps, the skip check and the re-run of the base versions of changed tests each run inside `bubblewrap` (`cli/aidlc/sandbox.py`):
+     - a private home;
+     - empty `/tmp` and `/run`, so no host sockets;
+     - a cleared environment;
      - the repository and the framework read-only;
-     - only the disposable checkout writable;
+     - only the disposable checkout writable, with its `.git` read-only;
      - no network except for the install step.
+
+     No git command runs in the checkout after the change's code has run.
 
   Finally it writes a self-hashed record labelled `simulated-ci` into a directory created after the gates.
 - Rego policies live in `core/policy-as-code/rego/` (logic) and read the framework's YAML through `--data` (ADR 0001: one source of policy data).
@@ -173,9 +177,16 @@
   - `aidlc.hookbridge.hooks() -> SimpleNamespace(guard=<module>, post_check=<module>)`, cached.
   - In `aidlc.checks.onecheck`:
     - Constants: `CHECK_DIR = ".check"`, `RECORD = ".check/result.json"`; `OK, FAIL, SKIPPED, NA = "ok", "FAIL", "SKIPPED", "n/a"`.
-    - Types: `CheckError`, `StepResult(name, status, detail="", log=None)`, `CheckContext(repo, config, branch, base, scope, scope_mode="require", scope_source="", head=None, trusted=None, wrap=None, today=…, timeout_s=1800, started=0.0)`, `CheckResult(steps)` with `.failures`, `.passed`, `.summary()` and `.record(ctx, **extra)`.
-    - `head`: when set (CI), the change is judged from git objects `base..head`, not the working tree. `trusted`: the base checkout whose files (allow-lists) judge the change. `wrap(command, step) -> list[str]`: when set, the argv that runs a command step (Task 5's sandbox).
-    - Functions: `git(repo, *args) -> str`, `changed_paths(repo, base, head=None) -> list[str]`, `context_line(ctx) -> str`, `local_context(repo, config) -> CheckContext`, `run_command(ctx, name, step=None) -> StepResult`, `step_scope(ctx)`, `step_context_drift(ctx)`, `run_check(ctx, builtins=None) -> CheckResult`, `print_result(result, repo, prefix="check")`, `write_record(repo, record) -> Path`.
+    - Types:
+      - `CheckError`;
+      - `StepResult(name, status, detail="", log=None, tail=[])`;
+      - `CheckContext(repo, config, branch, base, scope, scope_mode="require", scope_source="", head=None, steering=None, wrap=None, today=…, timeout_s=1800, started=0.0)`;
+      - `CheckResult(steps)`, with `.failures`, `.passed`, `.summary()` and `.record(ctx, **extra)`.
+    - `head`: when set (CI), the change is judged from git objects `base..head`, not from the working tree.
+    - `steering`: when set (CI), the base branch's steering files (`{repo-relative path: text}`), read before any of the change's code runs.
+    - `wrap(command, step) -> list[str]`: when set, the argv that runs a command step (Task 5's sandbox).
+    - `tail` holds the last 15 lines of a step's log. It is read back through the file descriptor the parent opened, so a log path the change's code replaces (with a symlink to a host file, say) never changes what is printed. It is not written into records.
+    - Functions: `git(repo, *args) -> str`, `prepare_check_dir(repo) -> Path` (refuses a `.check` that is a symlink), `changed_paths(repo, base, head=None) -> list[str]`, `context_line(ctx) -> str`, `local_context(repo, config) -> CheckContext`, `run_command(ctx, name, step=None) -> StepResult`, `step_scope(ctx)`, `step_context_drift(ctx)`, `run_check(ctx, builtins=None) -> CheckResult`, `print_result(result, repo, prefix="check")`, `write_record(repo, record) -> Path`.
     - The module-level list `BUILTINS: list[tuple[str, Callable]]`. Tasks 2 and 3 extend it.
   - CLI:
     - `aidlc check [--repo PATH]` exits 0 (PASS), 1 (FAIL) or 2 (cannot start). Its first line is the context line `check  context  repo=<root>  base=<sha>  scope=<file or none>  mode=<require|skip>`, which the retry counter (Task 4) verifies against what the hooks compute.
@@ -388,6 +399,27 @@ class EngineTest(unittest.TestCase):
         self.assertEqual(onecheck.changed_paths(self.root, self.ctx().base, head), ["src/app.txt"])
         self.assertEqual(self.run_scope_only(self.ctx(head=head)).steps[-1].status, OK)
 
+    def test_printed_tail_never_follows_a_replaced_log(self):
+        secret = self.root.parent / "host-secret.txt"
+        secret.write_text("HOST-SECRET-LINE\n")
+        ctx = self.ctx()
+        ctx.config.commands["test"] = py("import os,sys; os.remove('.check/test.log'); "
+                                         f"os.symlink(r'{secret}', '.check/test.log'); print('own line'); sys.exit(1)")
+        ctx.config.check_steps = ["test"]
+        result = run_check(ctx, builtins=[])
+        import contextlib
+        import io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            onecheck.print_result(result, self.root)
+        self.assertNotIn("HOST-SECRET-LINE", out.getvalue())
+        self.assertNotIn("tail", result.record(ctx)["steps"][0])
+
+    def test_symlinked_check_dir_is_refused(self):
+        (self.root / ".check").symlink_to(self.root.parent)
+        with self.assertRaises(onecheck.CheckError):
+            run_check(self.ctx(), builtins=[])
+
     def test_check_dir_never_shows_as_a_change(self):
         self.env.write_scope(self.root, ["src/**"])
         self.run_scope_only(self.ctx())
@@ -547,6 +579,7 @@ class StepResult:
     status: str
     detail: str = ""
     log: str | None = None            # path relative to the repository
+    tail: list[str] = field(default_factory=list)   # last log lines, read through the parent's fd
 
 
 @dataclass
@@ -559,7 +592,7 @@ class CheckContext:
     scope_mode: str = "require"       # "require", or "skip" (CHECK_SCOPE=skip, interactive only)
     scope_source: str = ""            # the scope file read (shown in the context line)
     head: str | None = None           # CI: judge git objects base..head instead of the working tree
-    trusted: Path | None = None       # CI: the base checkout whose allow-lists judge the change
+    steering: dict[str, str] | None = None   # CI: the base's steering files, read before the change runs
     wrap: Callable[[str, str], list[str]] | None = None   # CI: argv that runs a command step (sandbox)
     today: date = field(default_factory=date.today)
     timeout_s: int = STEP_TIMEOUT_S
@@ -584,9 +617,24 @@ class CheckResult:
 
     def record(self, ctx: CheckContext, **extra) -> dict:
         return {"result": "PASS" if self.passed else "FAIL", "failures": self.failures,
-                "total": len(self.steps), "steps": [asdict(s) for s in self.steps],
+                "total": len(self.steps), "steps": step_records(self.steps),
                 "branch": ctx.branch, "base": ctx.base,
                 "time": datetime.now(timezone.utc).isoformat(timespec="seconds"), **extra}
+
+
+def step_records(steps: list[StepResult]) -> list[dict]:
+    """Steps for a JSON record: log tails stay out of records."""
+    return [{k: v for k, v in asdict(s).items() if k != "tail"} for s in steps]
+
+
+def prepare_check_dir(repo: Path) -> Path:
+    """.check/, ignoring itself. A .check that is a symlink is refused (it could point anywhere)."""
+    check_dir = safe_target(repo, CHECK_DIR)
+    if check_dir.is_symlink():
+        raise CheckError(f"{CHECK_DIR} is a symlink; refusing to write through it")
+    check_dir.mkdir(exist_ok=True)
+    (check_dir / ".gitignore").write_text("*\n", encoding="utf-8")   # never shows as a change
+    return check_dir
 
 
 def git(repo: Path, *args: str) -> str:
@@ -651,17 +699,21 @@ def run_command(ctx: CheckContext, name: str, step: str | None = None) -> StepRe
     log_rel = f"{CHECK_DIR}/{step}.log"
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     argv = ctx.wrap(command, step) if ctx.wrap else command
-    with safe_target(ctx.repo, log_rel).open("w", encoding="utf-8") as log:
+    with safe_target(ctx.repo, log_rel).open("w+", encoding="utf-8", errors="replace") as log:
         proc = subprocess.Popen(argv, shell=ctx.wrap is None, cwd=ctx.repo, env=env, stdin=subprocess.DEVNULL,
                                 stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         try:
             code = proc.wait(timeout=ctx.timeout_s)
         except subprocess.TimeoutExpired:
-            return StepResult(step, FAIL, f"timed out after {ctx.timeout_s} s", log_rel)
+            code = None
         finally:
             _kill_group(proc)                     # also children that outlive the command
+        log.seek(0)                               # the file this process opened, whatever the path now is
+        tail = log.read().splitlines()[-TAIL_LINES:]
+    if code is None:
+        return StepResult(step, FAIL, f"timed out after {ctx.timeout_s} s", log_rel, tail)
     if code != 0:
-        return StepResult(step, FAIL, f"exit {code}", log_rel)
+        return StepResult(step, FAIL, f"exit {code}", log_rel, tail)
     return StepResult(step, OK, "", log_rel)
 
 
@@ -705,21 +757,12 @@ def _guarded(name: str, fn: Callable[[], StepResult]) -> StepResult:
 
 def run_check(ctx: CheckContext, builtins=None) -> CheckResult:
     """Run the command steps, then the built-in steps; every step runs."""
-    check_dir = safe_target(ctx.repo, CHECK_DIR)
-    check_dir.mkdir(exist_ok=True)
-    (check_dir / ".gitignore").write_text("*\n", encoding="utf-8")   # never shows as a change
+    prepare_check_dir(ctx.repo)
     ctx.started = time.time()
     steps = [_guarded(name, lambda n=name: run_command(ctx, n)) for name in ctx.config.check_steps]
     for name, fn in (BUILTINS if builtins is None else builtins):
         steps.append(_guarded(name, lambda f=fn: f(ctx)))
     return CheckResult(steps)
-
-
-def _tail(path: Path) -> list[str]:
-    try:
-        return path.read_text(encoding="utf-8", errors="replace").splitlines()[-TAIL_LINES:]
-    except OSError:
-        return []
 
 
 def print_result(result: CheckResult, repo: Path, prefix: str = "check") -> None:
@@ -731,9 +774,8 @@ def print_result(result: CheckResult, repo: Path, prefix: str = "check") -> None
         if step.status == FAIL and step.log:
             line += f"  (full log: {step.log})"
         print(line)
-        if step.status == FAIL and step.log:
-            for tail in _tail(repo / step.log):
-                print(f"        | {redact(tail)}")
+        for tail in step.tail:                    # captured at run time, never re-read from a path
+            print(f"        | {redact(tail)}")
     print(f"{prefix}  {result.summary()}")
 
 
@@ -972,10 +1014,14 @@ class IntegrityStepsTest(unittest.TestCase):
         self.assertIn(f"deleted or replaced: {TEST}", step.detail)
 
     def test_steering_files_are_not_judged_as_tests(self):
+        git(self.root, "checkout", "-q", "main")                 # the file must exist at the base
         (self.root / onecheck.ALLOWED_SKIPS).write_text("a skip # reason\n")
         git(self.root, "add", "-A")
         git(self.root, "commit", "-qm", "allow")
-        (self.root / onecheck.ALLOWED_SKIPS).write_text("")
+        git(self.root, "checkout", "-q", "feat/SHIP-1-x")
+        git(self.root, "merge", "-q", "main")
+        self.env.write_scope(self.root, ["**"])
+        (self.root / onecheck.ALLOWED_SKIPS).write_text("")      # an existing line removed: status M
         self.assertEqual(self.step("protected-tests").status, OK)
 
     def test_parser_is_not_blinded_by_a_plus_plus_line(self):
@@ -983,6 +1029,10 @@ class IntegrityStepsTest(unittest.TestCase):
                  "+++ hide the rest\n+AKIAABCDEFGHIJKLMNOP\n")
         self.assertEqual(onecheck.added_lines_by_file(patch),
                          {"src/x.py": ["++ hide the rest", "AKIAABCDEFGHIJKLMNOP"]})
+
+    def test_parser_strips_the_tab_git_adds_to_names_with_spaces(self):
+        patch = "diff --git a/a b.txt b/a b.txt\n--- a/a b.txt\t\n+++ b/a b.txt\t\n@@ -0,0 +1 @@\n+x\n"
+        self.assertEqual(onecheck.added_lines_by_file(patch), {"a b.txt": ["x"]})
 
     def test_secret_after_a_plus_plus_line_is_found(self):
         (self.root / "src/app.txt").write_text("a\n++ hide\nAKIAABCDEFGHIJKLMNOP\n")
@@ -1063,7 +1113,7 @@ def added_lines_by_file(patch: str) -> dict[str, list[str]]:
             current, in_hunk = None, False
         elif not in_hunk:
             if line.startswith("+++ "):
-                name = line[4:]
+                name = line[4:].rstrip("\t")                # git appends a TAB to names with spaces
                 current = name[2:] if name.startswith("b/") else (None if name == "/dev/null" else name)
             elif line.startswith("@@"):
                 in_hunk = True
@@ -1191,7 +1241,8 @@ git add -A && git commit -m "feat(check): protected-tests and secrets steps (gui
   - In `onecheck`:
     - `step_skips(ctx)`. `ALLOWED_SKIPS` comes from Task 2.
     - A new `CheckContext` field, `reports_before: dict`, filled by `run_check` before the command steps run.
-    - In CI, the allow-list is read from `ctx.trusted` (the base checkout), never from the change.
+    - In CI, the allow-list is read from `ctx.steering`, the base branch's text read before any of the change's code ran, never from the change.
+    - A report file whose resolved path lies outside the checkout (reached through a symlinked directory) is ignored.
   - `BUILTINS` becomes `[scope, protected-tests, skips, context-drift, secrets]`.
 
 Rules (guide 9.7: "a test that cannot run must fail"):
@@ -1348,7 +1399,7 @@ class SkipStepTest(unittest.TestCase):
         ctx = local_context(self.root, load_config(self.root))
         ctx.config.test_reports = [REPORT]
         ctx.config.commands["test"] = write_report(JUNIT)
-        ctx.trusted = Path(tempfile.mkdtemp())                       # the base has no such declaration
+        ctx.steering = {}                                            # the base has no such declaration
         step = run_check(ctx, builtins=[("skips", onecheck.step_skips)]).steps[-1]
         self.assertEqual(step.status, FAIL)
 
@@ -1486,12 +1537,15 @@ def _report_snapshot(ctx: CheckContext) -> dict[str, tuple[int, int, int]]:
     return snap
 
 
-def _allowed_skips(repo: Path) -> set[str]:
-    path = repo / ALLOWED_SKIPS
-    if not path.is_file():
-        return set()
+def _allowed_skips(ctx: CheckContext) -> set[str]:
+    """Declared skips. CI: the base branch's text (ctx.steering); locally: the working copy's file."""
+    if ctx.steering is not None:
+        text = ctx.steering.get(ALLOWED_SKIPS, "")
+    else:
+        path = ctx.repo / ALLOWED_SKIPS
+        text = path.read_text(encoding="utf-8") if path.is_file() and not path.is_symlink() else ""
     out = set()
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in text.splitlines():
         if line.lstrip().startswith("#") or " # " not in line:
             continue
         name, reason = line.split(" # ", 1)
@@ -1504,9 +1558,10 @@ def _fresh_reports(ctx: CheckContext) -> list[Path]:
     """Reports this run wrote: new files, or files whose snapshot changed. A previous run's file
     never counts, however recent."""
     found = []
+    root = ctx.repo.resolve()
     for pattern in ctx.config.test_reports:
         for path in sorted(ctx.repo.glob(pattern)):
-            if not path.is_file() or path.is_symlink():
+            if not path.is_file() or path.is_symlink() or not path.resolve().is_relative_to(root):
                 continue
             st = path.stat()
             if ctx.reports_before.get(str(path)) != (st.st_mtime_ns, st.st_size, st.st_ino):
@@ -1527,7 +1582,7 @@ def step_skips(ctx: CheckContext) -> StepResult:
     results = [entry for path in reports for entry in parse_report(path)]
     if not results:
         return StepResult("skips", FAIL, "the test report lists no tests")
-    allowed = _allowed_skips(ctx.trusted or ctx.repo)     # CI: the base branch's allow-list
+    allowed = _allowed_skips(ctx)
     not_run = [name for name, status in results if status == NOTRUN]
     unexpected = [name for name in not_run if name not in allowed]
     detail = f"{len(results)} tests, {len(not_run)} not run, {len(unexpected)} unexpected"
@@ -1629,7 +1684,7 @@ git add -A && git commit -m "feat(check): skip check from test reports, stale re
 Counting rules:
 - A shell call counts only when some part of it runs the one-command check (`aidlc check` without a named check). That includes a substitution, `bash -c` and `eval`.
 - It counts as **PASS** only when all of these hold:
-  1. the whole command is exactly `aidlc check`, optionally with `--repo <path>`;
+  1. the whole command's raw words are exactly `aidlc check` (any path to `aidlc`), optionally `--repo <path>`. No assignment prefix (`PATH=…`) and no wrapper (`env -i`, `timeout`) is allowed, because those can change what runs;
   2. it exited 0;
   3. its last result line is `PASS`;
   4. no step line says `SKIPPED`;
@@ -1699,7 +1754,9 @@ class CheckSegmentsTest(unittest.TestCase):
     CASES = [
         ("aidlc check", (True, True)),
         ("bin/aidlc check --repo .", (True, True)),
-        ("env X=1 aidlc check", (True, True)),
+        ("env X=1 aidlc check", (True, False)),               # wrappers and assignments are not exact
+        ("PATH=/tmp/fake:$PATH aidlc check", (True, False)),
+        ("env -i aidlc check", (True, False)),
         ("aidlc check > log.txt", (True, True)),               # exact, but its output is hidden
         ("aidlc check || true", (True, False)),
         ("aidlc check; echo 'check  result PASS  (0 of 1 steps failed)'", (True, False)),
@@ -1752,12 +1809,16 @@ class CounterTest(unittest.TestCase):
         self.assertEqual(read["decision"], "allow")
 
     def test_gaming_shapes_count_as_failures(self):
+        (self.root / "src" / "b.ts").write_text("b\n")           # a commit on the branch, so HEAD differs
+        git(self.root, "add", "-A")                                # from the merge base the hooks compute
+        git(self.root, "commit", "-qm", "branch work")
         good = pass_text(self.root)
         other = self.root.parent / "elsewhere"
         for command, text in (("aidlc check || true", good), ("aidlc check > log.txt", ""),
                               ("aidlc check; echo 'check  result PASS  (0 of 1 steps failed)'", good),
                               ("bash -c 'aidlc check'", good), ("echo $(aidlc check)", good),
                               ("CHECK_SCOPE=skip aidlc check", pass_text(self.root, mode="skip")),
+                              ("PATH=/tmp/fake:$PATH aidlc check", good), ("env -i aidlc check", good),
                               ("AIDLC_BASE_REF=HEAD aidlc check",
                                pass_text(self.root, base=git(self.root, "rev-parse", "HEAD"))),
                               ("AIDLC_SCOPE_FILE=/tmp/any.scope aidlc check", pass_text(self.root, scope="/tmp/any.scope")),
@@ -1973,9 +2034,9 @@ def check_segments(command) -> tuple[bool, bool]:
         segments = _segments(top[0][1], deadline) if len(top) == 1 else []
         if len(segments) != 1:
             return True, False
-        argv, nested = _argv(segments[0]["words"])
-        exact = _is_one_check(argv) and not nested and (argv[2:] == [] or
-                                                        (len(argv) == 4 and argv[2] == "--repo"))
+        words = segments[0]["words"]                      # raw words: no prefix or wrapper is stripped
+        exact = (len(words) in (2, 4) and words[0].rsplit("/", 1)[-1] == "aidlc" and words[1] == "check"
+                 and (len(words) == 2 or words[2] == "--repo"))
         return True, exact
     except (ValueError, _TooComplex):
         return bool(re.search(r"aidlc\S*\s+check", command)), False
@@ -2256,7 +2317,7 @@ Document:
 - the `post-failure` phase;
 - the counting rules above;
 - the rule ids `check-recorded` and `retry-limit`;
-- where the record lives: `$AIDLC_HOME_DIR/attempts/<repo>/<branch>.json`;
+- where the record lives: `$AIDLC_HOME_DIR/attempts/<repo name>-<8 hex>/<branch>.json` (`__detached__.json` for a detached HEAD);
 - why only hooks write it.
 
 - [ ] **Step 9: Run the tests and see them pass**
@@ -2287,8 +2348,8 @@ git add -A && git commit -m "feat(harness): retry limit enforced by the hooks; p
   - `SandboxError`;
   - `bwrap_path() -> str | None`;
   - `available() -> bool`, which actually starts a sandbox;
-  - `Sandbox(work, private_home, home=Path.home(), git_dir=None, readable=[])`, with `.argv(command, step) -> list[str]`, used as `CheckContext.wrap`;
-  - `toolchain_paths(profile) -> list[Path]`, which reads `ci_sandbox_read` from the framework's `core/context/profiles.yaml`. Framework data is trusted; a branch cannot change it.
+  - `Sandbox(work, private_home, home=Path.home(), git_dir=None, readable=[], env_names=[])`, with `.argv(command, step) -> list[str]`, used as `CheckContext.wrap`;
+  - `toolchain_paths(profile) -> list[Path]` and `toolchain_env(profile) -> list[str]`. They read `ci_sandbox_read` and `ci_sandbox_env` from the framework's `core/context/profiles.yaml`. Framework data is trusted; a branch cannot change it.
 
 Inside the sandbox:
 
@@ -2296,23 +2357,28 @@ Inside the sandbox:
 |---|---|
 | The filesystem | Read-only (`--ro-bind / /`) |
 | `/tmp` | An empty tmpfs |
-| `$HOME` | A **private per-run home** (`--bind private_home $HOME`). Secrets, `~/.aidlc`, the person's settings, the repository's main checkout and a framework under `$HOME` are invisible. State that one step leaves for the next (for example NuGet packages) survives within the run. The directory is discarded afterwards. |
-| Toolchains under home | Bound back read-only (`ci_sandbox_read`, for example `~/.nvm`) |
-| Writable | The disposable checkout only (`--bind work work`) |
-| The main repository's `.git` | Bound read-only, so git still works in a worktree |
-| Network | None (`--unshare-net`), except for the install step (`install` or `restore`) |
+| `/run` | An empty tmpfs. It hides host sockets that a read-only bind would leave reachable: the Docker socket (`/run/docker.sock`; `/var/run` links here), the D-Bus session bus, and user runtime directories |
+| DNS for the install step | When `/etc/resolv.conf` resolves into `/run` (systemd-resolved, as on Ubuntu runners), that directory is bound back read-only |
+| `$HOME` | A **private per-run home** (`--bind private_home $HOME`). Secrets, `~/.aidlc`, the person's settings and the repository's main checkout are invisible. State one step leaves for the next, for example NuGet packages, survives within the run, and the directory is discarded afterwards |
+| Toolchains under home | Bound back read-only (framework profile data `ci_sandbox_read`, for example `~/.nvm`) |
+| Writable | The disposable checkout only. It is bound **first**, then its `.git` (a file in a worktree, a directory in a clone) and the common git directory are bound back **read-only**, so the change can neither rewrite its gitlink nor edit git configuration |
+| Environment | Cleared (`--clearenv`), then only `PATH`, `LANG`, `LC_ALL`, `TERM`, the profile's `ci_sandbox_env` names, `HOME`, `TMPDIR=/tmp` and `CI=true`. Tokens in the person's environment never reach the change |
+| Network | None (`--unshare-net`), except for the install step (`install` or `restore`). The install step shares the host network, including localhost services. This is a known limit, documented in `docs/checks/ci.md` |
 | Processes | Own PID, IPC and UTS namespaces, a new session, and death with the parent |
 
-Verified on this machine on 2026-10-19 (see "Verified facts"):
-- the network namespace shows only `lo`;
-- the home tmpfs hides the repository;
-- a bound work directory is writable.
+Verified on this machine by the controller and the independent reviewer, 2026-10-19:
+- only `lo` exists without network;
+- the home bind hides the repository;
+- `--tmpfs /run` with `--clearenv` makes `/run/docker.sock` and the bus unreachable and hides environment tokens;
+- binding work first and then the `.git` read-only refuses writes to the gitlink and to `.git/config`, for both a worktree and a clone.
 
 - [ ] **Step 1: Write the failing tests**
 
 ```python
 # tests/unit/test_sandbox.py
 import os
+import socket
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -2322,6 +2388,7 @@ from unittest import mock
 from aidlc import sandbox
 from aidlc.checks.onecheck import FAIL, OK, CheckContext, run_command
 from aidlc.repo import RepoConfig
+from tests.helpers import git
 
 PY = sys.executable
 
@@ -2330,12 +2397,25 @@ def config(command, name="test"):
     return RepoConfig("svc", "team", "generic", "purpose", {name: command}, [name], {}, harness={}, tool_names={})
 
 
+def dirs():
+    tmp = Path(tempfile.mkdtemp())
+    out = {name: tmp / name for name in ("home", "private", "work")}
+    for d in out.values():
+        d.mkdir()
+    (out["work"] / ".check").mkdir()
+    return tmp, out
+
+
 class ArgvTest(unittest.TestCase):
     def setUp(self):
         self.p = mock.patch.object(sandbox, "bwrap_path", return_value="/usr/bin/bwrap")
         self.p.start()
-        self.box = sandbox.Sandbox(work=Path("/tmp/w"), private_home=Path("/tmp/h"), home=Path("/home/u"),
-                                   git_dir=Path("/home/u/repo/.git"), readable=[])
+        self.tmp, d = dirs()
+        (d["work"] / ".git").write_text("gitdir: /elsewhere\n")       # a worktree's gitlink
+        self.git_dir = self.tmp / "main.git"
+        self.git_dir.mkdir()
+        self.work = d["work"]
+        self.box = sandbox.Sandbox(work=d["work"], private_home=d["private"], home=d["home"], git_dir=self.git_dir)
 
     def tearDown(self):
         self.p.stop()
@@ -2343,18 +2423,26 @@ class ArgvTest(unittest.TestCase):
     def pairs(self, argv, flag):
         return [(argv[i + 1], argv[i + 2]) for i, a in enumerate(argv) if a == flag]
 
-    def test_layout(self):
+    def test_layout_and_order(self):
         argv = self.box.argv("npm test", "test")
-        self.assertEqual(argv[0], "/usr/bin/bwrap")
+        work, gitlink = str(self.work), str(self.work / ".git")
         self.assertIn(("/", "/"), self.pairs(argv, "--ro-bind"))
-        self.assertIn(("/tmp/h", "/home/u"), self.pairs(argv, "--bind"))
-        self.assertIn(("/home/u/repo/.git", "/home/u/repo/.git"), self.pairs(argv, "--ro-bind"))
-        self.assertIn(("/tmp/w", "/tmp/w"), self.pairs(argv, "--bind"))
-        self.assertIn("--die-with-parent", argv)
-        self.assertIn("--unshare-pid", argv)
+        self.assertIn("/run", [argv[i + 1] for i, a in enumerate(argv) if a == "--tmpfs"])
+        self.assertIn((work, work), self.pairs(argv, "--bind"))
+        self.assertIn((gitlink, gitlink), self.pairs(argv, "--ro-bind"))
+        self.assertIn((str(self.git_dir), str(self.git_dir)), self.pairs(argv, "--ro-bind"))
+        # the work tree first, then its .git read-only on top of it
+        self.assertLess(argv.index("--bind", argv.index(str(self.box.private_home)) + 1), argv.index(gitlink))
+        self.assertIn("--clearenv", argv)
         self.assertEqual(argv[-3:], ["/bin/sh", "-c", "npm test"])
-        # the work tree is bound after the home and /tmp mounts, so it stays visible
-        self.assertGreater(argv.index("/tmp/w"), argv.index("/tmp/h"))
+
+    def test_only_allowed_environment(self):
+        with mock.patch.dict(os.environ, {"PATH": "/usr/bin", "SECRET_TOKEN": "x", "LANG": "C.UTF-8"}):
+            argv = self.box.argv("x", "test")
+        env = {argv[i + 1]: argv[i + 2] for i, a in enumerate(argv) if a == "--setenv"}
+        self.assertEqual(env["PATH"], "/usr/bin")
+        self.assertEqual((env["HOME"], env["TMPDIR"], env["CI"]), (str(self.box.home), "/tmp", "true"))
+        self.assertNotIn("SECRET_TOKEN", env)
 
     def test_network_only_for_install(self):
         self.assertIn("--unshare-net", self.box.argv("npm test", "test"))
@@ -2370,22 +2458,21 @@ class ArgvTest(unittest.TestCase):
         self.assertEqual([p.name for p in sandbox.toolchain_paths("node")], [".nvm"])
         self.assertEqual([p.name for p in sandbox.toolchain_paths("dotnet")], [".dotnet"])
         self.assertEqual(sandbox.toolchain_paths("generic"), [])
+        self.assertIn("DOTNET_ROOT", sandbox.toolchain_env("dotnet"))
 
 
 @unittest.skipUnless(sandbox.available(), "bubblewrap cannot start a sandbox here (sudo apt install bubblewrap)")
 class LiveTest(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
-        self.home, self.private, self.work = self.tmp / "home", self.tmp / "private", self.tmp / "work"
-        for d in (self.home, self.private, self.work, self.work / ".check"):
-            d.mkdir()
+        self.tmp, d = dirs()
+        self.home, self.private, self.work = d["home"], d["private"], d["work"]
         (self.home / "secret.txt").write_text("SECRET-DECOY\n")
         (self.home / "judge.txt").write_text("trusted\n")
         self.box = sandbox.Sandbox(work=self.work, private_home=self.private, home=self.home)
 
-    def run_step(self, code, step="test"):
+    def run_step(self, code, step="test", box=None):
         ctx = CheckContext(repo=self.work, config=config(f'"{PY}" -c "{code}"', step), branch=None,
-                           base="0" * 40, scope=None, wrap=self.box.argv)
+                           base="0" * 40, scope=None, wrap=(box or self.box).argv)
         result = run_command(ctx, step)
         return result, (self.work / f".check/{step}.log").read_text()
 
@@ -2401,10 +2488,9 @@ class LiveTest(unittest.TestCase):
 
     def test_files_outside_the_checkout_are_never_changed(self):
         # /tmp and $HOME are private inside the sandbox; the rest of the filesystem is read-only.
-        targets = [self.home / "judge.txt", self.tmp / "judge.txt"]
-        self.tmp.joinpath("judge.txt").write_text("trusted\n")
-        for target in targets:
-            with self.subTest(target=target.name, where=target.parent.name):
+        (self.tmp / "judge.txt").write_text("trusted\n")
+        for target in (self.home / "judge.txt", self.tmp / "judge.txt"):
+            with self.subTest(target=str(target)):
                 self.run_step(f"open(r'{target}','w').write('tampered')")
                 self.assertEqual(target.read_text(), "trusted\n")
 
@@ -2412,6 +2498,20 @@ class LiveTest(unittest.TestCase):
         result, _ = self.run_step("open('/etc/aidlc-sandbox-test','w').write('x')")
         self.assertEqual(result.status, FAIL)
         self.assertFalse(Path("/etc/aidlc-sandbox-test").exists())
+
+    def test_host_sockets_are_hidden(self):
+        result, log = self.run_step("import os; print('RUN', sorted(os.listdir('/run')))")
+        self.assertEqual(result.status, OK)
+        self.assertIn("RUN []", log)
+        if Path("/run/docker.sock").exists():
+            _, log = self.run_step("import socket; s=socket.socket(socket.AF_UNIX); "
+                                   "print('DOCKER', s.connect_ex('/var/run/docker.sock'))")
+            self.assertNotIn("DOCKER 0", log)
+
+    def test_environment_tokens_never_reach_the_change(self):
+        with mock.patch.dict(os.environ, {"AIDLC_TEST_TOKEN": "TOKEN-DECOY"}):
+            _, log = self.run_step("import os; print(sorted(os.environ))")
+        self.assertNotIn("AIDLC_TEST_TOKEN", log)
 
     def test_no_network_for_tests(self):
         _, log = self.run_step("print(open('/proc/net/dev').read())")
@@ -2424,6 +2524,26 @@ class LiveTest(unittest.TestCase):
         self.assertEqual(result.status, OK)
         self.assertIn("pkg", log)
         self.assertFalse((self.home / "cache.txt").exists())          # the person's home is untouched
+
+    def test_git_metadata_is_read_only(self):
+        repo = self.tmp / "repo"
+        repo.mkdir()
+        git(repo, "init", "-q", "-b", "main")
+        (repo / "a.txt").write_text("a\n")
+        git(repo, "add", "-A")
+        git(repo, "commit", "-qm", "a")
+        work = self.tmp / "wt"
+        git(repo, "worktree", "add", "-q", "--detach", str(work), "main")
+        (work / ".check").mkdir()
+        gitlink = (work / ".git").read_text()
+        box = sandbox.Sandbox(work=work, private_home=self.private, home=self.home, git_dir=repo / ".git")
+        ctx = CheckContext(repo=work, config=config(
+            f'"{PY}" -c "open(\'.git\',\'w\').write(\'gitdir: /tmp/evil\')"; '
+            f'"{PY}" -c "open(r\'{repo}/.git/config\',\'a\').write(\'[x]\')"; git status --short'), branch=None,
+            base="0" * 40, scope=None, wrap=box.argv)
+        run_command(ctx, "test")
+        self.assertEqual((work / ".git").read_text(), gitlink)
+        self.assertNotIn("[x]", (repo / ".git" / "config").read_text())
 ```
 
 `RepoConfig` is built here positionally up to `context`, then by keyword, the same way `load_config` builds it. Tasks 3 and 10 add fields at the end, with defaults.
@@ -2436,18 +2556,20 @@ Expected: `ImportError: cannot import name 'sandbox' from 'aidlc'`.
 - [ ] **Step 3: Write `cli/aidlc/sandbox.py`**
 
 ```python
-"""Run the change's own commands in a bubblewrap sandbox (design §8; independent plan review,
+"""Run the change's own commands in a bubblewrap sandbox (design §8; independent plan reviews,
 2026-10-19). `aidlc ci` loads its judges and reads its evidence first; this keeps the change's
 install script and tests, written by an agent, away from anything that could alter the verdict:
-- the filesystem is read-only, /tmp is empty, and $HOME is a private per-run directory, so
-  secrets, ~/.aidlc, the person's settings and anything else under home are invisible;
-- toolchains under home (framework profile data, `ci_sandbox_read`) are bound back read-only;
-- only the disposable checkout is writable; the main repository's .git is bound read-only so git
-  works inside the worktree;
+- the filesystem is read-only; /tmp and /run are empty (no host sockets: Docker, D-Bus);
+- $HOME is a private per-run directory, so secrets, ~/.aidlc and the person's settings are
+  invisible; toolchains under home (framework profile data) are bound back read-only;
+- only the disposable checkout is writable, and its .git and the common git directory are bound
+  back read-only on top of it, so the change cannot redirect or reconfigure git;
+- the environment is cleared except for an allow-list;
 - there is no network except for the install step;
 - the process tree has its own PID namespace and dies with its parent."""
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from dataclasses import dataclass, field
@@ -2457,6 +2579,7 @@ from .paths import framework_root
 from .policy import load_yaml
 
 NETWORK_STEPS = ("install", "restore")
+BASE_ENV = ("PATH", "LANG", "LC_ALL", "TERM")
 
 
 class SandboxError(Exception):
@@ -2474,16 +2597,31 @@ def available() -> bool:
         return False
     try:
         probe = subprocess.run([exe, "--die-with-parent", "--unshare-net", "--ro-bind", "/", "/",
-                                "--dev", "/dev", "--proc", "/proc", "true"], capture_output=True, timeout=10)
+                                "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/run", "true"],
+                               capture_output=True, timeout=10)
     except (OSError, subprocess.TimeoutExpired):
         return False
     return probe.returncode == 0
 
 
+def _profile(profile: str) -> dict:
+    return load_yaml(framework_root() / "core" / "context" / "profiles.yaml").get(profile) or {}
+
+
 def toolchain_paths(profile: str) -> list[Path]:
     """Toolchain directories under home to bind read-only (framework data, never the branch's)."""
-    profiles = load_yaml(framework_root() / "core" / "context" / "profiles.yaml")
-    return [Path(p).expanduser() for p in (profiles.get(profile) or {}).get("ci_sandbox_read", [])]
+    return [Path(p).expanduser() for p in _profile(profile).get("ci_sandbox_read", [])]
+
+
+def toolchain_env(profile: str) -> list[str]:
+    """Extra environment names a toolchain needs inside the sandbox (framework data)."""
+    return list(_profile(profile).get("ci_sandbox_env", []))
+
+
+def _resolver_dir() -> Path | None:
+    """The directory /etc/resolv.conf resolves into, when that is under /run (systemd-resolved)."""
+    target = Path("/etc/resolv.conf").resolve()
+    return target.parent if str(target).startswith("/run/") and target.exists() else None
 
 
 @dataclass
@@ -2491,34 +2629,52 @@ class Sandbox:
     work: Path                                  # the only writable tree
     private_home: Path                          # per-run home, discarded after the run
     home: Path = field(default_factory=Path.home)
-    git_dir: Path | None = None                 # the main repository's .git, read-only
+    git_dir: Path | None = None                 # the repository's common .git, read-only
     readable: list[Path] = field(default_factory=list)
+    env_names: list[str] = field(default_factory=list)   # profile ci_sandbox_env
 
     def argv(self, command: str, step: str) -> list[str]:
         exe = bwrap_path()
         if not exe:
             raise SandboxError("bwrap is not installed (sudo apt install bubblewrap)")
+        network = step in NETWORK_STEPS
         args = [exe, "--die-with-parent", "--new-session", "--unshare-pid", "--unshare-ipc", "--unshare-uts",
-                "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc",
-                "--tmpfs", "/tmp", "--bind", str(self.private_home), str(self.home)]
+                "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp", "--tmpfs", "/run"]
+        resolver = _resolver_dir() if network else None
+        if resolver is not None:
+            args += ["--ro-bind", str(resolver), str(resolver)]
+        args += ["--bind", str(self.private_home), str(self.home)]
         for path in self.readable:
             if path.exists():
                 args += ["--ro-bind", str(path), str(path)]
-        if self.git_dir is not None:
+        args += ["--bind", str(self.work), str(self.work)]
+        gitlink = self.work / ".git"
+        if gitlink.exists() or gitlink.is_symlink():
+            args += ["--ro-bind", str(gitlink), str(gitlink)]        # on top of the writable work tree
+        if self.git_dir is not None and self.git_dir.resolve() != gitlink.resolve():
             args += ["--ro-bind", str(self.git_dir), str(self.git_dir)]
-        args += ["--bind", str(self.work), str(self.work), "--chdir", str(self.work),
-                 "--setenv", "HOME", str(self.home)]
-        if step not in NETWORK_STEPS:
+        args += ["--chdir", str(self.work), "--clearenv"]
+        for name in (*BASE_ENV, *self.env_names):
+            if name in os.environ:
+                args += ["--setenv", name, os.environ[name]]
+        args += ["--setenv", "HOME", str(self.home), "--setenv", "TMPDIR", "/tmp", "--setenv", "CI", "true"]
+        if not network:
             args.append("--unshare-net")
         return args + ["/bin/sh", "-c", command]
 ```
 
-In `core/context/profiles.yaml`, add `ci_sandbox_read` to each profile:
+In `core/context/profiles.yaml`, add `ci_sandbox_read` and `ci_sandbox_env` to each profile:
 
 ```yaml
-  ci_sandbox_read: ["~/.nvm"]          # node
-  ci_sandbox_read: ["~/.dotnet"]       # dotnet
-  ci_sandbox_read: []                  # generic
+  # node
+  ci_sandbox_read: ["~/.nvm"]
+  ci_sandbox_env: [NVM_DIR]
+  # dotnet
+  ci_sandbox_read: ["~/.dotnet"]
+  ci_sandbox_env: [DOTNET_ROOT, DOTNET_CLI_TELEMETRY_OPTOUT]
+  # generic
+  ci_sandbox_read: []
+  ci_sandbox_env: []
 ```
 
 - [ ] **Step 4: Run the tests and see them pass**
@@ -2539,16 +2695,18 @@ git add -A && git commit -m "feat(ci): bubblewrap sandbox for the change's own c
 
 **Files:**
 - Create: `cli/aidlc/ci.py`, `cli/aidlc/commands/ci_cmd.py`, and register it in `cli/aidlc/commands/__init__.py`
-- Modify: `cli/aidlc/scope.py`, to extract `parse_approvals` and use it in `approved_ref` with identical messages
+- Modify:
+  - `cli/aidlc/scope.py`: extract `parse_approvals` and use it in `approved_ref`, with identical messages
+  - `cli/aidlc/checks/onecheck.py`: add the `CheckContext` field `rerun_base: dict[str, bytes]`, the base versions of changed test files, read before the change runs
 - Test: `tests/unit/test_ci.py`
 
 **Interfaces:**
 - Consumes:
   - From `onecheck` (Tasks 1–3):
-    - `CheckContext` (`head`, `trusted`, `wrap`) and `CheckResult`, `StepResult`, `OK`, `FAIL`, `git`, `run_command`;
+    - `CheckContext` (`head`, `steering`, `wrap`) and `CheckResult`, `StepResult`, `OK`, `FAIL`, `git`, `run_command`, `prepare_check_dir`, `step_records`, `_report_snapshot`;
     - `step_scope`, `step_protected_tests`, `step_secrets`, `step_context_drift`, `step_skips`;
     - `protected_test_changes(repo, base, head)`, `print_result(result, repo, prefix)`, `STEERING`.
-  - From `sandbox` (Task 5): `Sandbox`, `available`, `toolchain_paths`, `SandboxError`.
+  - From `sandbox` (Task 5): `Sandbox`, `available`, `toolchain_paths`, `toolchain_env`, `SandboxError`.
   - From `scope`: `bundle_at`, `parse_may_change`, `base_commit`, `require_repository`, `ScopeError`.
   - `repo.load_config`.
   - `harness.base_branch(repo)`.
@@ -2572,12 +2730,18 @@ git add -A && git commit -m "feat(ci): bubblewrap sandbox for the change's own c
 
 1. **Prepare** (no branch code has run):
    - Create detached worktrees of the base (`trusted/`) and the head (`head/`).
-   - Read the trusted configuration, the approvals and the merge approvals.
-   - Copy the steering files (`test/allowed-skips.txt`, `test/protected-exceptions.txt`) from the base into a private 0700 directory. `ctx.trusted` points there.
+   - Read into memory:
+     - the trusted configuration;
+     - the approvals and the merge approvals;
+     - the steering files (`ctx.steering`).
    - Every judge's code is already imported: the onecheck steps, the hooks through `hooks()`, and conftest_check (Task 8).
    - Refuse to start if the sandbox is required but cannot start.
 2. **Judge** (still no branch code), from git objects (`ctx.head = head`) and the untouched head checkout. The steps are the `JUDGE_STEPS`: scope, protected tests, secrets (every commit), context drift, and config policy (Task 8).
-3. **Run the change's code sandboxed** (`ctx.wrap = Sandbox(...).argv`):
+3. **Run the change's code sandboxed** (`ctx.wrap = Sandbox(...).argv`). Just before it, while no change code has run:
+   - create `.check/`;
+   - read the **base versions** of the changed existing test files into memory (`ctx.rerun_base`), with git, from the repository.
+
+   After the change's code has run, **no git command ever runs in the checkout**. The code could have planted git configuration or attributes there. The protected re-run restores the base versions with plain file writes, through `safe_target`, so symlinks are refused.
    1. the install step, if `commands.install` or `commands.restore` exists;
    2. the trusted `check_steps`;
    3. the `AFTER_STEPS`, which read its output: the skip check against the base's allow-list copy, then the protected re-run, last because it rewrites files.
@@ -2595,7 +2759,7 @@ Groups are the job names in `core/policy/branch-protection.yaml`. Each group run
 
 **Sandbox.**
 - In local mode it is required. bubblewrap is a D5 dependency already.
-- In GitHub mode, `--sandbox require` is the default. `--sandbox auto` falls back to running without it, and the record then says `"sandbox": "none"`.
+- In GitHub mode, `--sandbox require` is the default, and the template uses it for `compile` and `check`. `--sandbox auto` is used only for `scans`, which runs no code from the change, and the record then says `"sandbox": "none"` if bwrap could not start.
 - GitHub mode refuses to run unless `GITHUB_ACTIONS=true`.
 - GitHub mode refuses unless the head checkout's `HEAD` equals `--head-sha`.
 
@@ -2609,6 +2773,7 @@ import stat
 import sys
 import tempfile
 import unittest
+import uuid
 from datetime import date
 from pathlib import Path
 from unittest import mock
@@ -2749,12 +2914,15 @@ class CiTest(unittest.TestCase):
 
     def test_tests_that_try_to_rewrite_their_judges_change_nothing(self):
         with CiRepo() as r:
+            marker = f"aidlc-ci-hostile-{uuid.uuid4().hex}"
             hostile = TEST_APP + ("\nimport pathlib, os\n"
-                                  "for p in [os.path.expanduser('~/.aidlc/x'), '../trusted/plans/approved-merges.txt']:\n"
+                                  f"for p in [os.path.expanduser('~/.aidlc/{marker}'), '../trusted/plans/approved-merges.txt',\n"
+                                  f"          '{r.root}/.aidlc/ci-records/forged.json', '.git']:\n"
                                   "    try:\n        pathlib.Path(p).write_text('forged')\n    except OSError:\n        pass\n")
             r.commit({"test/test_app.py": hostile})
             run_cli("ci", "--repo", str(r.root))
-            self.assertFalse(Path(os.path.expanduser("~/.aidlc/x")).exists())
+            self.assertFalse(Path(os.path.expanduser(f"~/.aidlc/{marker}")).exists())
+            self.assertFalse((r.root / ci.RECORDS / "forged.json").exists())
             self.assertFalse(last(r)["merge_ready"])
 
     def test_tampered_record_fails_verification(self):
@@ -2850,7 +3018,9 @@ class CiTest(unittest.TestCase):
             args = ["ci", "--trusted", str(trusted), "--head", str(head), "--branch", BRANCH,
                     "--head-sha", head_sha, "--records", str(records)]
             try:
-                code, _, err = run_cli(*args)
+                with mock.patch.dict(os.environ):
+                    os.environ.pop("GITHUB_ACTIONS", None)
+                    code, _, err = run_cli(*args)
                 self.assertEqual(code, 2)
                 self.assertIn("GITHUB_ACTIONS", err)                     # refused outside GitHub Actions
                 with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}):
@@ -2959,17 +3129,19 @@ import subprocess
 import tempfile
 import time
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Iterator
 
 from . import __version__
 from .checks.onecheck import (FAIL, OK, STEERING, CheckContext, CheckResult, StepResult, _report_snapshot, git,
-                              print_result, protected_test_changes, run_command, step_context_drift,
-                              step_protected_tests, step_scope, step_secrets, step_skips)
+                              prepare_check_dir, print_result, protected_test_changes, run_command,
+                              step_context_drift, step_protected_tests, step_records, step_scope, step_secrets,
+                              step_skips)
+from .paths import safe_target
 from .repo import load_config
-from .sandbox import Sandbox, available, toolchain_paths
+from .sandbox import Sandbox, available, toolchain_env, toolchain_paths
 from .scope import ScopeError, bundle_at, parse_approvals, parse_may_change
 
 LABEL = "simulated-ci"
@@ -3010,13 +3182,16 @@ def group_of(step: str) -> str:
 
 def step_protected_rerun(ctx: CheckContext) -> StepResult:
     """Guide 9.5 rule 3: the base versions of changed existing test files must pass on the new code.
-    It rewrites files, so it runs last, in the disposable checkout, sandboxed like every test run."""
-    _problems, changed = protected_test_changes(ctx.repo, ctx.base, ctx.head)
+    The base versions were read before the change's code ran (ctx.rerun_base); they are written back
+    with plain file writes, never with git, because the checkout is untrusted after the change ran.
+    It rewrites files, so it runs last, sandboxed like every test run."""
+    changed = sorted(ctx.rerun_base)
     if not changed:
         return StepResult("protected-rerun", OK, "no existing test file changed")
     if "test" not in ctx.config.commands:
         return StepResult("protected-rerun", FAIL, "no test command to re-run the base versions with")
-    git(ctx.repo, "checkout", ctx.base, "--", *changed)
+    for rel, data in ctx.rerun_base.items():
+        safe_target(ctx.repo, rel).write_bytes(data)          # refuses a path through a symlink
     result = run_command(ctx, "test", step="protected-rerun")
     if result.status == FAIL:
         result.detail = (f"the base versions of {', '.join(changed[:5])} fail on this change "
@@ -3085,6 +3260,11 @@ def _run_phases(ctx: CheckContext, group: str | None) -> CheckResult:
         if _selected(name, group, command=False):
             guarded(name, lambda f=fn: f(ctx))
     if group != "scans":                              # the scans job never runs the change's code
+        # Last moment before the change's code runs: everything that needs git in the checkout.
+        prepare_check_dir(ctx.repo)
+        if group != "compile":
+            _problems, changed = protected_test_changes(ctx.repo, ctx.base, ctx.head)
+            ctx.rerun_base = {rel: _blob(ctx.repo, ctx.base, rel) for rel in changed}
         install = [n for n in INSTALL_STEPS if n in ctx.config.commands][:1]
         commands = install + [n for n in ctx.config.check_steps if n not in install]
         commands = [n for n in commands if n in install or _selected(n, group, command=True)]
@@ -3098,16 +3278,24 @@ def _run_phases(ctx: CheckContext, group: str | None) -> CheckResult:
     return CheckResult(steps)
 
 
-def _private_steering(trusted: Path) -> Path:
-    """A 0700 copy of the base's steering files, read before any of the change's code runs."""
-    private = Path(tempfile.mkdtemp(prefix="aidlc-ci-steering-"))
+def _blob(repo: Path, commit: str, rel: str) -> bytes:
+    """A file's content at a commit, from git objects (never the working tree)."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    out = subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "show", f"{commit}:{rel}"], cwd=repo,
+                         env=env, capture_output=True, timeout=60)
+    if out.returncode != 0:
+        raise CiError(f"cannot read {rel} at {commit[:12]}: {out.stderr.decode(errors='replace').strip()[:200]}")
+    return out.stdout
+
+
+def _steering(trusted: Path) -> dict[str, str]:
+    """The base's steering files, read into memory before any of the change's code runs."""
+    out = {}
     for rel in STEERING:
         source = trusted / rel
         if source.is_file() and not source.is_symlink():
-            target = private / rel
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(source.read_bytes())
-    return private
+            out[rel] = source.read_text(encoding="utf-8")
+    return out
 
 
 def _merge_ready(merges: str, plan: CiPlan, result: CheckResult, group: str | None) -> tuple[bool, str]:
@@ -3147,10 +3335,9 @@ def run_ci(plan: CiPlan, group: str | None = None) -> tuple[CheckResult, dict]:
         scope, why = parse_may_change(bundle_at(plan.repo, ref)), ""
     except ScopeError as exc:
         scope, why = None, str(exc)
-    steering = _private_steering(plan.trusted)
+    steering = _steering(plan.trusted)
     use_sandbox = available()
     if not use_sandbox and plan.sandbox == "require":
-        shutil.rmtree(steering, ignore_errors=True)
         raise CiError("bubblewrap cannot start a sandbox here (sudo apt install bubblewrap); "
                       "aidlc ci never runs the change's code unsandboxed in local mode")
     home = Path(tempfile.mkdtemp(prefix="aidlc-ci-home-"))
@@ -3158,14 +3345,14 @@ def run_ci(plan: CiPlan, group: str | None = None) -> tuple[CheckResult, dict]:
         merge_base = git(plan.work, "merge-base", plan.base, plan.head).strip()
         git_dir = Path(git(plan.work, "rev-parse", "--path-format=absolute", "--git-common-dir").strip())
         wrap = Sandbox(work=plan.work, private_home=home, git_dir=git_dir,
-                       readable=toolchain_paths(config.profile)).argv if use_sandbox else None
+                       readable=toolchain_paths(config.profile),
+                       env_names=toolchain_env(config.profile)).argv if use_sandbox else None
         ctx = CheckContext(repo=plan.work, config=config, branch=plan.branch, base=merge_base, scope=scope,
-                           head=plan.head, trusted=steering, wrap=wrap)
+                           head=plan.head, steering=steering, wrap=wrap)
         # 2 and 3: judges, then the change's code in the sandbox, then what reads its output.
         result = _run_phases(ctx, group)
     finally:
         shutil.rmtree(home, ignore_errors=True)
-        shutil.rmtree(steering, ignore_errors=True)
     if scope is None:
         for step in result.steps:
             if step.name == "scope" and step.status == FAIL:
@@ -3176,7 +3363,7 @@ def run_ci(plan: CiPlan, group: str | None = None) -> tuple[CheckResult, dict]:
             "base_branch": plan.base_branch, "base": plan.base, "group": group or "all",
             "sandbox": "bwrap" if use_sandbox else "none",
             "result": "PASS" if result.passed else "FAIL", "failures": result.failures,
-            "steps": [asdict(s) for s in result.steps], "merge_ready": ready, "merge_ready_reason": reason,
+            "steps": step_records(result.steps), "merge_ready": ready, "merge_ready_reason": reason,
             "time": datetime.now(timezone.utc).isoformat(timespec="microseconds")}
     body["record_sha256"] = _seal(body)
     return result, body
@@ -3253,7 +3440,8 @@ def ci_checkouts(trusted: Path, head_dir: Path, branch: str, head_sha: str, reco
     return result, record, write_ci_record(records, record, fresh=True)
 ```
 
-`_run_phases` sets `ctx.started` and `ctx.reports_before` just before the command steps, the same contract `run_check` keeps. `_report_snapshot` is the Task 3 helper, imported from `onecheck`.
+- `_run_phases` sets `ctx.started` and `ctx.reports_before` just before the command steps. That is the same contract `run_check` keeps. `_report_snapshot` is the Task 3 helper, imported from `onecheck`.
+- In `cli/aidlc/checks/onecheck.py`, add `rerun_base: dict[str, bytes] = field(default_factory=dict)` to `CheckContext`, after `steering`.
 
 - [ ] **Step 5: Write `cli/aidlc/commands/ci_cmd.py`**
 
@@ -4373,11 +4561,11 @@ class CiStepTest(unittest.TestCase):
             self.assertIn("aidlc tools install conftest", out)
             code, out, err = run_cli("policy", "rego-test")
             self.assertEqual(code, 2)
-        with TempRepo({"a": "a\n"}) as root:
-            (root / ".aidlc").mkdir()
+        with Rendered() as root, mock.patch.object(conftest_check, "which_tool", return_value=Path("/opt/conftest")):
             (root / ".aidlc/permissions.yaml").write_text("deny_add: [not, a, mapping]\n")
             code, _, err = run_cli("policy", "conftest", "--repo", str(root))
             self.assertEqual(code, 2)                                  # a policy error is not a traceback
+            self.assertIn("aidlc policy:", err)
 ```
 
 - [ ] **Step 3: Run them and see them fail**
@@ -4462,12 +4650,13 @@ def _parse(proc: subprocess.CompletedProcess, rel: str, namespace: str) -> list[
 
 def run_conftest(repo: Path, binary: Path | None = None, runner=subprocess.run,
                  pinned_only: bool = False) -> list[Finding]:
+    data = policy_data(repo)              # first: a policy or narrowing error surfaces as itself
     binary = binary or which_tool("conftest", pinned_only=pinned_only)
     if binary is None:
         return [Finding("FAIL", "", 0, "conftest is not installed: run `aidlc tools install conftest`")]
     findings: list[Finding] = []
     with tempfile.TemporaryDirectory(prefix="aidlc-conftest-") as tmp:
-        (Path(tmp) / "aidlc.json").write_text(json.dumps(policy_data(repo)), encoding="utf-8")
+        (Path(tmp) / "aidlc.json").write_text(json.dumps(data), encoding="utf-8")
         for namespace, rel in inputs(repo):
             if not (repo / rel).is_file():
                 findings.append(Finding("FAIL", rel, 0, f"{rel} is missing; run aidlc render"))
@@ -4666,6 +4855,7 @@ class OverrideTest(unittest.TestCase):
 
     def test_env_overrides_of_the_harness_fail(self):
         for env in ({"AIDLC_HARNESS_FILE": "/tmp/h.json"}, {"AIDLC_HOME_DIR": "/tmp/x"}, {"AIDLC_SCOPE": "off"},
+                    {"AIDLC_LOG_DIR": "/tmp/logs"},
                     {"AIDLC_SCOPE_FILE": "/tmp/s"}, {"AIDLC_BASE_REF": "HEAD"}, {"CHECK_SCOPE": "skip"}):
             with self.subTest(env=env):
                 self.write(self.user, {"env": env})
@@ -4678,10 +4868,14 @@ class OverrideTest(unittest.TestCase):
         self.assertTrue(any(m.startswith("FAIL") and "excludedCommands" in m for m in self.d13()))
 
     def test_write_grants_to_the_harness_fail_even_from_user_settings(self):
-        for grant in ("~/.aidlc", "~/.aidlc/attempts", "./.aidlc", ".claude"):
+        home = str(Path.home())
+        for grant in ("~/.aidlc", "~/.aidlc/attempts", "./.aidlc", ".claude", f"{home}/.aidlc", home, "/",
+                      str(self.root)):
             with self.subTest(grant=grant):
                 self.write(self.user, {"sandbox": {"filesystem": {"allowWrite": [grant]}}})
                 self.assertTrue(any(m.startswith("FAIL") and "allowWrite" in m for m in self.d13()))
+        self.write(self.user, {"sandbox": {"filesystem": {"allowWrite": ["~/.npm", "./node_modules"]}}})
+        self.assertEqual([m for m in self.d13() if "allowWrite" in m], [])
 
     def test_unreadable_file_warns(self):
         self.write(self.managed, "{not json")
@@ -4726,14 +4920,21 @@ def _override_sources(repo: Path) -> list[tuple[str, Path, bool]]:
             ("managed settings", managed, True)]
 
 
-HARNESS_ENV = {"AIDLC_HARNESS_FILE", "AIDLC_HOME_DIR", "AIDLC_SCOPE_FILE", "AIDLC_BASE_REF", "CHECK_SCOPE"}
+HARNESS_ENV = {"AIDLC_HARNESS_FILE", "AIDLC_HOME_DIR", "AIDLC_SCOPE_FILE", "AIDLC_BASE_REF", "AIDLC_LOG_DIR",
+               "CHECK_SCOPE"}
 
 
-def _reaches_harness(grant: str) -> bool:
-    """A sandbox write grant that covers .aidlc, ~/.aidlc or .claude (or a parent of them)."""
-    norm = grant.strip().rstrip("/").removeprefix("./")
-    targets = (".aidlc", "~/.aidlc", ".claude")
-    return any(norm == t or norm.startswith(t + "/") or t.startswith(norm + "/") for t in targets) or norm in ("~", "", ".")
+def _reaches_harness(grant: str, repo: Path) -> bool:
+    """A sandbox write grant that covers the harness (.aidlc, .claude, ~/.aidlc, ~/.claude) or a
+    parent of it. Relative grants are taken from the repository; `~` and absolute paths as given."""
+    raw = grant.strip()
+    if raw in ("", ".", "./", "/", "~", "~/"):
+        return True
+    path = Path(raw).expanduser()
+    path = (path if path.is_absolute() else repo / path).resolve()
+    home = Path.home().resolve()
+    targets = [repo.resolve() / ".aidlc", repo.resolve() / ".claude", home / ".aidlc", home / ".claude"]
+    return any(path == t or path in t.parents or t in path.parents for t in targets)
 
 
 def check_d13(repo: Path) -> list[Finding]:
@@ -4775,7 +4976,7 @@ def check_d13(repo: Path) -> list[Finding]:
             out.append(_fail(label, f"D13 {label} sets sandbox.excludedCommands; those commands run unsandboxed"))
         filesystem = sandbox.get("filesystem") if isinstance(sandbox.get("filesystem"), dict) else {}
         for grant in filesystem.get("allowWrite") or []:
-            if isinstance(grant, str) and _reaches_harness(grant):
+            if isinstance(grant, str) and _reaches_harness(grant, repo):
                 out.append(_fail(label, f"D13 {label} sandbox.filesystem.allowWrite '{grant}' reaches the harness"))
         for rule in perms.get("allow") or []:
             if isinstance(rule, str) and "(" not in rule and rule != "Read":
@@ -4812,6 +5013,7 @@ git add -A && git commit -m "feat(doctor): D13 reports settings files that overr
   - `cli/aidlc/repo.py`: `RepoConfig.ci`, its validation, and `init_repo` writes `ci: []`
   - `cli/aidlc/commands/render_cmd.py`: add `render_ci(repo)` to the rendered files
   - `cli/aidlc/checks/doctor.py`: D1 includes `render_ci(repo)`
+  - `cli/aidlc/paths.py`: add `CI_WORKFLOW`
   - `cli/aidlc/adapters/claude_code.py`: when `ci: [github]`, the workflow counts as a rendered path for `denyWrite`. Without that, the first render omits `./.github` and the second reports the settings stale (independent review C3)
 - Test: `tests/unit/test_ci_templates.py`
 
@@ -4821,7 +5023,7 @@ git add -A && git commit -m "feat(doctor): D13 reports settings files that overr
   - Task 6: the `aidlc ci` GitHub-mode flags `--trusted --head --branch --head-sha --group --records --sandbox`;
   - Task 7: `aidlc tools install conftest`.
 - Produces:
-  - `aidlc.ci_templates.OUTPUT = ".github/workflows/aidlc-verify.yml"`;
+  - `aidlc.paths.CI_WORKFLOW = ".github/workflows/aidlc-verify.yml"`, re-exported as `aidlc.ci_templates.OUTPUT`;
   - `aidlc.ci_templates.render_ci(repo) -> list[RenderedFile]`. It returns `[]` unless `.aidlc/config.yaml` has `ci: [github]`.
   - `RepoConfig.ci: list[str]`. Its values are drawn from `{"github"}`.
 
@@ -4833,7 +5035,7 @@ Template rules:
 - The PR checkout (`pr/`) is the pull-request **head commit** (`ref: ${{ github.event.pull_request.head.sha }}`), never the merge ref. `aidlc ci` refuses if `--head-sha` differs from the checked-out commit.
 - **The framework checkout fails closed.** The first step of every job fails unless `AIDLC_FRAMEWORK_REPO` and `AIDLC_FRAMEWORK_REF` are both set and the ref is 40 hex characters. A later step fails unless `aidlc/` HEAD equals that ref. An unset variable would otherwise make `actions/checkout` fall back to the PR's own repository.
 - The base branch name is quoted in YAML, so a branch named `1.0` stays a string.
-- bubblewrap is installed and `aidlc ci` runs with `--sandbox auto`. The record says whether the sandbox ran.
+- bubblewrap is installed. `compile` and `check` run the change's code, so they first allow unprivileged user namespaces (Ubuntu 24.04's AppArmor restriction) and run `aidlc ci --sandbox require`. If the sandbox still cannot start, the job fails; it never runs the change's code unsandboxed. `scans` runs no change code and uses `--sandbox auto`. The record says what applied.
 - Each job writes to its own records directory, which must not exist before the run: `$RUNNER_TEMP/ci-records-<job>`.
 - There are three jobs, named after `core/policy/branch-protection.yaml` `required_checks`: `compile`, `check` and `scans`. `scans` runs no code from the change. Each job runs `aidlc ci --group <job>` on two checkouts:
   - `pr/`, the change, with full history;
@@ -4953,7 +5155,7 @@ class TemplateTest(unittest.TestCase):
                 self.assertEqual(pr["with"]["ref"], "${{ github.event.pull_request.head.sha }}")
                 runs = " ".join(step.get("run", "") for step in job["steps"])
                 self.assertIn("git -C aidlc rev-parse HEAD", runs)
-                self.assertIn("--sandbox auto", runs)
+                self.assertIn("--sandbox auto" if name == "scans" else "--sandbox require", runs)
                 self.assertIn(f'--records "$RUNNER_TEMP/ci-records-{name}"', runs)
 
     def test_base_branch_is_a_string(self):
@@ -5051,11 +5253,13 @@ jobs:
 {{SETUP}}
       - name: Framework dependencies and the sandbox (Ubuntu 24.04 packages)
         run: sudo apt-get update -q && sudo apt-get install -y -q python3-yaml python3-jsonschema bubblewrap
+      - name: Allow unprivileged user namespaces, so the change's code runs in the bubblewrap sandbox
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: aidlc ci --group compile (gates and configuration from the base branch)
         env: {HEAD_REF: "${{ github.head_ref }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}"}
         run: >-
           aidlc/bin/aidlc ci --trusted trusted --head pr --branch "$HEAD_REF" --head-sha "$HEAD_SHA"
-          --group compile --sandbox auto --records "$RUNNER_TEMP/ci-records-compile"
+          --group compile --sandbox require --records "$RUNNER_TEMP/ci-records-compile"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         if: always()
         with: {name: aidlc-ci-record-compile, path: "${{ runner.temp }}/ci-records-compile", if-no-files-found: error}
@@ -5081,11 +5285,13 @@ jobs:
 {{SETUP}}
       - name: Framework dependencies and the sandbox (Ubuntu 24.04 packages)
         run: sudo apt-get update -q && sudo apt-get install -y -q python3-yaml python3-jsonschema bubblewrap
+      - name: Allow unprivileged user namespaces, so the change's code runs in the bubblewrap sandbox
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: aidlc ci --group check (gates and configuration from the base branch)
         env: {HEAD_REF: "${{ github.head_ref }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}"}
         run: >-
           aidlc/bin/aidlc ci --trusted trusted --head pr --branch "$HEAD_REF" --head-sha "$HEAD_SHA"
-          --group check --sandbox auto --records "$RUNNER_TEMP/ci-records-check"
+          --group check --sandbox require --records "$RUNNER_TEMP/ci-records-check"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         if: always()
         with: {name: aidlc-ci-record-check, path: "${{ runner.temp }}/ci-records-check", if-no-files-found: error}
@@ -5150,12 +5356,12 @@ from pathlib import Path
 
 from .adapters.base import RenderedFile
 from .harness import BRANCH_RE
-from .paths import framework_root
+from .paths import CI_WORKFLOW, framework_root
 from .policy import load_yaml
 from .repo import load_config
 
 TEMPLATE = "core/ci/github/aidlc-verify.yml"
-OUTPUT = ".github/workflows/aidlc-verify.yml"
+OUTPUT = CI_WORKFLOW
 
 
 def render_ci(repo: Path) -> list[RenderedFile]:
@@ -5200,7 +5406,8 @@ if not isinstance(ci_list, list) or not set(ci_list) <= {"github"}:
 In `cli/aidlc/adapters/claude_code.py`, make the workflow count as rendered for `denyWrite`, so the first render already protects `.github/`:
 - `_exists(rel, files, extra=())` checks `(*files, *RENDERED_PATHS, *extra)`.
 - `_deny_write(repo, protected, files=None, extra=())` passes `extra` to `_exists` and to the glob loop. The glob loop matches over `(*files, *RENDERED_PATHS, *extra)`.
-- In `render_permissions`, compute `extra = (OUTPUT,) if "github" in cfg.ci else ()`, importing `OUTPUT` from `..ci_templates`, and pass it to `_deny_write`.
+- In `render_permissions`, compute `extra = (CI_WORKFLOW,) if "github" in cfg.ci else ()` and pass it to `_deny_write`.
+- `CI_WORKFLOW = ".github/workflows/aidlc-verify.yml"` lives in the leaf module `cli/aidlc/paths.py`, and both `claude_code` and `ci_templates` import it from there. `claude_code` must **not** import `ci_templates`: `ci_templates` imports `adapters.base`, whose package `__init__` eagerly imports `claude_code`, so that import would form a cycle.
 
 The golden fixture `settings.node.json` has no `ci`, so it does not change.
 
@@ -5289,6 +5496,11 @@ Write one or two screens per document. Link to sources; never copy policy values
 2. **`docs/checks/ci.md`, `aidlc ci`.**
    - **The trust order and why it matters.** Prepare, then judge from git objects, then run the change's code sandboxed, then the verdict. Include the bubblewrap layout table from Task 5, and that local mode never runs the change's code unsandboxed. In GitHub mode `--sandbox auto` is used, and the record says which applied.
    - Local mode and GitHub mode. GitHub mode runs only inside GitHub Actions, requires the PR head commit checked out, and needs a records directory that does not exist yet.
+   - Known limits of the sandbox, stated plainly:
+     - the install step shares the host network, including localhost services, because package registries need it;
+     - abstract Unix sockets in the host network namespace are reachable from the install step;
+     - in GitHub mode, `scans` runs with `--sandbox auto` because it runs no change code.
+   - No git command runs in the checkout after the change's code. The re-run of base test versions writes files directly.
    - What comes from the base branch: configuration, approvals and scope.
    - The detached worktrees and their clean-up.
    - Groups, mapped to the branch-protection job names.
@@ -5399,6 +5611,21 @@ The controller then commits the regenerated `docs/verification/<date>-harness-at
   | I11, the workflow | Fails closed on variables, head SHA, groups |
   | I12, D13 | `env`, `excludedCommands`, `allowWrite` |
   | Minors | Keyword `RepoConfig`, `shell()` helper, `allow_abbrev`, a note on the unkeyed hash, pinned conftest only, TRX prefix, steering files, evaluated namespaces, policy errors exit 2, `core.hooksPath`, broader injection regex, quoted base, attempts key and lock, exceptions at hand-off |
+
+- **Second independent review (2026-10-19), addressed:**
+
+  | Finding | Fix |
+  |---|---|
+  | N1, `.check` missing in the CI checkout | `prepare_check_dir` |
+  | N2, sandbox escapes through `/run` sockets and the environment | `--tmpfs /run` and `--clearenv` with an allow-list |
+  | N3 and N4, git in the checkout after the change ran; writable `.git` | No post-sandbox git: the base test versions are read before and written as files. Work bound first, then `.git` read-only |
+  | N5, counter exactness and test | Raw words only; branch commit before the base-override case |
+  | N6, unsandboxed GitHub runs | `require` for compile and check, a userns step, allow-list in memory |
+  | N7, log tails following symlinks | Tails read through the parent's file descriptor; symlinked `.check` refused |
+  | N8, hermetic policy-error test | Policy data computed first; the test patches `which_tool` |
+  | N9–N15, minors | Each fixed in its task |
+
+  All sandbox properties were verified by the controller running the plan's own `Sandbox` code, 2026-10-19.
 
   Not adopted: a `--base <checkpoint>` option for the protected-test check (guide 9.5). It is ledgered for Plan 6, where checkpoints exist.
 - **Still open, and needing the owner:** enforcing "start Claude Code at the repository root" (Plan 2 F11). It needs user or managed settings.
