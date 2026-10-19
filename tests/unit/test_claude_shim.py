@@ -27,14 +27,21 @@ class TranslationTest(unittest.TestCase):
                  ("WebFetch", {"url": "https://x"}, "external", {"url": "https://x"}),
                  ("mcp__lab-jira__atlassian-rovo-getjiraissue", {"issueIdOrKey": "A-1"}, "mcp",
                   {"name": "mcp__lab-jira__atlassian-rovo-getjiraissue"}),
-                 ("Teleport", {}, "unknown", {})]
+                 ("Teleport", {}, "unknown", {}),
+                 ("Write", {"file_path": "w"}, "edit", {"path": "w"}),
+                 ("Read", {"file_path": "r"}, "read", {"path": "r"}),
+                 ("Glob", {"pattern": "*.ts"}, "read", {"path": "*.ts"}),
+                 ("Grep", {"pattern": "p", "path": "d"}, "read", {"path": "d"}),
+                 ("LS", {"path": "d"}, "read", {"path": "d"}),
+                 ("WebSearch", {"query": "q"}, "external", {"url": "q"}),
+                 ("Edit", {"file_path": None}, "edit", {"path": None})]
         for tool, inp, cls, args in cases:
             with self.subTest(tool=tool):
                 g = shim.to_generic({"tool_name": tool, "tool_input": inp, "session_id": "s",
                                      "tool_use_id": "t", "cwd": "/tmp"}, "pre")
                 self.assertEqual((g["tool"], g["args"]), (cls, args))
 
-    def test_missing_tool_input_is_unknown_safe(self):
+    def test_edit_without_tool_input_has_null_path(self):
         g = shim.to_generic({"tool_name": "Edit"}, "pre")
         self.assertEqual(g["args"], {"path": None})
 
@@ -126,3 +133,42 @@ class RulingTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertNotIn(key, out.getvalue())
         self.assertIn("[REDACTED]", out.getvalue())
+
+
+class FixRound1Test(unittest.TestCase):
+    def _post(self, response):
+        repo, root = repo_on_branch()
+        try:
+            with GuardEnv():
+                return run("post", {"tool_name": "Bash", "tool_input": {"command": "x"}, "cwd": str(root),
+                                    "tool_response": response})
+        finally:
+            repo.__exit__(None, None, None)
+
+    def test_secret_beyond_200k_is_found(self):
+        out = self._post({"stdout": "a" * 250_000 + "AKIAABCDEFGHIJKLMNOP"})
+        body = json.loads(out.stdout)
+        self.assertEqual(body["decision"], "block")
+        self.assertIn("secret-in-output", body["reason"])
+
+    def test_oversized_output_is_flagged_fail_safe(self):
+        out = self._post({"stdout": "a" * 5_000_001})
+        body = json.loads(out.stdout)
+        self.assertEqual(body["decision"], "block")
+        self.assertIn("fail-safe", body["reason"])
+        self.assertIn("too large to scan", body["reason"])
+
+    def test_stderr_message_is_redacted(self):
+        import io
+        from contextlib import redirect_stderr
+        from unittest import mock
+        key = "AKIAABCDEFGHIJKLMNOP"
+        g = load_hook("guard")
+        err = io.StringIO()
+        with GuardEnv(), mock.patch.object(g, "_decide", side_effect=ValueError(key)), \
+                mock.patch("sys.stdin", io.StringIO(json.dumps({"tool_name": "Edit", "cwd": "/tmp"}))), \
+                mock.patch.dict(sys.modules, {"guard": g}), redirect_stderr(err):
+            rc = shim.main(["claude_shim.py", "pre"])
+        self.assertEqual(rc, 2)
+        self.assertNotIn(key, err.getvalue())
+        self.assertIn("ValueError", err.getvalue())

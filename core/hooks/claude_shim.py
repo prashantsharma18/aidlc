@@ -10,6 +10,7 @@ import os
 import sys
 from pathlib import Path
 
+MAX_OUTPUT_CHARS = 5_000_000  # larger output is flagged unscanned, never passed
 CLASSES = {"Read": "read", "Glob": "read", "Grep": "read", "LS": "read",
            "Edit": "edit", "Write": "edit", "MultiEdit": "edit", "NotebookEdit": "edit",
            "Bash": "shell", "WebFetch": "external", "WebSearch": "external"}
@@ -39,7 +40,7 @@ def to_generic(payload: dict, phase: str) -> dict:
     event = {"session": payload.get("session_id"), "call": payload.get("tool_use_id"),
              "tool": tool, "args": args, "cwd": payload.get("cwd") or os.getcwd()}
     if phase == "post":
-        event["output"] = json.dumps(payload.get("tool_response"))[:200_000]
+        event["output"] = json.dumps(payload.get("tool_response"))
         event["hook"] = "post-tool-check"
     return event
 
@@ -58,14 +59,18 @@ def main(argv: list[str]) -> int:
             raise ValueError("payload is not an object")
         event = to_generic(payload, phase)
         if phase == "pre":
-            result = guard.decide(event)
-            guard._log(event, result)
+            result, version = guard._decide(event)
+            guard._log(event, result, version)
             if result["decision"] in ("ask", "deny"):
                 print(json.dumps({"hookSpecificOutput": {
                     "hookEventName": "PreToolUse", "permissionDecision": result["decision"],
                     "permissionDecisionReason": guard._redact(f"[aidlc {result['rule']}] {result['reason']}")}}))
             return 0
-        result = post_check.check(event)
+        if len(event["output"]) > MAX_OUTPUT_CHARS:
+            result = {"decision": "flag", "rule": "fail-safe",
+                      "reason": "tool output too large to scan for credentials"}
+        else:
+            result = post_check.check(event)
         guard._log(event, result)
         if result["decision"] == "flag":
             print(json.dumps({"decision": "block", "reason": guard._redact(f"[aidlc {result['rule']}] {result['reason']}")}))
