@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit(./src/**)",
+      "Edit(./test/**)",
+      "Edit(./tests/**)",
+      "Edit(./docs/**)",
+      "Bash(aidlc check*)",
+      "Bash(npm run *)",
+      "Bash(npm test*)",
+      "Bash(dotnet build*)",
+      "Bash(dotnet test*)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ],
+    "ask": [
+      "Edit(package.json)",
+      "Edit(package-lock.json)",
+      "Edit(**/*.csproj)",
+      "Edit(Directory.Packages.props)",
+      "Edit(docs/adr/**)",
+      "Bash(npm install*)",
+      "Bash(npm uninstall*)",
+      "Bash(dotnet add package*)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(secrets/**)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/ai-platform/**)",
+      "Read(~/.openwiki/**)",
+      "Edit(.git/**)",
+      "Edit(.aidlc/**)",
+      "Edit(~/.aidlc/**)",
+      "Edit(AGENTS.md)",
+      "Edit(**/AGENTS.md)",
+      "Edit(CLAUDE.md)",
+      "Edit(**/CLAUDE.md)",
+      "Edit(CLAUDE.local.md)",
+      "Edit(**/CLAUDE.local.md)",
+      "Edit(.claude/**)",
+      "Edit(.mcp.json)",
+      "Edit(.github/**)",
+      "Edit(ci/**)",
+      "Edit(plans/**)",
+      "Edit(architecture/**)",
+      "Edit(api/**)",
+      "Edit(scripts/check*)",
+      "Edit(scripts/check*/**)",
+      "Edit(test/protected-exceptions.txt)",
+      "Edit(test/allowed-skips.txt)",
+      "Edit(.openwikiignore)",
+      "Edit(openwiki/**)",
+      "Edit(.env*)",
+      "Bash(git push*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+      "Bash(rm -rf*)",
+      "Bash(rm -fr*)",
+      "Bash(rm -r -f*)",
+      "Bash(sudo *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(npm publish*)",
+      "Bash(dotnet nuget push*)"
+    ],
+    "disableBypassPermissionsMode": "disable"
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "autoAllowBashIfSandboxed": true,
+    "filesystem": {
+      "denyRead": [
+        "./.env",
+        "./**/.env",
+        "./.env.*",
+        "./**/.env.*",
+        "./**/*.pem",
+        "./**/*.key",
+        "./secrets",
+        "~/.ssh",
+        "~/.aws",
+        "~/.config/ai-platform",
+        "~/.openwiki"
+      ],
+      "denyWrite": [
+        "./.git/hooks",
+        "./.git/config",
+        "./.aidlc",
+        "~/.aidlc",
+        "./AGENTS.md",
+        "./CLAUDE.md",
+        "./.claude",
+        "./plans",
+        "./.openwikiignore"
+      ],
+      "allowWrite": [
+        "~/.npm"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "registry.npmjs.org"
+      ]
+    }
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.aidlc/hooks/claude_shim.py\" pre",
+            "timeout": 10,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^(Edit|Write|MultiEdit|NotebookEdit|Bash|Monitor|BashOutput)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.aidlc/hooks/claude_shim.py\" post",
+            "timeout": 10,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ]
+  },
+  "autoMemoryEnabled": false
+}

@@ -13,19 +13,29 @@ The core (`core/`) is tool-neutral. An adapter renders it, plus each repository'
 |---|---|---|---|---|
 | `render_rules` | `AGENTS.md`, `.aidlc/claude.md` | `CLAUDE.md` = `@AGENTS.md` + Claude-only lines | `.github/copilot-instructions.md` pointer (Copilot also reads `AGENTS.md`) | built |
 | `render_folder_rules` | `.aidlc/rules/*.md` (`paths:`) | `.claude/rules/*.md` (`paths:`) | `.github/instructions/*.instructions.md` (`applyTo:`) | built |
-| `render_skills` | `core/skills/*/SKILL.md` | plugin skills | `.claude/skills/` (read by Copilot too) | Plan 2 |
-| `render_agents` | `core/agents/*.md` | plugin `agents/*.md` | `.github/agents/*.md` | Plan 2 |
-| `render_permissions` | `core/policy/permissions.yaml` (+ repository narrowing) | `.claude/settings.json` `permissions` and `sandbox` | custom-agent tool limits; CI as backstop | Plan 2 |
-| `render_hooks` | `core/hooks/*` | plugin `hooks/hooks.json` → shim | `.github/hooks/*.json` (`preToolUse`) → shim | Plan 2 |
-| runtime shim | tool hook payload ↔ generic contract | `adapters/claude-code/shim` | `adapters/copilot/shim` | Plan 2 |
+| `render_skills` | `core/skills/*/SKILL.md` | plugin skills | `.claude/skills/` (read by Copilot too) | Plan 4 |
+| `render_agents` | `core/agents/*.md` | plugin `agents/*.md` | `.github/agents/*.md` | Plan 4 |
+| `render_permissions` | `core/policy/permissions.yaml` (+ repository narrowing) | `.claude/settings.json` `permissions` and `sandbox` | custom-agent tool limits; CI as backstop | built |
+| `render_hooks` | `core/hooks/*`, effective permissions | `.aidlc/hooks/` (`guard.py`, `post_check.py`, `claude_shim.py`, `harness.json`); the hook entries live in `.claude/settings.json` | `.github/hooks/*.json` (`preToolUse`) → shim | Claude Code built; Copilot Plan 4 |
+| runtime shim | tool hook payload ↔ generic contract | `core/hooks/claude_shim.py`, rendered to `.aidlc/hooks/claude_shim.py` | to be written | Claude Code built |
 
-`write_rendered` writes the files, or with `--check` reports any that are missing or stale. It
-never overwrites a file without the marker.
+`write_rendered` writes the files, or with `--check` reports any that are missing or stale. The
+manifest `.aidlc/generated.json` records the hash of every file it wrote. A recorded file whose
+content no longer matches its hash was edited by a person and is never overwritten, marker or
+not. The marker only classifies files the manifest does not know: an unknown file without the
+marker is never overwritten either.
 
 ## Generic hook contract (guide 3, step 5)
 
-- Input on stdin: `{"session": ..., "call": ..., "tool": "read|edit|write|delete|shell|mcp", "args": {...}}`
-- Output on stdout: `{"decision": "allow|ask|deny", "reason": "..."}`
-- Tool classes: `read | analyse | modify | execute | external`.
-- Fail closed: any error, missing scope or unreadable input is `deny`, and the shim exits 2.
+- Input on stdin: `{"session": ..., "call": ..., "tool": "<class>", "args": {...}, "cwd": ...}`
+- Output on stdout: `{"decision": "allow|ask|deny", "rule": "<rule id>", "reason": "..."}`. The
+  `rule` names the check that decided; the ids are listed in
+  [hooks](../harness/hooks.md#rule-ids). The post-tool check answers
+  `{"decision": "pass|flag", "rule": ..., "reason": ...}`.
+- Tool classes (the wire value of `tool`): `read | edit | shell | mcp | external`. Tool names live
+  in `args`, never in `tool`. Any other value asks a person with rule `unknown-tool` (deny when
+  unattended); the Claude shim emits `unknown` for tools it cannot classify. See
+  [ADR 0002](../adr/0002-tool-classes.md).
+- Fail closed: any error, missing scope or unreadable input is `deny`, and the shim exits 2 and
+  logs a `fail-safe` record.
   Claude Code hooks also set `"onFailure": "block"`; with that set, a crash or timeout blocks the action.

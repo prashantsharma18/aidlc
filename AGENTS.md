@@ -10,6 +10,7 @@ them for one AI coding tool. Owner: framework owners (Prashant Sharma).
 - `core/policy/` policies (YAML), validated by `core/schemas/`
 - `core/templates/` stage-artefact templates; `core/context/` context standards
 - `tests/` unittest suites
+- Harness sources: `core/hooks/`; never edit the generated hooks folder under `.aidlc` in an installed repository
 
 ## Commands
 - One-command check, must pass before you report done: `make test`

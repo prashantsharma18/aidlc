@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 from ..cli import command
@@ -25,13 +26,13 @@ def _run(args: argparse.Namespace) -> int:
                 print(f"{t.id:20} {t.stage:10} {t.title}  (fields: {', '.join(t.fields)})")
             return 0
         if not args.template or not args.out:
-            print("aidlc new: give a template id and --out, or --list")
+            print("aidlc new: give a template id and --out, or --list", file=sys.stderr)
             return 2
         path = write_new(load_template(args.template), _parse_sets(args.set), Path(args.out))
         print(f"created {path}")
         return 0
     except TemplateError as exc:
-        print(f"aidlc new: {exc}")
+        print(f"aidlc new: {exc}", file=sys.stderr)
         return 1
 
 

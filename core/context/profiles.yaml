@@ -8,6 +8,8 @@ node:
     test: npm test
     build: npm run build
   check_steps: [lint, typecheck, test]
+  network_allow: [registry.npmjs.org]
+  sandbox_allow_write: ["~/.npm"]
 dotnet:
   commands:
     restore: dotnet restore --locked-mode
@@ -15,6 +17,10 @@ dotnet:
     format: dotnet format --verify-no-changes --no-restore
     test: dotnet test --nologo --no-build
   check_steps: [build, format, test]
+  network_allow: [api.nuget.org, globalcdn.nuget.org]
+  sandbox_allow_write: ["~/.nuget/packages", "~/.local/share/NuGet", "~/.dotnet"]
 generic:
   commands: {}
   check_steps: []
+  network_allow: []
+  sandbox_allow_write: []

@@ -13,7 +13,8 @@ GIT = ["git", "-c", "core.hooksPath=/dev/null", "-c", "user.name=aidlc-test",
 
 
 def git(root: Path, *args: str) -> str:
-    result = subprocess.run([*GIT, *args], cwd=root, check=True,
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    result = subprocess.run([*GIT, *args], cwd=root, env=env, check=True,
                             capture_output=True, text=True)
     return result.stdout.strip()
 

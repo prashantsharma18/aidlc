@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -18,7 +19,7 @@ def _repo(path: str) -> Path | None:
     try:
         return find_repo_root(Path(path))
     except FileNotFoundError as exc:
-        print(f"aidlc check: {exc}")
+        print(f"aidlc check: {exc}", file=sys.stderr)
         return None
 
 
