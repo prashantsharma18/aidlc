@@ -420,6 +420,15 @@ class EngineTest(unittest.TestCase):
         with self.assertRaises(onecheck.CheckError):
             run_check(self.ctx(), builtins=[])
 
+    def test_symlinked_gitignore_never_clobbers_its_target(self):
+        victim = self.root.parent / "victim.txt"
+        victim.write_text("precious\n")
+        (self.root / ".check").mkdir()
+        (self.root / ".check" / ".gitignore").symlink_to(victim)
+        with self.assertRaises(onecheck.CheckError):
+            run_check(self.ctx(), builtins=[])
+        self.assertEqual(victim.read_text(), "precious\n")
+
     def test_check_dir_never_shows_as_a_change(self):
         self.env.write_scope(self.root, ["src/**"])
         self.run_scope_only(self.ctx())
@@ -628,12 +637,17 @@ def step_records(steps: list[StepResult]) -> list[dict]:
 
 
 def prepare_check_dir(repo: Path) -> Path:
-    """.check/, ignoring itself. A .check that is a symlink is refused (it could point anywhere)."""
-    check_dir = safe_target(repo, CHECK_DIR)
-    if check_dir.is_symlink():
-        raise CheckError(f"{CHECK_DIR} is a symlink; refusing to write through it")
-    check_dir.mkdir(exist_ok=True)
-    (check_dir / ".gitignore").write_text("*\n", encoding="utf-8")   # never shows as a change
+    """.check/, ignoring itself. A .check, or a .check/.gitignore, that is a symlink is refused: a
+    change could commit one pointing at any file, and this runs with the person's privileges."""
+    try:
+        check_dir = safe_target(repo, CHECK_DIR)
+        check_dir.mkdir(exist_ok=True)
+        ignore = safe_target(repo, f"{CHECK_DIR}/.gitignore")      # refuses a final symlink too
+    except ValueError as exc:
+        raise CheckError(str(exc)) from None
+    fd = os.open(ignore, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write("*\n")                                       # .check never shows as a change
     return check_dir
 
 
@@ -708,7 +722,8 @@ def run_command(ctx: CheckContext, name: str, step: str | None = None) -> StepRe
             code = None
         finally:
             _kill_group(proc)                     # also children that outlive the command
-        log.seek(0)                               # the file this process opened, whatever the path now is
+        size = log.seek(0, os.SEEK_END)          # the file this process opened, whatever the path now is
+        log.seek(max(0, size - 65536))           # the tail only: test logs can be very large
         tail = log.read().splitlines()[-TAIL_LINES:]
     if code is None:
         return StepResult(step, FAIL, f"timed out after {ctx.timeout_s} s", log_rel, tail)
@@ -846,7 +861,11 @@ def _one(args: argparse.Namespace) -> int:
         print(f"aidlc check: {exc}", file=sys.stderr)
         return 2
     print(context_line(ctx))
-    result = run_check(ctx)
+    try:
+        result = run_check(ctx)
+    except CheckError as exc:
+        print(f"aidlc check: {exc}", file=sys.stderr)
+        return 2
     print_result(result, repo)
     write_record(repo, result.record(ctx))
     return 0 if result.passed else 1
@@ -2362,7 +2381,7 @@ Inside the sandbox:
 | `$HOME` | A **private per-run home** (`--bind private_home $HOME`). Secrets, `~/.aidlc`, the person's settings and the repository's main checkout are invisible. State one step leaves for the next, for example NuGet packages, survives within the run, and the directory is discarded afterwards |
 | Toolchains under home | Bound back read-only (framework profile data `ci_sandbox_read`, for example `~/.nvm`) |
 | Writable | The disposable checkout only. It is bound **first**, then its `.git` (a file in a worktree, a directory in a clone) and the common git directory are bound back **read-only**, so the change can neither rewrite its gitlink nor edit git configuration |
-| Environment | Cleared (`--clearenv`), then only `PATH`, `LANG`, `LC_ALL`, `TERM`, the profile's `ci_sandbox_env` names, `HOME`, `TMPDIR=/tmp` and `CI=true`. Tokens in the person's environment never reach the change |
+| Environment | Cleared (`--clearenv`), then only `PATH`, `LANG`, `LC_ALL`, `TERM`, the profile's `ci_sandbox_env` names, `HOME`, `TMPDIR=/tmp` and `CI=true`. The install step also gets the proxy and CA variables (`HTTPS_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS` and their kin). Tokens in the person's environment never reach the change |
 | Network | None (`--unshare-net`), except for the install step (`install` or `restore`). The install step shares the host network, including localhost services. This is a known limit, documented in `docs/checks/ci.md` |
 | Processes | Own PID, IPC and UTS namespaces, a new session, and death with the parent |
 
@@ -2443,6 +2462,13 @@ class ArgvTest(unittest.TestCase):
         self.assertEqual(env["PATH"], "/usr/bin")
         self.assertEqual((env["HOME"], env["TMPDIR"], env["CI"]), (str(self.box.home), "/tmp", "true"))
         self.assertNotIn("SECRET_TOKEN", env)
+
+    def test_proxy_settings_only_for_install(self):
+        with mock.patch.dict(os.environ, {"HTTPS_PROXY": "http://proxy:3128"}):
+            install = self.box.argv("npm ci", "install")
+            test = self.box.argv("npm test", "test")
+        self.assertIn("HTTPS_PROXY", install)
+        self.assertNotIn("HTTPS_PROXY", test)
 
     def test_network_only_for_install(self):
         self.assertIn("--unshare-net", self.box.argv("npm test", "test"))
@@ -2580,6 +2606,9 @@ from .policy import load_yaml
 
 NETWORK_STEPS = ("install", "restore")
 BASE_ENV = ("PATH", "LANG", "LC_ALL", "TERM")
+# Only the install step has a network; it may need the organisation's proxy and CA bundle.
+NETWORK_ENV = ("HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "https_proxy", "http_proxy", "no_proxy",
+               "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS", "REQUESTS_CA_BUNDLE")
 
 
 class SandboxError(Exception):
@@ -2654,7 +2683,7 @@ class Sandbox:
         if self.git_dir is not None and self.git_dir.resolve() != gitlink.resolve():
             args += ["--ro-bind", str(self.git_dir), str(self.git_dir)]
         args += ["--chdir", str(self.work), "--clearenv"]
-        for name in (*BASE_ENV, *self.env_names):
+        for name in (*BASE_ENV, *self.env_names, *(NETWORK_ENV if network else ())):
             if name in os.environ:
                 args += ["--setenv", name, os.environ[name]]
         args += ["--setenv", "HOME", str(self.home), "--setenv", "TMPDIR", "/tmp", "--setenv", "CI", "true"]
@@ -2925,6 +2954,21 @@ class CiTest(unittest.TestCase):
             self.assertFalse((r.root / ci.RECORDS / "forged.json").exists())
             self.assertFalse(last(r)["merge_ready"])
 
+    def test_a_tracked_check_dir_is_refused(self):
+        with CiRepo() as r:
+            victim = r.root.parent / "victim.txt"
+            victim.write_text("precious\n")
+            (r.root / ".check").mkdir(exist_ok=True)
+            (r.root / ".check" / ".gitignore").unlink(missing_ok=True)
+            (r.root / ".check" / ".gitignore").symlink_to(victim)
+            git(r.root, "add", "-f", ".check/.gitignore")
+            git(r.root, "commit", "-qm", "plant")
+            code, _, err = run_cli("ci", "--repo", str(r.root))
+            self.assertEqual(code, 2)
+            self.assertIn("under .check/", err)
+            self.assertEqual(victim.read_text(), "precious\n")
+            self.assertEqual(len(r.worktrees()), 1)
+
     def test_tampered_record_fails_verification(self):
         with CiRepo() as r:
             run_cli("ci", "--repo", str(r.root))
@@ -3191,7 +3235,17 @@ def step_protected_rerun(ctx: CheckContext) -> StepResult:
     if "test" not in ctx.config.commands:
         return StepResult("protected-rerun", FAIL, "no test command to re-run the base versions with")
     for rel, data in ctx.rerun_base.items():
-        safe_target(ctx.repo, rel).write_bytes(data)          # refuses a path through a symlink
+        target = safe_target(ctx.repo, rel)                   # refuses a path through a symlink
+        if target.is_symlink() or target.exists():
+            target.unlink()                                   # never write through a FIFO or a link
+        target.write_bytes(data)
+    _drop_bytecode(ctx.repo)                                  # stale caches must not shadow the tests
+    for name in ctx.config.check_steps:                       # rebuild: `dotnet test --no-build` would
+        if group_of(name) == "compile" and name not in INSTALL_STEPS:   # re-run the change's binaries
+            built = run_command(ctx, name, step=f"protected-rerun-{name}")
+            if built.status == FAIL:
+                built.name, built.detail = "protected-rerun", f"rebuilding with the base tests failed ({built.detail})"
+                return built
     result = run_command(ctx, "test", step="protected-rerun")
     if result.status == FAIL:
         result.detail = (f"the base versions of {', '.join(changed[:5])} fail on this change "
@@ -3278,6 +3332,20 @@ def _run_phases(ctx: CheckContext, group: str | None) -> CheckResult:
     return CheckResult(steps)
 
 
+def _drop_bytecode(work: Path) -> None:
+    """Remove __pycache__ directories in the checkout (never following symlinks)."""
+    for root, dirs, _files in os.walk(work):
+        dirs[:] = [d for d in dirs if d != ".git"]
+        for d in list(dirs):
+            path = Path(root) / d
+            if d == "__pycache__":
+                if path.is_symlink():
+                    path.unlink()
+                else:
+                    shutil.rmtree(path, ignore_errors=True)
+                dirs.remove(d)
+
+
 def _blob(repo: Path, commit: str, rel: str) -> bytes:
     """A file's content at a commit, from git objects (never the working tree)."""
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
@@ -3336,6 +3404,10 @@ def run_ci(plan: CiPlan, group: str | None = None) -> tuple[CheckResult, dict]:
     except ScopeError as exc:
         scope, why = None, str(exc)
     steering = _steering(plan.trusted)
+    tracked = git(plan.work, "ls-tree", "-r", "--name-only", plan.head, "--", ".check").split()
+    if tracked:
+        raise CiError(f"the change tracks {', '.join(tracked[:5])} under .check/, which the check owns "
+                      "(a committed symlink there could redirect the check's writes); remove them")
     use_sandbox = available()
     if not use_sandbox and plan.sandbox == "require":
         raise CiError("bubblewrap cannot start a sandbox here (sudo apt install bubblewrap); "
@@ -5494,12 +5566,15 @@ Write one or two screens per document. Link to sources; never copy policy values
      - `aidlc attempts`;
      - who resets it.
 2. **`docs/checks/ci.md`, `aidlc ci`.**
-   - **The trust order and why it matters.** Prepare, then judge from git objects, then run the change's code sandboxed, then the verdict. Include the bubblewrap layout table from Task 5, and that local mode never runs the change's code unsandboxed. In GitHub mode `--sandbox auto` is used, and the record says which applied.
+   - **The trust order and why it matters.** Prepare, then judge from git objects, then run the change's code sandboxed, then the verdict. Include the bubblewrap layout table from Task 5, and that local mode never runs the change's code unsandboxed. In GitHub mode, `compile` and `check` use `--sandbox require`; `scans` uses `auto` because it runs no change code. The record says which applied.
    - Local mode and GitHub mode. GitHub mode runs only inside GitHub Actions, requires the PR head commit checked out, and needs a records directory that does not exist yet.
    - Known limits of the sandbox, stated plainly:
      - the install step shares the host network, including localhost services, because package registries need it;
      - abstract Unix sockets in the host network namespace are reachable from the install step;
-     - in GitHub mode, `scans` runs with `--sandbox auto` because it runs no change code.
+     - in GitHub mode, `scans` runs with `--sandbox auto` because it runs no change code;
+     - on a **self-hosted** runner, the workflow's `sysctl` step relaxes `kernel.apparmor_restrict_unprivileged_userns` for the whole host, and the change persists. Platform owners decide whether to allow that, or configure the runner so bubblewrap works without it;
+     - behind a corporate proxy, the install step receives `HTTPS_PROXY`, `NO_PROXY` and the CA variables. No other step does.
+   - The protected re-run rebuilds with the compile-type steps before re-running the tests, and drops `__pycache__` first. So on .NET it really runs the base tests, not the change's already-built binaries.
    - No git command runs in the checkout after the change's code. The re-run of base test versions writes files directly.
    - What comes from the base branch: configuration, approvals and scope.
    - The detached worktrees and their clean-up.
@@ -5624,6 +5699,18 @@ The controller then commits the regenerated `docs/verification/<date>-harness-at
   | N7, log tails following symlinks | Tails read through the parent's file descriptor; symlinked `.check` refused |
   | N8, hermetic policy-error test | Policy data computed first; the test patches `which_tool` |
   | N9–N15, minors | Each fixed in its task |
+
+- **Third independent review (2026-10-19), addressed:**
+
+  | Finding | Fix |
+  |---|---|
+  | R1, a symlinked `.check` | Re-raised as `CheckError`; exit 2 from `aidlc check` |
+  | R2, writes through a committed `.check/.gitignore` symlink | `safe_target` and `O_NOFOLLOW` locally; CI refuses a change that tracks `.check/` |
+  | R3, the .NET re-run | Rebuild before the re-run; drop `__pycache__` |
+  | R4, FIFO or link at a restored path | Unlinked first |
+  | R5, log tail memory | Last 64 KB only |
+  | R6, proxy and CA variables for install | Added |
+  | R7, R8, docs | GitHub sandbox modes; the self-hosted `sysctl` note |
 
   All sandbox properties were verified by the controller running the plan's own `Sandbox` code, 2026-10-19.
 
