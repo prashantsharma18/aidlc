@@ -29,8 +29,20 @@ Every decision appends one JSON line to `decisions.jsonl`. Secret-shaped values 
 | Variable | Effect |
 | --- | --- |
 | `AIDLC_HARNESS_FILE` | Harness data file. Default: `harness.json` next to the script. |
-| `AIDLC_UNATTENDED=1` | Every `ask` becomes `deny`. |
+| `AIDLC_UNATTENDED` | Any non-empty value except `0`, `false` or `no` (case-insensitive) makes every `ask` a `deny`. |
 | `AIDLC_SCOPE=off` | Edit scope is not enforced. Refused when unattended. Logged. |
 | `AIDLC_SCOPE_FILE` | Explicit scope file. Ignored if it lives inside the repository. |
 | `AIDLC_HOME_DIR` | Base for scope files. Default: `~/.aidlc`. Scope files live at `scopes/<repo>/<branch with / as __>.scope`. |
 | `AIDLC_LOG_DIR` | Log directory. Default: `~/.aidlc/logs`. |
+
+## Deliberate limits
+
+The guard is a fast, pattern-based layer. It normalises commands (wrappers such as `env`, `timeout` and `xargs`, absolute paths, git global options, reserved words, substitutions) and then matches `shell_deny`. It deliberately cedes these to the permissions and the sandbox backstop:
+
+- Quoting and escaping obfuscation beyond what `shlex` resolves.
+- Variable indirection, for example `X=push; git $X`.
+- Interpreters running code, for example `python3 -c`, `node -e`.
+
+Anything it cannot parse asks a person (denies when unattended). `SECRET_RE` is a best-effort list of secret shapes. It redacts the log and the returned reason, and it is not a guarantee that no secret ever appears.
+
+Edits are also denied for anything under `.git/`, for files with more than one hard link, and when the scope file lives inside the repository or names absolute, `..` or `.git` patterns.

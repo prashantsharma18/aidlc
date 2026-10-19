@@ -14,26 +14,41 @@ import fnmatch
 import json
 import os
 import re
+import shlex
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-SECRET_RE = re.compile(r"(AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36,}"
-                       r"|sk-ant-[A-Za-z0-9_-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY)")
-SPLIT_RE = re.compile(r"&&|\|\||;|\|&|\||&|\n")
-SUBST_RE = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
-PIPE_TO_SHELL_RE = re.compile(r"\|\s*(sudo\s+)?(ba|z|da|k)?sh(\s|$)")
-NESTED_RE = re.compile(r"^(bash|sh|zsh|dash)\s+-c\b|^eval\s")
-GIT_OPTS_RE = re.compile(r"^git((\s+-C\s+\S+)|(\s+-c\s+\S+))+\s+")
-ENV_PREFIX_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*=\S*\s+)+")
+SECRET_RE = re.compile(
+    r"(AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36,}"
+    r"|github_pat_[A-Za-z0-9_]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}"
+    r"|sk-ant-[A-Za-z0-9_-]{20,}|sk-proj-[A-Za-z0-9_-]{20,}"
+    r"|-----BEGIN [A-Z ]*PRIVATE KEY"
+    r"|(?i:bearer)\s+[A-Za-z0-9._~+/=-]{12,}"
+    r"|(?i:password|passwd|secret|token|api[_-]?key)\s*[=:]\s*\S{6,})")
+SPLIT_RE = re.compile(r"(&&|\|\||;|\|&|\||&|\n|[(){}])")
+ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+RESERVED = {"{", "}", "!", "if", "then", "else", "elif", "fi", "do", "done", "while", "until"}
+SHELLS = {"bash", "sh", "zsh", "dash", "ksh", "fish"}
+# wrapper -> options that take a separate argument
+WRAPPERS = {"command": set(), "builtin": set(), "exec": {"-a"}, "env": {"-u", "-C", "-S"},
+            "nohup": set(), "nice": {"-n"}, "time": {"-f", "-o"},
+            "timeout": {"-s", "-k"}, "xargs": {"-n", "-L", "-I", "-P", "-s", "-d", "-E", "-a"},
+            "stdbuf": {"-i", "-o", "-e"}, "watch": {"-n"}}
+GIT_ARG_OPTS = {"-C", "-c", "--git-dir", "--work-tree", "--namespace"}
+
+
+def _redact(text: str) -> str:
+    return SECRET_RE.sub("[REDACTED]", text)
 
 
 def _result(decision: str, rule: str, reason: str) -> dict:
-    return {"decision": decision, "rule": rule, "reason": reason}
+    return {"decision": decision, "rule": rule, "reason": _redact(reason)}
 
 
 def _unattended() -> bool:
-    return os.environ.get("AIDLC_UNATTENDED") == "1"
+    value = os.environ.get("AIDLC_UNATTENDED", "").strip().lower()
+    return value not in ("", "0", "false", "no")
 
 
 def _ask(rule: str, reason: str) -> dict:
@@ -51,17 +66,46 @@ def load_harness() -> dict:
     return data
 
 
+def _glob_regex(pat: str) -> "re.Pattern[str]":
+    """Segment-aware glob: '*' and '?' stay inside one path segment; only '**' crosses '/'."""
+    out, i = [], 0
+    while i < len(pat):
+        if pat.startswith("**/", i):
+            out.append("(?:.*/)?")
+            i += 3
+        elif pat.startswith("/**", i) and i + 3 == len(pat):
+            out.append("(?:/.*)?")
+            i += 3
+        elif pat.startswith("**", i):
+            out.append(".*")
+            i += 2
+        elif pat[i] == "*":
+            out.append("[^/]*")
+            i += 1
+        elif pat[i] == "?":
+            out.append("[^/]")
+            i += 1
+        elif pat[i] == "[" and pat.find("]", i + 2) != -1:
+            j = pat.index("]", i + 2)
+            body = pat[i + 1:j]
+            neg = body.startswith("!")
+            body = body[1:] if neg else body
+            out.append("[" + ("^/" if neg else "") + body.replace("\\", "\\\\") + "]")
+            i = j + 1
+        else:
+            out.append(re.escape(pat[i]))
+            i += 1
+    return re.compile("".join(out), re.DOTALL)
+
+
 def matches(path: str, patterns: list[str], any_depth_names: bool = True) -> bool:
     for pat in patterns:
         if pat.startswith("~"):
             continue                          # home patterns apply outside the repository
-        if fnmatch.fnmatchcase(path, pat):
+        rx = _glob_regex(pat)
+        if rx.fullmatch(path):
             return True
-        if pat.startswith("**/") and fnmatch.fnmatchcase(path, pat[3:]):
-            return True
-        if pat.endswith("/**") and path == pat[:-3]:
-            return True
-        if any_depth_names and "/" not in pat and fnmatch.fnmatchcase(path.rsplit("/", 1)[-1], pat):
+        if any_depth_names and "/" not in pat and rx.fullmatch(path.rsplit("/", 1)[-1]):
             return True
     return False
 
@@ -105,6 +149,10 @@ def load_scope(root: Path) -> list[str] | None:
         return None
     patterns = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()
                 if line.strip() and not line.lstrip().startswith("#")]
+    for pat in patterns:
+        segments = pat.replace("\\", "/").split("/")
+        if pat.startswith(("/", "~")) or ".." in segments or ".git" in (x.casefold() for x in segments):
+            return None                       # a scope may not reach outside or into .git
     return patterns or None
 
 
@@ -122,9 +170,13 @@ def _decide_edit(event: dict, data: dict) -> dict:
         rel = resolved.relative_to(root.resolve()).as_posix()
     except ValueError:
         return _result("deny", "outside-repo", f"{raw} is outside the repository")
-    if matches(rel, data["protected_paths"]):
+    if ".git" in (seg.casefold() for seg in rel.split("/")):
+        return _result("deny", "protected-path", f"{rel} is inside .git; git internals are protected")
+    if matches(rel.casefold(), [p.casefold() for p in data["protected_paths"]]):
         return _result("deny", "protected-path", f"{rel} is protected (harness, rules, CI, plans "
                        "or contracts). Do not work around it; describe the need in your notes.")
+    if resolved.is_file() and resolved.stat().st_nlink > 1:
+        return _result("deny", "hard-link", f"{rel} has several hard links; one may be a protected file")
     if os.environ.get("AIDLC_SCOPE") == "off":
         if _unattended():
             return _result("deny", "no-scope", "AIDLC_SCOPE=off is refused in unattended runs")
@@ -140,39 +192,128 @@ def _decide_edit(event: dict, data: dict) -> dict:
     return _result("allow", "in-scope", "inside the task scope")
 
 
-def _parts(command: str) -> list[str]:
-    parts = []
-    for inner in SUBST_RE.findall(command):
-        parts += _parts(inner[0] or inner[1])
-    for part in SPLIT_RE.split(command):
-        part = part.strip().lstrip("(").strip()
-        if part:
-            part = ENV_PREFIX_RE.sub("", part)
-            parts.append(GIT_OPTS_RE.sub("git ", part))
-    return parts
+def _substitutions(command: str) -> tuple[str, list[str]]:
+    """Return the command with $(..), <(..), >(..) and `..` replaced by a placeholder, plus
+    the inner texts. Parentheses are balanced; an unclosed one takes the rest of the string."""
+    outer, inners, i = [], [], 0
+    while i < len(command):
+        two = command[i:i + 2]
+        if two in ("$(", "<(", ">("):
+            start, depth, j = i + 2, 1, i + 2
+            while j < len(command) and depth:
+                depth += {"(": 1, ")": -1}.get(command[j], 0)
+                j += 1
+            inners.append(command[start:j - 1 if depth == 0 else j])
+            outer.append(" SUBST ")
+            i = j
+        elif command[i] == "`":
+            j = command.find("`", i + 1)
+            j = len(command) if j == -1 else j
+            inners.append(command[i + 1:j])
+            outer.append(" SUBST ")
+            i = j + 1
+        else:
+            outer.append(command[i])
+            i += 1
+    return "".join(outer), inners
+
+
+def _argv(tokens: list[str]) -> list[str]:
+    """Strip assignments, reserved words and wrappers; normalise argv0 and git options."""
+    changed = True
+    while tokens and changed:
+        changed = False
+        head = tokens[0]
+        if ASSIGN_RE.match(head) or head in RESERVED:
+            tokens, changed = tokens[1:], True
+            continue
+        name = head.rsplit("/", 1)[-1]
+        if name in WRAPPERS:
+            takes_arg, rest = WRAPPERS[name], tokens[1:]
+            while rest and (rest[0].startswith("-") or ASSIGN_RE.match(rest[0])):
+                rest = rest[2:] if rest[0] in takes_arg else rest[1:]
+            if name == "timeout" and rest:
+                rest = rest[1:]                       # the duration
+            elif name == "nice" and rest and re.fullmatch(r"-?\d+", rest[0]):
+                rest = rest[1:]
+            tokens, changed = rest, True
+    if not tokens:
+        return tokens
+    tokens = [tokens[0].rsplit("/", 1)[-1], *tokens[1:]]
+    if tokens[0] == "git":
+        rest = tokens[1:]
+        while rest and rest[0].startswith("-"):
+            rest = rest[2:] if rest[0] in GIT_ARG_OPTS else rest[1:]
+        tokens = ["git", *rest]
+    return tokens
+
+
+def _is_recursive_rm(argv: list[str]) -> bool:
+    for tok in argv[1:]:
+        if tok == "--":
+            return False
+        if tok == "--recursive" or (tok.startswith("-") and not tok.startswith("--")
+                                    and re.search("[rR]", tok)):
+            return True
+    return False
 
 
 def _decide_shell(event: dict, data: dict) -> dict:
     command = (event.get("args") or {}).get("command")
     if not isinstance(command, str) or not command.strip():
         return _result("deny", "fail-safe", "shell call without a command")
-    if PIPE_TO_SHELL_RE.search(command):
-        return _result("deny", "pipe-to-shell", "piping into a shell is not allowed")
-    for part in _parts(command):
-        for pat in data["shell_deny"]:
-            if fnmatch.fnmatchcase(part, pat):
-                return _result("deny", "shell-deny", f"'{part[:80]}' matches the denied pattern '{pat}'")
-        if NESTED_RE.search(part):
-            return _ask("nested-shell", "a nested shell hides its command; a person must read it")
-    return _result("allow", "no-guarded-command", "no guarded command found")
+    patterns = [" ".join(p.split()) for p in data["shell_deny"]]
+    asks: list[dict] = []
+    pending, seen = [command], 0
+    while pending:
+        seen += 1
+        if seen > 200:
+            return _result("deny", "fail-safe", "command too deeply nested to inspect")
+        outer, inners = _substitutions(pending.pop())
+        pending += inners
+        pieces = SPLIT_RE.split(outer)
+        previous = ""
+        for index in range(0, len(pieces), 2):
+            text = pieces[index].strip()
+            sep = pieces[index - 1] if index else ""
+            if not text:
+                continue
+            try:
+                tokens = shlex.split(text)
+            except ValueError:
+                asks.append(_ask("unparseable", "a command part could not be parsed; a person must read it"))
+                tokens = text.replace("'", " ").replace('"', " ").split()
+            argv = _argv(tokens)
+            if not argv:
+                continue
+            joined = " ".join(argv)
+            for pat in patterns:
+                if fnmatch.fnmatchcase(joined, pat):
+                    return _result("deny", "shell-deny", f"'{_redact(joined)[:80]}' matches the denied pattern '{pat}'")
+            if argv[0] == "rm" and _is_recursive_rm(argv):
+                return _result("deny", "recursive-delete", "recursive rm is not allowed")
+            if argv[0] in SHELLS and sep in ("|", "|&"):
+                return _result("deny", "pipe-to-shell", "piping into a shell is not allowed")
+            if (argv[0] in SHELLS and len(argv) > 1) or argv[0] in ("eval", "source", "."):
+                asks.append(_ask("nested-shell", "a nested shell hides its command; a person must read it"))
+    return asks[0] if asks else _result("allow", "no-guarded-command", "no guarded command found")
 
 
 def decide(event: dict) -> dict:
+    return _decide(event)[0]
+
+
+def _decide(event: dict) -> tuple[dict, str]:
+    """Return (decision, harness version). The version comes from the data actually used."""
     try:
         data = load_harness()
     except Exception as exc:  # noqa: BLE001 - any failure here must block
         return _result("deny", "fail-safe", f"harness data unreadable ({type(exc).__name__}); "
-                       "run `aidlc render --tool claude-code`")
+                       "run `aidlc render --tool claude-code`"), "unknown"
+    return _decide_with(event, data), str(data.get("version", "unknown"))
+
+
+def _decide_with(event: dict, data: dict) -> dict:
     try:
         tool = event.get("tool")
         if tool == "read":
@@ -182,7 +323,10 @@ def decide(event: dict) -> dict:
         if tool == "shell":
             return _decide_shell(event, data)
         if tool == "mcp":
-            name = str((event.get("args") or {}).get("name", ""))
+            name = (event.get("args") or {}).get("name")
+            if not isinstance(name, str) or not name.strip():
+                return _result("deny", "fail-safe", "mcp call without a tool name")
+            name = name.strip()
             if any(fnmatch.fnmatchcase(name, p) for p in data["tool_deny"]):
                 return _result("deny", "tool-deny", f"{name} is denied by policy")
             if any(fnmatch.fnmatchcase(name, p) for p in data["tool_ask"]):
@@ -195,18 +339,20 @@ def decide(event: dict) -> dict:
         return _result("deny", "fail-safe", f"guard error ({type(exc).__name__}); blocked to be safe")
 
 
-def _log(event: dict, result: dict) -> None:
+def _log(event: dict, result: dict, version: str | None = None) -> None:
     try:
-        try:
-            version = load_harness().get("version", "unknown")
-        except Exception:  # noqa: BLE001
-            version = "unknown"
+        if version is None:
+            try:
+                version = str(load_harness().get("version", "unknown"))
+            except Exception:  # noqa: BLE001
+                version = "unknown"
         args = event.get("args") or {}
         target = str(args.get("path") or args.get("command") or args.get("name") or args.get("url") or "")
         record = {"ts": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
                   "hook": "pre-tool-guard", "session": event.get("session"), "call": event.get("call"),
                   "harness": version, "tool": event.get("tool"),
-                  "target": SECRET_RE.sub("[REDACTED]", target)[:200], **result}
+                  "target": _redact(target)[:200], **result}
+        record = {k: (_redact(v) if isinstance(v, str) else v) for k, v in record.items()}
         logdir = Path(os.environ.get("AIDLC_LOG_DIR") or "~/.aidlc/logs").expanduser()
         logdir.mkdir(parents=True, exist_ok=True)
         with (logdir / "decisions.jsonl").open("a", encoding="utf-8") as fh:
@@ -220,10 +366,10 @@ def main() -> int:
         event = json.loads(sys.stdin.read())
         if not isinstance(event, dict):
             raise ValueError("event is not an object")
-        result = decide(event)
+        result, version = _decide(event)
     except Exception:  # noqa: BLE001
-        event, result = {}, _result("deny", "fail-safe", "unreadable tool call")
-    _log(event, result)
+        event, result, version = {}, _result("deny", "fail-safe", "unreadable tool call"), "unknown"
+    _log(event, result, version)
     print(json.dumps(result))
     return 0
 
