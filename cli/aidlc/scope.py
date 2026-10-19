@@ -29,8 +29,8 @@ def _validate(patterns: list[str]) -> None:
             raise ScopeError(f"pattern '{pattern}' is absolute")
         if ".." in parts:
             raise ScopeError(f"pattern '{pattern}' leaves the repository")
-        if parts[0] == ".git":
-            raise ScopeError(f"pattern '{pattern}' reaches into .git")
+        if ".git" in (part.casefold() for part in parts):
+            raise ScopeError(f"pattern '{pattern}' reaches into .git")   # anywhere, as the guard
         if any(ch in pattern for ch in "<>()"):
             raise ScopeError(f"pattern '{pattern}' looks like an unfilled placeholder")
         if not pattern.strip("*/"):
@@ -73,13 +73,25 @@ def _git(repo: Path, *args: str) -> str:
     return result.stdout
 
 
-def require_repository(repo: Path) -> None:
+def require_repository(repo: Path) -> Path:
+    """The repository's top-level directory (the guard keys scopes by it), or ScopeUsageError."""
     if not repo.is_dir():
         raise ScopeUsageError(f"{repo} is not a directory")
     try:
-        _git(repo, "rev-parse", "--git-dir")
+        top = _git(repo, "rev-parse", "--show-toplevel").strip()
     except ScopeError as exc:
         raise ScopeUsageError(f"{repo} is not a git repository") from exc
+    if not top:
+        raise ScopeUsageError(f"{repo} has no working tree")
+    return Path(top).resolve()
+
+
+def base_commit(repo: Path, branch: str) -> str:
+    """The commit the base branch points at now; recorded in the scope as the trust root."""
+    sha = _git(repo, "rev-parse", "--verify", "-q", f"refs/heads/{branch}^{{commit}}").strip()
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha):
+        raise ScopeError(f"cannot resolve base branch '{branch}'")
+    return sha
 
 
 def bundle_at(repo: Path, ref: str) -> str:
@@ -109,10 +121,12 @@ def default_scope_path(repo: Path, branch: str) -> Path:
     return home / "scopes" / repo.name / (branch.replace("/", "__") + ".scope")
 
 
-def write_scope(patterns: list[str], out: Path) -> None:
+def write_scope(patterns: list[str], out: Path, base: str | None = None) -> None:
+    """Write the read-only scope. `base` (a commit sha) is recorded as a `base:` line; the
+    post-check diffs against it, so moving the local base branch later hides nothing."""
     out.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=out.parent, prefix=".scope-")
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
-        fh.write("".join(f"{p}\n" for p in patterns))
+        fh.write((f"base: {base}\n" if base else "") + "".join(f"{p}\n" for p in patterns))
     os.chmod(tmp, 0o444)
     os.replace(tmp, out)

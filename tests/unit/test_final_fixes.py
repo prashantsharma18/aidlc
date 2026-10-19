@@ -243,3 +243,102 @@ class F8ShimFailureLoggedTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# --- scope generation (F3, F4, M1, M4) -----------------------------------------------------
+from datetime import date  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+from aidlc.repo import init_repo  # noqa: E402
+from aidlc.scope import ScopeError, default_scope_path, parse_may_change  # noqa: E402
+from tests.helpers import TempRepo, run_cli  # noqa: E402
+
+BUNDLE = "MAY CHANGE  src/**\n"
+
+
+def approved_repo(base="main", config=False):
+    """A repository whose base branch approves feat/x; returns (TempRepo, root)."""
+    repo = TempRepo({"plans/b.md": BUNDLE, "src/a.ts": "x\n"})
+    root = repo.__enter__()
+    if base != "main":
+        git(root, "branch", "-m", "main", base)
+    if config:
+        init_repo(root, "svc", "team", "node", "purpose", date(2026, 10, 19))
+        cfg = root / ".aidlc/config.yaml"
+        cfg.write_text(cfg.read_text().replace("base_branch: main", f"base_branch: {base}"))
+    sha = git(root, "rev-parse", "HEAD")
+    (root / "plans/approved-bundles.txt").write_text(f"feat/x {sha}:plans/b.md lead 2026-10-19\n")
+    git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "approve")
+    git(root, "switch", "-q", "-c", "feat/x")
+    return repo, root
+
+
+class F3ScopeRecordsBaseTest(unittest.TestCase):
+    def test_scope_file_records_base_sha(self):
+        repo, root = approved_repo()
+        try:
+            with GuardEnv(branch="feat/x"):
+                code, out, err = run_cli("scope", "--repo", str(root), "--branch", "feat/x")
+                self.assertEqual(code, 0, out + err)
+                main = git(root, "rev-parse", "main")
+                self.assertIn(f"base: {main}\n", guard.scope_file(root, "feat/x").read_text())
+                self.assertEqual(guard.scope_base(root), main)
+                self.assertEqual(guard.load_scope(root), ["src/**"])
+        finally:
+            repo.__exit__(None, None, None)
+
+
+class F4MasterBaseTest(unittest.TestCase):
+    def test_master_base_scope_and_post_check(self):
+        repo, root = approved_repo(base="master", config=True)
+        try:
+            with GuardEnv(branch="feat/x") as env:
+                (env.base / "harness.json").write_text(json.dumps(dict(HARNESS, base_branch="master")))
+                code, out, err = run_cli("scope", "--repo", str(root), "--branch", "feat/x")
+                self.assertEqual(code, 0, out + err)
+                self.assertIn(f"base: {git(root, 'rev-parse', 'master')}",
+                              guard.scope_file(root, "feat/x").read_text())
+                (root / "src/a.ts").write_text("y\n")
+                git(root, "add", "src/a.ts")
+                git(root, "commit", "-q", "-m", "change")
+                self.assertEqual(post.check(ev(root))["decision"], "pass")
+        finally:
+            repo.__exit__(None, None, None)
+
+    def test_config_base_branch_is_where_approvals_are_read(self):
+        repo, root = approved_repo(base="master", config=True)
+        try:
+            with GuardEnv(branch="feat/x"):
+                cfg = root / ".aidlc/config.yaml"
+                cfg.write_text(cfg.read_text().replace("base_branch: master", "base_branch: main"))
+                code, out, err = run_cli("scope", "--repo", str(root), "--branch", "feat/x")
+                self.assertNotEqual(code, 0, out + err)   # there is no main to read approvals from
+        finally:
+            repo.__exit__(None, None, None)
+
+
+class M1ScopeFromSubdirectoryTest(unittest.TestCase):
+    def test_scope_from_subdirectory_writes_where_the_guard_reads(self):
+        repo, root = approved_repo()
+        try:
+            (root / "src/deep").mkdir()
+            with GuardEnv(branch="feat/x"):
+                code, out, err = run_cli("scope", "--repo", str(root / "src/deep"), "--branch", "feat/x")
+                self.assertEqual(code, 0, out + err)
+                self.assertTrue(default_scope_path(root, "feat/x").is_file())
+                self.assertEqual(default_scope_path(root, "feat/x"), guard.scope_file(root, "feat/x"))
+                self.assertEqual(guard.load_scope(root), ["src/**"])
+        finally:
+            repo.__exit__(None, None, None)
+
+
+class M4GitSegmentAnywhereTest(unittest.TestCase):
+    def test_git_segment_anywhere_is_refused(self):
+        for bad in ("src/.git/hooks/x", "a/.GIT/config", "x/.git/**"):
+            with self.subTest(bad=bad), self.assertRaises(ScopeError):
+                parse_may_change(f"MAY CHANGE  src/**, {bad}\n")
+
+    def test_similar_names_pass(self):
+        self.assertEqual(parse_may_change("MAY CHANGE  src/.github-x/**, a/.gitkeep\n"),
+                         ["src/.github-x/**", "a/.gitkeep"])
