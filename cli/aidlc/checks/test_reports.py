@@ -6,11 +6,13 @@ ReportError and is never read as a pass."""
 from __future__ import annotations
 
 import json
+import os
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 PASSED, FAILED, NOTRUN = "passed", "failed", "notrun"
 TRX_NS = "{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}"
+MAX_REPORT_BYTES = 64 * 1024 * 1024        # reports are untrusted: no parsing of huge files
 TRX_FAILED = {"Failed", "Error", "Timeout", "Aborted"}
 
 
@@ -21,6 +23,9 @@ class ReportError(Exception):
 def parse_report(path: Path) -> list[tuple[str, str]]:
     suffix = path.suffix.lower()
     try:
+        size = os.stat(path).st_size
+        if size > MAX_REPORT_BYTES:
+            raise ReportError(f"{path.name}: test report is {size} bytes, over the {MAX_REPORT_BYTES} limit")
         if suffix == ".json":
             return _jest_json(path)
         if suffix == ".trx":

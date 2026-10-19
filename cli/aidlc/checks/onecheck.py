@@ -324,9 +324,12 @@ def step_secrets(ctx: CheckContext) -> StepResult:
 
 
 def _inside(path: Path, root: Path) -> Path | None:
-    """The resolved path of a matched report file, or None when it is not a file inside the checkout
-    (for example reached through a symlinked directory)."""
+    """The resolved path of a matched report file, or None when it is itself a symlink (a change could
+    retarget one at a stale file) or not a file inside the checkout (reached through a symlinked
+    directory that leads outside)."""
     try:
+        if path.is_symlink():
+            return None
         real = path.resolve()
         return real if real.is_file() and real.is_relative_to(root) else None
     except OSError:

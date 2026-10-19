@@ -65,3 +65,10 @@ class ParseReportTest(unittest.TestCase):
     def test_missing_file_raises(self):
         with self.assertRaises(ReportError):
             parse_report(Path(tempfile.mkdtemp()) / "none.json")
+
+    def test_oversized_report_raises(self):
+        from unittest import mock
+        from aidlc.checks import test_reports
+        path = write("r.json", JEST)
+        with mock.patch.object(test_reports, "MAX_REPORT_BYTES", 10), self.assertRaises(ReportError):
+            parse_report(path)

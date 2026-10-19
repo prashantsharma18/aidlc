@@ -118,6 +118,22 @@ class SkipStepTest(unittest.TestCase):
         self.assertIn("did the tests run?", step.detail)
 
 
+    def test_symlinked_report_file_never_counts(self):
+        (self.root / "real").mkdir()
+        cmd = py("import os; open('real/r.xml','w').write('<testsuite><testcase/></testsuite>'); os.makedirs('.check',exist_ok=True); "
+                 "os.symlink('../real/r.xml','.check/junit.xml')")
+        step = self.skips(command=cmd)
+        self.assertEqual(step.status, FAIL)
+        self.assertIn("did the tests run?", step.detail)
+
+    def test_report_under_symlinked_directory_inside_checkout_counts(self):
+        (self.root / "realdir").mkdir()
+        (self.root / "linkdir").symlink_to(self.root / "realdir")
+        cmd = py("open('realdir/r.xml','w').write('<testsuite><testcase/></testsuite>')")
+        step = self.skips(reports=("linkdir/r.xml",), command=cmd)
+        self.assertEqual((step.status, step.detail), (OK, "1 tests, 0 not run, 0 unexpected"))
+
+
 class ConfigTest(unittest.TestCase):
     def test_bad_test_reports_rejected(self):
         for bad in ("x.xml", ["../x.xml"], ["/tmp/x.xml"], ["~/x.xml"], [5], [""]):
