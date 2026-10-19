@@ -12,6 +12,7 @@ with a Claude Code adapter and extension points for other tools.
 - [Operating model: lifecycle](docs/operating-model/lifecycle.md), [tiers](docs/operating-model/tiers.md), [roles](docs/operating-model/roles.md), [autonomy and maturity](docs/operating-model/autonomy-and-maturity.md)
 - [Context engineering](docs/context-engineering/README.md)
 - [Adapters](docs/adapters/interface.md)
+- [Harness](docs/harness/README.md): [permissions and sandbox](docs/harness/permissions-and-sandbox.md), [hooks](docs/harness/hooks.md), [doctor](docs/harness/doctor.md)
 - [Traceability to the guide](docs/traceability.md)
 - [Codebase map](docs/codebase-map.md)
 

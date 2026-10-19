@@ -17,6 +17,7 @@ templates, context standards and checks, rendered for AI coding tools by adapter
 `core/templates/`        Stage-artefact templates (front matter: id, title, stage, guide, fields).
 `core/context/`          Context standards, authority ladders, profiles, OpenWiki baseline.
 `docs/`                  Design, plans, operating model, adapters; some files are generated.
+`core/hooks/`            Harness hook sources (guard, post-check, shim); standard library only. Rendered into the hooks folder under `.aidlc` in installed repositories (generated; never edit).
 `tests/`                 unittest suites; `tests/helpers.py` builds throwaway git repositories.
 
 ## Key flows

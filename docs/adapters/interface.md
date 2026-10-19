@@ -13,11 +13,11 @@ The core (`core/`) is tool-neutral. An adapter renders it, plus each repository'
 |---|---|---|---|---|
 | `render_rules` | `AGENTS.md`, `.aidlc/claude.md` | `CLAUDE.md` = `@AGENTS.md` + Claude-only lines | `.github/copilot-instructions.md` pointer (Copilot also reads `AGENTS.md`) | built |
 | `render_folder_rules` | `.aidlc/rules/*.md` (`paths:`) | `.claude/rules/*.md` (`paths:`) | `.github/instructions/*.instructions.md` (`applyTo:`) | built |
-| `render_skills` | `core/skills/*/SKILL.md` | plugin skills | `.claude/skills/` (read by Copilot too) | Plan 2 |
-| `render_agents` | `core/agents/*.md` | plugin `agents/*.md` | `.github/agents/*.md` | Plan 2 |
-| `render_permissions` | `core/policy/permissions.yaml` (+ repository narrowing) | `.claude/settings.json` `permissions` and `sandbox` | custom-agent tool limits; CI as backstop | Plan 2 |
-| `render_hooks` | `core/hooks/*` | plugin `hooks/hooks.json` → shim | `.github/hooks/*.json` (`preToolUse`) → shim | Plan 2 |
-| runtime shim | tool hook payload ↔ generic contract | `adapters/claude-code/shim` | `adapters/copilot/shim` | Plan 2 |
+| `render_skills` | `core/skills/*/SKILL.md` | plugin skills | `.claude/skills/` (read by Copilot too) | Plan 4 |
+| `render_agents` | `core/agents/*.md` | plugin `agents/*.md` | `.github/agents/*.md` | Plan 4 |
+| `render_permissions` | `core/policy/permissions.yaml` (+ repository narrowing) | `.claude/settings.json` `permissions` and `sandbox` | custom-agent tool limits; CI as backstop | built |
+| `render_hooks` | `core/hooks/*` | plugin `hooks/hooks.json` → shim | `.github/hooks/*.json` (`preToolUse`) → shim | built |
+| runtime shim | tool hook payload ↔ generic contract | `adapters/claude-code/shim` | `adapters/copilot/shim` | built |
 
 `write_rendered` writes the files, or with `--check` reports any that are missing or stale. It
 never overwrites a file without the marker.

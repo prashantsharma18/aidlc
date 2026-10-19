@@ -10,7 +10,7 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 |---|---|---|
 | 1 | The AI-native lifecycle, end to end | ctx-authority, intent, policy-tiers |
 | 2 | Context engineering | agents-md, codebase-map, ctx-authority, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, ctx-rules-file, ctx-task-bundle, policy-context-classes, policy-memory-policy, policy-tiers, progress-note, task-bundle, workspace |
-| 3 | The agent harness | ctx-task-bundle, policy-permissions, policy-risk-inventory |
+| 3 | The agent harness | ctx-harness, ctx-task-bundle, policy-permissions, policy-risk-inventory |
 | 4 | Understanding a codebase before you change it | codebase-map, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, evidence-pack, explorer-brief, policy-tiers |
 | 5 | Intent to specification | intent, policy-data-classes, policy-tiers, spec |
 | 6 | Architecture, boundaries and contracts | adr, decision-frame, design-note, policy-tiers |
@@ -32,6 +32,7 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | ctx-authority | context | `core/context/authority.md` | 2.4, 1.3 |
 | ctx-codebase-map | context | `core/context/standards/codebase-map.md` | 2.8 A4, 4.10, 2.8 A7 |
 | ctx-folder-rules | context | `core/context/standards/folder-rules.md` | 2.6, 2.8 A5, 4.13 |
+| ctx-harness | context | `core/context/standards/harness.md` | 3.4, 3.7, 3 step 9 |
 | ctx-openwiki-governance | context | `core/context/openwiki/governance.md` | 4.3, 4.6, 2.2, 13.4 |
 | ctx-rules-file | context | `core/context/standards/rules-file.md` | 2.6, 2.8 A3, 2.8 A5 |
 | ctx-task-bundle | context | `core/context/standards/task-bundle.md` | 2.9 B3, 2.9 B4, 7.10, 3 step 5 |
