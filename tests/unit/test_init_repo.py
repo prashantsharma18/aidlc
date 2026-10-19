@@ -7,7 +7,8 @@ from aidlc.repo import init_repo, load_config
 from tests.helpers import TempRepo, run_cli
 
 EXPECTED = {".aidlc/config.yaml", "AGENTS.md", "docs/codebase-map.md", ".aidlc/rules/README.md",
-            ".aidlc/probe.yaml", ".openwikiignore", "plans/approved-bundles.txt"}
+            ".aidlc/probe.yaml", ".openwikiignore", "plans/approved-bundles.txt",
+            ".aidlc/permissions.yaml"}
 
 
 class InitRepoTest(unittest.TestCase):

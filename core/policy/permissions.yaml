@@ -29,6 +29,7 @@ secret_paths:
 # Harness files the agent may never edit (it must not weaken the controls that judge it).
 protected_paths:
   - ".aidlc/**"
+  - "~/.aidlc/**"
   - "AGENTS.md"
   - "**/AGENTS.md"
   - "CLAUDE.md"
@@ -59,6 +60,7 @@ deny:
     - "~/.openwiki/**"
   edit:
     - ".aidlc/**"
+    - "~/.aidlc/**"
     - "AGENTS.md"
     - "**/AGENTS.md"
     - "CLAUDE.md"
@@ -81,6 +83,8 @@ deny:
     - "git reset --hard*"
     - "git clean -f*"
     - "rm -rf*"
+    - "rm -fr*"
+    - "rm -r -f*"
     - "sudo *"
     - "curl *"
     - "wget *"
