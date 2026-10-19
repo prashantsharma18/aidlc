@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -45,8 +47,9 @@ def _sha(text: str) -> str:
 
 
 def _load_manifest(repo: Path) -> dict[str, str]:
-    """The recorded {path: sha256} map; {} when there is no manifest yet."""
-    path = repo / MANIFEST
+    """The recorded {path: sha256} map; {} when there is no manifest yet. Raises ValueError
+    for a symlinked or malformed manifest."""
+    path = safe_target(repo, MANIFEST)
     if not path.is_file():
         return {}
     try:
@@ -59,6 +62,35 @@ def _load_manifest(repo: Path) -> dict[str, str]:
         raise ValueError(f"{MANIFEST} is malformed; restore it from git")
     files.pop(MANIFEST, None)
     return dict(files)
+
+
+def _atomic_write(target: Path, text: str) -> None:
+    """Write via a temp file in the same directory and os.replace, so a crash never leaves a
+    half-written file."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=target.parent, prefix=target.name + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.replace(tmp, target)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+def _save_manifest(repo: Path, manifest: dict[str, str]) -> None:
+    target = safe_target(repo, MANIFEST)
+    _atomic_write(target, json.dumps({"files": dict(sorted(manifest.items()))}, indent=2) + "\n")
+
+
+def _read(rel: str, path: Path) -> tuple[str | None, str | None]:
+    """(text, None) or (None, problem). A missing file reads as (None, None)."""
+    if not path.is_file():
+        return None, None
+    try:
+        return path.read_text(encoding="utf-8"), None
+    except (UnicodeDecodeError, OSError) as exc:
+        return None, f"{rel}: unreadable ({type(exc).__name__}); delete it or restore it from git"
 
 
 def write_rendered(repo: Path, files: list[RenderedFile], check: bool,
@@ -86,8 +118,11 @@ def write_rendered(repo: Path, files: list[RenderedFile], check: bool,
         except ValueError as exc:
             problems.append(str(exc))
             continue
-        current = target.read_text(encoding="utf-8") if target.is_file() else None
-        if current is not None:
+        current, unreadable = _read(f.path, target)
+        if unreadable:
+            problems.append(unreadable)
+            continue
+        if current is not None and current != f.content:
             recorded = manifest.get(f.path)
             if recorded is not None:
                 if _sha(current) != recorded:
@@ -103,8 +138,7 @@ def write_rendered(repo: Path, files: list[RenderedFile], check: bool,
                 problems.append(f"{f.path}: {'missing' if current is None else 'stale'} "
                                 f"(run aidlc render)")
                 continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(f.content, encoding="utf-8")
+            _atomic_write(target, f.content)
         manifest[f.path] = _sha(f.content)
 
     rendered = {f.path for f in files}
@@ -119,7 +153,9 @@ def write_rendered(repo: Path, files: list[RenderedFile], check: bool,
                 problems.append(f"{rel}: orphaned (no longer rendered)")
             else:
                 del manifest[rel]
-        elif _sha(target.read_text(encoding="utf-8")) != manifest[rel]:
+        elif (text := _read(rel, target))[1]:
+            problems.append(text[1])
+        elif _sha(text[0]) != manifest[rel]:
             problems.append(f"{rel}: orphaned and edited after generation; delete it by hand")
         elif check:
             problems.append(f"{rel}: orphaned (no longer rendered)")
@@ -135,8 +171,13 @@ def write_rendered(repo: Path, files: list[RenderedFile], check: bool,
             continue
         for path in sorted(directory.glob("*.md")) if directory.is_dir() else []:
             rel = f"{rel_dir}/{path.name}"
-            if (rel in rendered or rel in original or path.is_symlink()
-                    or not _is_generated(path.read_text(encoding="utf-8"))):
+            if rel in rendered or rel in original or path.is_symlink():
+                continue
+            text, unreadable = _read(rel, path)
+            if unreadable:
+                problems.append(unreadable)
+                continue
+            if not _is_generated(text):
                 continue
             if check:
                 problems.append(f"{rel}: orphaned (its source was removed); run aidlc render")
@@ -145,10 +186,7 @@ def write_rendered(repo: Path, files: list[RenderedFile], check: bool,
 
     if not check and manifest != original:
         try:
-            target = safe_target(repo, MANIFEST)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(json.dumps({"files": dict(sorted(manifest.items()))}, indent=2) + "\n",
-                              encoding="utf-8")
+            _save_manifest(repo, manifest)
         except ValueError as exc:
             problems.append(str(exc))
     return problems

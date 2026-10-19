@@ -1,5 +1,7 @@
 import json
+import os
 import unittest
+from unittest import mock
 
 from aidlc.adapters.base import MANIFEST, RenderedFile, write_rendered
 from tests.helpers import TempRepo
@@ -105,6 +107,114 @@ class ManifestTest(unittest.TestCase):
             write_rendered(root, F, check=False)
             files = json.loads((root / MANIFEST).read_text())["files"]
             self.assertNotIn(MANIFEST, files)
+
+    # Fix round 1: crash safety.
+    def test_crash_before_manifest_save_first_render_recovers(self):
+        with TempRepo() as root:
+            with mock.patch("aidlc.adapters.base._save_manifest", side_effect=OSError("boom")):
+                with self.assertRaises(OSError):
+                    write_rendered(root, F, check=False)
+            self.assertEqual(write_rendered(root, F, check=False), [])
+            files = json.loads((root / MANIFEST).read_text())["files"]
+            self.assertIn(".claude/settings.json", files)
+
+    def test_crash_before_manifest_save_update_recovers(self):
+        with TempRepo() as root:
+            write_rendered(root, F, check=False)
+            changed = [RenderedFile(".claude/settings.json", '{"a": 2}\n'), F[1]]
+            with mock.patch("aidlc.adapters.base._save_manifest", side_effect=OSError("boom")):
+                with self.assertRaises(OSError):
+                    write_rendered(root, changed, check=False)
+            self.assertEqual(write_rendered(root, changed, check=False), [])
+            self.assertEqual(write_rendered(root, changed, check=True), [])
+
+    def test_identical_unrecorded_file_is_recorded(self):
+        with TempRepo({".claude/settings.json": '{"a": 1}\n'}) as root:
+            self.assertEqual(write_rendered(root, F[:1], check=False), [])
+            files = json.loads((root / MANIFEST).read_text())["files"]
+            self.assertIn(".claude/settings.json", files)
+
+    def test_writes_are_atomic_and_leave_no_temp_files(self):
+        with TempRepo() as root:
+            write_rendered(root, F, check=False)
+            names = [p.name for d in (".claude", ".aidlc") for p in (root / d).iterdir()]
+            self.assertFalse([n for n in names if n.endswith(".tmp")], names)
+
+    # Fix round 1: fail closed on unreadable files.
+    def test_unreadable_rendered_path_reported(self):
+        with TempRepo() as root:
+            write_rendered(root, F, check=False)
+            (root / ".claude/settings.json").write_bytes(b"\xff\xfe\x00bad")
+            problems = write_rendered(root, F, check=False)
+            self.assertTrue(any("unreadable" in p and "UnicodeDecodeError" in p for p in problems))
+            self.assertEqual((root / ".claude/settings.json").read_bytes(), b"\xff\xfe\x00bad")
+
+    def test_unreadable_orphan_reported_and_kept(self):
+        with TempRepo() as root:
+            write_rendered(root, F, check=False)
+            (root / ".aidlc/hooks/guard.py").write_bytes(b"\xff\xfe\x00bad")
+            for check in (True, False):
+                problems = write_rendered(root, F[:1], check=check)
+                self.assertTrue(any("guard.py: unreadable" in p for p in problems), problems)
+            self.assertEqual((root / ".aidlc/hooks/guard.py").read_bytes(), b"\xff\xfe\x00bad")
+
+    def test_unreadable_in_managed_dir_reported(self):
+        with TempRepo({"rules/a.md": "x"}) as root:
+            (root / "rules/a.md").write_bytes(b"\xff\xfe\x00bad")
+            problems = write_rendered(root, [], check=False, managed_dirs=("rules",))
+            self.assertTrue(any("rules/a.md: unreadable" in p for p in problems))
+            self.assertTrue((root / "rules/a.md").exists())
+
+    # Fix round 1: symlink and path safety on the manifest and its keys.
+    def test_symlinked_manifest_refused(self):
+        with TempRepo() as root:
+            (root / ".aidlc").mkdir()
+            (root / "real.json").write_text('{"files": {}}')
+            os.symlink(root / "real.json", root / MANIFEST)
+            problems = write_rendered(root, F, check=False)
+            self.assertTrue(any("symlink" in p for p in problems))
+            self.assertFalse((root / ".claude/settings.json").exists())
+
+    def test_symlinked_manifest_directory_refused(self):
+        with TempRepo() as root:
+            (root / "elsewhere").mkdir()
+            os.symlink(root / "elsewhere", root / ".aidlc")
+            problems = write_rendered(root, F, check=False)
+            self.assertTrue(any("symlink" in p for p in problems))
+            self.assertEqual(list((root / "elsewhere").iterdir()), [])
+
+    def test_symlinked_orphan_refused(self):
+        with TempRepo() as root:
+            (root / "victim.txt").write_text("keep")
+            (root / ".aidlc").mkdir()
+            os.symlink(root / "victim.txt", root / ".aidlc/link.py")
+            (root / MANIFEST).write_text(json.dumps({"files": {".aidlc/link.py": "0" * 64}}))
+            for check in (True, False):
+                problems = write_rendered(root, [], check=check)
+                self.assertTrue(any("symlink" in p for p in problems), problems)
+            self.assertTrue((root / ".aidlc/link.py").is_symlink())
+            self.assertEqual((root / "victim.txt").read_text(), "keep")
+
+    def test_hostile_manifest_keys_refused(self):
+        with TempRepo() as root:
+            victim = root.parent / "victim.txt"
+            victim.write_text("keep")
+            try:
+                (root / ".aidlc").mkdir()
+                (root / MANIFEST).write_text(json.dumps(
+                    {"files": {"../victim.txt": "0" * 64, "/etc/hostname": "0" * 64}}))
+                for check in (True, False):
+                    problems = write_rendered(root, [], check=check)
+                    self.assertEqual(len(problems), 2, problems)
+                self.assertEqual(victim.read_text(), "keep")
+            finally:
+                victim.unlink()
+
+    def test_non_string_value_is_malformed(self):
+        with TempRepo({MANIFEST: '{"files": {"a": 1}}'}) as root:
+            problems = write_rendered(root, F, check=False)
+            self.assertIn("is malformed", problems[0])
+            self.assertFalse((root / ".claude/settings.json").exists())
 
 
 if __name__ == "__main__":
