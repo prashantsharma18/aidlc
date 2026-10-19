@@ -528,7 +528,7 @@ class GeneratedFilesJudgeRound2Test(GeneratedFilesJudgeTest):  # inherits (and r
     def test_deny_write_may_be_a_superset_but_not_a_subset(self):
         from aidlc import ci
         with Rendered() as trusted, Rendered() as head:
-            self.edit_settings(head, lambda s: s["sandbox"]["filesystem"]["denyWrite"].append("./extra/untracked.txt"))
+            self.edit_settings(head, lambda s: s["sandbox"]["filesystem"]["denyWrite"].append("./docs/AGENTS.md"))
             self.assertEqual(self.step(head, trusted).status, ci.OK)
         with Rendered() as trusted, Rendered() as head:
             self.edit_settings(head, lambda s: s["sandbox"]["filesystem"]["denyWrite"].pop())
@@ -591,3 +591,52 @@ class GeneratedFilesJudgeRound2Test(GeneratedFilesJudgeTest):  # inherits (and r
         from aidlc import ci
         with Rendered() as trusted, Rendered() as head:
             self.assertEqual(self.step(head, trusted).status, ci.OK)
+
+
+class GeneratedFilesJudgeRound3Test(GeneratedFilesJudgeRound2Test):  # re-runs earlier cases
+    """Re-review 2: strict denyWrite extras; tracked agent-config paths, case-folded, at any depth."""
+
+    def track(self, root, *rels):
+        from tests.helpers import git
+        git(root, "add", "-f", "--", *rels)
+
+    def test_denywrite_extras_of_the_wrong_shape_fail_without_raising(self):
+        for extra in (1, None, "!./src", ["a"], "../x", "./../x", "./a\u0000b", {"a": 1}, "/etc/passwd", "./not-protected.txt"):
+            with self.subTest(extra=extra), Rendered() as trusted, Rendered() as head:
+                self.edit_settings(head, lambda s: s["sandbox"]["filesystem"]["denyWrite"].append(extra))
+                self.failing(head, trusted, ".claude/settings.json")
+
+    def test_a_denywrite_extra_for_an_untracked_protected_file_passes(self):
+        from aidlc import ci
+        with Rendered() as trusted, Rendered() as head:
+            self.edit_settings(head, lambda s: s["sandbox"]["filesystem"]["denyWrite"].append("./docs/AGENTS.md"))
+            self.assertEqual(self.step(head, trusted).status, ci.OK)
+
+    def test_tracked_agent_config_outside_the_rendered_set_fails_at_any_depth_and_case(self):
+        paths = [".Claude/settings.local.json", ".aidlc/Hooks/json.py", ".MCP.json", "claude.local.md",
+                 "services/api/.claude/settings.json", "services/api/.claude/skills/x/SKILL.md",
+                 "services/api/.mcp.json", ".AIDLC/hooks/guard.py", ".claude/rules/café.md",
+                 ".cLaude/rules/x.md", "a/CLAUDE.LOCAL.MD"]
+        for rel in paths:
+            with self.subTest(rel), Rendered() as trusted, Rendered() as head:
+                (head / rel).parent.mkdir(parents=True, exist_ok=True)
+                (head / rel).write_text("x")
+                self.track(head, rel)
+                self.failing(head, trusted, rel, "agent configuration not managed by aidlc")
+
+    def test_tracked_rendered_files_pass(self):
+        from aidlc import ci
+        with Rendered() as trusted, Rendered() as head:
+            self.track(head, ".claude/settings.json", ".aidlc/hooks/guard.py", ".aidlc/rules/README.md",
+                       "CLAUDE.md", ".aidlc/generated.json")
+            self.assertEqual(self.step(head, trusted).status, ci.OK)
+
+    def test_an_nfd_variant_of_a_rendered_rule_is_caught(self):
+        with Rendered() as trusted, Rendered() as head:
+            rule = "---\npaths: ['**']\n---\nbody\n"
+            (head / ".aidlc/rules/café.md").write_text(rule)
+            run_cli("render", "--tool", "claude-code", str(head))
+            nfd = ".claude/rules/café.md"
+            (head / nfd).write_text((head / ".claude/rules/café.md").read_text())
+            self.track(head, nfd)
+            self.failing(head, trusted, nfd)

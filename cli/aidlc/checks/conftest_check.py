@@ -16,17 +16,19 @@ import os
 import stat
 import subprocess
 import tempfile
+import unicodedata
 from pathlib import Path
 
 from ..adapters import get_adapter
 from ..adapters.base import AdapterNotImplemented, RenderedFile, write_rendered
-from ..adapters.claude_code import _sandbox_paths
+from ..adapters.claude_code import _deny_write, _sandbox_paths
 from ..harness import REFUSED_WRITE, HarnessError, effective_permissions
 from ..paths import framework_root
 from ..policy import PolicyError, load_policy, load_yaml
 from ..repo import CONFIG
 from ..tools import which_tool
 from .findings import Finding
+from .onecheck import CheckError, git
 
 TIMEOUT_S = 120
 MAX_INPUTS = 200
@@ -231,19 +233,68 @@ def _check_render_inputs(head: Path) -> list[Finding]:
     return [Finding("FAIL", p.split(" is ")[0], 0, p) for p in problems if p]
 
 
-def _settings_compatible(rendered_text: str, committed_text: str) -> bool:
+def _settings_compatible(rendered_text: str, committed_text: str, extra_ok=lambda entry: False) -> bool:
     """True when the committed settings equal the render, except that sandbox.filesystem.denyWrite may
-    list more entries. A local `aidlc render` also lists untracked files that match a protected glob;
-    a clean CI checkout renders fewer. A denyWrite entry only restricts, so extra ones are harmless;
-    a missing one, or any other difference, is not."""
+    list more entries, each accepted by `extra_ok`. A local `aidlc render` also lists untracked files
+    that match a protected glob; a clean CI checkout renders fewer. A denyWrite entry only restricts,
+    but only entries the renderer itself could emit are accepted. A missing entry, an entry of any
+    other shape, or any other difference is incompatible. Malformed values never raise."""
     try:
         want, have = json.loads(rendered_text), json.loads(committed_text)
         want_deny = want["sandbox"]["filesystem"].pop("denyWrite", [])
         have_deny = have["sandbox"]["filesystem"].pop("denyWrite", [])
-    except (ValueError, KeyError, TypeError, AttributeError):
+        if not (isinstance(want_deny, list) and isinstance(have_deny, list)):
+            return False
+        if any(entry not in have_deny for entry in want_deny):
+            return False
+        if any(entry not in want_deny and not (isinstance(entry, str) and extra_ok(entry)) for entry in have_deny):
+            return False
+        return want == have
+    except (ValueError, KeyError, TypeError, AttributeError, RecursionError):
         return False
-    return (isinstance(want_deny, list) and isinstance(have_deny, list) and set(want_deny) <= set(have_deny)
-            and want == have)
+
+
+def _extra_deny_write_ok(head: Path, protected: list[str]):
+    """An extra denyWrite entry is accepted if the renderer's own builder (_deny_write) emits exactly
+    that entry for the repository-relative path it names and the effective protected patterns."""
+    def ok(entry: str) -> bool:
+        rel = entry[2:] if entry.startswith("./") else ""
+        if (not rel or "\0" in entry or rel.startswith(("/", "!")) or ".." in rel.split("/")
+                or "\\" in rel):
+            return False
+        return entry in _deny_write(head, protected, files=[rel])
+    return ok
+
+
+def _is_agent_config(folded: str) -> bool:
+    parts = folded.split("/")
+    return (".claude" in parts or parts[-1] in (".mcp.json", "claude.local.md")
+            or folded.startswith((".aidlc/hooks/", ".aidlc/rules/")))
+
+
+def _fold(path: str) -> str:
+    return unicodedata.normalize("NFC", unicodedata.normalize("NFC", path).casefold())
+
+
+def _judge_tracked_paths(head: Path, rendered: set[str]) -> list[Finding]:
+    """From git's tracked-path list (a read-only git call in the head checkout, before any of the
+    change's code runs): every path that is agent configuration, found by NFC and case-folding at any
+    depth, must equal a path the render produces byte for byte. `.aidlc/rules/` holds the repository's
+    own sources, which the render does not produce: there only a single-level name under the exact
+    lower-case folder is accepted. Nested .claude folders are refused until a monorepo design exists."""
+    try:
+        tracked = [p for p in git(head, "ls-files", "-z", "--cached").split("\0") if p]
+    except (CheckError, OSError, subprocess.SubprocessError) as exc:
+        return [Finding("FAIL", "", 0, f"cannot list the tracked files to judge agent configuration: {exc}")]
+    out = []
+    for path in tracked:
+        folded = _fold(path)
+        if not _is_agent_config(folded) or path in rendered:
+            continue
+        if path.startswith(".aidlc/rules/") and "/" not in path[len(".aidlc/rules/"):]:
+            continue
+        out.append(Finding("FAIL", path, 0, f"{path}: {UNMANAGED}"))
+    return out
 
 
 def _walk_extras(head: Path, rendered: set[str], dirs: tuple[str, ...], unmanaged: bool) -> list[Finding]:
@@ -311,6 +362,7 @@ def judge_generated(head: Path, trusted: Path) -> list[Finding]:
             findings += [Finding("FAIL", rel, 0, f"{rel}: {UNMANAGED}") for rel in UNMANAGED_FILES
                          if _kind(head / rel) != "missing"]
             findings += _walk_extras(head, rendered, (".claude",), True)
+            findings += _judge_tracked_paths(head, rendered)
     return findings
 
 
@@ -323,9 +375,10 @@ def _with_committed_settings(head: Path, rendered: RenderedFile) -> RenderedFile
         return rendered
     try:
         committed = (head / SETTINGS).read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
+        extra_ok = _extra_deny_write_ok(head, effective_permissions(head)["protected_paths"])
+    except (OSError, UnicodeDecodeError, HarnessError, PolicyError, ValueError):
         return rendered
-    if committed != rendered.content and _settings_compatible(rendered.content, committed):
+    if committed != rendered.content and _settings_compatible(rendered.content, committed, extra_ok):
         return dataclasses.replace(rendered, content=committed)
     return rendered
 
