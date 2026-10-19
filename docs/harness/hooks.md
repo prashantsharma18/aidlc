@@ -114,7 +114,10 @@ The post-check flags every untracked file that matches a protected path. A file 
 yourself, such as an uncommitted `CLAUDE.local.md` or a folder `AGENTS.md`, therefore flags
 `protected-path` after each modifying call. Commit it on the base branch (a commit on the task
 branch still differs from the base), or gitignore it. The flag message tells the agent the same:
-"commit it, gitignore it, or stop and ask if you did not create it".
+"commit it, gitignore it, or stop and ask if you did not create it. A person's own file: commit
+it on the base branch". When the base branch has moved since the scope was approved, the message
+adds that a person must re-run `aidlc scope`: after a rebase or merge from the base, the base's
+own new commits look like changes on the task branch until you re-scope.
 
 ## What the guard leaves to others
 

@@ -47,6 +47,10 @@ Install the harness in a repository in this order. Each step depends on the one 
 5. **Run `aidlc doctor`.** Fix every FAIL before the first session. D12 fails when the base
    branch does not exist.
 
+After you update a task branch from the base (rebase or merge), run `aidlc scope` again. The
+scope trusts the base commit recorded when it was approved, so the base's newer commits look
+like changes on the task branch until you re-scope. The post-check says so in its flag message.
+
 ## Read in this order
 
 1. [Permissions and sandbox](permissions-and-sandbox.md): what the tool blocks before a command runs.

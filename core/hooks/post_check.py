@@ -70,7 +70,8 @@ def check(event: dict) -> dict:
                 return _result("flag", "protected-path", f"{guard._redact(path)} is a protected path "
                                "(harness, rules, CI, plans or contracts) and is new or changed on this "
                                "branch. Do not change it through the shell; commit it, gitignore it, "
-                               "or stop and ask if you did not create it.")
+                               "or stop and ask if you did not create it. A person's own file: commit "
+                               "it on the base branch." + _moved_hint(root, recorded, harness, base))
         for path in sorted(changed):
             if scope is not None and not guard.matches(path, scope, any_depth_names=False):
                 return _result("flag", "outside-scope", f"{guard._redact(path)} was written outside the task's "
@@ -90,6 +91,21 @@ def check(event: dict) -> dict:
     except Exception as exc:  # noqa: BLE001 - fail closed
         return _result("flag", "fail-safe", f"post-tool check failed ({type(exc).__name__}); "
                        "treat the result as unchecked")
+
+
+def _moved_hint(root: Path, recorded: str | None, harness: dict, base: str) -> str:
+    """When this branch was updated from a base that moved since the scope was approved, the
+    flagged change may be the base's own, not the agent's: say so instead of blaming the agent."""
+    if not recorded:
+        return ""
+    try:
+        current = _git(root, "merge-base", harness["base_branch"], "HEAD").strip()
+    except Exception:  # noqa: BLE001 - a hint must never change the decision
+        return ""
+    if current and current != base:
+        return (" The base branch has moved since the scope was approved; if this branch was "
+                "updated from it, a person must re-run aidlc scope.")
+    return ""
 
 
 def _exists_at(root: Path, base: str, path: str) -> bool:

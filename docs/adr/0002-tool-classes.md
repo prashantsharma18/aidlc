@@ -40,7 +40,12 @@ entirely. Background shell (`Monitor`) and new tools reached no hook at all.
 
 - A new tool from a Claude Code upgrade never runs silently. It prompts a person until the
   adapter classifies it. Cost if wrong: an interactive prompt for a benign tool.
-- Interactive use does not break when the tool adds a tool. A hard deny would have.
+- Interactive use does not break when the tool adds a tool. A hard deny would have. It does
+  prompt, so the adapter must classify the built-ins of the pinned version: for Claude Code
+  2.1.296 that includes the task-list tools (`TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`,
+  `TaskStop`, `TaskOutput`), `LSP` and `SendMessage`. Built-ins with side effects outside the
+  edit and shell classes (`EnterWorktree`, `ExitWorktree`, `CronCreate`, `Workflow`, `Artifact`)
+  stay unknown on purpose, so a person approves them.
 - Each adapter owns its `CLASSES` table and must keep it in step with the tool's tool names.
   Doctor D4 checks that the rendered matchers equal the adapter's constants.
 - Design spec §4.3's class list is superseded by this ADR. The spec is not edited. This ADR is

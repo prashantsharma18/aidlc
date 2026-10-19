@@ -17,14 +17,19 @@ MAX_OUTPUT_CHARS = 5_000_000  # larger output is flagged unscanned, never passed
 # unattended). Keep this list in step with the tool's documented tool names.
 READ_TOOLS = ("Read", "Glob", "Grep", "LS", "NotebookRead", "TodoWrite", "Task", "Agent", "ToolSearch",
               "BashOutput", "KillShell", "KillBash", "ExitPlanMode", "EnterPlanMode", "Skill",
-              "SlashCommand", "AskUserQuestion", "ListMcpResourcesTool", "ReadMcpResourceTool")
+              "SlashCommand", "AskUserQuestion", "ListMcpResourcesTool", "ReadMcpResourceTool",
+              # Claude Code 2.1.296 built-ins: task list, language server, agent messages.
+              "TaskCreate", "TaskUpdate", "TaskList", "TaskGet", "TaskStop", "TaskOutput", "LSP",
+              "SendMessage")
 CLASSES = {**{name: "read" for name in READ_TOOLS},
            "Edit": "edit", "Write": "edit", "MultiEdit": "edit", "NotebookEdit": "edit",
            "Bash": "shell", "Monitor": "shell", "WebFetch": "external", "WebSearch": "external"}
 
 
 def to_generic(payload: dict, phase: str) -> dict:
-    name = str(payload.get("tool_name") or "")
+    name = payload.get("tool_name")
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("tool_name is missing or not a string")
     inp = payload.get("tool_input")
     if inp is None:
         inp = {}
