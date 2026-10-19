@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Callable, Iterator
 
 from . import __version__
+from .checks.conftest_check import run_conftest
 from .checks.onecheck import (DIFF_FLAGS, FAIL, OK, STEERING, CheckContext, CheckError, CheckResult, StepResult,
                               _excepted, prepare_check_dir,
                               begin_command_steps, git, print_result, run_command, step_context_drift,
@@ -223,12 +224,27 @@ def step_protected_rerun(ctx: CheckContext) -> StepResult:
     return result
 
 
+def step_config_policy(ctx: CheckContext) -> StepResult:
+    """ADR 0001: the change's rendered settings, narrowing and workflows pass the Rego pack. A judge
+    step: it runs before any of the change's code, with the pinned (checksum-verified) conftest. The
+    files judged come from the head checkout; the policy data comes from the base (ctx.trusted), so
+    the change cannot widen what it is judged against. Nothing from the head is executed."""
+    data_repo = getattr(ctx, "trusted", None) or ctx.repo
+    findings = run_conftest(ctx.repo, pinned_only=True, data_repo=data_repo)
+    fails = [str(f) for f in findings if f.level == "FAIL"]
+    if fails:
+        return StepResult("config-policy", FAIL, f"{len(fails)} violation(s): " + "; ".join(fails[:5]))
+    warns = len(findings) - len(fails)
+    return StepResult("config-policy", OK, f"{warns} warning(s)" if warns else "")
+
+
 # Judges: run before any of the change's code, from git objects (ctx.head) or the untouched checkout.
 JUDGE_STEPS: list[tuple[str, Callable[[CheckContext], StepResult]]] = [
     ("scope", step_scope),
     ("protected-tests", step_protected_tests),
     ("secrets", step_secrets),
     ("context-drift", step_context_drift),
+    ("config-policy", step_config_policy),
 ]
 # After the change's commands: checks that read their output, then the re-run in its own checkout.
 AFTER_STEPS: list[tuple[str, Callable[[CheckContext], StepResult]]] = [
@@ -427,7 +443,8 @@ def run_ci(plan: CiPlan, group: str | None = None) -> tuple[CheckResult, dict]:
                               env_names=env_names)
                 rerun.wrap = lambda command, step: box.argv(command, step.removeprefix("protected-rerun-"))
             ctx = CheckContext(repo=plan.work, config=config, branch=plan.branch, base=merge_base, scope=scope,
-                               head=plan.head, steering=steering, wrap=wrap, rerun=rerun)
+                               head=plan.head, steering=steering, wrap=wrap, rerun=rerun,
+                               trusted=plan.trusted)
             # 2 and 3: judges, then the change's code in the sandbox, then what reads its output.
             result = _run_phases(ctx, group)
     finally:

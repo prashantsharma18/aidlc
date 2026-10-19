@@ -8,3 +8,7 @@ test:
 .PHONY: harness-live
 harness-live:
 	$(PY) tests/harness_live/run_attacks.py --out docs/verification/$$(date +%F)-harness-attacks.md
+
+.PHONY: policy-test
+policy-test:
+	bin/aidlc policy rego-test

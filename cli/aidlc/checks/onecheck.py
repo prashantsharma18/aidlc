@@ -57,6 +57,7 @@ class CheckContext:
     scope_source: str = ""            # the scope file read (shown in the context line)
     head: str | None = None           # CI: judge git objects base..head instead of the working tree
     steering: dict[str, str] | None = None   # CI: the base's steering files, read before the change runs
+    trusted: Path | None = None       # CI: the base checkout; trusted data (the policy data) comes from it
     rerun: Any = None                 # CI: the protected re-run's own checkout, built before the change runs
     wrap: Callable[[str, str], list[str]] | None = None   # CI: argv that runs a command step (sandbox)
     today: date = field(default_factory=date.today)
