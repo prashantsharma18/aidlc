@@ -1,0 +1,18 @@
+meta:
+  id: policy-risk-inventory
+  owner: "@harness-owners"
+  review_by: "2027-04-19"
+  guide: ["3 step 1", "3.4", "13.10"]
+risks:
+  - {id: read-secrets, action: "Read .env, keys, cloud credentials", harm: "Credential leak through output, logs or the network", reversible: false, severity: high, controls: [permission, sandbox, no-credential]}
+  - {id: exfiltrate, action: "Send data out (curl, wget, unknown hosts)", harm: "Exfiltration, especially after prompt injection", reversible: false, severity: high, controls: [sandbox, permission, hook-pre]}
+  - {id: edit-ci, action: "Edit CI workflows", harm: "Disables trusted verification for everyone", reversible: true, severity: high, controls: [permission, hook-pre, code-owners]}
+  - {id: edit-harness, action: "Edit .aidlc/**, rules files, .claude/**, .mcp.json, plans, check scripts", harm: "The agent weakens its own controls or widens its scope", reversible: true, severity: high, controls: [permission, hook-pre, code-owners]}
+  - {id: weaken-tests, action: "Change or delete an existing test assertion", harm: "Tests made to pass instead of code made correct", reversible: true, severity: high, controls: [hook-post, ci, rule]}
+  - {id: edit-shared, action: "Edit shared modules outside the task scope", harm: "Changes other features' behaviour", reversible: true, severity: medium, controls: [hook-pre, ci]}
+  - {id: add-dependency, action: "Add or upgrade a dependency", harm: "Supply-chain risk; invented package names", reversible: true, severity: medium, controls: [permission, ci]}
+  - {id: destructive-git, action: "Force push, push to main, hard reset, clean", harm: "Lost work; bypassed review", reversible: false, severity: high, controls: [hook-pre, permission, no-credential, branch-protection]}
+  - {id: recursive-delete, action: "rm -rf / rm -fr", harm: "Lost work", reversible: false, severity: high, controls: [hook-pre, permission, sandbox]}
+  - {id: log-personal-data, action: "Log a plain email address or other personal data", harm: "Personal data in logs", reversible: false, severity: medium, controls: [rule, ci]}
+  - {id: tracker-write, action: "Comment on, transition or delete tracker issues", harm: "False status; noise for other people", reversible: true, severity: medium, controls: [permission, gateway]}
+  - {id: runaway-loop, action: "Retry the same failing check without limit", harm: "Cost and time", reversible: true, severity: low, controls: [retry-limit, budget]}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "risk-inventory.schema.json",
+  "type": "object",
+  "required": ["meta", "risks"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {"type": "object"},
+    "risks": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "action", "harm", "reversible", "severity", "controls"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "action": {"type": "string"},
+          "harm": {"type": "string"},
+          "reversible": {"type": "boolean"},
+          "severity": {"enum": ["low", "medium", "high"]},
+          "controls": {"type": "array", "minItems": 1, "items": {"enum": [
+            "rule", "permission", "sandbox", "hook-pre", "hook-post", "ci", "branch-protection",
+            "code-owners", "no-credential", "retry-limit", "budget", "gateway"]}}
+        }
+      }
+    }
+  }
+}

@@ -10,7 +10,7 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 |---|---|---|
 | 1 | The AI-native lifecycle, end to end | ctx-authority, intent, policy-tiers |
 | 2 | Context engineering | agents-md, codebase-map, ctx-authority, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, ctx-rules-file, ctx-task-bundle, policy-context-classes, policy-memory-policy, policy-tiers, progress-note, task-bundle, workspace |
-| 3 | The agent harness | ctx-task-bundle, policy-permissions |
+| 3 | The agent harness | ctx-task-bundle, policy-permissions, policy-risk-inventory |
 | 4 | Understanding a codebase before you change it | codebase-map, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, evidence-pack, explorer-brief, policy-tiers |
 | 5 | Intent to specification | intent, policy-data-classes, policy-tiers, spec |
 | 6 | Architecture, boundaries and contracts | adr, decision-frame, design-note, policy-tiers |
@@ -20,7 +20,7 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | 10 | Evaluating agents and AI workflows | (none yet) |
 | 11 | Review, approval and release | change-record, policy-branch-protection, policy-tiers, pr-description, readiness, release-runbook, review-record |
 | 12 | Operate, measure and improve | incident, policy-model-routes, policy-routing, runbook |
-| 13 | Security and guardrails | ctx-openwiki-governance, policy-data-classes, policy-dependency-policy, policy-model-routes, policy-permissions, policy-tool-register, security-review |
+| 13 | Security and guardrails | ctx-openwiki-governance, policy-data-classes, policy-dependency-policy, policy-model-routes, policy-permissions, policy-risk-inventory, policy-tool-register, security-review |
 | 14 | Changes that span repositories | compat-matrix, coordination-plan, explorer-brief, policy-branch-protection, policy-tiers, release-runbook, workspace |
 | 15 | Modernising legacy systems | (none yet) |
 | 16 | Your workflow: individual, team and organisation | policy-tool-register, working-agreement |
@@ -42,6 +42,7 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | policy-memory-policy | policy | `core/policy/memory-policy.yaml` | 2.10, 2.13 |
 | policy-model-routes | policy | `core/policy/model-routes.yaml` | 13.5, 12.13 |
 | policy-permissions | policy | `core/policy/permissions.yaml` | 3 step 3, 3.4, 13.4, 13.10 |
+| policy-risk-inventory | policy | `core/policy/risk-inventory.yaml` | 3 step 1, 3.4, 13.10 |
 | policy-routing | policy | `core/policy/routing.yaml` | 12.13, 12.12 |
 | policy-tiers | policy | `core/policy/tiers.yaml` | 1.10, 2.14, 4.7, 5.9, 6.17, 7.14, 8.15, 9.13, 11.13, 14.18 |
 | policy-tool-register | policy | `core/policy/tool-register.yaml` | 13.4, 16.4 |
