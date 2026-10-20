@@ -1,6 +1,6 @@
 <!-- aidlc template: codebase-map -->
 # aidlc: codebase map
-Owner: framework owners (Prashant Sharma) · Last verified: 2026-10-20, against commit 5bb8baa
+Owner: framework owners (Prashant Sharma) · Last verified: 2026-10-20, against commit 28ab1cc
 Read this before planning a change. Paths are from the repository root.
 
 ## What this service does
