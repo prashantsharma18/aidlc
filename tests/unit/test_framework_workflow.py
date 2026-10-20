@@ -34,3 +34,10 @@ class FrameworkWorkflowTest(unittest.TestCase):
         self.assertEqual(set(self.wf["jobs"]), {"unit", "sandbox", "policy"})
         self.assertEqual(set(self.on), {"push", "pull_request"})
         self.assertEqual(self.on["push"]["branches"], ["main"])
+
+    def test_every_job_has_a_timeout(self):
+        # A hung job would otherwise run for GitHub's 6-hour maximum (Plan 3.5 review, minor 10).
+        for name, job in self.wf["jobs"].items():
+            with self.subTest(job=name):
+                self.assertIn("timeout-minutes", job)
+                self.assertLessEqual(job["timeout-minutes"], 30)
