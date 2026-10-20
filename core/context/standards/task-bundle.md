@@ -16,8 +16,10 @@ anything under `.git/` and a bare `*` or `**` are refused.
 
 ## Approval and scope
 1. The approver appends one line to `plans/approved-bundles.txt` on main:
-   `<branch> <commit sha>:<bundle path> <approver> <YYYY-MM-DD>`. The commit must be a sha,
-   never a moving ref such as `HEAD` or a branch name.
+   `<branch> <full commit sha>:<bundle path> <approver> <YYYY-MM-DD>`. The commit must be the
+   full 40-hex (or 64-hex) sha, never an abbreviation and never a moving ref such as `HEAD` or a
+   branch name. Trusted CI resolves it in an object store the change controls, so it refuses a
+   short sha (a commit the change wrote can share its prefix); `aidlc scope` warns on one.
 2. `aidlc scope --branch <branch>` reads that line from main, reads the bundle at that commit
    (never the copy on the working branch) and writes a read-only scope file outside the workspace.
    Approvals are read only from main, so a branch cannot approve itself.

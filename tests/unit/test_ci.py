@@ -935,3 +935,57 @@ class CiPinnedScopeBaseTest(unittest.TestCase):
             code, out, _ = run_cli("ci", "--repo", str(r.root))
             self.assertEqual(code, 0, out)
             self.assertEqual(last(r)["base"], git(r.root, "rev-parse", "main"))
+
+
+class ApprovalRefTest(unittest.TestCase):
+    """I1: in CI an approval must pin a full commit SHA that resolves to itself in the object store
+    the change controls; a short one can be matched by a commit the change wrote (review probe p2)."""
+
+    def test_only_a_full_sha_that_resolves_to_itself_is_accepted(self):
+        from aidlc.scope import ScopeError
+        with TempRepo({"plans/b.md": "MAY CHANGE: src/**\n"}) as root:
+            sha = git(root, "rev-parse", "HEAD")
+            git(root, "tag", "-a", "-m", "t", "approved")
+            tag = git(root, "rev-parse", "approved")                 # a tag object, not the commit
+            self.assertEqual(ci.verified_approval(root, f"{sha}:plans/b.md"), f"{sha}:plans/b.md")
+            for ref, why in ((f"{sha[:6]}:plans/b.md", "not a full commit SHA"),
+                             (f"{sha[:39]}:plans/b.md", "not a full commit SHA"),
+                             (f"{'0' * 40}:plans/b.md", "does not resolve to that commit"),
+                             (f"{'a' * 64}:plans/b.md", "does not resolve to that commit"),
+                             (f"{tag}:plans/b.md", "does not resolve to that commit")):
+                with self.assertRaises(ScopeError, msg=ref) as cm:
+                    ci.verified_approval(root, ref)
+                self.assertIn(why, str(cm.exception))
+
+    @NEEDS_SANDBOX
+    def test_a_short_approval_ref_fails_scope_in_ci_and_a_full_one_passes(self):
+        with CiRepo() as r:
+            r.commit({"src/extra.py": "X = 1\n"})
+            run_cli("ci", "--repo", str(r.root))
+            self.assertEqual(steps(last(r))["scope"]["status"], "ok")          # the fixture pins a full SHA
+            git(r.root, "checkout", "-q", "main")
+            approvals = r.root / ci.APPROVALS
+            line = [l for l in approvals.read_text().splitlines() if l.startswith(BRANCH)][-1]
+            sha = line.split()[1].split(":")[0]
+            approvals.write_text(approvals.read_text().replace(line, line.replace(sha, sha[:7])))
+            git(r.root, "commit", "-qam", "a short approval ref")
+            git(r.root, "checkout", "-q", BRANCH)
+            r.rescope()
+            run_cli("ci", "--repo", str(r.root))
+            scope = steps(last(r))["scope"]
+            self.assertEqual(scope["status"], "FAIL")
+            self.assertIn(f"the approval pins '{sha[:7]}', which is not a full commit SHA", scope["detail"])
+
+    def test_local_scope_warns_on_a_short_ref(self):
+        with TempRepo({"plans/b.md": "MAY CHANGE: src/**\n"}) as root, tempfile.TemporaryDirectory() as home:
+            sha = git(root, "rev-parse", "HEAD")
+            (root / "plans/approved-bundles.txt").write_text(f"feat/x {sha[:8]}:plans/b.md lead 2026-10-20\n")
+            git(root, "add", "-A")
+            git(root, "commit", "-qm", "approve")
+            out_file = Path(home) / "x.scope"
+            code, out, err = run_cli("scope", "--branch", "feat/x", "--repo", str(root), "--out", str(out_file))
+            self.assertEqual(code, 0, out + err)
+            self.assertIn(f"aidlc scope: warning: the approval pins the short commit '{sha[:8]}'; aidlc ci "
+                          "requires the full SHA", err)
+            code, out, err = run_cli("scope", "--branch", "feat/y", "--repo", str(root), "--out", str(out_file))
+            self.assertNotIn("warning", err)

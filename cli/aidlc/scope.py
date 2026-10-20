@@ -11,6 +11,7 @@ from pathlib import Path
 
 
 PINNED_REF = re.compile(r"^[0-9a-f]{6,40}:[^:]+$")
+FULL_SHA = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")      # what aidlc ci requires of an approval
 
 
 class ScopeError(Exception):

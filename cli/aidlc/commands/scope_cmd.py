@@ -9,7 +9,7 @@ from pathlib import Path
 from ..cli import command
 from ..policy import PolicyError
 from ..repo import CONFIG, load_config
-from ..scope import (ScopeError, ScopeUsageError, approved_ref, base_commit, bundle_at,
+from ..scope import (FULL_SHA, ScopeError, ScopeUsageError, approved_ref, base_commit, bundle_at,
                      default_scope_path, parse_may_change, require_repository, write_scope)
 
 DEFAULT_BASE = "main"   # approvals are read only from the base branch, never from the working branch
@@ -37,6 +37,10 @@ def _run(args: argparse.Namespace) -> int:
             raise ScopeError(f"--out {out} is inside the repository; write the scope outside it")
         base = base_branch(repo)
         ref = approved_ref(repo, args.branch, base)
+        pinned = ref.split(":", 1)[0]
+        if not FULL_SHA.fullmatch(pinned):
+            print(f"aidlc scope: warning: the approval pins the short commit '{pinned}'; aidlc ci requires the "
+                  "full SHA, so ask the approver to write all of it", file=sys.stderr)
         patterns = parse_may_change(bundle_at(repo, ref))
         write_scope(patterns, out, base=base_commit(repo, base))
     except ScopeUsageError as exc:

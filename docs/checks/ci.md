@@ -33,7 +33,7 @@ disabled. The sandbox bound the common git directory read-only, so the change co
 | Evidence | Source |
 |---|---|
 | `commands`, `check_steps`, `test_reports`, the profile and the base branch name | `.aidlc/config.yaml` in the base checkout |
-| The task scope | The bundle approved in `plans/approved-bundles.txt` |
+| The task scope | The bundle approved in `plans/approved-bundles.txt`, pinned by a full commit SHA that must resolve to itself; a short SHA fails `scope` |
 | Merge approvals | `plans/approved-merges.txt` |
 | Declared skips | `test/allowed-skips.txt` |
 | Policy data for `config-policy` | The base checkout's effective permissions |

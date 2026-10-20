@@ -42,7 +42,7 @@ from .hookbridge import hooks
 from .paths import safe_target
 from .repo import load_config
 from .sandbox import Sandbox, available, toolchain_env, toolchain_paths
-from .scope import ScopeError, base_commit, bundle_at, parse_approvals, parse_may_change
+from .scope import FULL_SHA, ScopeError, base_commit, bundle_at, parse_approvals, parse_may_change
 
 LABEL = "simulated-ci"
 RECORDS = ".aidlc/ci-records"
@@ -370,6 +370,23 @@ def _read_trusted(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def verified_approval(repo: Path, ref: str) -> str:
+    """The approval ref `<sha>:<path>`, accepted only when <sha> is a full commit SHA that resolves to
+    itself. CI resolves it in an object store the change controls: a short sha can be matched by a
+    commit the change wrote, and a tag object would peel to another commit (final review I1)."""
+    sha = ref.split(":", 1)[0]
+    if not FULL_SHA.fullmatch(sha):
+        raise ScopeError(f"the approval pins '{sha}', which is not a full commit SHA; CI needs all 40 (or 64) "
+                         "hex digits, because a short one can match a commit the change wrote")
+    try:
+        resolved = git(repo, "rev-parse", "--verify", "-q", f"{sha}^{{commit}}").strip()
+    except CheckError:
+        resolved = ""
+    if resolved != sha:
+        raise ScopeError(f"the approval pins {sha[:12]}, which does not resolve to that commit in this repository")
+    return ref
+
+
 def _steering(trusted: Path) -> dict[str, str]:
     """The base's steering files, read into memory before any of the change's code runs."""
     out = {}
@@ -418,7 +435,7 @@ def run_ci(plan: CiPlan, group: str | None = None) -> tuple[CheckResult, dict]:
     approvals = _read_trusted(plan.trusted / APPROVALS)
     merges = _read_trusted(plan.trusted / MERGES)
     try:
-        ref = parse_approvals(approvals, plan.branch, f"{plan.base_branch}:{APPROVALS}")
+        ref = verified_approval(plan.repo, parse_approvals(approvals, plan.branch, f"{plan.base_branch}:{APPROVALS}"))
         scope, why = parse_may_change(bundle_at(plan.repo, ref)), ""
     except ScopeError as exc:
         scope, why = None, str(exc)
