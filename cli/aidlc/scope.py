@@ -74,6 +74,50 @@ def _git(repo: Path, *args: str) -> str:
     return result.stdout
 
 
+# The evidence trusted checks read from the base branch: a base commit that touches one is flagged.
+EVIDENCE = ("plans/approved-bundles.txt", "plans/approved-merges.txt", "test/allowed-skips.txt",
+            "test/protected-exceptions.txt", ".aidlc/config.yaml", ".aidlc/permissions.yaml")
+NO_DRIVERS = ("--no-textconv", "--no-ext-diff", "--no-renames", "--no-color")
+_UNPRINTABLE = re.compile(r"[\x00-\x1f\x7f-\x9f\u2028\u2029]")
+
+
+def _plain_git(repo: Path, *args: str, ok: tuple[int, ...] = (0,)) -> tuple[int, str]:
+    """git with no hooks, no signature display and no GIT_* environment; bytes are decoded here, so
+    a \r stays a \r (never a line break). Raises ScopeError on any exit code not in `ok`."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    out = subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "-c", "core.quotePath=false",
+                          "-c", "log.showSignature=false", *args], cwd=repo, env=env, capture_output=True,
+                         timeout=60)
+    if out.returncode not in ok:
+        raise ScopeError(f"git {' '.join(args[:2])}: {out.stderr.decode('utf-8', 'replace').strip()[:200]}")
+    return out.returncode, out.stdout.decode("utf-8", "replace")
+
+
+def base_moves(repo: Path, pinned: str, live: str, base_branch: str) -> list[str]:
+    """What a person must review before trusting a moved base: every commit from the pinned base to
+    the live one, `<sha> <author> <<email>> <subject>`, with `!` before each commit that touches an
+    evidence file (EVIDENCE). Author and subject are the base's history, which an agent shell can
+    forge, so control characters are replaced and nothing in them can start a new line. A pinned
+    base that is not an ancestor of the live one (rewritten history) is said first, loudly."""
+    lines = []
+    code, _ = _plain_git(repo, "merge-base", "--is-ancestor", pinned, live, ok=(0, 1, 128))
+    if code != 0:
+        lines.append(f"WARNING: the scope's base {pinned} is not an ancestor of {base_branch} now ({live}): "
+                     "the base branch's history was rewritten, or the old base is gone. Review it as new.")
+    span = [live, f"^{pinned}"] if code == 0 else [live, "-n", "50"]
+    _, listed = _plain_git(repo, "log", "-z", "--no-color", "--format=%H %an <%ae> %s", *span, "--")
+    for entry in (e for e in listed.split("\0") if e):
+        sha = entry.split(" ", 1)[0]
+        _, touched = _plain_git(repo, "diff-tree", *NO_DRIVERS, "--no-commit-id", "--name-only", "-r", "-z",
+                                "-m", "--root", sha, "--", *(f":(literal){p}" for p in EVIDENCE))
+        hits = sorted({t for t in touched.split("\0") if t})
+        text = _UNPRINTABLE.sub("?", entry)
+        lines.append(f"! {text}  (touches {', '.join(hits)})" if hits else f"  {text}")
+    if code != 0:
+        lines.append(f"(the last {min(50, len(lines) - 1)} commit(s) of {base_branch} are shown)")
+    return lines
+
+
 def require_repository(repo: Path) -> Path:
     """The repository's top-level directory (the guard keys scopes by it), or ScopeUsageError."""
     if not repo.is_dir():

@@ -52,11 +52,28 @@ agents cannot write. The base checkout is that pinned commit. If the scope is mi
 unreadable, or the live ref no longer equals the pinned commit, `aidlc ci` exits 2:
 
 ```text
-the base branch moved since the scope was generated (scope base <sha>, main now <sha>); a person must re-run aidlc scope
+the base branch moved since the scope was generated (scope base <sha>, main now <sha>); a person must re-run aidlc scope --branch <task branch> --accept-base <live sha> after reviewing these commits (! = touches approvals, skips, exceptions or configuration):
+  ! <sha> <author> <<email>> <subject>  (touches plans/approved-merges.txt)
+    <sha> <author> <<email>> <subject>
 ```
 
-When the base branch moves for a good reason, such as another merge, you re-run
-`aidlc scope --branch <task branch>` and then `aidlc ci`.
+A refusal is not the end of a forgery. The forged commit is now the base, so a plain re-scope
+would read approvals from it and pin it. That is why re-scoping after the base moved is a
+confirmation step, not a formality:
+
+1. `aidlc scope --branch <task branch>` sees that the scope already pins another base. It lists
+   every commit from the pinned base to the live one, and marks with `!` each commit that touches
+   `plans/approved-bundles.txt`, `plans/approved-merges.txt`, `test/allowed-skips.txt`,
+   `test/protected-exceptions.txt`, `.aidlc/config.yaml` or `.aidlc/permissions.yaml`. It warns
+   when the pinned base is not an ancestor of the live one (rewritten history). Then it exits 2.
+2. You read the list. A commit you do not recognise, above all one marked `!`, is the forgery:
+   reset the base branch to the commit it should be, and do not accept it.
+3. When every commit is one you expect, such as another merge, you run
+   `aidlc scope --branch <task branch> --accept-base <live sha>`. The value must be the full live
+   commit, exactly; an abbreviation or any other commit is refused. Then you run `aidlc ci`.
+
+A first scope, with no scope file yet, needs no flag. Agents cannot accept a base: the shell
+deny rule `aidlc scope*--accept-base*` blocks it, and the sandbox denies writes to `~/.aidlc`.
 
 ## Local mode and GitHub mode
 

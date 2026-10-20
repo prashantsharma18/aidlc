@@ -42,7 +42,8 @@ from .hookbridge import hooks
 from .paths import safe_target
 from .repo import load_config
 from .sandbox import Sandbox, available, toolchain_env, toolchain_paths
-from .scope import FULL_SHA, ScopeError, base_commit, bundle_at, parse_approvals, parse_may_change
+from .scope import (FULL_SHA, ScopeError, base_commit, base_moves, bundle_at, parse_approvals,
+                    parse_may_change)
 
 LABEL = "simulated-ci"
 RECORDS = ".aidlc/ci-records"
@@ -556,8 +557,11 @@ def pinned_base(repo: Path, branch: str, base_branch: str) -> str:
                       f"aidlc scope --branch {branch}")
     pinned, live = scope[1], base_commit(repo, base_branch)
     if live != pinned:
+        listing = "\n".join(f"  {line}" for line in base_moves(repo, pinned, live, base_branch))
         raise CiError(f"the base branch moved since the scope was generated (scope base {pinned[:12]}, "
-                      f"{base_branch} now {live[:12]}); a person must re-run aidlc scope")
+                      f"{base_branch} now {live[:12]}); a person must re-run aidlc scope --branch {branch} "
+                      f"--accept-base {live} after reviewing these commits (! = touches approvals, skips, "
+                      f"exceptions or configuration):\n{listing}")
     return pinned
 
 

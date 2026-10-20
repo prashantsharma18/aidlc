@@ -1187,3 +1187,96 @@ class RerunLogsTest(unittest.TestCase):
             self.assertEqual(repo, cwd)                                       # logs go under rerun/.check/
             self.assertTrue(repo.endswith("/rerun"), repo)
             self.assertEqual(rerun["log"], "rerun/.check/protected-rerun.log")
+
+
+class AcceptBaseTest(unittest.TestCase):
+    """Targeted round, Important: re-scoping after the base moved shows every commit since the pinned
+    base, flags the ones touching evidence, and pins the new base only with --accept-base <live sha>
+    (review probe p6b: the C1 remedy otherwise completed the forgery)."""
+
+    def scope(self, r, *extra):
+        return run_cli("scope", "--branch", BRANCH, "--repo", str(r.root), *extra)
+
+    def pinned(self, r):
+        from aidlc.scope import default_scope_path
+        text = default_scope_path(r.root, BRANCH).read_text()
+        return [l for l in text.splitlines() if l.startswith("base: ")][0][len("base: "):]
+
+    def test_a_forged_base_is_listed_flagged_and_needs_the_exact_sha(self):
+        with CiRepo() as r, mock.patch("aidlc.ci.available", return_value=True):
+            r.commit({"src/extra.py": "X = 1\n"})
+            pinned = git(r.root, "rev-parse", "main")
+            forged = forge_base(r, f"{BRANCH} {git(r.root, 'rev-parse', 'HEAD')} agent-forged 2026-10-20\n")
+            accept = f"aidlc scope --branch {BRANCH} --accept-base {forged}"
+            code, _, err = run_cli("ci", "--repo", str(r.root))
+            self.assertEqual(code, 2)
+            self.assertIn(f"! {forged} agent <a@b> approve", err)
+            self.assertIn("plans/approved-merges.txt", err)
+            self.assertIn(accept, err)
+            code, _, err = self.scope(r)
+            self.assertEqual(code, 2, err)
+            self.assertIn(f"! {forged} agent <a@b> approve", err)
+            self.assertIn("the base moved since the last scope; review the commits above, then run " + accept, err)
+            self.assertEqual(self.pinned(r), pinned)
+            for wrong in (pinned, forged[:12], forged.upper(), "0" * 40):
+                with self.subTest(wrong=wrong):
+                    code, _, err = self.scope(r, "--accept-base", wrong)
+                    self.assertEqual(code, 2, err)
+                    self.assertEqual(self.pinned(r), pinned)
+            code, _, err = self.scope(r, "--accept-bas", forged)                 # no abbreviations
+            self.assertEqual(code, 2, err)
+            self.assertEqual(self.pinned(r), pinned)
+            code, out, err = self.scope(r, "--accept-base", forged)
+            self.assertEqual(code, 0, out + err)
+            self.assertEqual(self.pinned(r), forged)
+
+    def test_a_fast_forward_of_the_base_is_listed_and_needs_the_flag(self):
+        with CiRepo() as r:
+            git(r.root, "checkout", "-q", "main")
+            r.commit({"README.md": "more\n"}, "docs: a person's change")
+            live = git(r.root, "rev-parse", "main")
+            git(r.root, "checkout", "-q", BRANCH)
+            code, _, err = self.scope(r)
+            self.assertEqual(code, 2, err)
+            self.assertIn(f"  {live} aidlc-test <aidlc-test@example.invalid> docs: a person's change", err)
+            self.assertNotIn(f"! {live}", err)
+            code, out, err = self.scope(r, "--accept-base", live)
+            self.assertEqual((code, self.pinned(r)), (0, live), out + err)
+            code, out, err = self.scope(r)                                   # unmoved: no flag needed
+            self.assertEqual(code, 0, out + err)
+
+    def test_a_rewritten_base_says_so_and_needs_the_flag(self):
+        with CiRepo() as r:
+            tree = git(r.root, "rev-parse", "main^{tree}")
+            orphan = git(r.root, "commit-tree", tree, "-m", "rewritten")
+            git(r.root, "update-ref", "refs/heads/main", orphan)
+            code, _, err = self.scope(r)
+            self.assertEqual(code, 2, err)
+            self.assertIn("is not an ancestor", err)
+            self.assertIn(f"--accept-base {orphan}", err)
+            self.assertEqual(self.scope(r, "--accept-base", orphan)[0], 0)
+
+    def test_a_first_scope_is_unchanged_and_never_takes_another_sha(self):
+        from aidlc.scope import default_scope_path
+        with CiRepo() as r:
+            path = default_scope_path(r.root, BRANCH)
+            path.chmod(0o644)
+            path.unlink()
+            code, out, err = self.scope(r)
+            self.assertEqual(code, 0, out + err)
+            self.assertEqual(err, "")
+            path.unlink()
+            self.assertEqual(self.scope(r, "--accept-base", "0" * 40)[0], 2)
+            self.assertFalse(path.exists())
+
+    def test_agents_cannot_accept_a_base(self):
+        from aidlc.policy import load_policy
+        from tests.hook_loader import load_hook
+        self.assertIn("aidlc scope*--accept-base*", load_policy("permissions")["deny"]["shell"])
+        guard = load_hook("guard")
+        for command in (f"aidlc scope --branch {BRANCH} --accept-base {'a' * 40}",
+                        f"/opt/aidlc/bin/aidlc scope --branch x --accept-base={'a' * 40}"):
+            with self.subTest(command=command):
+                decision = guard._check_segment(command.split(), False, False,
+                                                load_policy("permissions")["deny"]["shell"], [], [])
+                self.assertEqual(decision["decision"], "deny", decision)

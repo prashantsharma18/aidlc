@@ -115,7 +115,8 @@ refs/heads/<base>` is allowed.
 > write such as `echo <sha> > .git/refs/heads/main`. Before the scope is generated, such a write
 > can forge the approval that `aidlc scope` reads, so look at the base branch before you scope.
 > After that, local `aidlc ci` refuses to run while the live ref differs from the commit pinned
-> in the scope file. Once a remote exists, the GitHub workflow reads approvals from the pull
+> in the scope file, and `aidlc scope` re-pins only after a person reviews the listed commits and
+> passes `--accept-base <live sha>`. Once a remote exists, the GitHub workflow reads approvals from the pull
 > request's base commit, behind branch protection ([trusted CI](../checks/ci.md)).
 
 ## Protected files that a person owns
@@ -127,7 +128,8 @@ branch still differs from the base), or gitignore it. The flag message tells the
 "commit it, gitignore it, or stop and ask if you did not create it. A person's own file: commit
 it on the base branch". When the base branch has moved since the scope was approved, the message
 adds that a person must re-run `aidlc scope`: after a rebase or merge from the base, the base's
-own new commits look like changes on the task branch until you re-scope.
+own new commits look like changes on the task branch until you re-scope. That re-scope lists the
+base's new commits and needs `--accept-base <live sha>` ([trusted CI](../checks/ci.md)).
 
 ## The retry counter
 
