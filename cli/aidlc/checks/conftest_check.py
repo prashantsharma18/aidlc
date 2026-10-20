@@ -22,6 +22,7 @@ from pathlib import Path
 from ..adapters import get_adapter
 from ..adapters.base import AdapterNotImplemented, RenderedFile, write_rendered
 from ..adapters.claude_code import _deny_write, _sandbox_paths
+from ..ci_templates import render_ci
 from ..harness import REFUSED_WRITE, HarnessError, effective_permissions
 from ..paths import framework_root
 from ..policy import PolicyError, load_policy, load_yaml
@@ -348,7 +349,8 @@ def judge_generated(head: Path, trusted: Path) -> list[Finding]:
         try:
             adapter = get_adapter(name)
             files = (adapter.render_rules(head) + adapter.render_folder_rules(head)
-                     + adapter.render_permissions(head) + adapter.render_hooks(head))
+                     + adapter.render_permissions(head) + adapter.render_hooks(head)
+                     + render_ci(head))
             files = [_with_committed_settings(head, f) for f in files]
             problems = write_rendered(head, files, check=True, managed_dirs=adapter.managed_dirs)
         except (AdapterNotImplemented, ValueError, HarnessError, PolicyError, OSError) as exc:

@@ -16,6 +16,7 @@ from ..adapters import get_adapter
 from ..adapters.base import write_rendered
 from ..adapters.claude_code import (HOOK_FILES, POST_MATCHER, PRE_MATCHER, _deny_write,
                                     _is_literal_protected, _sandbox_paths, _tracked_files)
+from ..ci_templates import render_ci
 from ..hookbridge import hooks as load_hooks
 from ..harness import HarnessError, base_branch, effective_permissions, map_tools
 from ..policy import PolicyError, load_policy
@@ -61,7 +62,8 @@ def check_d1(repo: Path) -> list[Finding]:
     adapter = get_adapter("claude-code")
     try:
         files = (adapter.render_rules(repo) + adapter.render_folder_rules(repo)
-                 + adapter.render_permissions(repo) + adapter.render_hooks(repo))
+                 + adapter.render_permissions(repo) + adapter.render_hooks(repo)
+                 + render_ci(repo))
     except (ValueError, HarnessError, PolicyError, OSError) as exc:
         return [_fail(".", f"D1 cannot render the expected files: {exc}")]
     problems = write_rendered(repo, files, check=True, managed_dirs=adapter.managed_dirs)

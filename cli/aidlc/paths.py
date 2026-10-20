@@ -4,6 +4,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+CI_WORKFLOW = ".github/workflows/aidlc-verify.yml"
+
 
 def framework_root() -> Path:
     """The framework checkout. AIDLC_HOME overrides it (used by tests)."""

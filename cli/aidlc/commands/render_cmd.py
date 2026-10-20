@@ -8,11 +8,13 @@ from pathlib import Path
 
 from ..adapters import adapter_names, get_adapter
 from ..adapters.base import AdapterNotImplemented, write_rendered
+from ..ci_templates import render_ci
 from ..cli import command
 from ..cliinfo import record_base, record_entry, recorded_base
 from ..harness import BRANCH_RE, HarnessError, base_branch
 from ..hookbridge import hooks
 from ..paths import find_repo_root
+from ..policy import PolicyError
 from ..repo import CONFIG
 
 
@@ -69,13 +71,17 @@ def _run(args: argparse.Namespace) -> int:
     adapter = get_adapter(args.tool)
     try:
         files = (adapter.render_rules(repo) + adapter.render_folder_rules(repo)
-                 + adapter.render_permissions(repo) + adapter.render_hooks(repo))
+                 + adapter.render_permissions(repo) + adapter.render_hooks(repo)
+                 + render_ci(repo))
     except AdapterNotImplemented as exc:
         print(f"aidlc render: {exc}", file=sys.stderr)
         return 2
     except (ValueError, HarnessError) as exc:
         print(f"aidlc render: {exc}")  # existing test asserts stdout
         return 1
+    except PolicyError as exc:
+        print(f"aidlc render: {exc}", file=sys.stderr)
+        return 2
     problems = write_rendered(repo, files, check=args.check,
                               managed_dirs=adapter.managed_dirs)
     for problem in problems:

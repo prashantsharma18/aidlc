@@ -8,7 +8,7 @@ from pathlib import Path
 
 from ..harness import HarnessError, effective_permissions, harness_data, map_tools
 from ..hookbridge import hooks
-from ..paths import framework_root
+from ..paths import CI_WORKFLOW, framework_root
 from ..policy import load_yaml
 from ..repo import CONFIG, load_config
 from ..templates import TemplateError, parse_front_matter
@@ -86,14 +86,15 @@ def _is_literal_protected(entry: str) -> bool:
             or (entry.endswith("/**") and not _has_glob(entry[:-3])))
 
 
-def _exists(rel: str, files: list[str]) -> bool:
+def _exists(rel: str, files: list[str], extra: tuple[str, ...] = ()) -> bool:
     """True when a repository path exists for git (a listed file, or a directory holding one)
     or is written by this render."""
     prefix = rel + "/"
-    return any(f == rel or f.startswith(prefix) for f in (*files, *RENDERED_PATHS))
+    return any(f == rel or f.startswith(prefix) for f in (*files, *RENDERED_PATHS, *extra))
 
 
-def _deny_write(repo: Path, protected: list[str], files: list[str] | None = None) -> list[str]:
+def _deny_write(repo: Path, protected: list[str], files: list[str] | None = None,
+                extra: tuple[str, ...] = ()) -> list[str]:
     """Sandbox denyWrite supports only literal files and directories (verified 2026-10-19), so
     glob entries are expanded to the existing files they match. Repository entries are rendered
     only for paths that exist at render time (tracked, or present and not ignored): for a
@@ -110,12 +111,12 @@ def _deny_write(repo: Path, protected: list[str], files: list[str] | None = None
             out.append(pattern[:-3] if pattern.endswith("/**") else pattern)
         else:
             rel = pattern[:-3] if pattern.endswith("/**") else pattern
-            if _exists(rel, files):
+            if _exists(rel, files, extra):
                 out.append(f"./{rel}")
     if globs:
         matches = _guard_matcher()
         for pattern in globs:
-            out += [f"./{p}" for p in (*files, *RENDERED_PATHS) if matches(p, [pattern], any_depth_names=True)]
+            out += [f"./{p}" for p in (*files, *RENDERED_PATHS, *extra) if matches(p, [pattern], any_depth_names=True)]
     return _dedupe(out)
 
 
@@ -169,6 +170,7 @@ class ClaudeCodeAdapter:
         cfg = load_config(repo)
         profile = load_yaml(framework_root() / "core" / "context" / "profiles.yaml")[cfg.profile]
         tools = cfg.tool_names
+        extra = (CI_WORKFLOW,) if "github" in cfg.ci else ()   # rendered by render_ci, not by this adapter
         allow = ["Read" if p == "**" else f"Read(./{p})" for p in eff["allow"]["read"]]
         allow += [f"Edit(./{p})" for p in eff["allow"]["edit"]]
         allow += [f"Bash({s})" for s in eff["allow"]["shell"]]
@@ -188,7 +190,7 @@ class ClaudeCodeAdapter:
                 "autoAllowBashIfSandboxed": True,
                 "filesystem": {
                     "denyRead": _dedupe([p for s in eff["secret_paths"] for p in _sandbox_paths(s)]),
-                    "denyWrite": _deny_write(repo, eff["protected_paths"]),
+                    "denyWrite": _deny_write(repo, eff["protected_paths"], extra=extra),
                     "allowWrite": _dedupe(profile.get("sandbox_allow_write", [])
                                           + [e["value"] for e in eff["sandbox_allow_write_add"]])},
                 "network": {"allowedDomains": _dedupe(profile.get("network_allow", [])

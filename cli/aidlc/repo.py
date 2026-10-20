@@ -28,6 +28,7 @@ class RepoConfig:
     harness: dict = field(default_factory=dict)
     tool_names: dict = field(default_factory=dict)
     test_reports: list[str] = field(default_factory=list)
+    ci: list[str] = field(default_factory=list)
 
 
 def _mapping(data: dict, key: str) -> dict:
@@ -65,9 +66,14 @@ def load_config(repo: Path) -> RepoConfig:
             for p in reports):
         raise ValueError(f"{CONFIG}: 'test_reports' must be a list of relative paths or globs inside the "
                          f"repository, got {reports!r}")
+    ci_list = data.get("ci")
+    if ci_list is None:
+        ci_list = []
+    if not isinstance(ci_list, list) or not all(c == "github" for c in ci_list):
+        raise ValueError(f"{CONFIG}: 'ci' must be a list drawn from [github], got {ci_list!r}")
     return RepoConfig(data["name"], data["owner"], data["profile"], data.get("purpose", ""),
                       _mapping(data, "commands"), list(steps), ctx,
-                      harness=harness, tool_names=_mapping(data, "tool_names"), test_reports=reports)
+                      harness=harness, tool_names=_mapping(data, "tool_names"), test_reports=reports, ci=list(ci_list))
 
 
 def _write(repo: Path, rel: str, text: str, report: list[tuple[str, str]]) -> None:
@@ -96,6 +102,7 @@ def init_repo(repo: Path, name: str, owner: str, profile: str, purpose: str,
     config = {"name": name, "owner": owner, "profile": profile, "purpose": purpose,
               "commands": chosen["commands"], "check_steps": chosen["check_steps"],
               "test_reports": chosen.get("test_reports", []),
+              "ci": [],
               "context": {"rules_file": "AGENTS.md", "map": "docs/codebase-map.md",
                           "review_interval_days": 30},
               "openwiki": {"adopted": False},
