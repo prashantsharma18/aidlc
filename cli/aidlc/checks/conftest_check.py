@@ -24,7 +24,7 @@ from ..adapters.base import AdapterNotImplemented, RenderedFile, write_rendered
 from ..adapters.claude_code import _deny_write, _sandbox_paths
 from ..ci_templates import render_ci
 from ..harness import REFUSED_WRITE, HarnessError, effective_permissions
-from ..paths import framework_root
+from ..paths import CI_WORKFLOW, framework_root
 from ..policy import PolicyError, load_policy, load_yaml
 from ..repo import CONFIG
 from ..tools import which_tool
@@ -325,6 +325,16 @@ def _walk_extras(head: Path, rendered: set[str], dirs: tuple[str, ...], unmanage
     return out
 
 
+def _render_ci_for(head: Path, trusted_lists_github: bool) -> list[RenderedFile]:
+    """The workflow, rendered when the head's config or the trusted config lists `github`. A head that
+    drops `ci: [github]` and deletes the workflow still FAILs: the trusted config decides."""
+    files = render_ci(head)
+    if files or not trusted_lists_github:
+        return files
+    raise ValueError("the trusted configuration lists ci: [github] but the head's configuration does not; "
+                     f"{CI_WORKFLOW} is missing")
+
+
 def judge_generated(head: Path, trusted: Path) -> list[Finding]:
     """Render every generated file from the head's sources with the trusted framework code and compare
     it with what the head committed. Each stale, missing, edited or orphaned file is a FAIL, and so is
@@ -341,6 +351,8 @@ def judge_generated(head: Path, trusted: Path) -> list[Finding]:
         tools = DEFAULT_TOOLS
     if not isinstance(tools, list) or not tools or not all(isinstance(t, str) for t in tools):
         return [Finding("FAIL", str(CONFIG), 0, f"the trusted configuration's 'tools' must be a list of tool names, got {tools!r}")]
+    ci_tools = raw.get("ci") if isinstance(raw, dict) else None
+    github_ci = isinstance(ci_tools, list) and "github" in ci_tools      # the trusted config lists it
     refused = _check_render_inputs(head)
     if refused:
         return refused
@@ -350,7 +362,7 @@ def judge_generated(head: Path, trusted: Path) -> list[Finding]:
             adapter = get_adapter(name)
             files = (adapter.render_rules(head) + adapter.render_folder_rules(head)
                      + adapter.render_permissions(head) + adapter.render_hooks(head)
-                     + render_ci(head))
+                     + _render_ci_for(head, github_ci))
             files = [_with_committed_settings(head, f) for f in files]
             problems = write_rendered(head, files, check=True, managed_dirs=adapter.managed_dirs)
         except (AdapterNotImplemented, ValueError, HarnessError, PolicyError, OSError) as exc:

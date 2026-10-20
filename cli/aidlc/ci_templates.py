@@ -27,7 +27,12 @@ def render_ci(repo: Path) -> list[RenderedFile]:
     if not isinstance(base, str) or not BRANCH_RE.fullmatch(base):
         raise ValueError(f"harness.base_branch '{base}' is not a valid branch name")
     root = framework_root() / "core" / "ci" / "github"
-    setup = load_yaml(root / "setup.yaml").get(config.profile, "") or ""
+    setups = load_yaml(root / "setup.yaml")                 # `meta` is traceability data, not a profile
+    if not isinstance(setups, dict) or config.profile not in setups:
+        raise ValueError(f"core/ci/github/setup.yaml has no entry for profile '{config.profile}'")
+    setup = setups[config.profile]
+    if not isinstance(setup, str):
+        raise ValueError(f"core/ci/github/setup.yaml: '{config.profile}' must be a text block")
     text = (root / "aidlc-verify.yml").read_text(encoding="utf-8")
     text = text.replace("{{BASE_BRANCH}}", base).replace("{{SETUP}}\n", setup)
     if "{{" in re.sub(r"\$\{\{.*?\}\}", "", text):

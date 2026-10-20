@@ -9,6 +9,7 @@
     "required_checks",
     "require_branch_up_to_date",
     "approvals",
+    "code_owned_paths",
     "require_resolved_comments",
     "bypass_allowed_for",
     "allow_force_push",
@@ -75,6 +76,24 @@
     },
     "allow_deletion": {
       "const": false
+    },
+    "code_owned_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^/"
+      },
+      "minItems": 1,
+      "contains": {
+        "const": "/.github/"
+      },
+      "allOf": [
+        {
+          "contains": {
+            "const": "/.aidlc/"
+          }
+        }
+      ]
     }
   }
 }

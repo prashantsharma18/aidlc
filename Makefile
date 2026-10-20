@@ -17,7 +17,7 @@ export AIDLC_TOOLS_DIR
 .PHONY: policy-test
 policy-test:
 	bin/aidlc policy rego-test
-	@log=$$(mktemp); $(PY) -m unittest -v tests.unit.test_conftest_check > $$log 2>&1; status=$$?; cat $$log; \
+	@log=$$(mktemp); $(PY) -m unittest -v tests.unit.test_conftest_check tests.unit.test_ci_templates > $$log 2>&1; status=$$?; cat $$log; \
 	skipped=$$(grep -cE "skipped=|\.\.\. skipped " $$log); rm -f $$log; \
 	if [ $$status -ne 0 ]; then exit $$status; fi; \
 	if [ $$skipped -ne 0 ]; then echo "policy-test: skipped test(s): install conftest (aidlc tools install conftest) or set AIDLC_TOOLS_DIR"; exit 1; fi

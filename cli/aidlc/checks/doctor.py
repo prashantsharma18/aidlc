@@ -70,6 +70,21 @@ def check_d1(repo: Path) -> list[Finding]:
     return [_fail(".", f"D1 {p}") for p in problems]
 
 
+TOOLCHAIN_FILE = {"node": ".nvmrc", "dotnet": "global.json"}
+
+
+def check_d14(repo: Path) -> list[Finding]:
+    """The workflow's setup step reads pr/.nvmrc (node) or pr/global.json (dotnet); nothing else creates them."""
+    try:
+        config = load_config(repo)
+    except (ValueError, FileNotFoundError, PolicyError, OSError) as exc:
+        return [_fail(".aidlc/config.yaml", f"D14 cannot read the configuration: {exc}")]
+    need = TOOLCHAIN_FILE.get(config.profile)
+    if "github" not in config.ci or need is None or (repo / need).is_file():
+        return []
+    return [_fail(need, f"ci: [github] needs {need} at the repository root for the {config.profile} toolchain")]
+
+
 def check_d2(repo: Path, settings: dict, eff: dict) -> list[Finding]:
     deny = _get(settings, "permissions", "deny", default=[])
     deny_read = _get(settings, "sandbox", "filesystem", "denyRead", default=[])
@@ -454,7 +469,7 @@ def run_doctor(repo: Path, which=shutil.which, claude_version: str | None = None
     try:
         eff = effective_permissions(repo)
         tool_names = load_config(repo).tool_names
-    except (HarnessError, PolicyError, FileNotFoundError, OSError) as exc:
+    except (HarnessError, PolicyError, FileNotFoundError, OSError, ValueError) as exc:
         return findings + [_fail(".aidlc", f"D1 cannot compute the effective permissions: {exc}")]
     if settings is not None:
         findings += check_d2(repo, settings, eff)
@@ -468,6 +483,7 @@ def run_doctor(repo: Path, which=shutil.which, claude_version: str | None = None
     findings += check_d10(claude_version)
     findings += check_d12(repo)
     findings += check_d13(repo)
+    findings += check_d14(repo)
     if settings is not None:
         try:
             findings += check_d11(repo, settings, eff)

@@ -8,6 +8,7 @@ approvals:
   from_code_owners: true
   excluded_identities: [pr_author, commit_pushers]
   dismiss_on_new_commits: true
+code_owned_paths: ["/.github/", "/.aidlc/"]   # CODEOWNERS must cover these, with required code-owner review
 require_resolved_comments: true
 bypass_allowed_for: []
 allow_force_push: false

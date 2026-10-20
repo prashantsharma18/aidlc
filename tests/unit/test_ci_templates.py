@@ -212,3 +212,122 @@ class JudgeGeneratedTest(unittest.TestCase):
             self.assertEqual([str(f) for f in judge_generated(root, root)], [])
         finally:
             repo.__exit__(None, None, None)
+
+
+class FixRoundOneTest(unittest.TestCase):
+    def setUp(self):
+        self.repo, self.root = installed()
+
+    def tearDown(self):
+        self.repo.__exit__(None, None, None)
+
+    def test_header_states_the_trust_boundary(self):
+        f, _ = workflow(self.root)
+        header = "\n".join(line for line in f.content.splitlines() if line.startswith("#"))
+        self.assertIn("CODEOWNERS", header)
+        self.assertIn("/.github/", header)
+        self.assertIn("/.aidlc/", header)
+        self.assertIn("code-owner review", header)
+        self.assertIn("required-workflow", header)
+        self.assertNotIn("from the protected base", header)
+
+    def test_branch_protection_requires_code_owned_workflow_paths(self):
+        policy = load_policy("branch-protection")
+        self.assertEqual(policy["code_owned_paths"], ["/.github/", "/.aidlc/"])
+
+    def test_policy_validate_rejects_a_bad_code_owned_paths(self):
+        import aidlc.policy as policy
+        data = load_policy("branch-protection")
+        data = dict(data, code_owned_paths=[])
+        schema = policy._schema(policy.framework_root(), "branch-protection")
+        self.assertTrue(policy._errors(schema, data, "bp"))
+
+    def test_policy_test_target_runs_this_file(self):
+        from aidlc.paths import framework_root
+        text = (framework_root() / "Makefile").read_text()
+        self.assertIn("tests.unit.test_ci_templates", text)
+
+    def test_trusted_checkout_is_the_base_sha(self):
+        _, data = workflow(self.root)
+        for name, job in data["jobs"].items():
+            with self.subTest(job=name):
+                trusted = next(s for s in job["steps"] if s.get("with", {}).get("path") == "trusted")
+                self.assertEqual(trusted["with"]["ref"], "${{ github.event.pull_request.base.sha }}")
+
+    def test_setup_node_does_not_cache(self):
+        _, data = workflow(self.root)
+        step = next(s for s in data["jobs"]["check"]["steps"] if s.get("uses", "").startswith("actions/setup-node@"))
+        self.assertIs(step["with"]["package-manager-cache"], False)
+
+    def test_doctor_needs_the_toolchain_file(self):
+        from aidlc.checks.doctor import check_d14
+        for profile, name in (("node", ".nvmrc"), ("dotnet", "global.json")):
+            repo, root = installed(profile=profile)
+            try:
+                with self.subTest(profile=profile):
+                    found = check_d14(root)
+                    self.assertEqual(
+                        [f.message for f in found],
+                        [f"ci: [github] needs {name} at the repository root for the {profile} toolchain"])
+                    self.assertTrue(all(f.level == "FAIL" for f in found))
+                    (root / name).write_text("x\n")
+                    self.assertEqual(check_d14(root), [])
+            finally:
+                repo.__exit__(None, None, None)
+
+    def test_doctor_needs_nothing_without_ci_or_for_generic(self):
+        from aidlc.checks.doctor import check_d14
+        repo, root = installed(ci=())
+        try:
+            self.assertEqual(check_d14(root), [])
+        finally:
+            repo.__exit__(None, None, None)
+        repo, root = installed(profile="generic")
+        try:
+            self.assertEqual(check_d14(root), [])
+        finally:
+            repo.__exit__(None, None, None)
+
+    def test_doctor_survives_an_unknown_ci_value(self):
+        from aidlc.checks.doctor import run_doctor
+        repo, root = installed(ci=("gitlab",))
+        try:
+            findings = run_doctor(root, which=lambda _: None)
+            self.assertTrue(any(f.level == "FAIL" for f in findings))
+        finally:
+            repo.__exit__(None, None, None)
+
+    def test_trace_lists_ci_github(self):
+        from aidlc.trace import collect
+        elements, problems = collect()
+        self.assertEqual(problems, [])
+        self.assertIn("ci-github", {e.id for e in elements})
+
+    def test_render_ignores_meta_and_rejects_bad_setup(self):
+        import shutil
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from aidlc.paths import framework_root
+        [f] = render_ci(self.root)
+        self.assertNotIn("review_by", f.content)
+        for body in ("meta: {id: x}\nnode: 5\ngeneric: ''\n", "meta: {id: x}\ngeneric: ''\n"):
+            with tempfile.TemporaryDirectory() as tmp:
+                fw = Path(tmp)
+                shutil.copytree(framework_root() / "core" / "ci", fw / "core" / "ci")
+                (fw / "core/ci/github/setup.yaml").write_text(body)
+                with mock.patch("aidlc.ci_templates.framework_root", return_value=fw):
+                    with self.assertRaises(ValueError):
+                        render_ci(self.root)
+
+    def test_judge_renders_when_only_the_trusted_config_lists_github(self):
+        from aidlc.checks.conftest_check import judge_generated
+        run_cli("render", "--tool", "claude-code", str(self.root))
+        trusted = self.root
+        repo, head = installed(ci=())
+        try:
+            run_cli("render", "--tool", "claude-code", str(head))
+            findings = judge_generated(head, trusted)
+            self.assertTrue(any(f.level == "FAIL" and OUTPUT in str(f.file) + f.message for f in findings), findings)
+        finally:
+            repo.__exit__(None, None, None)
