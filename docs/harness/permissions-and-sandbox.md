@@ -117,8 +117,6 @@ carry most of the weight:
 
 The shell deny rule `aidlc attempts*--reset*` closes the last route: the command that resets the
 counter. Only a person runs it, after reading why the agent kept failing.
-`aidlc scope*--accept-base*` does the same for the command that pins a moved base branch: only a
-person accepts a new base, after reading the commits `aidlc scope` lists.
 
 `aidlc ci` runs the change's own code in a second, stricter sandbox: bubblewrap with a private
 home and no network outside the install step. That one is described in [trusted CI](../checks/ci.md#the-sandbox).

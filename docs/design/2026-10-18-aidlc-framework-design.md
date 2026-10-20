@@ -80,7 +80,7 @@ flowchart LR
   CLI -- "adapter interface" --> CC["adapters/claude-code (built)"]
   CLI -. "adapter interface" .-> GH["adapters/copilot (extension point only)"]
   CC --> REPO[("installed repo: AGENTS.md, .aidlc/, .claude/, ci/")]
-  CLI --> CI["local trusted-CI runner / GitHub Actions"]
+  CLI --> CI["GitHub Actions (trusted) / local preview"]
   CI --> REPO
   OB --> COL["platform OTel Collector :4318"]
 ```
@@ -130,7 +130,7 @@ aidlc/
                    secrets (wrapper), immutable-contracts
     evals/         runner, schemas (case, event, rubric), judge package, shared cases
     observability/ attribute map, emitters (hook decisions, check results, eval runs)
-    ci/            local trusted-CI runner; GitHub Actions templates (inactive)
+    ci/            GitHub Actions templates (the trusted CI, ADR 0002)
   adapters/
     claude-code/   plugin assets, managed-settings drop-in, hook shims (Plan 2)
   cli/aidlc/       init-repo, render, scope, check, ci, eval, review, workspace,
@@ -389,7 +389,7 @@ aidlc-workspace/                 a folder, not a repository
 
 | Real | Simulated (labelled) |
 |---|---|
-| Code, tests, contract compatibility, hooks blocking in live sessions, scope, attack tests, local trusted CI, AI review and evals via `claude -p`, OpenWiki output, telemetry in Langfuse/Loki/Mimir | Branch protection and CODEOWNERS (no Git host), production release and flag service (config), human approvals (records for the user) |
+| Code, tests, contract compatibility, hooks blocking in live sessions, scope, attack tests, trusted CI on GitHub Actions, AI review and evals via `claude -p`, OpenWiki output, telemetry in Langfuse/Loki/Mimir | Code-owner review (a single owner cannot approve their own pull request), production release and flag service (config), human approvals (records for the user) |
 
 ## 12. Phases
 
