@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Claude Code adapter shim: translates Claude Code hook payloads to the generic contract and
-back. Usage: claude_shim.py pre|post. "No objection" is no output (never permissionDecision
+back. Usage: claude_shim.py pre|post|post-failure. "No objection" is no output (never permissionDecision
 "allow"). Any internal error exits 2, which Claude Code treats as a block; settings also set
 onFailure: block so a crash or timeout blocks too."""
 from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -24,6 +25,15 @@ READ_TOOLS = ("Read", "Glob", "Grep", "LS", "NotebookRead", "TodoWrite", "Task",
 CLASSES = {**{name: "read" for name in READ_TOOLS},
            "Edit": "edit", "Write": "edit", "MultiEdit": "edit", "NotebookEdit": "edit",
            "Bash": "shell", "Monitor": "shell", "WebFetch": "external", "WebSearch": "external"}
+
+
+EXIT_CODE_RE = re.compile(r"Exit code (\d+)")
+
+
+def _text(response) -> str:
+    if isinstance(response, dict):
+        return "\n".join(str(response.get(key) or "") for key in ("stdout", "stderr"))
+    return response if isinstance(response, str) else json.dumps(response)
 
 
 def to_generic(payload: dict, phase: str) -> dict:
@@ -51,9 +61,17 @@ def to_generic(payload: dict, phase: str) -> dict:
             args = {}
     event = {"session": payload.get("session_id"), "call": payload.get("tool_use_id"),
              "tool": tool, "args": args, "cwd": payload.get("cwd") or os.getcwd()}
-    if phase == "post":
-        event["output"] = json.dumps(payload.get("tool_response"))
+    if phase in ("post", "post-failure"):
         event["hook"] = "post-tool-check"
+        if phase == "post":
+            response = payload.get("tool_response")
+            event["output"], event["text"], event["exit_code"] = json.dumps(response), _text(response), 0
+        else:
+            error = payload.get("error")
+            error = error if isinstance(error, str) else json.dumps(error)
+            match = EXIT_CODE_RE.match(error)
+            event["output"], event["text"] = error, error
+            event["exit_code"] = int(match.group(1)) if match else None
     return event
 
 
@@ -61,8 +79,8 @@ def main(argv: list[str]) -> int:
     guard = None
     try:
         phase = argv[1] if len(argv) > 1 else ""
-        if phase not in ("pre", "post"):
-            raise ValueError(f"phase must be pre or post, got '{phase}'")
+        if phase not in ("pre", "post", "post-failure"):
+            raise ValueError(f"phase must be pre, post or post-failure, got '{phase}'")
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         import guard  # noqa: E402
         import post_check  # noqa: E402
@@ -78,14 +96,20 @@ def main(argv: list[str]) -> int:
                     "hookEventName": "PreToolUse", "permissionDecision": result["decision"],
                     "permissionDecisionReason": guard._redact(f"[aidlc {result['rule']}] {result['reason']}")}}))
             return 0
+        attempt = post_check.record_check(event)
+        if attempt is not None:
+            guard._log({**event, "hook": "check-attempts"}, attempt)
         if len(event["output"]) > MAX_OUTPUT_CHARS:
             result = {"decision": "flag", "rule": "fail-safe",
                       "reason": "tool output too large to scan for credentials"}
         else:
             result = post_check.check(event)
+        if result["decision"] != "flag" and attempt is not None and attempt["decision"] == "flag":
+            result = attempt
         guard._log(event, result)
         if result["decision"] == "flag":
-            print(json.dumps({"decision": "block", "reason": guard._redact(f"[aidlc {result['rule']}] {result['reason']}")}))
+            print(json.dumps({"decision": "block",
+                              "reason": guard._redact(f"[aidlc {result['rule']}] {result['reason']}")}))
         return 0
     except Exception as exc:  # noqa: BLE001 - exit 2 blocks in Claude Code
         detail = type(exc).__name__

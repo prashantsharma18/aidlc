@@ -8,7 +8,7 @@ installed with this framework, and what governs it.
 | Class | Lives in | Governed by |
 |---|---|---|
 | 1 Rules | `AGENTS.md` (+ generated `CLAUDE.md`); `.aidlc/rules/` folder rules | `aidlc render`, `aidlc check context-drift`, code owners; must-hold rules also enforced (Plan 2) |
-| 2 Procedures | Skills (Plan 4); `docs/procedures/` | Skill reviews and agent-configuration evals |
+| 2 Procedures | Skills (Plan 5); `docs/procedures/` | Skill reviews and agent-configuration evals |
 | 3 Examples | Repository files named in the rules and map | Drift check (named paths must exist) |
 | 4 Curated knowledge | `docs/codebase-map.md`, decision records, contracts, runbooks | Drift check (paths, owner, last-verified date and commit) |
 | 5 Derived knowledge | `openwiki/` (if adopted), explorer summaries | `aidlc check openwiki`; always verified against code |

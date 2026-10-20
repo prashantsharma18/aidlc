@@ -1,0 +1,9 @@
+meta: {id: ci-github, owner: "@platform-team", review_by: "2027-04-18", guide: ["11.8", "9.7", "13.8"]}
+# Per-profile toolchain steps for core/ci/github/aidlc-verify.yml. Actions pinned by commit SHA.
+node: |2
+        - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+          with: {node-version-file: pr/.nvmrc, package-manager-cache: false}
+dotnet: |2
+        - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68  # v6.0.0
+          with: {global-json-file: pr/global.json}
+generic: ""

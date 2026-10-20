@@ -8,6 +8,10 @@ approvals:
   from_code_owners: true
   excluded_identities: [pr_author, commit_pushers]
   dismiss_on_new_commits: true
+# CODEOWNERS must cover these, with required code-owner review: the workflow, the harness, and the
+# evidence trusted CI reads from the base branch (approvals, merge approvals, declared skips, exceptions).
+code_owned_paths: ["/.github/", "/.aidlc/", "/plans/approved-bundles.txt", "/plans/approved-merges.txt",
+                   "/test/allowed-skips.txt", "/test/protected-exceptions.txt"]
 require_resolved_comments: true
 bypass_allowed_for: []
 allow_force_push: false

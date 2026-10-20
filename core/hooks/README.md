@@ -33,9 +33,27 @@ Runs after `Edit`, `Write`, `MultiEdit`, `NotebookEdit`, `Bash`, `Monitor` and `
 3. Any new or changed path (diff against the merge base, plus untracked files that are not ignored) that matches `protected_paths` or has a `.git` segment flags `protected-path`.
 4. Then the scope, changed assertions and skipped tests.
 
+### Retry limit (guide 8.8, 8.13)
+
+`post_check.record_check` counts runs of the one-command check (`aidlc check` without a named check), and the guard enforces the limit. Claude Code does not fire `PostToolUse` for a Bash call that exits non-zero, so the shim also handles `PostToolUseFailure` (phase `post-failure`).
+
+- A shell call counts only when some part of it runs the check, including inside a substitution, `bash -c` or `eval`.
+- It is a PASS only when all hold: the whole command is exactly `<entry> check` (optionally `--repo <path>`, no assignment prefix, no wrapper), where `<entry>` is the recorded entry string, byte for byte; it exited 0; the last `check  result` line says `PASS`; no step line says `SKIPPED`; and the single `check  context` line names this repository, the base the post-check computes, the scope file the guard reads, and `mode=require`.
+- Runs the parser cannot see (`python3 -m aidlc check`, `$A check`, make or npm wrappers) are still counted once: every check writes a fresh `run` id to `.check/result.json`, and an id the counter has not seen (`last_run` in the record) counts as one failing attempt on any shell call.
+- Run-id counting catches honest wrappers such as `python3 -m aidlc` and make targets. It does not catch deliberate tampering with `.check/result.json`.
+- The exact-command rule: the only credit is for the framework's `bin/aidlc` realpath, recorded per repository in `$AIDLC_HOME_DIR/entry/<repo>-<hash8>.json` by `aidlc render`. The hook does no PATH lookup and no path resolution: a bare `aidlc`, a relative path, a `..` spelling or a link is never exact. At hook time the entry must still be its own realpath, a regular file, and outside the repository and `$CLAUDE_PROJECT_DIR` (when it is set). `aidlc render` refuses to record an entry whose framework root (the directory above `bin/`) overlaps the repository, a sandbox `allowWrite` path, `/tmp`, `/var/tmp`, `/dev/shm` or `$TMPDIR`: the root lies in one of them, or one of them lies in the root, such as an `allowWrite` of `<framework>/cli` (it warns and removes any stale record). When a call runs the check but is not exact, the hook's message says `run exactly: <entry> check`. `bin/aidlc` runs `python3 -P`, so a repository's own `aidlc` package cannot replace the CLI.
+- `aidlc attempts --reset` writes a zero count that keeps the run id on disk, so a reset is not undone by the next unrelated call. The first sight of a run, with no record, is adopted without counting.
+- Named checks (`context-drift`, `openwiki`) anywhere after `check`, other than as the value of `--repo`, are not the one-command check.
+- Anything else that runs the check is a failing attempt. An unknown exit code (`None`) is never a PASS.
+- A PASS resets the counter. Each failing attempt adds one. At `retry_cap` (`harness.json`, from `routing.yaml`, default 3) the post hook flags `retry-limit`, and the guard denies every `edit` and `shell` call with `retry-limit`. Reads stay allowed.
+- Rule ids: `check-recorded` (post, pass) and `retry-limit` (post flag, pre deny).
+- The record is `$AIDLC_HOME_DIR/attempts/<repo name>-<8 hex of the repo path hash>/<branch with / as __>.json`; a detached HEAD uses `__detached__.json`. Updates hold an exclusive `flock`, so parallel hooks lose no count.
+- Fail closed: an unreadable record, a record, its directories (`attempts/`, `<repo>-<hash>/`) or its `.lock` being a symlink or not a regular file, counts as at the limit.
+- Only hooks write the record. The sandbox denies `~/.aidlc` to agent shells, and `aidlc attempts*--reset*` is a shell deny rule, so an agent cannot reset its own counter. A person runs `aidlc attempts --reset`.
+
 ## claude_shim.py (Claude Code adapter shim)
 
-Translates Claude Code hook payloads to the generic contract and back. `CLASSES` maps tool names to classes; an unlisted tool is `unknown`. On any internal error it exits 2 (a block) and writes one best-effort `fail-safe` record to the decision log.
+Usage: `claude_shim.py pre|post|post-failure`. Post events carry `text` (stdout and stderr, or the error text) and `exit_code` (0 for `post`; parsed from `Exit code N` for `post-failure`, else `None`). Translates Claude Code hook payloads to the generic contract and back. `CLASSES` maps tool names to classes; an unlisted tool is `unknown`. On any internal error it exits 2 (a block) and writes one best-effort `fail-safe` record to the decision log.
 
 ## Environment
 
@@ -45,7 +63,7 @@ Translates Claude Code hook payloads to the generic contract and back. `CLASSES`
 | `AIDLC_UNATTENDED` | Any non-empty value except `0`, `false` or `no` (case-insensitive) makes every `ask` a `deny`. |
 | `AIDLC_SCOPE=off` | Edit scope is not enforced. Refused when unattended. Logged. |
 | `AIDLC_SCOPE_FILE` | Explicit scope file. Ignored if it lives inside the repository. |
-| `AIDLC_HOME_DIR` | Base for scope files. Default: `~/.aidlc`. Scope files live at `scopes/<repo>/<branch with / as __>.scope`. |
+| `AIDLC_HOME_DIR` | Base for scope files. Default: `~/.aidlc`. Scope files live at `scopes/<repo>/<branch with / as __>.scope`. The retry counter lives at `attempts/<repo>-<hash>/<branch>.json`, and `entry/<repo>-<hash>.json` records the framework's own `aidlc` entry point. |
 | `AIDLC_LOG_DIR` | Log directory. Default: `~/.aidlc/logs`. |
 
 ## Deliberate limits

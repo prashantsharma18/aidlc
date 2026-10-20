@@ -71,7 +71,9 @@
       "Bash(curl *)",
       "Bash(wget *)",
       "Bash(npm publish*)",
-      "Bash(dotnet nuget push*)"
+      "Bash(dotnet nuget push*)",
+      "Bash(aidlc attempts*--reset*)",
+      "Bash(aidlc scope*--accept-base*)"
     ],
     "disableBypassPermissionsMode": "disable"
   },
@@ -136,6 +138,19 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PROJECT_DIR}/.aidlc/hooks/claude_shim.py\" post",
+            "timeout": 10,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "^(Edit|Write|MultiEdit|NotebookEdit|Bash|Monitor|BashOutput)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.aidlc/hooks/claude_shim.py\" post-failure",
             "timeout": 10,
             "onFailure": "block"
           }

@@ -62,6 +62,16 @@ def collect(root: Path | None = None) -> tuple[list[Element], list[str]]:
         problems += _guide_problems(meta.get("guide"), rel)
         elements.append(Element(meta.get("id", path.stem), "policy", rel, list(meta.get("guide") or [])))
 
+    for path in sorted((core / "ci").glob("*/setup.yaml")):
+        rel = str(path.relative_to(root))
+        try:
+            meta = load_yaml(path).get("meta", {})
+        except (PolicyError, AttributeError) as exc:
+            problems.append(f"{rel}: {exc}")
+            continue
+        problems += _guide_problems(meta.get("guide"), rel)
+        elements.append(Element(meta.get("id", path.parent.name), "ci", rel, list(meta.get("guide") or [])))
+
     md_sources = [("template", sorted((core / "templates").glob("*.md")), "guide"),
                   ("context", sorted(p for p in (core / "context").rglob("*.md")
                                      if p.name not in SKIP_NAMES), "guide"),

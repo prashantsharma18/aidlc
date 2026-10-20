@@ -11,7 +11,7 @@ Run it after every render, after upgrading Claude Code and in CI.
 | D1 | FAIL | The rendered files (`CLAUDE.md`, rules, `.claude/settings.json`, `.aidlc/hooks/`) match what render would write now, and the effective permissions can be computed | Run `aidlc render --tool claude-code` and commit. If it cannot compute, fix the message it prints (usually `.aidlc/permissions.yaml`) |
 | D2 | FAIL | Every secret path has a `Read()` deny and its sandbox `denyRead` entries (a bare name such as `.env` needs both `./.env` and `./**/.env`) | Render again. Never hand-edit settings |
 | D3 | FAIL | Sandbox enabled, `failIfUnavailable` true, `allowUnsandboxedCommands` false, bypass mode disabled, no bare tool in `allow` | Render again. A bare tool rule means a stray hand edit |
-| D4 | FAIL | Exactly one pre and one post hook entry, with the adapter's matcher (pre `.*`, so every tool reaches the guard) and `onFailure: block`; all hook files exist; a self-test shows the guard denies `git push`, denies on unreadable data and denies garbage input. The self-test runs with `python -I -B`, so it leaves no `__pycache__` | Render again. A failing self-test means the copy was tampered with |
+| D4 | FAIL | Exactly one hook entry for each of `PreToolUse`, `PostToolUse` and `PostToolUseFailure`, with the adapter's matcher (pre `.*`, so every tool reaches the guard; both post events share the post matcher) and `onFailure: block`; all hook files exist; a self-test shows the guard denies `git push`, denies on unreadable data and denies garbage input. The self-test runs with `python -I -B`, so it leaves no `__pycache__` | Render again. A failing self-test means the copy was tampered with |
 | D5 | FAIL | `bwrap` and `socat` are on PATH (Linux) | Install them, for example `sudo apt install bubblewrap socat` |
 | D6 | WARN | Each `allow_add`, `network_allow_add` and `sandbox_allow_write_add` entry in `.aidlc/permissions.yaml` loosens the baseline; the warning names the value, reason and owner | Confirm the reason and owner are still right, or remove the entry |
 | D7 | WARN | A tool name in the policy has no mapping in `.aidlc/config.yaml` and is dropped | Add the mapping, or the rule does nothing |
@@ -20,6 +20,8 @@ Run it after every render, after upgrading Claude Code and in CI.
 | D10 | FAIL, WARN | Claude Code is at least 2.1.295, which `onFailure` needs. Unknown version warns | Upgrade Claude Code |
 | D11 | FAIL, WARN | Protected paths, see below | See below |
 | D12 | FAIL | The base branch (`harness.base_branch`, default `main`) exists | Commit on the base branch, or set `harness.base_branch` in `.aidlc/config.yaml` |
+| D13 | FAIL, WARN | Settings files that override the harness, see below | Remove the override, or move the need into `.aidlc/permissions.yaml` |
+| D14 | FAIL | With `ci: [github]`, the toolchain file the workflow reads exists at the repository root: `.nvmrc` for node, `global.json` for dotnet | Add the file and commit it |
 
 ## D11: protected paths
 
@@ -39,6 +41,31 @@ The reasons are in [permissions and sandbox](permissions-and-sandbox.md). If D11
 the expected entries, it fails with the reason. The usual cause is a directory that is not a git
 repository, because the expansion needs `git ls-files`.
 
+## D13: settings that override the harness
+
+Claude Code merges several settings files. Three can weaken what render wrote:
+`.claude/settings.local.json`, user settings (under `CLAUDE_CONFIG_DIR` when it is set) and
+managed settings. D13 reads each one that exists. It fails when a file:
+
+- turns the sandbox off or makes it optional, allows unsandboxed commands, or re-enables bypass
+  mode (local and managed settings only: those outrank the project file);
+- sets `disableAllHooks`, or `permissions.defaultMode: bypassPermissions`;
+- sets an `env` variable that redirects or disables the harness, such as `AIDLC_HOME_DIR`,
+  `AIDLC_HOME`, `AIDLC_TOOLS_DIR`, `AIDLC_USER_SETTINGS`, `AIDLC_MANAGED_SETTINGS` or
+  `PYTHONPATH`, which could load another `aidlc` package (the full list is `HARNESS_ENV` in the
+  doctor code);
+- sets `sandbox.excludedCommands`;
+- grants a sandbox `allowWrite` that reaches the harness;
+- grants an `allowWrite` or `additionalDirectories` entry that overlaps the framework: its root
+  (the directory above the recorded `bin/aidlc`), anything under it such as `cli/` or
+  `core/hooks/`, or any parent of it. An agent that can write the framework's code could forge a
+  passing check;
+- holds a grant containing `$`. Doctor cannot resolve it, and a grant it cannot resolve counts
+  as reaching.
+
+It warns when a file cannot be read, allows a bare tool, defines its own hooks, or sets `PATH` in
+`env`. A `PATH` that puts a writable directory first changes which tools the agent's commands run.
+
 ## What doctor cannot see
 
 Doctor reads the repository. It cannot see how a session starts.
@@ -47,8 +74,8 @@ Doctor reads the repository. It cannot see how a session starts.
   settings, so no permissions, sandbox or hooks apply (check 7 in
   [the sandbox verification](../verification/2026-10-18-sandbox-wsl2.md#2026-10-19-check-7)).
   Start Claude Code at the repository root. Enforcing this belongs to managed or user settings.
-- **Settings outside the repository.** `settings.local.json`, user settings and managed settings
-  can add rules. Doctor does not inspect them yet (Plan 3).
+- **Options given when a session starts.** D13 reads the settings files. It cannot see a
+  `--settings` file or a permission mode passed on the command line.
 
 ## Reading the output
 

@@ -16,4 +16,4 @@ risks:
   - {id: recursive-delete, action: "rm -rf / rm -fr", harm: "Lost work", reversible: false, severity: high, controls: [hook-pre, permission, sandbox]}
   - {id: log-personal-data, action: "Log a plain email address or other personal data", harm: "Personal data in logs", reversible: false, severity: medium, controls: [rule, ci]}
   - {id: tracker-write, action: "Comment on, transition or delete tracker issues", harm: "False status; noise for other people", reversible: true, severity: medium, controls: [permission, gateway]}
-  - {id: runaway-loop, action: "Retry the same failing check without limit", harm: "Cost and time", reversible: true, severity: low, controls: [retry-limit, budget]}
+  - {id: runaway-loop, action: "Retry the same failing check without limit", harm: "Cost and time", reversible: true, severity: low, controls: [retry-limit, budget, hook-pre, hook-post]}

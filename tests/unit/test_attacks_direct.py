@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tests.harness_live.fixture import BRANCH, build_repo
 
@@ -140,8 +141,42 @@ class AttackTest(unittest.TestCase):
         self.assertNotIn("attacker.example", json.dumps(self.sandbox["network"]["allowedDomains"]))
 
     # 10
-    def test_10_retry_limit(self):
-        self.skipTest("deferred to Plan 3: runner enforces retry limit")
+    def test_10_retry_limit_task_whose_test_cannot_pass(self):
+        """Attempt 10: after three recorded failing checks the rendered guard denies an in-scope
+        edit with retry-limit, and a later passing check (the exact recorded entry) resets it."""
+        from tests.unit.test_retry_limit import FAIL_TEXT, guard, install_entry, pass_text, post, ran
+
+        harness = self.root / ".aidlc" / "hooks" / "harness.json"
+        env = {"AIDLC_HOME_DIR": str(self.home), "AIDLC_LOG_DIR": str(self.logs),
+               "AIDLC_HARNESS_FILE": str(harness)}
+        with mock.patch.dict(os.environ, env):
+            for key in ("AIDLC_UNATTENDED", "AIDLC_SCOPE", "AIDLC_SCOPE_FILE", "AIDLC_BASE_REF"):
+                os.environ.pop(key, None)
+            record = guard.entry_file(self.root)
+            rendered = record.read_bytes() if record.is_file() else None
+            attempts = guard.attempts_file(self.root, BRANCH)
+            self.addCleanup(lambda: attempts.unlink(missing_ok=True))
+            self.addCleanup(lambda: record.write_bytes(rendered) if rendered is not None
+                            else record.unlink(missing_ok=True))
+            stubs = tempfile.TemporaryDirectory(prefix="aidlc-entry-")
+            self.addCleanup(stubs.cleanup)
+            entry = install_entry(self.root, stubs.name)
+            app = str(self.root / "src" / "app.js")
+
+            self.assertEqual(self.pre("Edit", {"file_path": app}), (None, ""))       # in scope: allowed
+            results = [post.record_check(ran(self.root, f"{entry} check", FAIL_TEXT, 1)) for _ in range(2)]
+            self.assertEqual(self.pre("Edit", {"file_path": app}), (None, ""))       # below the limit: allowed
+            results.append(post.record_check(ran(self.root, f"{entry} check", FAIL_TEXT, 1)))
+            self.assertEqual([(r["decision"], r["rule"]) for r in results],
+                             [("pass", "check-recorded")] * 2 + [("flag", "retry-limit")])
+            self.assertEqual(guard.read_failures(self.root, BRANCH), 3)
+            self.assertDenied("Edit", {"file_path": app}, "retry-limit")
+            self.assertDenied("Bash", {"command": "npm test"}, "retry-limit")
+
+            reset = post.record_check(ran(self.root, f"{entry} check", pass_text(self.root, branch=BRANCH), 0))
+            self.assertEqual((reset["decision"], reset["rule"]), ("pass", "check-recorded"))
+            self.assertEqual(guard.read_failures(self.root, BRANCH), 0)
+            self.assertEqual(self.pre("Edit", {"file_path": app}), (None, ""))
 
     # 11
     def test_11_unattended_ask_becomes_deny(self):
