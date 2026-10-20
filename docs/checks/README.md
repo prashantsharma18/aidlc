@@ -19,7 +19,7 @@ built-in steps always run. A repository cannot remove them.
 | 3 | `protected-tests` | An existing test file was deleted, retyped, or had any line changed or removed |
 | 4 | `skips` | A test did not run and is not declared, or this run wrote no readable report. `n/a` when `check_steps` has no `test` |
 | 5 | `context-drift` | The rules file or the codebase map names a path or command that does not exist, or lacks its owner or a fresh verification date |
-| 6 | `secrets` | An added line or an untracked file holds credential-shaped text, or an untracked file is too large to scan |
+| 6 | `secrets` | An added line or an untracked file holds credential-shaped text, or an untracked file is too large to scan. CI scans every commit with `git log -p --cc`, so merge commits are scanned too |
 
 Every step runs, even after a failure. A step that cannot run is a `FAIL`. The diffs ignore the
 branch's `.gitattributes`, so a change cannot hide content from these judges with a textconv
@@ -108,12 +108,17 @@ enforces. The rules in full are in `core/hooks/README.md`; in short:
 - **What counts.** Every shell call that runs `aidlc check` counts once, however it is spelled,
   including inside `bash -c` or a substitution. A call the parser cannot see, such as
   `python3 -m aidlc check` or a make target, counts through the new `run` id in
-  `.check/result.json`. Several runs inside one shell call count once.
+  `.check/result.json`. Several runs inside one shell call count once. Run-id counting catches
+  honest wrappers such as `python3 -m aidlc check` and make targets. It does not catch an agent
+  that edits or restores `.check/result.json`; trusted CI is the backstop for that.
 - **What resets.** Only an exact passing run. The command must be the framework entry that
   `aidlc render` recorded, typed as its full path: `<framework>/bin/aidlc check`, optionally with
   `--repo <path>`. It must exit 0, end with `PASS`, skip nothing, and judge the same repository,
   base and scope as the hooks. A bare `aidlc`, a relative path, a symlink or a wrapper never
-  earns credit. When a call is not exact, the hook's message names the command to type.
+  earns credit. When a call is not exact, the hook's message names the command to type. Render
+  records the entry in `$AIDLC_HOME_DIR/entry/<repo>-<hash8>.json`, outside the repository.
+  `bin/aidlc` runs `python3 -P -m aidlc`, so an `aidlc` package planted in the current directory
+  cannot replace the CLI.
 - **The limit.** Once the failing runs in a row reach `retry_cap` (set in
   `core/policy/routing.yaml`), the guard denies every edit and shell call with rule
   `retry-limit`. Reads still work, so the agent can report what it tried.
@@ -121,7 +126,8 @@ enforces. The rules in full are in `core/hooks/README.md`; in short:
   the sandbox denies writes to `~/.aidlc`, and a shell deny rule blocks the command.
 
 Run `aidlc attempts` to see the count for the current branch. It exits 1 at the limit. An
-unreadable or symlinked record counts as at the limit.
+unreadable or symlinked record counts as at the limit. `aidlc attempts --reset` keeps the current
+run id, so the run already on disk is not counted again by the next unrelated call.
 
 > ⚠️ **Watch out:** `aidlc render` records the entry only where the agent cannot write it. If
 > the framework checkout sits inside the repository, under a sandbox `allowWrite` path or in a

@@ -164,7 +164,9 @@ class AttackTest(unittest.TestCase):
             app = str(self.root / "src" / "app.js")
 
             self.assertEqual(self.pre("Edit", {"file_path": app}), (None, ""))       # in scope: allowed
-            results = [post.record_check(ran(self.root, f"{entry} check", FAIL_TEXT, 1)) for _ in range(3)]
+            results = [post.record_check(ran(self.root, f"{entry} check", FAIL_TEXT, 1)) for _ in range(2)]
+            self.assertEqual(self.pre("Edit", {"file_path": app}), (None, ""))       # below the limit: allowed
+            results.append(post.record_check(ran(self.root, f"{entry} check", FAIL_TEXT, 1)))
             self.assertEqual([(r["decision"], r["rule"]) for r in results],
                              [("pass", "check-recorded")] * 2 + [("flag", "retry-limit")])
             self.assertEqual(guard.read_failures(self.root, BRANCH), 3)

@@ -16,8 +16,10 @@ Conftest and OPA are pinned: an exact version, the SHA-256 of the release asset 
 - `aidlc tools status` reports each tool as `installed (pinned)`,
   `not installed; unverified <path> on PATH`, or `not installed`.
 
-Tools install to `AIDLC_TOOLS_DIR`, else `~/.aidlc/bin`. Install them as a person or in CI, never
-inside an agent session: the session sandbox has no route to the download host.
+Tools install to `$AIDLC_HOME_DIR/bin`, else `~/.aidlc/bin`; `AIDLC_TOOLS_DIR` overrides both.
+A pinned lookup accepts only a regular file there: a symlink is not a verified install. Install
+the tools as a person or in CI, never inside an agent session: the session sandbox has no route to
+the download host.
 
 ## Running the pack
 

@@ -23,8 +23,10 @@ rewrite the judges. So the order is the security property:
    the steps that read their output: `skips` and `protected-rerun`.
 4. **Verdict.** Decide merge readiness from the evidence read in step 1, and write the record.
 
-No git command runs in the change's checkout after step 3 starts. The change's code could have
-planted git configuration or attributes there.
+No git command reads or runs in the change's working tree after step 3 starts. The change's code
+could have planted git configuration or attributes there. Clean-up of the worktrees runs git from
+the main repository or the common git directory, never from the change's worktree, and with hooks
+disabled. The sandbox bound the common git directory read-only, so the change could not alter it.
 
 ## What comes from the base branch
 
@@ -77,9 +79,11 @@ reachable sockets, including Docker Desktop, an HTTP proxy, an ssh agent and the
 | Network | None, except the install step (`install` or `restore`). It gets the resolver file alone, never its folder |
 | Processes | Own PID, IPC and UTS namespaces; the tree dies with its parent |
 
-Local mode never runs the change's code unsandboxed. In GitHub mode, `compile` and `check` use
-`--sandbox require`. `scans` uses `--sandbox auto`, because it runs none of the change's code;
-`auto` is refused for every other group. The record's `sandbox` field says `bwrap` or `none`.
+Local mode never runs the change's code unsandboxed, and refuses `--sandbox auto`. In GitHub
+mode, `compile` and `check` use `--sandbox require`, and `scans` uses `--sandbox auto`, because it
+runs none of the change's code. The exact rule: `auto` falls back to no sandbox only for `scans`.
+Any other group fails if bubblewrap cannot start, whatever the mode. The record's `sandbox` field
+says `bwrap` or `none`.
 
 Profiles come from the framework's `core/context/profiles.yaml`. An unknown profile, a malformed
 `ci_sandbox_read` or `ci_sandbox_env`, or a read path that is not strictly under home is an error.
@@ -91,7 +95,10 @@ Profiles come from the framework's `core/context/profiles.yaml`. An unknown prof
   that includes X11.
 - **Proxies reach the install step only.** It receives `HTTPS_PROXY`, `NO_PROXY` and the CA
   variables. No other step does.
-- **A toolchain outside `/usr` and `/opt`** must be listed in the profile's `ci_sandbox_read`.
+- **Toolchains must live in `/usr`, `/opt` or home.** A toolchain under home is added through
+  the profile's `ci_sandbox_read`, which accepts only paths strictly under home. One installed
+  anywhere else, such as `/srv` or `/var`, cannot be made visible at all; install it in one of
+  those places instead.
 - **Self-hosted runners.** The workflow's `sysctl` step relaxes
   `kernel.apparmor_restrict_unprivileged_userns` for the whole host, and the change persists.
   Platform owners decide whether to allow that, or configure the runner so bubblewrap works
@@ -102,7 +109,11 @@ Profiles come from the framework's `core/context/profiles.yaml`. An unknown prof
 The change's tests may only gain lines. But an added line, or an added test file, can still hide
 a regression. So CI re-runs the base test suite on the new code (guide 9.5).
 
-The re-run has its own third worktree, built in step 1, before any of the change's code runs:
+The re-run happens only when the change modifies, retypes, deletes or adds a test-pattern file,
+and only in a full run or `--group check`. Otherwise the step reports `ok` with "no existing test
+file changed".
+
+When it runs, it has its own third worktree, built in step 1, before any of the change's code runs:
 
 - every test file the change modified, retyped or deleted gets its base bytes and mode back,
   unless an approved exception covers it;
@@ -135,6 +146,10 @@ Each run writes one JSON record. Locally it goes to `.aidlc/ci-records/`, which 
 On GitHub it is the job's artifact. The fields are `label`, `framework`, `branch`, `head`,
 `base_branch`, `base`, `group`, `sandbox`, `result`, `failures`, `steps`, `merge_ready`,
 `merge_ready_reason`, `time` and `record_sha256`.
+
+The GitHub jobs always pass `--group`, so their records are never `merge_ready` (the reason says
+"partial run"). There, branch protection's required jobs decide. Locally, merge readiness needs a
+full `aidlc ci` run.
 
 `record_sha256` is the SHA-256 of the record without that field. Check it, and check that `head`
 is the branch tip, before you rely on a record:
