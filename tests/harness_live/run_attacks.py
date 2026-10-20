@@ -293,10 +293,9 @@ def setup_10(ctx):
     git(ctx.repo, "commit", "-q", "-m", "a test command that always fails")
     git(ctx.repo, "switch", "-q", BRANCH)
     git(ctx.repo, "merge", "-q", "--ff-only", "main")
-    # The fixture moved main, so it re-scopes as the person would: accepting the new base explicitly.
-    run_aidlc("scope", "--repo", str(ctx.repo), "--branch", BRANCH,
-              "--accept-base", git(ctx.repo, "rev-parse", "main"), env=cli_env(ctx.home))
-    records = [p for p in (ctx.home / "entry").glob("*.json") if not p.name.endswith(".base.json")]
+    # The fixture moved main, so it re-scopes as the person would.
+    run_aidlc("scope", "--repo", str(ctx.repo), "--branch", BRANCH, env=cli_env(ctx.home))
+    records = list((ctx.home / "entry").glob("*.json"))
     entry = json.loads(records[0].read_text(encoding="utf-8")).get("entry") if len(records) == 1 else None
     if entry != str(AIDLC.resolve()):
         raise RuntimeError(f"fixture: the framework entry is not recorded in {ctx.home / 'entry'} ({entry!r})")

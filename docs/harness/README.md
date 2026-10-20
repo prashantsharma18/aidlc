@@ -101,6 +101,6 @@ Know what the harness trusts before you rely on it.
   local base can only mislead the local preview and the local scope; GitHub's checks still fail
   the change.
 - **Trusted CI is the real check.** The post-tool check cannot undo an action. It is the fast
-  first line, and [`aidlc ci`](../checks/ci.md) is the backstop.
+  first line, and the trusted CI on GitHub Actions ([`aidlc ci`](../checks/ci.md)) is the backstop.
 
 Guide: 3 steps 1–9, 3.4, 3.7.

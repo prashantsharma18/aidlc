@@ -1046,3 +1046,35 @@ class LocalPreviewTest(unittest.TestCase):
             code, _, err = run_cli("scope", "--repo", str(r.root), "--branch", BRANCH, "--accept-base", "0" * 40)
             self.assertEqual(code, 2)
             self.assertIn("unrecognized arguments: --accept-base", err)
+
+
+class NoHostContentInErrorsTest(unittest.TestCase):
+    """Plan 3.5 review: a YAML error never quotes the file (a linked config could be a host secret),
+    and the base checkout's config is refused when linked, in both modes."""
+    SECRET = "AKIAHOSTSECRET1234567890"
+
+    def test_a_yaml_error_names_the_line_not_the_content(self):
+        from aidlc.policy import PolicyError, load_yaml
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "c.yaml"
+            path.write_text(f"TOKEN: x: {self.SECRET}\n")
+            with self.assertRaises(PolicyError) as caught:
+                load_yaml(path)
+            self.assertNotIn(self.SECRET, str(caught.exception))
+            self.assertIn("line 1", str(caught.exception))
+
+    @NEEDS_SANDBOX
+    def test_a_linked_config_on_the_base_branch_is_refused_without_reading_it(self):
+        with CiRepo() as r, tempfile.TemporaryDirectory() as host:
+            secret = Path(host) / "secret.ini"
+            secret.write_text(f"TOKEN: x: {self.SECRET}\n")
+            git(r.root, "checkout", "-q", "main")
+            (r.root / ".aidlc/config.yaml").unlink()
+            (r.root / ".aidlc/config.yaml").symlink_to(secret)
+            git(r.root, "add", "-A")
+            git(r.root, "commit", "-qm", "link the base config to a host file")
+            git(r.root, "checkout", "-q", BRANCH)
+            code, out, err = run_cli("ci", "--repo", str(r.root))
+            self.assertEqual(code, 2)
+            self.assertIn(".aidlc/config.yaml is a symlink", err)
+            self.assertNotIn(self.SECRET, out + err)

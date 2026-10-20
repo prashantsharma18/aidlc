@@ -20,8 +20,14 @@ def load_yaml(path: Path) -> Any:
     try:
         text = path.read_text(encoding="utf-8").lstrip("﻿")
         data = yaml.safe_load(text)
-    except (OSError, yaml.YAMLError) as exc:
+    except OSError as exc:
         raise PolicyError(f"{path}: cannot read: {exc}") from exc
+    except yaml.YAMLError as exc:
+        # The problem and its position only: PyYAML's own message quotes the offending line, and the
+        # file may be a link to something it should never print (a host secret).
+        mark = getattr(exc, "problem_mark", None)
+        where = f" (line {mark.line + 1}, column {mark.column + 1})" if mark is not None else ""
+        raise PolicyError(f"{path}: cannot read: {getattr(exc, 'problem', None) or type(exc).__name__}{where}") from exc
     if data is None:
         raise PolicyError(f"{path}: empty")
     return data

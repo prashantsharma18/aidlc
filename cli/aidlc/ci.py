@@ -1,15 +1,16 @@
-"""aidlc ci: the local trusted-CI runner (design §8; guide 9.5-9.7, 11.8).
+"""aidlc ci: the gates against a task branch (design §8; guide 9.5-9.7, 11.8). GitHub mode, inside
+GitHub Actions, is the trusted CI; local mode is a preview, never evidence (ADR 0002).
 
 The change's own code (install script, tests) was written by an agent, so the order is the
 security property:
-1. prepare: detached worktrees of the base and the head; read every piece of evidence (trusted
-   configuration, approvals, merge approvals, a private copy of the steering files); every judge
+1. prepare: detached worktrees of the base and the head; read every piece of evidence (the base's
+   configuration, approvals, a private copy of the steering files); every judge
    is already imported;
 2. judge, before any of the change's code runs, from git objects and the untouched checkout;
 3. run the change's own commands in the bubblewrap sandbox, then the checks that read their
    output (skips, the protected re-run). From here on no git command runs in the checkout: the
    change's code could have planted git configuration or attributes there;
-4. verdict and a self-hashed record labelled simulated-ci.
+4. a self-hashed record, labelled github-actions or local-preview. Merge readiness is GitHub's.
 The GitHub Actions workflow (core/ci/github/aidlc-verify.yml) runs the same code on two checkouts."""
 from __future__ import annotations
 
@@ -39,7 +40,7 @@ from .harness import BRANCH_RE
 from .harness import base_branch as configured_base
 from .hookbridge import hooks
 from .paths import safe_target
-from .repo import CONFIG, load_config
+from .repo import load_config
 from .sandbox import Sandbox, available, toolchain_env, toolchain_paths
 from .scope import FULL_SHA, ScopeError, base_commit, bundle_at, parse_approvals, parse_may_change
 
@@ -72,7 +73,7 @@ class CiPlan:
     base: str               # the base commit
     records: Path           # where the record is written
     sandbox: str = "require"   # "require" or "auto" (GitHub mode, --group scans only)
-    label: str = GITHUB_LABEL  # LOCAL_LABEL for a local preview (ADR 0002)
+    label: str = LOCAL_LABEL   # a preview unless GitHub mode says otherwise (ADR 0002): fail closed
 
 
 def group_of(step: str) -> str:
@@ -414,6 +415,26 @@ def verify_record(record: dict) -> bool:
     return record.get("record_sha256") == _seal(body)
 
 
+CONFIG_FILES = (".aidlc", ".aidlc/config.yaml", ".aidlc/permissions.yaml")
+
+
+def refuse_linked_config(root: Path) -> None:
+    """Configuration is read from a checkout the change controls: refuse it before reading when it
+    is a link or not a regular file, so its target (a host file, perhaps a secret) is never opened.
+    `.aidlc/permissions.yaml` is optional; the other two must exist."""
+    for rel in CONFIG_FILES:
+        path = root / rel
+        if path.is_symlink():
+            raise CiError(f"{rel} is a symlink in {root}; aidlc ci does not follow it")
+        if rel == ".aidlc":
+            ok = path.is_dir()
+        else:
+            ok = path.is_file() or (rel.endswith("permissions.yaml") and not os.path.lexists(path))
+        if not ok:
+            raise CiError(f"{rel} in {root} is missing or not a regular "
+                          f"{'directory' if rel == '.aidlc' else 'file'}; aidlc ci does not read it")
+
+
 def run_ci(plan: CiPlan, group: str | None = None) -> tuple[CheckResult, dict]:
     if group is not None and group not in GROUPS:
         raise CiError(f"unknown group '{group}'; choose from {', '.join(GROUPS)}")
@@ -421,6 +442,7 @@ def run_ci(plan: CiPlan, group: str | None = None) -> tuple[CheckResult, dict]:
         raise CiError(f"unknown sandbox mode '{plan.sandbox}'; choose from {', '.join(SANDBOX_MODES)}")
     # 1. Prepare: evidence read and judges loaded before any of the change's code runs.
     hooks()                                           # the guard and post-check modules the judges use
+    refuse_linked_config(plan.trusted)
     config = load_config(plan.trusted)
     if config.harness.get("base_branch", "main") != plan.base_branch:
         named = config.harness.get("base_branch")
@@ -433,7 +455,7 @@ def run_ci(plan: CiPlan, group: str | None = None) -> tuple[CheckResult, dict]:
         scope, why = None, str(exc)
     steering = _steering(plan.trusted)
     for owned, owner in ((".check", "the check owns (a committed symlink there could redirect the check's writes)"),
-                         (RECORDS, "aidlc ci owns (a committed record would pose as trusted evidence at checkout)")):
+                         (RECORDS, "aidlc ci owns (a committed record would land in the records folder at checkout)")):
         tracked = [p for p in git(plan.work, "ls-tree", "-r", "-z", "--name-only", plan.head, "--", owned)
                    .split("\0") if p]
         if tracked:
@@ -527,11 +549,7 @@ def ci_local(repo: Path, branch: str | None, group: str | None) -> tuple[CheckRe
     """Local mode, a preview (ADR 0002): the base and the head as detached worktrees of `repo`, the
     change's code in the sandbox, and a record labelled local-preview. It is never evidence: the base
     comes from the working copy, which the change controls; GitHub Actions is the trusted CI."""
-    for rel in (".aidlc", CONFIG):                 # read the working copy's config only if it is a plain file:
-        path = repo / rel                          # never follow a link to a file the change chose
-        if path.is_symlink() or not (path.is_dir() if rel == ".aidlc" else path.is_file()):
-            raise CiError(f"{rel} is a symlink or not a regular {'directory' if rel == '.aidlc' else 'file'}; "
-                          "the local preview does not follow it")
+    refuse_linked_config(repo)                     # the working copy's config: never through a link
     base_branch = configured_base(repo)
     branch = branch or hooks().guard.current_branch(repo)
     if not branch:
@@ -570,6 +588,7 @@ def ci_checkouts(trusted: Path, head_dir: Path, branch: str, head_sha: str, reco
     base_branch = configured_base(trusted)
     base = git(trusted, "rev-parse", "HEAD").strip()
     plan = CiPlan(repo=head_dir, branch=branch, head=head_sha, trusted=trusted, work=head_dir,
-                  base_branch=base_branch, base=base, records=records, sandbox=sandbox_mode)
+                  base_branch=base_branch, base=base, records=records, sandbox=sandbox_mode,
+                  label=GITHUB_LABEL)
     result, record = _run_ci_and_print(plan, group, head_dir)
     return result, record, write_ci_record(records, record, fresh=True)

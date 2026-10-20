@@ -15,7 +15,7 @@
 # workflow defining a job with the same name as one here is acceptable only under that control.
 # BRANCH is the pull request's branch name only when the head is in this repository. A fork's
 # branch is named fork-pr-<number>, so a fork can never borrow the approvals of a branch here.
-# Inactive until the repository has a remote.
+# The trusted CI (ADR 0002): rulesets on main require these jobs.
 name: aidlc-verify
 on:
   pull_request:
