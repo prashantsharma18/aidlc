@@ -1159,6 +1159,18 @@ class PostCheckDiffHygieneTest(unittest.TestCase):
         name = ":(icase)z.test.ts"                              # as a pathspec: "z.test.ts", any case
         self.assertEqual(self.flagged({name: self.OLD}, {name: self.NEW}), ("flag", "changed-assertion"))
 
+    def test_a_carriage_return_keeps_an_added_skip_on_its_added_line(self):      # targeted round, Minor A
+        # Python reads a lone \r as a line break, so this really skips test_b; the hook must see the marker
+        # on the added line, not split off as a line of its own.
+        base = "import pytest\n\n\ndef test_a():\n    assert 1\n"
+        new = base + "x = 1\r@pytest.mark.skip\ndef test_b():\n    assert 1\n"
+        self.assertEqual(self.flagged({"test/test_a.py": base}, {"test/test_a.py": new}), ("flag", "skipped-test"))
+
+    def test_a_carriage_return_cannot_split_a_removed_assertion_off_its_line(self):     # targeted round
+        old = "it('a', () => { const y = 1;\rexpect(f()).toBe(1); });\n"
+        self.assertEqual(self.flagged({"test/a.test.ts": old}, {"test/a.test.ts": self.NEW}),
+                         ("flag", "changed-assertion"))
+
     def test_a_form_feed_cannot_split_a_removed_assertion_off_its_line(self):
         old = "it('a', () => { const y = 1;\fexpect(f()).toBe(1); });\n"
         self.assertEqual(self.flagged({"test/a.test.ts": old}, {"test/a.test.ts": self.NEW}),

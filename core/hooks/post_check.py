@@ -41,10 +41,10 @@ DIFF_FLAGS = ("--no-textconv", "--no-ext-diff", "--no-renames")
 
 def _git(root: Path, *args: str) -> str:
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-    out = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, errors="replace", env=env, timeout=10)
+    out = subprocess.run(["git", *args], cwd=root, capture_output=True, env=env, timeout=10)
     if out.returncode != 0:
-        raise RuntimeError(f"git {' '.join(args)}: {out.stderr.strip()[:200]}")
-    return out.stdout
+        raise RuntimeError(f"git {' '.join(args)}: {out.stderr.decode('utf-8', 'replace').strip()[:200]}")
+    return out.stdout.decode("utf-8", "replace")      # bytes decoded here: text=True would turn \r into \n
 
 
 def check(event: dict) -> dict:
