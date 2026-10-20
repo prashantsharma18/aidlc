@@ -102,7 +102,8 @@ Know what the harness trusts before you rely on it.
   is the base now. So re-scoping after the base moved is a confirmation step. `aidlc scope` lists
   every commit since the pinned base, marks with `!` those that touch approvals, skips,
   exceptions or configuration, and pins the new base only with
-  `--accept-base <full live sha>`, which agents are denied. A person who accepts a commit they
+  `--accept-base <full live sha>`. Agents cannot do this: the sandbox denies them writes to the
+  scope under `~/.aidlc`. A person who accepts a commit they
   did not review accepts the forgery. Once a remote exists, the GitHub workflow reads approvals
   and configuration from the pull request's base commit, behind branch protection.
 - **Trusted CI is the real check.** The post-tool check cannot undo an action. It is the fast

@@ -72,8 +72,11 @@ confirmation step, not a formality:
    `aidlc scope --branch <task branch> --accept-base <live sha>`. The value must be the full live
    commit, exactly; an abbreviation or any other commit is refused. Then you run `aidlc ci`.
 
-A first scope, with no scope file yet, needs no flag. Agents cannot accept a base: the shell
-deny rule `aidlc scope*--accept-base*` blocks it, and the sandbox denies writes to `~/.aidlc`.
+A first scope, with no scope file yet, needs no flag. Agents cannot accept a base, because the
+scope lives under `~/.aidlc` and the sandbox denies them writes there. The shell deny rule
+`aidlc scope*--accept-base*` is defence in depth only: wrappers such as `python3 -m aidlc` get
+past a pattern. The `!` marker does not cover test files, so review every listed commit, not only
+the marked ones.
 
 ## Local mode and GitHub mode
 
