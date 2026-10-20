@@ -1,0 +1,33 @@
+# CI for the aidlc framework itself (ADR 0002). Public repository: a read-only token, no secrets,
+# actions pinned by commit SHA, no `${{ }}` inside `run:`.
+name: framework-ci
+on:
+  push: {branches: [main]}
+  pull_request:
+permissions: {contents: read}
+concurrency: {group: "framework-ci-${{ github.ref }}", cancel-in-progress: true}
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: {persist-credentials: false}
+      - run: sudo apt-get update -q && sudo apt-get install -y -q python3-yaml python3-jsonschema bubblewrap
+      - run: make test
+  sandbox:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: {persist-credentials: false}
+      - run: sudo apt-get update -q && sudo apt-get install -y -q python3-yaml python3-jsonschema bubblewrap
+      # Ubuntu 24.04 restricts unprivileged user namespaces; bubblewrap needs them. Ephemeral runner.
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+      - run: make sandbox-test
+  policy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: {persist-credentials: false}
+      - run: sudo apt-get update -q && sudo apt-get install -y -q python3-yaml python3-jsonschema
+      - run: bin/aidlc tools install --dir "$RUNNER_TEMP/aidlc-tools"
+      - run: AIDLC_TOOLS_DIR="$RUNNER_TEMP/aidlc-tools" make policy-test
