@@ -35,28 +35,24 @@ from .checks.onecheck import (DIFF_FLAGS, FAIL, OK, STEERING, CheckContext, Chec
                               _excepted, prepare_check_dir,
                               begin_command_steps, git, print_result, run_command, step_context_drift,
                               step_protected_tests, step_records, step_scope, step_secrets, step_skips)
-from .cliinfo import recorded_base
 from .harness import BRANCH_RE
 from .harness import base_branch as configured_base
 from .hookbridge import hooks
 from .paths import safe_target
-from .repo import load_config
+from .repo import CONFIG, load_config
 from .sandbox import Sandbox, available, toolchain_env, toolchain_paths
-from .scope import (FULL_SHA, ScopeError, base_commit, base_moves, bundle_at, parse_approvals,
-                    parse_may_change)
+from .scope import FULL_SHA, ScopeError, base_commit, bundle_at, parse_approvals, parse_may_change
 
-LABEL = "simulated-ci"
+LOCAL_LABEL = "local-preview"       # ADR 0002: a local run is a preview, never evidence
+GITHUB_LABEL = "github-actions"     # the trusted run: GitHub mode inside GitHub Actions
 RECORDS = ".aidlc/ci-records"
 APPROVALS = "plans/approved-bundles.txt"
-MERGES = "plans/approved-merges.txt"
 GROUPS = ("compile", "check", "scans")
 SANDBOX_MODES = ("require", "auto")
 INSTALL_STEPS = ("install", "restore")
 COMPILE_STEPS = {"install", "restore", "build", "compile"}
 SCAN_STEPS = {"secrets", "config-policy"}
 SHA40 = re.compile(r"[0-9a-f]{40}")
-NO_BASE = ("the trusted record has no base branch for this repository; check out the base branch and run "
-           "aidlc render --trusted-base <base branch>")
 NO_SANDBOX = ("bubblewrap cannot start a sandbox here (sudo apt install bubblewrap); "
               "aidlc ci never runs the change's code unsandboxed in local mode")
 
@@ -76,6 +72,7 @@ class CiPlan:
     base: str               # the base commit
     records: Path           # where the record is written
     sandbox: str = "require"   # "require" or "auto" (GitHub mode, --group scans only)
+    label: str = GITHUB_LABEL  # LOCAL_LABEL for a local preview (ADR 0002)
 
 
 def group_of(step: str) -> str:
@@ -406,18 +403,6 @@ def _steering(trusted: Path) -> dict[str, str]:
     return out
 
 
-def _merge_ready(merges: str, plan: CiPlan, result: CheckResult, group: str | None) -> tuple[bool, str]:
-    if group is not None:
-        return False, f"partial run (--group {group})"
-    if not result.passed:
-        return False, "gates failed"
-    for line in merges.split("\n"):                   # "\n" only, as every approvals parser here
-        parts = line.split()
-        if len(parts) >= 3 and not line.startswith("#") and parts[0] == plan.branch and parts[1] == plan.head:
-            return True, f"approved by {parts[2]}"
-    return False, f"no approval record for {plan.branch} at {plan.head[:12]} in {plan.base_branch}:{MERGES}"
-
-
 def _seal(body: dict) -> str:
     return hashlib.sha256(json.dumps(body, sort_keys=True).encode("utf-8")).hexdigest()
 
@@ -439,10 +424,8 @@ def run_ci(plan: CiPlan, group: str | None = None) -> tuple[CheckResult, dict]:
     config = load_config(plan.trusted)
     if config.harness.get("base_branch", "main") != plan.base_branch:
         named = config.harness.get("base_branch")
-        raise CiError(f"the base branch's configuration names base '{named}', not '{plan.base_branch}'; "
-                      f"check out '{named}' and run aidlc render --trusted-base {named}")
+        raise CiError(f"the base branch's configuration names base '{named}', not '{plan.base_branch}'")
     approvals = _read_trusted(plan.trusted / APPROVALS)
-    merges = _read_trusted(plan.trusted / MERGES)
     try:
         ref = verified_approval(plan.repo, parse_approvals(approvals, plan.branch, f"{plan.base_branch}:{APPROVALS}"))
         scope, why = parse_may_change(bundle_at(plan.repo, ref)), ""
@@ -485,13 +468,12 @@ def run_ci(plan: CiPlan, group: str | None = None) -> tuple[CheckResult, dict]:
         for step in result.steps:
             if step.name == "scope" and step.status == FAIL:
                 step.detail = f"no approved scope: {why}"
-    # 4. Verdict from the evidence read in step 1.
-    ready, reason = _merge_ready(merges, plan, result, group)
-    body = {"label": LABEL, "framework": __version__, "branch": plan.branch, "head": plan.head,
+    # 4. The record. Merge readiness is GitHub's (required checks and rulesets, ADR 0002), never ours.
+    body = {"label": plan.label, "framework": __version__, "branch": plan.branch, "head": plan.head,
             "base_branch": plan.base_branch, "base": plan.base, "group": group or "all",
             "sandbox": "bwrap" if use_sandbox else "none",
             "result": "PASS" if result.passed else "FAIL", "failures": result.failures,
-            "steps": step_records(result.steps), "merge_ready": ready, "merge_ready_reason": reason,
+            "steps": step_records(result.steps),
             "time": datetime.now(timezone.utc).isoformat(timespec="microseconds")}
     body["record_sha256"] = _seal(body)
     return result, body
@@ -541,35 +523,16 @@ def _run_ci_and_print(plan: CiPlan, group: str | None, work: Path) -> tuple[Chec
     return result, record
 
 
-def pinned_base(repo: Path, branch: str, base_branch: str) -> str:
-    """The base commit pinned by `aidlc scope` in the branch's scope file, which lives under
-    AIDLC_HOME_DIR where agent shells cannot write. Local CI judges against it and checks it out as
-    the trusted tree. The live refs/heads/<base> is only compared: a plain shell redirect into
-    .git/refs/heads/<base> moves it, so it is never trusted on its own (final review C1)."""
-    guard = hooks().guard
-    path = guard.scope_file(repo, branch)
-    try:
-        scope = guard.read_scope_file(path, repo)
-    except (OSError, ValueError):                      # unreadable, or not UTF-8: fail closed
-        scope = None
-    if scope is None or scope[1] is None:
-        raise CiError(f"no readable scope with a pinned base for '{branch}' ({path}); a person must run "
-                      f"aidlc scope --branch {branch}")
-    pinned, live = scope[1], base_commit(repo, base_branch)
-    if live != pinned:
-        listing = "\n".join(f"  {line}" for line in base_moves(repo, pinned, live, base_branch))
-        raise CiError(f"the base branch moved since the scope was generated (scope base {pinned[:12]}, "
-                      f"{base_branch} now {live[:12]}); a person must re-run aidlc scope --branch {branch} "
-                      f"--accept-base {live} after reviewing these commits (! = touches approvals, skips, "
-                      f"exceptions or configuration):\n{listing}")
-    return pinned
-
-
 def ci_local(repo: Path, branch: str | None, group: str | None) -> tuple[CheckResult, dict, Path]:
-    """Local mode: the base and the head as detached worktrees of `repo`; the sandbox is required."""
-    base_branch = recorded_base(repo)             # never the working copy's config: that is the branch's
-    if base_branch is None:
-        raise CiError(NO_BASE)
+    """Local mode, a preview (ADR 0002): the base and the head as detached worktrees of `repo`, the
+    change's code in the sandbox, and a record labelled local-preview. It is never evidence: the base
+    comes from the working copy, which the change controls; GitHub Actions is the trusted CI."""
+    for rel in (".aidlc", CONFIG):                 # read the working copy's config only if it is a plain file:
+        path = repo / rel                          # never follow a link to a file the change chose
+        if path.is_symlink() or not (path.is_dir() if rel == ".aidlc" else path.is_file()):
+            raise CiError(f"{rel} is a symlink or not a regular {'directory' if rel == '.aidlc' else 'file'}; "
+                          "the local preview does not follow it")
+    base_branch = configured_base(repo)
     branch = branch or hooks().guard.current_branch(repo)
     if not branch:
         raise CiError("detached HEAD; pass --branch")
@@ -579,11 +542,11 @@ def ci_local(repo: Path, branch: str | None, group: str | None) -> tuple[CheckRe
     if not available():
         raise CiError(NO_SANDBOX)
     head = git(repo, "rev-parse", "--verify", "-q", f"refs/heads/{branch}^{{commit}}").strip()
-    base = pinned_base(repo, branch, base_branch)
+    base = base_commit(repo, base_branch)
     records = safe_target(repo, RECORDS)
     with checkouts(repo, base, head) as (trusted, work):
         plan = CiPlan(repo=repo, branch=branch, head=head, trusted=trusted, work=work,
-                      base_branch=base_branch, base=base, records=records)
+                      base_branch=base_branch, base=base, records=records, label=LOCAL_LABEL)
         result, record = _run_ci_and_print(plan, group, work)
         return result, record, write_ci_record(records, record)
 

@@ -247,7 +247,7 @@ class FixRoundOneTest(unittest.TestCase):
         policy = load_policy("branch-protection")
         # Final review minor 10 adds the trusted evidence files that CI reads from the base.
         self.assertEqual(policy["code_owned_paths"], ["/.github/", "/.aidlc/", "/plans/approved-bundles.txt",
-                                                      "/plans/approved-merges.txt", "/test/allowed-skips.txt",
+                                                      "/test/allowed-skips.txt",
                                                       "/test/protected-exceptions.txt"])
 
     def test_policy_validate_requires_every_evidence_path(self):                 # final review minor 10
@@ -263,7 +263,7 @@ class FixRoundOneTest(unittest.TestCase):
     def test_header_names_the_evidence_paths(self):                              # final review minor 10
         f, _ = workflow(self.root)
         header = "\n".join(line for line in f.content.splitlines() if line.startswith("#"))
-        for path in ("/plans/approved-bundles.txt", "/plans/approved-merges.txt", "/test/allowed-skips.txt",
+        for path in ("/plans/approved-bundles.txt", "/test/allowed-skips.txt",
                      "/test/protected-exceptions.txt"):
             self.assertIn(path, header)
 

@@ -1,4 +1,4 @@
-"""aidlc ci: the local trusted-CI runner. Results are labelled simulated-ci."""
+"""aidlc ci: the gates against a task branch. GitHub mode is the trusted CI (ADR 0002); local mode is a preview."""
 from __future__ import annotations
 
 import argparse
@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from ..checks.onecheck import CheckError
-from ..ci import GROUPS, LABEL, SANDBOX_MODES, CiError, ci_checkouts, ci_local
+from ..ci import GITHUB_LABEL, GROUPS, LOCAL_LABEL, SANDBOX_MODES, CiError, ci_checkouts, ci_local
 from ..cli import command
 from ..harness import HarnessError
 from ..policy import PolicyError
@@ -35,15 +35,16 @@ def _run(args: argparse.Namespace) -> int:
             KeyError, TypeError, AttributeError, OSError, subprocess.SubprocessError) as exc:
         print(f"aidlc ci: {exc}", file=sys.stderr)
         return 2
-    print(f"ci  merge-ready {'yes' if record['merge_ready'] else 'no'}  ({record['merge_ready_reason']})")
-    print(f"ci  record {path}  ({LABEL}, sandbox {record['sandbox']}: local evidence of the trusted gates, "
-          "not a Git-host CI run)")
+    if record["label"] == LOCAL_LABEL:
+        print(f"ci  record {path}  (local preview: not evidence; trusted CI is GitHub Actions)")
+    else:
+        print(f"ci  record {path}  ({GITHUB_LABEL})")
     return 0 if result.passed else 1
 
 
 @command
 def register(sub: argparse._SubParsersAction) -> None:
-    parser = sub.add_parser("ci", help="run the trusted gates from the base branch against a task branch",
+    parser = sub.add_parser("ci", help="the gates against a task branch: GitHub mode is the trusted CI, local mode a preview",
                             allow_abbrev=False)
     parser.add_argument("--repo", default=".")
     parser.add_argument("--branch")

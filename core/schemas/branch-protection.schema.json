@@ -100,11 +100,6 @@
         },
         {
           "contains": {
-            "const": "/plans/approved-merges.txt"
-          }
-        },
-        {
-          "contains": {
             "const": "/test/allowed-skips.txt"
           }
         },

@@ -8,7 +8,7 @@
 # head, so a change can edit this file. `aidlc ci` flags a hand-edited copy (config-policy), but
 # only while the edited workflow still runs it honestly. The workflow is therefore protected by
 # review, not by where it is read from: CODEOWNERS must cover /.github/ and /.aidlc/, and the evidence
-# read from trusted/ (/plans/approved-bundles.txt, /plans/approved-merges.txt, /test/allowed-skips.txt,
+# read from trusted/ (/plans/approved-bundles.txt, /test/allowed-skips.txt,
 # /test/protected-exceptions.txt), with required code-owner review (core/policy/branch-protection.yaml,
 # code_owned_paths), or an organisation
 # required-workflow ruleset must pin the workflow to a central repository by commit SHA. A second
