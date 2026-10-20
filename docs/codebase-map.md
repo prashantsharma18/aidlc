@@ -15,7 +15,7 @@ repository's own commands inside bubblewrap, and `aidlc tools install` downloads
 `cli/aidlc/adapters/`    Tool adapters. Only here may tool file names (CLAUDE.md, .claude/) appear.
 `cli/aidlc/checks/`      Deterministic checks returning Findings (`cli/aidlc/checks/findings.py`).
 `cli/aidlc/checks/onecheck.py`  The one-command check: command steps, then the built-in integrity steps.
-`cli/aidlc/ci.py`        Trusted CI (`aidlc ci`): prepare, judge, run the change sandboxed, verdict, record.
+`cli/aidlc/ci.py`        `aidlc ci`: prepare, judge, run the change sandboxed, record (GitHub mode is the trusted CI; local is a preview).
 `cli/aidlc/sandbox.py`   The bubblewrap sandbox for the change's own commands in CI.
 `cli/aidlc/tools.py`     Pinned, checksum-verified tools (opa, conftest) from `core/policy/tool-register.yaml`.
 `core/policy/`           Policies (YAML), each validated by its schema in `core/schemas/`.

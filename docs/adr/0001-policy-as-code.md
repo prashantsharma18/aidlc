@@ -73,6 +73,7 @@ Layout:
 
 ## Consequences
 
+- **Trusted CI runs on GitHub** (ADR 0002, 2026-10-20). Conftest in trusted CI means the GitHub `scans` job.
 - **New dependencies.** `opa` and `conftest` (Plan 3, implemented: [pinned tools](../checks/policy-as-code.md#the-pinned-tools)) and the agentgateway container (Plan 2) enter
   the dependency policy: exact versions, recorded checksums or image digests, and entries in
   `core/policy/tool-register.yaml`. They are installed for CI and the lab, never inside an agent

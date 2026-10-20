@@ -72,8 +72,7 @@
       "Bash(wget *)",
       "Bash(npm publish*)",
       "Bash(dotnet nuget push*)",
-      "Bash(aidlc attempts*--reset*)",
-      "Bash(aidlc scope*--accept-base*)"
+      "Bash(aidlc attempts*--reset*)"
     ],
     "disableBypassPermissionsMode": "disable"
   },

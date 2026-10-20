@@ -1,8 +1,10 @@
 # Trusted CI: `aidlc ci`
 
 `aidlc ci` runs the mandatory gates against a task branch, with everything that judges the change
-taken from the base branch. It is the check that counts toward a merge. Every result is labelled
-`simulated-ci`, because no Git host enforces it yet (design §8, §13).
+taken from the base branch. **The trusted CI is GitHub Actions** ([ADR 0002](../adr/0002-github-trusted-ci.md)):
+the rendered workflow runs `aidlc ci` in GitHub mode, and GitHub's rulesets decide whether a pull
+request may merge. On your machine, `aidlc ci` is a preview of the same gates. Its records are
+labelled `local-preview` and are never evidence.
 
 The code is `cli/aidlc/ci.py` and `cli/aidlc/sandbox.py`. The steps are those of the
 [one-command check](README.md), plus two that only CI runs: `config-policy`
@@ -15,13 +17,14 @@ The change's install script and tests were written by an agent. If they ran firs
 rewrite the judges. So the order is the security property:
 
 1. **Prepare.** Get checkouts of the base and the head. Read every piece of
-   evidence: configuration, approvals, merge approvals, the skip allow-list. Load every judge.
+   evidence: configuration, approvals, the skip allow-list. Load every judge.
    Build the protected re-run's checkout.
 2. **Judge.** Run `scope`, `protected-tests`, `secrets`, `context-drift` and `config-policy` from
    git objects and the untouched checkout.
 3. **Run the change's code, sandboxed.** The repository's command steps run in bubblewrap. Then
    the steps that read their output: `skips` and `protected-rerun`.
-4. **Verdict.** Decide merge readiness from the evidence read in step 1, and write the record.
+4. **Record.** Write the record. Whether the pull request may merge is GitHub's decision: its
+   required status checks and rulesets.
 
 No git command reads or runs in the change's working tree after step 3 starts. The change's code
 could have planted git configuration or attributes there. Clean-up of the worktrees runs git from
@@ -34,57 +37,22 @@ disabled. The sandbox bound the common git directory read-only, so the change co
 |---|---|
 | `commands`, `check_steps`, `test_reports`, the profile and the base branch name | `.aidlc/config.yaml` in the base checkout |
 | The task scope | The bundle approved in `plans/approved-bundles.txt`, pinned by a full commit SHA that must resolve to itself; a short SHA fails `scope` |
-| Merge approvals | `plans/approved-merges.txt` |
 | Declared skips | `test/allowed-skips.txt` |
 | Policy data for `config-policy` | The base checkout's effective permissions |
 | The judges, the Rego pack and the renderer | The framework checkout, never the repository |
 
-In local mode even the base branch's name is trusted data. `aidlc render` records it outside the
-repository when you render on the base branch and no record exists yet. To change it, check out
-the new base and run `aidlc render --tool claude-code --trusted-base NAME`. If the record is
-missing, or the base's configuration names another branch, `aidlc ci` stops and says so.
-
-The base commit is trusted data too. An agent shell can move `refs/heads/<base>` with a plain
-redirect into `.git/refs/heads/`, and no git command is involved for the guard to deny. So local
-mode never trusts the live ref on its own. It reads the commit that `aidlc scope` pinned in the
-branch's scope file, the `base:` line. That file lives under `~/.aidlc` (`AIDLC_HOME_DIR`), where
-agents cannot write. The base checkout is that pinned commit. If the scope is missing or
-unreadable, or the live ref no longer equals the pinned commit, `aidlc ci` exits 2:
-
-```text
-the base branch moved since the scope was generated (scope base <sha>, main now <sha>); a person must re-run aidlc scope --branch <task branch> --accept-base <live sha> after reviewing these commits (! = touches approvals, skips, exceptions or configuration):
-  ! <sha> <author> <<email>> <subject>  (touches plans/approved-merges.txt)
-    <sha> <author> <<email>> <subject>
-```
-
-A refusal is not the end of a forgery. The forged commit is now the base, so a plain re-scope
-would read approvals from it and pin it. That is why re-scoping after the base moved is a
-confirmation step, not a formality:
-
-1. `aidlc scope --branch <task branch>` sees that the scope already pins another base. It lists
-   every commit from the pinned base to the live one, and marks with `!` each commit that touches
-   `plans/approved-bundles.txt`, `plans/approved-merges.txt`, `test/allowed-skips.txt`,
-   `test/protected-exceptions.txt`, `.aidlc/config.yaml` or `.aidlc/permissions.yaml`. It warns
-   when the pinned base is not an ancestor of the live one (rewritten history). Then it exits 2.
-2. You read the list. A commit you do not recognise, above all one marked `!`, is the forgery:
-   reset the base branch to the commit it should be, and do not accept it.
-3. When every commit is one you expect, such as another merge, you run
-   `aidlc scope --branch <task branch> --accept-base <live sha>`. The value must be the full live
-   commit, exactly; an abbreviation or any other commit is refused. Then you run `aidlc ci`.
-
-A first scope, with no scope file yet, needs no flag. Agents cannot accept a base, because the
-scope lives under `~/.aidlc` and the sandbox denies them writes there. The shell deny rule
-`aidlc scope*--accept-base*` is defence in depth only: wrappers such as `python3 -m aidlc` get
-past a pattern. The `!` marker does not cover test files, so review every listed commit, not only
-the marked ones.
+In GitHub mode the base checkout is the pull request's base commit, which the workflow checks out
+by SHA. The agent cannot move it.
 
 ## Local mode and GitHub mode
 
-**Local mode** is `aidlc ci [--repo PATH] [--branch NAME] [--group NAME]`. It checks out the base
-(the commit pinned in the scope file) and the head as detached worktrees in a private temporary
-directory, and always removes them:
-Python deletes the folders, then git drops its record of each. It requires the sandbox. It
-refuses to check the base branch itself, and needs `--branch` on a detached HEAD.
+**Local mode** is `aidlc ci [--repo PATH] [--branch NAME] [--group NAME]`, a preview. It takes the
+base branch name from the working copy's `.aidlc/config.yaml`, which it refuses to read through a
+symlink, and the base commit from that branch's live ref. Both are under the change's control, so
+the result is never evidence. It checks out the base and the head as detached worktrees in a
+private temporary directory, and always removes them: Python deletes the folders, then git drops
+its record of each. It still requires the sandbox, because the change's code runs on your
+machine. It refuses to check the base branch itself, and needs `--branch` on a detached HEAD.
 
 **GitHub mode** is what the workflow runs. It needs `--trusted`, `--head`, `--branch`,
 `--head-sha` and `--records` together. It runs only inside GitHub Actions. `--head-sha` must be
@@ -165,7 +133,7 @@ change's already-built binaries.
 > runner settings in `package.json`, build files. The scope check and AI review (Plan 4) cover
 > those.
 
-## Groups and merge readiness
+## Groups
 
 | Group | Branch-protection job | Steps |
 |---|---|---|
@@ -173,20 +141,15 @@ change's already-built binaries.
 | `check` | `check` | `scope`, `protected-tests`, `context-drift`, every command step, `skips`, `protected-rerun` |
 | `scans` | `scans` | `secrets`, `config-policy`; no change code |
 
-The required job names are in `core/policy/branch-protection.yaml`. A run is merge-ready only
-when it is a full run (no `--group`), every gate passes, and the base's `plans/approved-merges.txt`
-holds a line `<branch> <full head sha> <approver> <date>`. A new commit needs a new approval line.
+The required job names are in `core/policy/branch-protection.yaml`. GitHub's ruleset on `main`
+requires them, and a pull request; together they decide whether a change may merge.
 
 ## The record
 
 Each run writes one JSON record. Locally it goes to `.aidlc/ci-records/`, which ignores itself.
 On GitHub it is the job's artifact. The fields are `label`, `framework`, `branch`, `head`,
-`base_branch`, `base`, `group`, `sandbox`, `result`, `failures`, `steps`, `merge_ready`,
-`merge_ready_reason`, `time` and `record_sha256`.
-
-The GitHub jobs always pass `--group`, so their records are never `merge_ready` (the reason says
-"partial run"). There, branch protection's required jobs decide. Locally, merge readiness needs a
-full `aidlc ci` run.
+`base_branch`, `base`, `group`, `sandbox`, `result`, `failures`, `steps`, `time` and
+`record_sha256`. `label` is `github-actions` for a GitHub run and `local-preview` for a local one.
 
 `record_sha256` is the SHA-256 of the record without that field. Check it, and check that `head`
 is the branch tip, before you rely on a record:
@@ -201,16 +164,14 @@ git rev-parse <branch>
 ```
 
 The hash is unkeyed. It detects an edit after writing; it does not prove who wrote the record.
-Trust comes from where the record was written. Agents cannot write there: the session sandbox
-denies writes to `.aidlc/`, and the `Edit` rules deny it too. A record committed on a branch can
-still appear in `.aidlc/ci-records/` while that branch is checked out, which is why the head check
-matters.
+Trust comes from where the record was written: a GitHub job's artifact. A local record is a
+preview, whoever wrote it.
 
 ## The GitHub workflow
 
 Add `ci: [github]` to `.aidlc/config.yaml` and render. The workflow appears at
-`.github/workflows/aidlc-verify.yml`, from `core/ci/github/aidlc-verify.yml`. It stays inactive
-until the repository has a remote. Set two repository variables:
+`.github/workflows/aidlc-verify.yml`, from `core/ci/github/aidlc-verify.yml`. Push the repository
+to GitHub and set two repository variables:
 
 - `AIDLC_FRAMEWORK_REPO`, the framework repository;
 - `AIDLC_FRAMEWORK_REF`, a full commit SHA. The job fails if it is anything else.
@@ -232,8 +193,10 @@ workflow, so a change can edit it. Its integrity rests on review: CODEOWNERS mus
 `/.github/` and `/.aidlc/` with required code-owner review (`code_owned_paths` in the
 branch-protection policy), or an organisation required-workflow ruleset must pin it by SHA. The
 same list names the evidence CI reads from the base: `/plans/approved-bundles.txt`,
-`/plans/approved-merges.txt`, `/test/allowed-skips.txt` and `/test/protected-exceptions.txt`. A
-change to any of them reaches the base only with a code owner's approval.
+`/test/allowed-skips.txt` and `/test/protected-exceptions.txt`. A change to any of them reaches the
+base only with a code owner's approval. With a single owner, GitHub cannot require code-owner
+review (you cannot approve your own pull request), so until a second reviewer exists the controls
+are the required checks, the pull-request rule, and the agent holding no push credential.
 
 **Governance.** Once the base branch lists `ci: [github]`, a change that drops it fails
 `config-policy`. Turning CI off takes a reviewed change to the base, made by a person.
@@ -246,8 +209,7 @@ is skipped, as `make policy-test` does for conftest.
 
 ## Limits
 
-- No Git host exists, so branch protection is simulated. Merge readiness is a record, not a
-  blocked button.
+- A local run is a preview. Only a GitHub run, under the repository's ruleset, counts.
 - Plan 4 adds the remaining required jobs: `agent-config-evals` and `ai-review-dispositioned`.
 - Every sandboxed step, the networked install step included, can read the common git directory.
   The sandbox binds it read-only, because git needs it, but it is not filtered. In local mode

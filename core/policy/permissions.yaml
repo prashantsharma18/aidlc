@@ -101,7 +101,6 @@ deny:
     - "npm publish*"
     - "dotnet nuget push*"
     - "aidlc attempts*--reset*"
-    - "aidlc scope*--accept-base*"
   tools:
     - "tracker.transition_issue"
     - "tracker.delete_*"

@@ -93,20 +93,14 @@ Know what the harness trusts before you rely on it.
 - **The decision log lives outside the repository.** Guard decisions go to `~/.aidlc/logs`, so
   an agent that can write the repository cannot rewrite its own audit trail. Task scope files live
   under `~/.aidlc` for the same reason.
-- **A local base branch is a simulated trust root.** Approvals and the post-check trust the
-  base branch. `aidlc scope` records its commit in the scope file, and the guard denies the git
-  commands that move it. The guard cannot see a raw shell write to `.git/refs/heads/<base>`,
-  though, at any time. So [trusted CI](../checks/ci.md) never trusts the live ref on its own:
-  local `aidlc ci` judges against the commit pinned in the scope file, and refuses to run when
-  the live ref no longer matches it. The refusal alone does not undo a forgery: the forged commit
-  is the base now. So re-scoping after the base moved is a confirmation step. `aidlc scope` lists
-  every commit since the pinned base, marks with `!` those that touch approvals, skips,
-  exceptions or configuration, and pins the new base only with
-  `--accept-base <full live sha>`. Agents cannot do this: the sandbox denies them writes to the
-  scope under `~/.aidlc`. A person who accepts a commit they
-  did not review accepts the forgery. Once a remote exists, the GitHub workflow reads approvals
-  and configuration from the pull request's base commit, behind branch protection.
+- **A local base branch is not a trust root.** Approvals and the post-check read the local
+  base branch, and the guard denies the git commands that move it. It cannot see a raw shell
+  write to `.git/refs/heads/<base>`, though. So nothing local is evidence: the trusted CI is
+  GitHub Actions ([ADR 0002](../adr/0002-github-trusted-ci.md)), which reads approvals and
+  configuration from the pull request's base commit, behind the repository's ruleset. A forged
+  local base can only mislead the local preview and the local scope; GitHub's checks still fail
+  the change.
 - **Trusted CI is the real check.** The post-tool check cannot undo an action. It is the fast
-  first line, and [`aidlc ci`](../checks/ci.md) is the backstop.
+  first line, and the trusted CI on GitHub Actions ([`aidlc ci`](../checks/ci.md)) is the backstop.
 
 Guide: 3 steps 1–9, 3.4, 3.7.

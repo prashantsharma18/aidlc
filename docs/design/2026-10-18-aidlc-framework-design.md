@@ -39,7 +39,7 @@ A demo workspace with two repositories shows one change moving through every sta
 |---|---|---|
 | D1 | Demo backend on ASP.NET Core (.NET 10). Frontend on React + TypeScript with Node 22 LTS via nvm. | The framework must be polyglot: checks are configured per repository, never assumed to be npm. |
 | D2 | Claude Code's OS sandbox, using bubblewrap and socat on WSL2, verified, with limits documented. | Sandbox verification is a Phase 0/3 exit criterion. The control is labelled "not enforced" until it is proved. |
-| D3 | Framework in `~/demos/aidlc`, demo in `~/demos/aidlc-workspace`. Local git and local CI first. GitHub Actions prepared but inactive. | A local trusted-CI runner stands in for CI. Branch protection and CODEOWNERS are documented, not enforced. |
+| D3 | Framework in `~/demos/aidlc`, demo in `~/demos/aidlc-workspace`. Trusted CI on GitHub (ADR 0002, 2026-10-20): public repositories under `github.com/prashantsharma18`. | GitHub Actions runs the gates; rulesets enforce branch protection. Local `aidlc ci` is a preview, never evidence. |
 | D4 | Tracker is lab Jira, through the `lab-jira` MCP server (ContextForge gateway). | The work item is the system of record for intent, spec approval and the coordination plan (Chapter 1.3, arrangement 2). |
 | D5 | Evals and AI review run in two profiles: developer feedback (local, advisory) and mandatory gates (CI, small). | §8 |
 | D6 | OpenWiki uses Anthropic through an `ANTHROPIC_API_KEY` that the user provides. Repositories are small, to bound cost. | §6.4. The key is never pasted into a session. |
@@ -80,7 +80,7 @@ flowchart LR
   CLI -- "adapter interface" --> CC["adapters/claude-code (built)"]
   CLI -. "adapter interface" .-> GH["adapters/copilot (extension point only)"]
   CC --> REPO[("installed repo: AGENTS.md, .aidlc/, .claude/, ci/")]
-  CLI --> CI["local trusted-CI runner / GitHub Actions"]
+  CLI --> CI["GitHub Actions (trusted) / local preview"]
   CI --> REPO
   OB --> COL["platform OTel Collector :4318"]
 ```
@@ -130,7 +130,7 @@ aidlc/
                    secrets (wrapper), immutable-contracts
     evals/         runner, schemas (case, event, rubric), judge package, shared cases
     observability/ attribute map, emitters (hook decisions, check results, eval runs)
-    ci/            local trusted-CI runner; GitHub Actions templates (inactive)
+    ci/            GitHub Actions templates (the trusted CI, ADR 0002)
   adapters/
     claude-code/   plugin assets, managed-settings drop-in, hook shims (Plan 2)
   cli/aidlc/       init-repo, render, scope, check, ci, eval, review, workspace,
@@ -303,7 +303,7 @@ Same commands, cases, prompts and versions in both profiles, so local results pr
 
 | | Developer feedback (local, advisory) | Mandatory gate (trusted CI) |
 |---|---|---|
-| Counts toward merge | Never; labelled local evidence | Yes |
+| Counts toward merge | Never; labelled `local-preview` | Yes |
 | Configuration from | Working copy | Protected `main`, in a separate worktree or checkout |
 | Deterministic gates | `aidlc check` | compile → check (incl. scope) → protected tests → skips → context drift → boundaries → contract compatibility → scans |
 | Agent-configuration evals | `aidlc eval --profile dev`: smoke cases touched by the change, 1 run each | `--profile ci`: runs only when agent configuration changed, else passes. Small: 6–8 must-pass cases, 2 runs each, per-case thresholds, token budget per run. Full set (about 20 cases × 3) weekly or manual. |
@@ -311,14 +311,11 @@ Same commands, cases, prompts and versions in both profiles, so local results pr
 | Model access | The developer's Claude subscription | An eval-only `ANTHROPIC_API_KEY` from CI secrets, withheld from fork PRs |
 | On error or timeout | Information | The check fails (fail closed) |
 
-**Local trusted-CI runner** (`aidlc ci`):
+**`aidlc ci`** (ADR 0002):
 
-- Checks out `main` into a temporary worktree and takes the trusted scripts from there.
-- Runs the gates against the branch.
-- Writes a signed-by-hash record to `.aidlc/ci-records/` (untracked) and emits OTel events.
-- Labels every result `simulated-ci`.
-
-GitHub Actions templates mirror it one-to-one and stay inactive until the repositories are pushed.
+- In GitHub Actions (GitHub mode), it is the trusted CI: the workflow checks out the base and the pull request head, and `aidlc ci` runs the gates. Records are labelled `github-actions`.
+- On a developer's machine it is a preview: the same gates, with the change's code in the sandbox, labelled `local-preview` and never counted as evidence.
+- It writes a hash-sealed record to `.aidlc/ci-records/` (untracked) and emits OTel events.
 
 ## 9. Security and governance
 
@@ -346,7 +343,7 @@ The framework emits into that contract and adds a small `aidlc.*` namespace. It 
 | Correlation IDs: task, session, tool call, harness version, PR | 3.4, step 7 | Built from several sources:<br/>• `ticket.key` from the branch `<type>/<KEY>-<n>-<slug>` (the platform rule).<br/>• `session.key` = Claude Code `session.id`; `prompt.id` and `tool_use_id` from native events.<br/>• `aidlc.harness.version`, `aidlc.tier` and `aidlc.bundle` in a `session_manifest` record written by the plugin's SessionStart hook and joined downstream on `session.key`. Hooks cannot add OTel attributes, and managed settings own `OTEL_RESOURCE_ATTRIBUTES`.<br/>• Headless runs (`aidlc eval`, `aidlc review`) pass `TRACEPARENT`, so `claude_code.interaction` nests under the framework's case or review span in Langfuse.<br/>• PR id added by `aidlc ci`. | Loki, Langfuse |
 | Session start/end, model, surface, outcome | 3.4 | Claude Code native events and traces (managed settings already export them) | Langfuse, Loki |
 | Tool call, decision, deciding control | 3.4 | Claude Code `tool_decision` events plus `aidlc.hook.decision` records (hook, rule, decision, reason) from the guard's local JSONL, shipped at SessionEnd (hooks never use the network) | Loki |
-| Check results and attempt number | 3.4, 8.8 | `aidlc.check.result` from `aidlc check` and `aidlc ci` (steps, failures, skips, attempt, `simulated-ci` flag) | Loki, Mimir (counters) |
+| Check results and attempt number | 3.4, 8.8 | `aidlc.check.result` from `aidlc check` and `aidlc ci` (steps, failures, skips, attempt, `local-preview` or `github-actions` label) | Loki, Mimir (counters) |
 | Tokens, cost, latency, approval wait | 3.4, 12.12 | Claude Code native metrics (`token.usage`, `cost.usage`, `active_time`) and `api_request` events | Mimir, Loki |
 | Paired metrics: cost per successful task, first-attempt green rate, retries per task, denial vs override rate, asks per task, approval time | 3.4, 12.11 | Grafana dashboard (provisioned JSON) and LogQL/PromQL queries joining on `ticket.key` and `session.key`, defined in `core/observability/metrics.yaml` | Grafana |
 | Redaction: no prompt text, secrets or personal data by default | 3.4, 13.5 | Collector strip and allow-list (platform). Demo repositories are classified `internal` and are not in the content cohort. Guard and check emitters send names, paths and counts, never content. | Platform |
@@ -392,7 +389,7 @@ aidlc-workspace/                 a folder, not a repository
 
 | Real | Simulated (labelled) |
 |---|---|
-| Code, tests, contract compatibility, hooks blocking in live sessions, scope, attack tests, local trusted CI, AI review and evals via `claude -p`, OpenWiki output, telemetry in Langfuse/Loki/Mimir | Branch protection and CODEOWNERS (no Git host), production release and flag service (config), human approvals (records for the user) |
+| Code, tests, contract compatibility, hooks blocking in live sessions, scope, attack tests, trusted CI on GitHub Actions, AI review and evals via `claude -p`, OpenWiki output, telemetry in Langfuse/Loki/Mimir | Code-owner review (a single owner cannot approve their own pull request), production release and flag service (config), human approvals (records for the user) |
 
 ## 12. Phases
 
@@ -409,14 +406,14 @@ aidlc-workspace/                 a folder, not a repository
 | P7 | The demo change end to end | All stage artefacts in their systems of record; matrix proved; evidence from trusted runs |
 | P8 | Self-audit against the guide, README, rollout guide, Copilot extension-point notes | Traceability complete; known gaps listed |
 
-Phase P4 is delivered by two plans: Plan 3 (deterministic gates) and Plan 4 (evals, AI review, observability). Skills and agents (P5) are Plan 5; the demo (P6–P7) is Plan 6.
+Phase P4 is delivered by two plans: Plan 3 (deterministic gates) and Plan 4 (evals, AI review, observability). Skills and agents (P5) are Plan 5; the demo (P6–P7) is Plan 6. ADR 0002 (2026-10-20) moves trusted CI to GitHub; Plan 3.5 implements it.
 
 ## 13. Risks and limits
 
 | Risk | Mitigation |
 |---|---|
 | WSL2 sandbox gaps | Verify with attack tests; document; the guard and trusted CI still hold |
-| No Git host: branch protection is not enforced | Documented simulation; GitHub templates ready; the local runner refuses to report "merge-ready" without an approval record |
+| Branch protection with a single owner | Rulesets require pull requests and the CI checks (ADR 0002); code-owner review waits for a second reviewer |
 | Model cost (evals, review, OpenWiki) | Small CI profiles, token budgets, OpenWiki concurrency 1, on-demand updates |
 | Platform services down, so telemetry is lost | Start them in Phase 4; emitters buffer to JSONL |
 | User plugins or managed settings change behaviour | Project-level plugin isolation; managed-settings digest recorded in the eval fingerprint |
