@@ -205,3 +205,41 @@ class EntryAndReadTest(_Base):
             self.write(self.user, {"sandbox": {"filesystem": {"allowWrite": [str(cfg)]}}})
             self.assertTrue(any(m.startswith("FAIL") and "reaches the harness" in m for m in self.d13()))
 
+
+
+class FrameworkRootTest(_Base):
+    """I2 (final review): the framework ROOT, not only bin/, is what a grant must not reach."""
+
+    def framework(self):
+        from aidlc.hookbridge import hooks
+        entry = hooks().guard.recorded_entry(self.root)
+        self.assertTrue(entry, "ready_repo must have a recorded entry")
+        return Path(entry).parent.parent
+
+    def test_grants_into_the_framework_code_fail(self):
+        fw = self.framework()
+        for key_path, grant in (("additionalDirectories", str(fw / "cli")),
+                                ("allowWrite", str(fw / "cli" / "aidlc")),
+                                ("allowWrite", str(fw / "core" / "hooks")),
+                                ("additionalDirectories", str(fw))):
+            with self.subTest(key=key_path, grant=grant):
+                if key_path == "allowWrite":
+                    data = {"sandbox": {"filesystem": {"allowWrite": [grant]}}}
+                else:
+                    data = {"permissions": {"additionalDirectories": [grant]}}
+                self.write(self.user, data)
+                msgs = self.d13()
+                self.assertTrue(any(m.startswith("FAIL") and "lets the agent write the aidlc framework" in m
+                                    and f"'{grant}'" in m and str(fw) in m for m in msgs), msgs)
+
+    def test_aidlc_home_and_pythonpath_in_env_fail(self):
+        for name in ("AIDLC_HOME", "PYTHONPATH"):
+            with self.subTest(name=name):
+                self.write(self.user, {"env": {name: "/x"}})
+                self.assertTrue(any(m.startswith("FAIL") and f"env {name}" in m for m in self.d13()))
+
+    def test_path_in_env_warns(self):
+        self.write(self.user, {"env": {"PATH": "/x:/usr/bin"}})
+        msgs = self.d13()
+        self.assertTrue(any(m.startswith("WARN") and "env PATH" in m for m in msgs), msgs)
+        self.assertFalse(any(m.startswith("FAIL") and "PATH" in m for m in msgs), msgs)

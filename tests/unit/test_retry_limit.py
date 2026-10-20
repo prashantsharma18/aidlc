@@ -566,6 +566,14 @@ class RenderEntryTest(unittest.TestCase):
             with mock.patch("aidlc.commands.render_cmd._allow_write", return_value=[str(npm)]):
                 self.refused(entry)
 
+    def test_an_allow_write_path_inside_the_framework_is_refused(self):          # final review I2
+        with tempfile.TemporaryDirectory(dir=Path.home()) as outside:
+            entry = self.stub(outside)                       # the framework root is `outside`
+            for inside in (Path(outside) / "cli", Path(outside) / "cli" / "aidlc", Path(outside) / "core"):
+                with self.subTest(inside=str(inside)), \
+                        mock.patch("aidlc.commands.render_cmd._allow_write", return_value=[str(inside)]):
+                    self.refused(entry)
+
     def test_an_entry_under_tmp_or_tmpdir_is_refused(self):
         self.refused(self.stub(self.safe.name))                  # /tmp
         with tempfile.TemporaryDirectory(dir=Path.home()) as outside:

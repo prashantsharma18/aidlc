@@ -51,16 +51,20 @@ managed settings. D13 reads each one that exists. It fails when a file:
   mode (local and managed settings only: those outrank the project file);
 - sets `disableAllHooks`, or `permissions.defaultMode: bypassPermissions`;
 - sets an `env` variable that redirects or disables the harness, such as `AIDLC_HOME_DIR`,
-  `AIDLC_TOOLS_DIR`, `AIDLC_USER_SETTINGS` or `AIDLC_MANAGED_SETTINGS` (the full list is
-  `HARNESS_ENV` in the doctor code);
+  `AIDLC_HOME`, `AIDLC_TOOLS_DIR`, `AIDLC_USER_SETTINGS`, `AIDLC_MANAGED_SETTINGS` or
+  `PYTHONPATH`, which could load another `aidlc` package (the full list is `HARNESS_ENV` in the
+  doctor code);
 - sets `sandbox.excludedCommands`;
 - grants a sandbox `allowWrite` that reaches the harness;
-- grants an `allowWrite` or `additionalDirectories` entry that reaches the recorded framework
-  entry. An agent that can write the framework could forge a passing check;
+- grants an `allowWrite` or `additionalDirectories` entry that overlaps the framework: its root
+  (the directory above the recorded `bin/aidlc`), anything under it such as `cli/` or
+  `core/hooks/`, or any parent of it. An agent that can write the framework's code could forge a
+  passing check;
 - holds a grant containing `$`. Doctor cannot resolve it, and a grant it cannot resolve counts
   as reaching.
 
-It warns when a file cannot be read, allows a bare tool, or defines its own hooks.
+It warns when a file cannot be read, allows a bare tool, defines its own hooks, or sets `PATH` in
+`env`. A `PATH` that puts a writable directory first changes which tools the agent's commands run.
 
 ## What doctor cannot see
 

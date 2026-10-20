@@ -331,7 +331,9 @@ def _override_sources(repo: Path) -> list[tuple[str, Path, bool]]:
 
 
 HARNESS_ENV = {"AIDLC_HARNESS_FILE", "AIDLC_HOME_DIR", "AIDLC_SCOPE_FILE", "AIDLC_BASE_REF", "AIDLC_LOG_DIR",
-               "CHECK_SCOPE", "AIDLC_TOOLS_DIR", "AIDLC_USER_SETTINGS", "AIDLC_MANAGED_SETTINGS"}
+               "CHECK_SCOPE", "AIDLC_TOOLS_DIR", "AIDLC_USER_SETTINGS", "AIDLC_MANAGED_SETTINGS",
+               "AIDLC_HOME", "PYTHONPATH"}     # PYTHONPATH could load another `aidlc` package into the hooks or CLI
+SEARCH_ENV = {"PATH"}                         # changes which tools run; a WARN, since toolchains set it
 OVERRIDE_MAX_BYTES = 1024 * 1024
 
 
@@ -366,14 +368,15 @@ def _resolve_grant(raw: str, repo: Path) -> Path:
 
 
 def _reaches_framework(grant: str, repo: Path, entry: Path) -> bool:
-    """A write grant or extra directory that covers the recorded framework entry, its directory or
-    any parent of it. Relative grants are taken from the repository. Raises _Unresolved."""
+    """A write grant or extra directory that overlaps the framework: its root (the recorded entry's
+    parent.parent), anything under it (cli/, core/hooks/, bin/) or any parent of it. Relative grants
+    are taken from the repository. Raises _Unresolved."""
     raw = grant.strip()
     if not raw:
         return False
     try:
-        path = _resolve_grant(raw, repo)
-        return any(path == t or path in t.parents for t in (entry, entry.parent))
+        path, root = _resolve_grant(raw, repo), entry.parent.parent
+        return path == root or path in root.parents or root in path.parents
     except (OSError, ValueError, RuntimeError) as exc:
         raise _Unresolved from exc
 
@@ -432,6 +435,9 @@ def check_d13(repo: Path) -> list[Finding]:
         for name in sorted(env):
             if name in HARNESS_ENV or (name == "AIDLC_SCOPE" and str(env[name]).lower() == "off"):
                 out.append(_fail(label, f"D13 {label} sets env {name}, which redirects or disables the harness"))
+            elif name in SEARCH_ENV:
+                out.append(_warn(label, f"D13 {label} sets env {name}, which changes which tools the agent's "
+                                        "commands run; check that it puts no writable directory first"))
         if sandbox.get("excludedCommands"):
             out.append(_fail(label, f"D13 {label} sets sandbox.excludedCommands; those commands run unsandboxed"))
         filesystem = sandbox.get("filesystem") if isinstance(sandbox.get("filesystem"), dict) else {}
@@ -449,7 +455,8 @@ def check_d13(repo: Path) -> list[Finding]:
                         out.append(_fail(label, f"D13 {label} {key} '{value}' reaches the harness"))
                     if entry is not None and _reaches_framework(value, repo, entry):
                         out.append(_fail(label, f"D13 {label}: {key} entry '{value}' lets the agent write the "
-                                                f"aidlc framework ({entry.parent}); a forged check could then earn PASS credit"))
+                                                f"aidlc framework rooted at {entry.parent.parent}: its code or its "
+                                                f"entry point ({entry.parent}); a forged check could then earn PASS credit"))
                 except _Unresolved:
                     out.append(_fail(label, f"D13 {label}: {key} entry {value!r} could not be resolved; treated as reaching"))
         for rule in perms.get("allow") or []:
