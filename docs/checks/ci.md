@@ -133,7 +133,9 @@ When it runs, it has its own third worktree, built in step 1, before any of the 
 - every test file the change modified, retyped or deleted gets its base bytes and mode back,
   unless an approved exception covers it;
 - every test file the change added is removed;
-- the first run's sandbox never sees this worktree.
+- the first run's sandbox never sees this worktree;
+- its `.check/` is prepared there too, so the re-run's logs never go to the first run's
+  `.check/`, which the change's code controlled. The record names them `rerun/.check/<step>.log`.
 
 It then runs in its own sandbox with a fresh private home: the install step again, the
 compile-type steps, then `test`. On .NET, the rebuild means the base tests really run, not the

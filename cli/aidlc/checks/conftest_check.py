@@ -13,6 +13,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import os
+import re
 import stat
 import subprocess
 import tempfile
@@ -307,6 +308,32 @@ def _judge_tracked_paths(head: Path, rendered: set[str]) -> list[Finding]:
     return out
 
 
+SUBMODULES = "submodules are not supported by config-policy"
+SHORT_NAME = re.compile(r"[^/]{1,6}~\d+")       # a Windows 8.3 alias such as GIT~1
+
+
+def _judge_tracked_entries(head: Path) -> list[Finding]:
+    """From the index (git ls-files --stage, a read-only call before any of the change's code runs):
+    a gitlink (mode 160000) or a .gitmodules FAILs, since the judges never see a submodule's content.
+    So does a path component that Windows would read as another path: one ending in a space or a
+    dot, or an 8.3 short name such as GIT~1."""
+    try:
+        listed = [e for e in git(head, "ls-files", "-z", "--cached", "--stage").split("\0") if e]
+    except (CheckError, OSError, subprocess.SubprocessError) as exc:
+        return [Finding("FAIL", "", 0, f"cannot list the tracked files to judge them: {exc}")]
+    out = []
+    for entry in listed:
+        meta, _, path = entry.partition("\t")
+        if meta.split(" ", 1)[0] == "160000" or _fold(path) == ".gitmodules":
+            out.append(Finding("FAIL", path, 0, f"{path}: {SUBMODULES}"))
+            continue
+        odd = [part for part in path.split("/") if part.endswith((" ", ".")) or SHORT_NAME.fullmatch(part)]
+        if odd:
+            out.append(Finding("FAIL", path, 0, f"{path}: the name '{odd[0]}' ends in a space or a dot, or is an "
+                                                "8.3 short name; Windows would read it as another path"))
+    return out
+
+
 def _walk_extras(head: Path, rendered: set[str], dirs: tuple[str, ...], unmanaged: bool) -> list[Finding]:
     """Entries the render does not produce: any extension, link, folder or special file. With
     `unmanaged`, the folder is walked recursively and each extra is agent configuration no one judges."""
@@ -361,11 +388,14 @@ def judge_generated(head: Path, trusted: Path) -> list[Finding]:
     if not isinstance(tools, list) or not tools or not all(isinstance(t, str) for t in tools):
         return [Finding("FAIL", str(CONFIG), 0, f"the trusted configuration's 'tools' must be a list of tool names, got {tools!r}")]
     ci_tools = raw.get("ci") if isinstance(raw, dict) else None
+    if ci_tools is not None and not (isinstance(ci_tools, list) and all(isinstance(t, str) for t in ci_tools)):
+        return [Finding("FAIL", str(CONFIG), 0, f"the trusted configuration's 'ci' must be a list of CI names, "
+                                                f"got {ci_tools!r}")]
     github_ci = isinstance(ci_tools, list) and "github" in ci_tools      # the trusted config lists it
     refused = _check_render_inputs(head)
     if refused:
         return refused
-    findings: list[Finding] = []
+    findings: list[Finding] = _judge_tracked_entries(head)
     for name in tools:
         try:
             adapter = get_adapter(name)

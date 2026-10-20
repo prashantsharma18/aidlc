@@ -904,7 +904,7 @@ def _is_entry_point(word: str, cwd: str | None) -> bool:
     """An allow-list of one: the word is the recorded entry string, byte for byte. No PATH lookup
     and no path resolution of the word (a bare `aidlc`, a relative path or a `..` spelling is never
     exact). At hook time the entry must still be its own realpath, a regular file, and outside the
-    repository the agent works in."""
+    repository the agent works in and outside $CLAUDE_PROJECT_DIR when that is set."""
     try:
         root = repo_root(Path(cwd or os.getcwd()))
         if root is None:
@@ -914,7 +914,9 @@ def _is_entry_point(word: str, cwd: str | None) -> bool:
             return False
         if not stat.S_ISREG(os.lstat(entry).st_mode):
             return False
-        return not (entry == str(root) or entry.startswith(str(root).rstrip("/") + "/"))
+        project = os.environ.get("CLAUDE_PROJECT_DIR")
+        writable = [str(root)] + ([os.path.realpath(project)] if project else [])
+        return not any(entry == w or entry.startswith(w.rstrip("/") + "/") for w in writable)
     except Exception:  # noqa: BLE001
         return False
 

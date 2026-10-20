@@ -136,7 +136,7 @@ class CiStepTest(unittest.TestCase):
     def test_policy_commands(self):
         with Rendered() as root, mock.patch.object(conftest_check, "which_tool", return_value=None):
             code, out, _ = run_cli("policy", "conftest", "--repo", str(root))
-            self.assertEqual(code, 1)
+            self.assertEqual(code, 2)                                  # queued item B10: a tool problem is 2
             self.assertIn("aidlc tools install conftest", out)
             code, out, err = run_cli("policy", "rego-test")
             self.assertEqual(code, 2)
@@ -660,3 +660,88 @@ class GeneratedFilesJudgeRound3Test(GeneratedFilesJudgeRound2Test):  # re-runs e
             (head / nfd).write_text((head / ".claude/rules/café.md").read_text())
             self.track(head, nfd)
             self.failing(head, trusted, nfd)
+
+
+class TrackedEntriesJudgeTest(unittest.TestCase):
+    """Queued items B7 and B8: submodules, and names Windows would read as another path."""
+
+    setUp = GeneratedFilesJudgeTest.setUp
+    step = GeneratedFilesJudgeTest.step
+
+    def failing(self, head, trusted, *needles):
+        from aidlc import ci
+        step = self.step(head, trusted)
+        self.assertEqual(step.status, ci.FAIL, step.detail)
+        for needle in needles:
+            self.assertIn(needle, step.detail)
+
+    def test_a_gitlink_or_a_gitmodules_fails(self):
+        from tests.helpers import git
+        with Rendered() as trusted, Rendered() as head:
+            sha = git(head, "rev-parse", "HEAD")
+            git(head, "update-index", "--add", "--cacheinfo", f"160000,{sha},vendor/lib")
+            self.failing(head, trusted, "vendor/lib", "submodules are not supported by config-policy")
+        with Rendered() as trusted, Rendered() as head:
+            (head / ".gitmodules").write_text('[submodule "x"]\n\tpath = x\n\turl = https://example.invalid/x\n')
+            git(head, "add", "-f", ".gitmodules")
+            self.failing(head, trusted, ".gitmodules", "submodules are not supported by config-policy")
+
+    def test_names_windows_would_alias_fail(self):
+        from tests.helpers import git
+        for rel in ("src/trailing.", "src/trailing ", "docs/x /y.md", "GIT~1/config", "src/CLAUDE~12",
+                    "a.../b.txt"):
+            with self.subTest(rel=rel), Rendered() as trusted, Rendered() as head:
+                (head / rel).parent.mkdir(parents=True, exist_ok=True)
+                (head / rel).write_text("x\n")
+                # git refuses some of these by default (core.protectNTFS); a change can be committed without it
+                git(head, "-c", "core.protectNTFS=false", "add", "-f", "--", f":(literal){rel}")
+                self.failing(head, trusted, "Windows")
+
+    def test_ordinary_names_pass(self):
+        from aidlc import ci
+        from tests.helpers import git
+        with Rendered() as trusted, Rendered() as head:
+            for rel in ("src/v1.2/x.py", "src/a~b.txt", "src/longname~1", "src/.hidden", "src/x~1.txt"):
+                (head / rel).parent.mkdir(parents=True, exist_ok=True)
+                (head / rel).write_text("x\n")
+                git(head, "add", "-f", "--", rel)
+            step = self.step(head, trusted)
+            self.assertEqual(step.status, ci.OK, step.detail)
+
+
+class TrustedCiValueTest(unittest.TestCase):
+    def test_a_malformed_trusted_ci_value_fails(self):                             # queued item B9
+        import yaml
+
+        from aidlc.checks.conftest_check import judge_generated
+        for value in ("github", {"github": True}, [1], 5):
+            with self.subTest(value=value), Rendered() as trusted, Rendered() as head:
+                path = trusted / ".aidlc/config.yaml"
+                cfg = yaml.safe_load(path.read_text())
+                cfg["ci"] = value
+                path.write_text(yaml.safe_dump(cfg, sort_keys=False))
+                findings = [str(f) for f in judge_generated(head, trusted) if f.level == "FAIL"]
+                self.assertTrue(any("'ci' must be a list" in f for f in findings), findings)
+
+
+class PolicyConftestExitTest(unittest.TestCase):
+    def test_missing_or_unrunnable_conftest_exits_2_and_a_violation_exits_1(self):    # queued item B10
+        with Rendered() as root:
+            with mock.patch.object(conftest_check, "which_tool", return_value=None):
+                code, out, _ = run_cli("policy", "conftest", "--repo", str(root))
+                self.assertEqual(code, 2, out)
+                self.assertIn("conftest is not installed", out)
+            with mock.patch.object(conftest_check, "which_tool", return_value=Path("/nonexistent/aidlc/conftest")):
+                code, out, _ = run_cli("policy", "conftest", "--repo", str(root))
+                self.assertEqual(code, 2, out)
+                self.assertIn("conftest could not run", out)
+            failing = "\n".join(["#!/bin/sh", "echo '[{\"filename\": \"x\", \"namespace\": \"aidlc.settings\", "
+                                 "\"successes\": 0, \"failures\": [{\"msg\": \"bad\"}], \"warnings\": []}]'",
+                                 "exit 1", ""])
+            with tempfile.TemporaryDirectory() as tools:
+                stub = Path(tools) / "conftest"
+                stub.write_text(failing)
+                stub.chmod(0o755)
+                with mock.patch.object(conftest_check, "which_tool", return_value=stub):
+                    code, out, _ = run_cli("policy", "conftest", "--repo", str(root))
+                self.assertEqual(code, 1, out)                      # a violation stays 1

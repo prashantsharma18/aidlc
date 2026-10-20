@@ -5,7 +5,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from ..checks.conftest_check import run_conftest, verify_pack
+from ..checks.conftest_check import NOT_INSTALLED, run_conftest, verify_pack
 from ..checks.findings import report
 from ..cli import command
 from ..harness import HarnessError
@@ -31,7 +31,10 @@ def _conftest(args: argparse.Namespace) -> int:
     except (FileNotFoundError, HarnessError, PolicyError, ValueError, OSError) as exc:
         print(f"aidlc policy: {exc}", file=sys.stderr)
         return 2
-    return report(findings, "conftest")
+    code = report(findings, "conftest")
+    tool_problem = any(f.message == NOT_INSTALLED or f.message.startswith("conftest could not run")
+                       for f in findings)
+    return 2 if tool_problem else code          # no verdict was reached: a tool problem, not a violation
 
 
 def _rego_test(_args: argparse.Namespace) -> int:

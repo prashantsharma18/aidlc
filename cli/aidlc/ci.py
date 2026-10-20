@@ -199,7 +199,8 @@ def step_protected_rerun(ctx: CheckContext) -> StepResult:
     regression. The re-run uses its own checkout (ctx.rerun), built before any of the change's code
     ran: the base version of every test file the change touched, none of the test files it added, and
     nothing the first run wrote. It runs in its own sandbox with a fresh private home: install, the
-    compile steps, then the test step. Logs go to the first checkout's .check/ as for every step."""
+    compile steps, then the test step. Its logs go to its own .check/ (rerun/.check/, prepared before
+    any of the change's code ran), never to the first checkout's, which the change's code owned."""
     rerun: Rerun | None = ctx.rerun
     if rerun is None:
         return StepResult("protected-rerun", OK, "no existing test file changed")
@@ -209,19 +210,26 @@ def step_protected_rerun(ctx: CheckContext) -> StepResult:
         return StepResult("protected-rerun", FAIL, "the protected re-run runs only in the sandbox")
     if "test" not in ctx.config.commands:
         return StepResult("protected-rerun", FAIL, "no test command to re-run the base suite with")
-    rctx = dataclasses.replace(ctx, wrap=rerun.wrap)
+    rctx = dataclasses.replace(ctx, repo=rerun.path, wrap=rerun.wrap)
     install = [n for n in INSTALL_STEPS if n in ctx.config.commands][:1]
     builds = [n for n in ctx.config.check_steps if group_of(n) == "compile" and n not in INSTALL_STEPS]
     for name in install + builds:                             # `dotnet test --no-build` needs a fresh build
-        built = run_command(rctx, name, step=f"protected-rerun-{name}", cwd=rerun.path)
+        built = _rerun_log(run_command(rctx, name, step=f"protected-rerun-{name}", cwd=rerun.path))
         if built.status == FAIL:
             built.name, built.detail = "protected-rerun", f"preparing the base suite failed at {name} ({built.detail})"
             return built
-    result = run_command(rctx, "test", step="protected-rerun", cwd=rerun.path)
+    result = _rerun_log(run_command(rctx, "test", step="protected-rerun", cwd=rerun.path))
     if result.status == FAIL:
         touched = rerun.touched
         result.detail = (f"the base test suite fails on this change ({result.detail}; {', '.join(touched[:5])}"
                          f"{' ...' if len(touched) > 5 else ''}): a changed or added test hid a regression")
+    return result
+
+
+def _rerun_log(result: StepResult) -> StepResult:
+    """The re-run's log lives in the re-run's checkout: say so in the record and the output."""
+    if result.log:
+        result.log = f"rerun/{result.log}"
     return result
 
 

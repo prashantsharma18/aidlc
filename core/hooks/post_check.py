@@ -36,6 +36,9 @@ def _result(decision: str, rule: str, reason: str) -> dict:
     return {"decision": decision, "rule": rule, "reason": reason}
 
 
+DIFF_FLAGS = ("--no-textconv", "--no-ext-diff", "--no-renames")
+
+
 def _git(root: Path, *args: str) -> str:
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     out = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, errors="replace", env=env, timeout=10)
@@ -65,7 +68,7 @@ def check(event: dict) -> dict:
         # fallback for scope files written before it was recorded.
         ref = os.environ.get("AIDLC_BASE_REF") or recorded or harness["base_branch"]
         base = _git(root, "merge-base", ref, "HEAD").strip()
-        changed = {p for p in _git(root, "diff", "--no-renames", "--name-only", "-z", base).split("\0") if p}
+        changed = {p for p in _git(root, "diff", *DIFF_FLAGS, "--name-only", "-z", base).split("\0") if p}
         changed |= {p for p in _git(root, "ls-files", "--others", "--exclude-standard", "-z").split("\0") if p}
         for path in sorted(changed):
             if (".git" in (seg.casefold() for seg in path.split("/"))
@@ -80,7 +83,9 @@ def check(event: dict) -> dict:
                 return _result("flag", "outside-scope", f"{guard._redact(path)} was written outside the task's "
                                "MAY CHANGE list. Revert it, or stop and ask.")
             if TEST_FILE_RE.search(path) and _exists_at(root, base, path):
-                lines = _git(root, "diff", "--no-renames", "-U0", base, "--", path).splitlines()
+                # The real lines: no driver the branch's .gitattributes picks, the name taken literally
+                # (never as pathspec magic), and "\n" alone ends a line (a \f cannot split one).
+                lines = _git(root, "diff", *DIFF_FLAGS, "--text", "-U0", base, "--", f":(literal){path}").split("\n")
                 removed = [ln for ln in lines if ln.startswith("-") and not ln.startswith("---")
                            and ASSERT_RE.search(ln)]
                 if removed:

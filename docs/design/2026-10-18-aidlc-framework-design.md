@@ -288,7 +288,7 @@ Implements Chapter 3's nine steps per repository from the core:
 | Pre-tool guard | Protected paths (harness, rules, CI, plans, contracts, check scripts, test integrity lists), task scope, chained-command split, destructive git, network tools, pipe-to-shell | Python; fail closed; decision log with correlation IDs |
 | Post-tool check | Writes outside scope, changed assertions (per-language patterns: `expect(`, `Assert.`), credential-shaped output | Fast first line; trusted CI is the real check |
 | One-command check | `aidlc check` runs the repo-declared steps (lint, types, tests, scope, boundaries, contract) with one line per step and numeric targets | The same command in trusted CI |
-| Retry limit and budget | 3 attempts per failing check; per-task token budget | In skills (advice) and in the eval runner (enforced) |
+| Retry limit and budget | 3 attempts per failing check; per-task token budget | The retry limit is enforced by the harness: the post-tool check counts failing `aidlc check` runs and the guard denies edits and shell calls at the limit (Plan 3 Task 4). Skills give advice; the token budget is enforced in the eval runner |
 | Promotion | The agent holds no push credential. With local git, the "harness" is the user's own push step. | Documented simulation |
 
 **Coexisting with the platform.**

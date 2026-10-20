@@ -24,8 +24,9 @@ the download host.
 ## Running the pack
 
 - `aidlc policy conftest [--repo PATH]` judges one repository. It exits 0 on a pass and 1 on a
-  violation, including "conftest is not installed". It exits 2 when the repository or its policy
-  data cannot be read. Locally it uses the pinned binary, else one on PATH.
+  violation. It exits 2 when no verdict was reached: conftest is not installed or cannot run, or
+  the repository or its policy data cannot be read. Locally it uses the pinned binary, else one on
+  PATH. In `aidlc ci`, a missing conftest is a `config-policy` FAIL like any other.
 - `aidlc ci` runs the same judgement as the `config-policy` step, with the pinned binary only. See
   [trusted CI](ci.md).
 - `aidlc policy rego-test` runs the pack's own unit tests.
@@ -77,6 +78,15 @@ NFC-normalised, and checked at any depth:
 - extra files under `.aidlc/hooks/`.
 
 `.aidlc/rules/` may hold the repository's own rule sources, one level deep.
+
+**Some tracked paths fail whatever they hold.** The judges read the checkout and git objects, so
+two kinds of path could hide content from them:
+
+- a submodule, tracked as a gitlink (mode 160000) or declared in `.gitmodules`. The judges never
+  see its content, so it fails: "submodules are not supported by config-policy";
+- a path component that Windows reads as another path: one that ends in a space or a dot, or an
+  8.3 short name such as `GIT~1`. On a Windows checkout it could stand in for `.git` or a protected
+  file.
 
 A nested `CLAUDE.md` or `AGENTS.md`, such as `src/payments/CLAUDE.md`, is not on that list.
 `config-policy` does not judge it. It is context: Claude Code loads it when the agent works in

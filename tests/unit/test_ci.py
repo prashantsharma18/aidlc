@@ -1113,3 +1113,77 @@ class AllowedSkipsLinesTest(unittest.TestCase):
                 text = f"# a comment{sep}test_app.AppTest.test_value # hidden in the comment\nkept.test # why\n"
                 ctx = mock.Mock(steering={ALLOWED_SKIPS: text})
                 self.assertEqual(_allowed_skips(ctx), {"kept.test"})
+
+
+class PostCheckDiffHygieneTest(unittest.TestCase):
+    """Queued item B4: the local post-edit hook reads the real lines of a test file. A driver picked
+    by .gitattributes, a name git reads as pathspec magic, or a form feed cannot hide a removed
+    assertion."""
+
+    def flagged(self, base_files, new_files, config=()):
+        from tests.hook_loader import load_hook
+        from tests.unit.test_guard import GuardEnv, repo_on_branch
+        post = load_hook("post_check")
+        repo, root = repo_on_branch()
+        self.addCleanup(repo.__exit__, None, None, None)
+        for key, value in config:
+            git(root, "config", key, value)                     # repo-local: what a driver needs
+        for rel, text in base_files.items():
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text(text)
+        git(root, "add", "-A")
+        git(root, "commit", "-q", "-m", "tests")
+        git(root, "branch", "-f", "main", "HEAD")              # base = this commit
+        for rel, text in new_files.items():
+            (root / rel).write_text(text)
+        with GuardEnv() as env:
+            env.write_scope(root, ["**"])
+            result = post.check({"session": "s", "call": "c", "tool": "edit", "args": {}, "cwd": str(root),
+                                 "output": ""})
+        return result["decision"], result["rule"]
+
+    OLD = "it('a', () => { expect(f()).toBe(1); });\n"
+    NEW = "it('a', () => { f(); });\n"
+
+    def test_a_textconv_driver_cannot_hide_a_removed_assertion(self):
+        self.assertEqual(self.flagged({".gitattributes": "*.ts diff=blind\n", "test/a.test.ts": self.OLD},
+                                      {"test/a.test.ts": self.NEW}, [("diff.blind.textconv", "true")]),
+                         ("flag", "changed-assertion"))
+
+    def test_an_external_diff_driver_cannot_hide_a_removed_assertion(self):
+        self.assertEqual(self.flagged({".gitattributes": "*.ts diff=ext\n", "test/a.test.ts": self.OLD},
+                                      {"test/a.test.ts": self.NEW}, [("diff.ext.command", "true")]),
+                         ("flag", "changed-assertion"))
+
+    def test_a_name_that_reads_as_pathspec_magic_is_judged_by_its_own_lines(self):
+        name = ":(icase)z.test.ts"                              # as a pathspec: "z.test.ts", any case
+        self.assertEqual(self.flagged({name: self.OLD}, {name: self.NEW}), ("flag", "changed-assertion"))
+
+    def test_a_form_feed_cannot_split_a_removed_assertion_off_its_line(self):
+        old = "it('a', () => { const y = 1;\fexpect(f()).toBe(1); });\n"
+        self.assertEqual(self.flagged({"test/a.test.ts": old}, {"test/a.test.ts": self.NEW}),
+                         ("flag", "changed-assertion"))
+
+
+@NEEDS_SANDBOX
+class RerunLogsTest(unittest.TestCase):
+    def test_the_rerun_logs_in_its_own_checkout_never_where_the_first_run_wrote(self):    # queued item B5
+        with CiRepo() as r:
+            # The first run's code owns work/.check/: it plants a folder where the re-run's log would go.
+            planted = TEST_APP + "\nimport os\nos.makedirs('.check/protected-rerun.log', exist_ok=True)\n"
+            r.commit({"src/extra.py": "X = 1\n", "test/test_app.py": planted})
+            seen = []
+            real = ci.run_command
+
+            def spy(ctx, name, step=None, cwd=None):
+                seen.append((step or name, str(ctx.repo), str(cwd)))
+                return real(ctx, name, step=step, cwd=cwd)
+
+            with mock.patch.object(ci, "run_command", spy):
+                code, out, _ = run_cli("ci", "--repo", str(r.root))
+            rerun = steps(last(r))["protected-rerun"]
+            self.assertEqual(rerun["status"], "ok", out)
+            [(_, repo, cwd)] = [s for s in seen if s[0] == "protected-rerun"]
+            self.assertEqual(repo, cwd)                                       # logs go under rerun/.check/
+            self.assertTrue(repo.endswith("/rerun"), repo)
+            self.assertEqual(rerun["log"], "rerun/.check/protected-rerun.log")

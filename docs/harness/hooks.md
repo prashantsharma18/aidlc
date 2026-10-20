@@ -84,7 +84,7 @@ sees, as `[aidlc <rule>]`. The ids below are the ones the code emits.
 | `no-scope` | guard, post-check | deny, flag | No readable scope file for the branch, or `AIDLC_SCOPE=off` when unattended |
 | `hard-link` | guard | deny | The target file has more than one hard link |
 | `fail-safe` | guard, post-check, shim | deny, flag | Unreadable input or harness data, an internal error, a command too large or complex, or output too large to scan |
-| `changed-assertion` | post-check | flag | An existing assertion in a test file was changed or removed |
+| `changed-assertion` | post-check | flag | An existing assertion in a test file was changed or removed. The hook reads the real lines: no diff driver from `.gitattributes`, the file name taken literally, and only `\n` ends a line |
 | `skipped-test` | post-check | flag | A test was disabled or the suite narrowed |
 | `secret-in-output` | post-check | flag | Tool output contains a high-confidence credential shape |
 | `check-recorded` | post-check | pass | A run of `aidlc check` was counted; the reason gives the failures in a row and the limit |
