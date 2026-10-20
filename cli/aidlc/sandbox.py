@@ -41,8 +41,9 @@ def available() -> bool:
     exercises the flags a run would use. Any failure means False."""
     if not bwrap_path():
         return False
-    tmp = Path(tempfile.mkdtemp(prefix="aidlc-probe-"))
+    tmp: Path | None = None
     try:
+        tmp = Path(tempfile.mkdtemp(prefix="aidlc-probe-"))     # inside the try: no temp dir is no sandbox
         dirs = {name: tmp / name for name in ("work", "private", "home")}
         for d in dirs.values():
             d.mkdir()
@@ -52,7 +53,8 @@ def available() -> bool:
     except (OSError, subprocess.SubprocessError, SandboxError):
         return False
     finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+        if tmp is not None:
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 def _profile(profile: str) -> dict:

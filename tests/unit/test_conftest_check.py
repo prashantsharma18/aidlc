@@ -219,7 +219,27 @@ class CommandHygieneTest(unittest.TestCase):
             (root / ".github/workflows").symlink_to(outside)
             runner = fake()
             findings = run_conftest(root, binary=Path("/opt/conftest"), runner=runner)
-            self.assertTrue(any("v.yml" in str(f) and "outside" in str(f) for f in findings), findings)
+            # Final review minor 3: the symlinked folder FAILs and is never listed or followed.
+            self.assertTrue(any(f.level == "FAIL" and ".github/workflows is a symlink" in str(f) for f in findings),
+                            findings)
+            self.assertFalse(any("v.yml" in str(f) for f in findings), findings)
+
+    def test_a_symlinked_github_folder_fails_and_is_never_followed(self):          # final review minor 3
+        for link in (".github", ".github/workflows"):
+            with self.subTest(link=link), Rendered() as root, tempfile.TemporaryDirectory() as outside:
+                target = Path(outside) / ("workflows" if link == ".github" else "")
+                target.mkdir(exist_ok=True)
+                (target / "host-secret-name.yml").write_text("on: push\n")
+                real = Path(outside) if link == ".github" else target
+                (root / link).parent.mkdir(parents=True, exist_ok=True)
+                (root / link).symlink_to(real)
+                self.assertEqual(inputs(root), [("aidlc.settings", ".claude/settings.json"),
+                                                ("aidlc.narrowing", ".aidlc/permissions.yaml")])
+                runner = fake()
+                findings = run_conftest(root, binary=Path("/opt/conftest"), runner=runner)
+                self.assertTrue(any(f.level == "FAIL" and f"{link} is a symlink" in str(f) for f in findings), findings)
+                self.assertFalse(any("host-secret-name" in str(f) for f in findings), findings)
+                self.assertFalse(any("host-secret-name" in " ".join(c) for c in runner.calls), runner.calls)
 
 
 @unittest.skipUnless(which_tool("conftest"), "conftest is not installed: run `aidlc tools install conftest` "

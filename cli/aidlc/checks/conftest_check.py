@@ -42,9 +42,10 @@ def rego_dir() -> Path:
 
 
 def _workflow_entries(repo: Path) -> tuple[list[str], list[str]]:
-    """(workflow files, other non-directory entries) under .github/workflows, repository-relative."""
+    """(workflow files, other non-directory entries) under .github/workflows, repository-relative. A
+    symlinked .github or .github/workflows is never listed: run_conftest FAILs it (_workflows_refused)."""
     workflows = repo / ".github" / "workflows"
-    if not workflows.is_dir():
+    if _workflows_refused(repo) or _kind(workflows) != "dir":
         return [], []
     files, others = [], []
     for p in sorted(workflows.iterdir()):
@@ -54,6 +55,11 @@ def _workflow_entries(repo: Path) -> tuple[list[str], list[str]]:
         elif not (p.is_dir() and not p.is_symlink()):
             others.append(rel)
     return files, others
+
+
+def _workflows_refused(repo: Path) -> str:
+    """Why .github/workflows cannot be listed: it or .github is a symlink or not a folder; "" if fine."""
+    return _unfollowed(repo, ".github/workflows", "dir")
 
 
 def inputs(repo: Path) -> list[tuple[str, str]]:
@@ -157,6 +163,9 @@ def run_conftest(repo: Path, binary: Path | None = None, runner=subprocess.run,
         return findings + [Finding("FAIL", "", 0, f"too many inputs ({len(targets)} > {MAX_INPUTS})")]
     findings += [Finding("WARN", rel, 0, "not a workflow file (.yml or .yaml); it is not judged")
                  for rel in _workflow_entries(repo)[1]]
+    refused = _workflows_refused(repo)
+    if refused:
+        findings.append(Finding("FAIL", refused.split(" is ")[0], 0, refused))
     with tempfile.TemporaryDirectory(prefix="aidlc-conftest-") as tmp:
         work, home, datadir = (Path(tmp) / n for n in ("cwd", "home", "data"))
         for directory in (work, home, datadir):

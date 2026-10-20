@@ -196,6 +196,11 @@ until the repository has a remote. Set two repository variables:
 Each job checks out the pull request head (`pr/`), the base commit (`trusted/`) and the framework,
 all without persisted credentials, and with a read-only token.
 
+**Branch names.** Approvals are keyed on the branch name. The workflow passes the pull request's
+branch name only when its head is in this repository. A pull request from a fork runs as
+`fork-pr-<number>`, so a fork that names its branch after an approved one gets no approval. The
+name is computed in `env:` and used as `"$BRANCH"`, never written into `run:`.
+
 **Toolchain files.** The node profile needs `.nvmrc` at the repository root, and dotnet needs
 `global.json`. Doctor D14 fails without them. The toolchain version comes from the change by
 design, so review it like code.
@@ -203,15 +208,30 @@ design, so review it like code.
 **The trust boundary.** On `pull_request`, GitHub runs the pull request's own copy of the
 workflow, so a change can edit it. Its integrity rests on review: CODEOWNERS must cover
 `/.github/` and `/.aidlc/` with required code-owner review (`code_owned_paths` in the
-branch-protection policy), or an organisation required-workflow ruleset must pin it by SHA.
+branch-protection policy), or an organisation required-workflow ruleset must pin it by SHA. The
+same list names the evidence CI reads from the base: `/plans/approved-bundles.txt`,
+`/plans/approved-merges.txt`, `/test/allowed-skips.txt` and `/test/protected-exceptions.txt`. A
+change to any of them reaches the base only with a code owner's approval.
 
 **Governance.** Once the base branch lists `ci: [github]`, a change that drops it fails
 `config-policy`. Turning CI off takes a reviewed change to the base, made by a person.
+
+## Testing it
+
+`make test` skips the tests that need bubblewrap when it cannot start a sandbox. `make
+sandbox-test` runs `tests/unit/test_sandbox.py` and `tests/unit/test_ci.py` and fails if any test
+is skipped, as `make policy-test` does for conftest.
 
 ## Limits
 
 - No Git host exists, so branch protection is simulated. Merge readiness is a record, not a
   blocked button.
 - Plan 4 adds the remaining required jobs: `agent-config-evals` and `ai-review-dispositioned`.
+- Every sandboxed step, the networked install step included, can read the common git directory.
+  The sandbox binds it read-only, because git needs it, but it is not filtered. In local mode
+  that is your whole `.git`: every branch and its history, and `.git/config` with any
+  credentials written into a remote URL. The install step can also send what it reads over the
+  network. Keep credentials out of remote URLs (use a credential helper), and treat a branch
+  that is not ready to share as visible to the change under test.
 
 Guide: 3 step 6, 9.5, 9.7, 11.8.

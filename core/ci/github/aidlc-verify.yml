@@ -7,10 +7,14 @@
 # Trust boundary: on `pull_request`, GitHub runs the workflow file from the pull request's own
 # head, so a change can edit this file. `aidlc ci` flags a hand-edited copy (config-policy), but
 # only while the edited workflow still runs it honestly. The workflow is therefore protected by
-# review, not by where it is read from: CODEOWNERS must cover /.github/ and /.aidlc/, with required
-# code-owner review (core/policy/branch-protection.yaml, code_owned_paths), or an organisation
+# review, not by where it is read from: CODEOWNERS must cover /.github/ and /.aidlc/, and the evidence
+# read from trusted/ (/plans/approved-bundles.txt, /plans/approved-merges.txt, /test/allowed-skips.txt,
+# /test/protected-exceptions.txt), with required code-owner review (core/policy/branch-protection.yaml,
+# code_owned_paths), or an organisation
 # required-workflow ruleset must pin the workflow to a central repository by commit SHA. A second
 # workflow defining a job with the same name as one here is acceptable only under that control.
+# BRANCH is the pull request's branch name only when the head is in this repository. A fork's
+# branch is named fork-pr-<number>, so a fork can never borrow the approvals of a branch here.
 # Inactive until the repository has a remote.
 name: aidlc-verify
 on:
@@ -46,9 +50,9 @@ jobs:
       - name: Allow unprivileged user namespaces, so the change's code runs in the bubblewrap sandbox
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: aidlc ci --group compile (gates and configuration from the base branch)
-        env: {HEAD_REF: "${{ github.head_ref }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}"}
+        env: {BRANCH: "${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref || format('fork-pr-{0}', github.event.pull_request.number) }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}"}
         run: >-
-          aidlc/bin/aidlc ci --trusted trusted --head pr --branch "$HEAD_REF" --head-sha "$HEAD_SHA"
+          aidlc/bin/aidlc ci --trusted trusted --head pr --branch "$BRANCH" --head-sha "$HEAD_SHA"
           --group compile --sandbox require --records "$RUNNER_TEMP/ci-records-compile"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         if: always()
@@ -78,9 +82,9 @@ jobs:
       - name: Allow unprivileged user namespaces, so the change's code runs in the bubblewrap sandbox
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: aidlc ci --group check (gates and configuration from the base branch)
-        env: {HEAD_REF: "${{ github.head_ref }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}"}
+        env: {BRANCH: "${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref || format('fork-pr-{0}', github.event.pull_request.number) }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}"}
         run: >-
-          aidlc/bin/aidlc ci --trusted trusted --head pr --branch "$HEAD_REF" --head-sha "$HEAD_SHA"
+          aidlc/bin/aidlc ci --trusted trusted --head pr --branch "$BRANCH" --head-sha "$HEAD_SHA"
           --group check --sandbox require --records "$RUNNER_TEMP/ci-records-check"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         if: always()
@@ -109,9 +113,9 @@ jobs:
       - name: Pinned conftest (checksum verified before install)
         run: aidlc/bin/aidlc tools install conftest --dir "$RUNNER_TEMP/aidlc-tools"
       - name: aidlc ci --group scans (gates and configuration from the base branch)
-        env: {HEAD_REF: "${{ github.head_ref }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}", AIDLC_TOOLS_DIR: "${{ runner.temp }}/aidlc-tools"}
+        env: {BRANCH: "${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref || format('fork-pr-{0}', github.event.pull_request.number) }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}", AIDLC_TOOLS_DIR: "${{ runner.temp }}/aidlc-tools"}
         run: >-
-          aidlc/bin/aidlc ci --trusted trusted --head pr --branch "$HEAD_REF" --head-sha "$HEAD_SHA"
+          aidlc/bin/aidlc ci --trusted trusted --head pr --branch "$BRANCH" --head-sha "$HEAD_SHA"
           --group scans --sandbox auto --records "$RUNNER_TEMP/ci-records-scans"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         if: always()

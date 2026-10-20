@@ -363,7 +363,7 @@ def _allowed_skips(ctx: CheckContext) -> set[str]:
         path = ctx.repo / ALLOWED_SKIPS
         text = path.read_text(encoding="utf-8") if path.is_file() and not path.is_symlink() else ""
     out = set()
-    for line in text.splitlines():
+    for line in text.split("\n"):                    # "\n" only: \f, \v or U+2028 never start a new line
         if line.lstrip().startswith("#") or " # " not in line:
             continue
         name, reason = line.split(" # ", 1)
@@ -449,15 +449,18 @@ def run_check(ctx: CheckContext, builtins=None) -> CheckResult:
 
 
 CONTROL_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")   # C0 and C1 controls except tab and newline
+LINE_BREAK_RE = re.compile(r"[\r\n]+")
 
 
 def print_result(result: CheckResult, repo: Path, prefix: str = "check") -> None:
-    """One line per step. Details and log tails are redacted, then stripped of control characters, so
-    a log cannot hide or rewrite lines on the terminal (escape sequences)."""
+    """One line per step. Details and log tails are flattened to one line (a file or test name cannot
+    forge a result line or a GitHub `::` workflow command), stripped of control characters (escape
+    sequences cannot hide or rewrite lines on the terminal), and only then redacted, so a control
+    character cannot split a secret past the redaction."""
     guard_redact = hooks().guard._redact
 
     def redact(text: str) -> str:
-        return CONTROL_RE.sub("", guard_redact(text))
+        return guard_redact(CONTROL_RE.sub("", LINE_BREAK_RE.sub(" ", text)))
     for step in result.steps:
         label = f"{step.name:<16}" if len(step.name) < 16 else f"{step.name} "
         line = f"{prefix}  {label}{step.status}"

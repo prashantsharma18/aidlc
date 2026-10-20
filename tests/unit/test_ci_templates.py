@@ -148,6 +148,18 @@ class TemplateTest(unittest.TestCase):
         finally:
             repo.__exit__(None, None, None)
 
+    def test_a_fork_pull_request_never_borrows_a_branch_name(self):          # final review minor 9
+        expression = ("${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref "
+                      "|| format('fork-pr-{0}', github.event.pull_request.number) }}")
+        _, data = workflow(self.root)
+        for name, job in data["jobs"].items():
+            [step] = [s for s in job["steps"] if "aidlc ci " in s.get("run", "")]
+            with self.subTest(job=name):
+                self.assertEqual(step["env"]["BRANCH"], expression)
+                self.assertNotIn("HEAD_REF", step["env"])
+                self.assertIn('--branch "$BRANCH"', step["run"])
+                self.assertNotIn("${{", step["run"])
+
     @unittest.skipUnless(which_tool("conftest"), "conftest is not installed: run `aidlc tools install conftest`")
     def test_rendered_workflow_passes_the_rego_pack(self):
         run_cli("render", "--tool", "claude-code", str(self.root))
@@ -233,7 +245,27 @@ class FixRoundOneTest(unittest.TestCase):
 
     def test_branch_protection_requires_code_owned_workflow_paths(self):
         policy = load_policy("branch-protection")
-        self.assertEqual(policy["code_owned_paths"], ["/.github/", "/.aidlc/"])
+        # Final review minor 10 adds the trusted evidence files that CI reads from the base.
+        self.assertEqual(policy["code_owned_paths"], ["/.github/", "/.aidlc/", "/plans/approved-bundles.txt",
+                                                      "/plans/approved-merges.txt", "/test/allowed-skips.txt",
+                                                      "/test/protected-exceptions.txt"])
+
+    def test_policy_validate_requires_every_evidence_path(self):                 # final review minor 10
+        import aidlc.policy as policy
+        data = load_policy("branch-protection")
+        schema = policy._schema(policy.framework_root(), "branch-protection")
+        self.assertFalse(policy._errors(schema, data, "bp"))
+        for path in data["code_owned_paths"]:
+            with self.subTest(path=path):
+                self.assertTrue(policy._errors(schema, dict(data, code_owned_paths=[
+                    p for p in data["code_owned_paths"] if p != path]), "bp"))
+
+    def test_header_names_the_evidence_paths(self):                              # final review minor 10
+        f, _ = workflow(self.root)
+        header = "\n".join(line for line in f.content.splitlines() if line.startswith("#"))
+        for path in ("/plans/approved-bundles.txt", "/plans/approved-merges.txt", "/test/allowed-skips.txt",
+                     "/test/protected-exceptions.txt"):
+            self.assertIn(path, header)
 
     def test_policy_validate_rejects_a_bad_code_owned_paths(self):
         import aidlc.policy as policy

@@ -92,6 +92,26 @@
           "contains": {
             "const": "/.aidlc/"
           }
+        },
+        {
+          "contains": {
+            "const": "/plans/approved-bundles.txt"
+          }
+        },
+        {
+          "contains": {
+            "const": "/plans/approved-merges.txt"
+          }
+        },
+        {
+          "contains": {
+            "const": "/test/allowed-skips.txt"
+          }
+        },
+        {
+          "contains": {
+            "const": "/test/protected-exceptions.txt"
+          }
         }
       ]
     }

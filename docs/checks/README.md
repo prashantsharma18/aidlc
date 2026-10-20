@@ -18,7 +18,7 @@ built-in steps always run. A repository cannot remove them.
 | 2 | `scope` | A changed or untracked file is outside the task's MAY CHANGE list, or no scope exists |
 | 3 | `protected-tests` | An existing test file was deleted, retyped, or had any line changed or removed |
 | 4 | `skips` | A test did not run and is not declared, or this run wrote no readable report. `n/a` when `check_steps` has no `test` |
-| 5 | `context-drift` | The rules file or the codebase map names a path or command that does not exist, or lacks its owner or a fresh verification date |
+| 5 | `context-drift` | The rules file or the codebase map names a path or command that does not exist, lacks its owner or its verification line, or is a symlink. A verification date older than `review_interval_days` is only a WARN |
 | 6 | `secrets` | An added line or an untracked file holds credential-shaped text, or an untracked file is too large to scan. CI scans every commit with `git log -p --cc`, so merge commits are scanned too |
 
 Every step runs, even after a failure. A step that cannot run is a `FAIL`. The diffs ignore the
@@ -62,8 +62,10 @@ one that resolves outside the checkout, or one over 64 MiB never counts.
 
 ## Output and records
 
-Each step prints one line. A failing step also prints the last 15 lines of its log, redacted and
-stripped of terminal control characters. The first line names what the run judged:
+Each step prints one line. A failing step also prints the last 15 lines of its log. Details and
+log lines are flattened to one line, stripped of terminal control characters, then redacted. So a
+file or test name cannot forge a result line or a GitHub `::` workflow command, and a control
+character cannot split a secret past the redaction. The first line names what the run judged:
 
     check  context  repo=<path>  base=<sha>  scope=<scope file>  mode=require
 

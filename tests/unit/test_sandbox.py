@@ -321,3 +321,10 @@ class LiveTest(unittest.TestCase):
             self.skipTest("no /etc/resolv.conf on this host")
         log = self.run_script("print('RESOLV', len(open('/etc/resolv.conf').read()) > 0)", step="install")
         self.assertIn("RESOLV True", log)
+
+
+class AvailableFailsClosedTest(unittest.TestCase):
+    def test_a_probe_directory_that_cannot_be_made_means_unavailable(self):        # queued item, Task 5
+        with mock.patch.object(sandbox, "bwrap_path", return_value="/usr/bin/bwrap"), \
+                mock.patch.object(sandbox.tempfile, "mkdtemp", side_effect=OSError("read-only /tmp")):
+            self.assertFalse(sandbox.available())

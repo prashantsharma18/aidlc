@@ -32,6 +32,9 @@ the download host.
 - `make policy-test` runs those unit tests plus the live Python tests in
   `tests/unit/test_conftest_check.py` and `tests/unit/test_ci_templates.py`. A skipped test fails
   the target. Set `AIDLC_TOOLS_DIR` when the tools are not in the default place.
+- `make sandbox-test` is its counterpart for the sandbox. It runs `tests/unit/test_sandbox.py`
+  and `tests/unit/test_ci.py` verbosely, and a skipped test fails the target too. It needs
+  bubblewrap that can start a sandbox on this host.
 
 Conftest never runs inside the repository it judges. It gets an empty working directory, a
 minimal environment with no `CONFTEST_*` variables, and absolute paths. A symlinked, special or
@@ -74,6 +77,13 @@ NFC-normalised, and checked at any depth:
 - extra files under `.aidlc/hooks/`.
 
 `.aidlc/rules/` may hold the repository's own rule sources, one level deep.
+
+A nested `CLAUDE.md` or `AGENTS.md`, such as `src/payments/CLAUDE.md`, is not on that list.
+`config-policy` does not judge it. It is context: Claude Code loads it when the agent works in
+that folder, and it can steer the agent like any other instruction. `context-drift` checks the
+root rules file, the root `CLAUDE.md`, the codebase map and `.aidlc/rules/`, not nested files.
+So review a change to a nested `CLAUDE.md` as you would review code, and keep CODEOWNERS on
+folders that hold one.
 
 > ⚠️ **Watch out:** Until Plan 5, a team cannot commit its own `.claude/` content, such as skills
 > or agents. Monorepos cannot have nested `.claude` folders. Both fail `config-policy`.

@@ -157,14 +157,23 @@ class CiTest(unittest.TestCase):
             self.assertEqual(names[-2:], ["skips", "protected-rerun"])
 
     def test_tests_that_try_to_rewrite_their_judges_change_nothing(self):
-        with CiRepo() as r:
+        with CiRepo() as r, tempfile.TemporaryDirectory() as scratch_home, \
+                mock.patch.dict(os.environ, {"HOME": scratch_home}):            # never the real home
+            (Path(scratch_home) / ".aidlc").mkdir()                             # a target that exists on the host
             marker = f"aidlc-ci-hostile-{uuid.uuid4().hex}"
-            hostile = TEST_APP + ("\nimport pathlib, os\n"
-                                  f"for p in [os.path.expanduser('~/.aidlc/{marker}'), '../trusted/plans/approved-merges.txt',\n"
-                                  f"          '{r.root}/.aidlc/ci-records/forged.json', '.git']:\n"
-                                  "    try:\n        pathlib.Path(p).write_text('forged')\n    except OSError:\n        pass\n")
+            # The hostile code reports each attempt, then fails the run so the tail of its log, with the
+            # report, is printed: proof that it ran (minor 8), whatever it managed to write.
+            hostile = TEST_APP + ("\nimport pathlib, os, sys\nseen = []\n"
+                                  f"for label, p in [('home', os.path.expanduser('~/.aidlc/{marker}')),\n"
+                                  "                 ('trusted', '../trusted/plans/approved-merges.txt'),\n"
+                                  f"                 ('records', '{r.root}/.aidlc/ci-records/forged.json')]:\n"
+                                  "    try:\n        pathlib.Path(p).write_text('forged')\n        seen.append(label + ':wrote')\n"
+                                  "    except OSError:\n        seen.append(label + ':denied')\n"
+                                  f"print('HOSTILE-RAN {marker} ' + ' '.join(seen), flush=True)\nos._exit(3)\n")
             r.commit({"test/test_app.py": hostile})
-            run_cli("ci", "--repo", str(r.root))
+            _, out, _ = run_cli("ci", "--repo", str(r.root))
+            self.assertIn(f"HOSTILE-RAN {marker} home:denied trusted:denied records:denied", out)
+            self.assertEqual(steps(last(r))["test"]["status"], "FAIL")
             self.assertFalse(Path(os.path.expanduser(f"~/.aidlc/{marker}")).exists())
             self.assertFalse((r.root / ci.RECORDS / "forged.json").exists())
             self.assertFalse(last(r)["merge_ready"])
@@ -1063,3 +1072,44 @@ class ContextDriftLinksTest(unittest.TestCase):
             self.assertIn(".aidlc/config.yaml is a symlink", drift["detail"])
             self.assertNotIn(self.SECRET, r.records()[-1].read_text())
             self.assertNotIn(self.SECRET, out + err)
+
+
+class PrintResultLinesTest(unittest.TestCase):
+    """Minors 1 and 2: a detail prints as one line, and control characters cannot split a secret
+    past the redaction."""
+
+    def printed(self, detail, tail=()):
+        import contextlib
+        import io
+
+        from aidlc.checks.onecheck import FAIL, CheckResult, StepResult, print_result
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            print_result(CheckResult([StepResult("test", FAIL, detail, "", list(tail))]), Path("."), prefix="ci")
+        return out.getvalue()
+
+    def test_a_detail_cannot_forge_output_lines_or_workflow_commands(self):
+        text = self.printed("tests failed: name\nci  result PASS  (0 of 9 steps failed)\r\n::error::x\rend",
+                            ["tail\r::warning::y"])
+        lines = text.split("\n")
+        self.assertEqual(len(lines), 4, lines)                                    # step, tail, summary, ""
+        self.assertTrue(lines[0].startswith("ci  test"), lines)
+        self.assertIn("name ci  result PASS  (0 of 9 steps failed) ::error::x end", lines[0])
+        self.assertFalse(any(l.startswith(("ci  result PASS", "::")) for l in lines), lines)
+        self.assertNotIn("\r", text)
+        self.assertTrue(lines[2].startswith("ci  result FAIL"), lines)
+
+    def test_control_characters_are_stripped_before_redaction(self):
+        text = self.printed("found AKIA\x01IOSFODNN7EXAMPLE here", ["key AKIA\x1bIOSFODNN7EXAMPLE"])
+        self.assertNotIn("IOSFODNN7EXAMPLE", text)
+        self.assertEqual(text.count("[REDACTED]"), 2, text)
+
+
+class AllowedSkipsLinesTest(unittest.TestCase):
+    def test_only_a_newline_starts_a_new_line(self):                                # final review minor 11
+        from aidlc.checks.onecheck import ALLOWED_SKIPS, _allowed_skips
+        for sep in ("\f", "\v", "\x1c", "\x85", " "):
+            with self.subTest(sep=repr(sep)):
+                text = f"# a comment{sep}test_app.AppTest.test_value # hidden in the comment\nkept.test # why\n"
+                ctx = mock.Mock(steering={ALLOWED_SKIPS: text})
+                self.assertEqual(_allowed_skips(ctx), {"kept.test"})
