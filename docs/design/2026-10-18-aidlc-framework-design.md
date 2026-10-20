@@ -409,6 +409,8 @@ aidlc-workspace/                 a folder, not a repository
 | P7 | The demo change end to end | All stage artefacts in their systems of record; matrix proved; evidence from trusted runs |
 | P8 | Self-audit against the guide, README, rollout guide, Copilot extension-point notes | Traceability complete; known gaps listed |
 
+Phase P4 is delivered by two plans: Plan 3 (deterministic gates) and Plan 4 (evals, AI review, observability). Skills and agents (P5) are Plan 5; the demo (P6–P7) is Plan 6.
+
 ## 13. Risks and limits
 
 | Risk | Mitigation |

@@ -30,7 +30,7 @@ Each `*_test.rego` file holds a passing case and one failing case per rule. A ru
 ## Running it
 
 - `make policy-test` runs the pack's own unit tests (`aidlc policy rego-test`, which is `conftest verify`).
-- `aidlc policy conftest [--repo PATH]` judges one repository. It exits 0 (pass), 1 (violations) or 2 (it could not run).
+- `aidlc policy conftest [--repo PATH]` judges one repository. It exits 0 (pass), 1 (violations, including a missing conftest) or 2 (the repository or its policy data cannot be read).
 - `aidlc ci` runs the same judgement as the `config-policy` step. It is a judge: it runs before any of the change's code, with the pinned, checksum-verified conftest only. It takes the files from the change and the policy data from the base branch.
 
 Install the pinned binary with `aidlc tools install conftest`.

@@ -38,6 +38,11 @@ The `PostToolUse` matcher is `^(Edit|Write|MultiEdit|NotebookEdit|Bash|Monitor|B
 `BashOutput` returns a background command's output, so the post-check scans it for
 credentials only.
 
+Claude Code does not fire `PostToolUse` for a Bash call that exits non-zero. It fires
+`PostToolUseFailure` instead, so the settings register that event too, with the same matcher.
+The shim runs it as phase `post-failure`: the same post-check, on the error text, with the exit
+code parsed from it. A failing `echo x > api/x.yaml; exit 1` is still flagged.
+
 > 💡 **Tip:** When a tool you use every day keeps asking with `unknown-tool`, add it to
 > `CLASSES` in the source, render, and add a test. Do not widen anything else.
 
@@ -82,6 +87,8 @@ sees, as `[aidlc <rule>]`. The ids below are the ones the code emits.
 | `changed-assertion` | post-check | flag | An existing assertion in a test file was changed or removed |
 | `skipped-test` | post-check | flag | A test was disabled or the suite narrowed |
 | `secret-in-output` | post-check | flag | Tool output contains a high-confidence credential shape |
+| `check-recorded` | post-check | pass | A run of `aidlc check` was counted; the reason gives the failures in a row and the limit |
+| `retry-limit` | post-check, guard | flag, deny | The failing runs in a row reached the limit, or the attempts record is unreadable. The guard then denies every edit and shell call until a person resets it |
 
 No-objection ids, for reading the log: `read`, `in-scope`, `scope-off`, `integration` and
 `no-guarded-command` (guard, allow), and `not-modifying` and `no-rule-broken` (post-check, pass).
@@ -106,7 +113,8 @@ refs/heads/<base>` is allowed.
 
 > ⚠️ **Watch out:** A local base branch is a simulated trust root. A raw write such as
 > `echo <sha> > .git/refs/heads/main` before the scope is generated can still forge a local
-> approval. Once a remote exists, approvals and CI read the protected remote branch (Plan 3).
+> approval. Once a remote exists, the GitHub workflow reads approvals from the pull request's
+> base commit, behind branch protection ([trusted CI](../checks/ci.md)).
 
 ## Protected files that a person owns
 
@@ -118,6 +126,23 @@ branch still differs from the base), or gitignore it. The flag message tells the
 it on the base branch". When the base branch has moved since the scope was approved, the message
 adds that a person must re-run `aidlc scope`: after a rebase or merge from the base, the base's
 own new commits look like changes on the task branch until you re-scope.
+
+## The retry counter
+
+The post hooks count runs of the one-command check, and the guard enforces the limit. What
+counts, what resets and who resets are in [the retry limit](../checks/README.md#the-retry-limit);
+the exact rules are in `core/hooks/README.md`.
+
+- **The attempts record** is `attempts/<repo>-<hash8>/<branch>.json` under `AIDLC_HOME_DIR`
+  (default `~/.aidlc`). A detached HEAD has its own record, so detaching never escapes the count.
+  Updates hold a file lock, so parallel hooks lose no count.
+- **It fails closed.** An unreadable record, or a record, lock or folder that is a symlink or not
+  a regular file, counts as at the limit.
+- **The decision log** gets a `check-attempts` record for each counted run, next to the usual
+  `post-tool-check` record. At the limit the `post-tool-check` record carries `retry-limit`,
+  unless another rule flagged the same call first.
+- **Only hooks write it.** The sandbox denies `~/.aidlc` to agent shells. A person resets it with
+  `aidlc attempts --reset`, which agent shells cannot run.
 
 ## What the guard leaves to others
 
@@ -150,7 +175,7 @@ Read from `core/hooks/guard.py`, `core/hooks/post_check.py` and `core/hooks/clau
 | `AIDLC_HARNESS_FILE` | Harness data file; default is `harness.json` next to the script |
 | `AIDLC_SCOPE` | `off` disables edit-scope enforcement; logged, and refused when unattended |
 | `AIDLC_SCOPE_FILE` | Explicit scope file; ignored if it lives inside the repository |
-| `AIDLC_HOME_DIR` | Base for scope files; default `~/.aidlc` |
+| `AIDLC_HOME_DIR` | Base for scope files, the attempts record and the recorded framework entry; default `~/.aidlc` |
 | `AIDLC_LOG_DIR` | Decision log directory; default `~/.aidlc/logs` |
 | `AIDLC_BASE_REF` | Base the post-check diffs against; overrides the scope's recorded `base:` and `harness.base_branch` |
 

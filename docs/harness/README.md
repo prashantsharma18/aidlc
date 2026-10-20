@@ -11,16 +11,17 @@ has three layers: permissions, a sandbox and hooks. This page maps the guide's c
 | 3 Effective permissions | Baseline policy narrowed by the repository | `core/policy/permissions.yaml`, `cli/aidlc/harness.py` |
 | 4 Sandbox | Operating-system limits on commands | `cli/aidlc/adapters/claude_code.py` |
 | 5 Hooks | Pre-tool guard, post-tool check, tool shim | `core/hooks/` |
-| 6 One-command check | `aidlc check` as the single verification entry point | Plan 3 |
-| 7 Observability | Dashboards and alerts over the decision log | Plan 3 |
+| 6 One-command check | `aidlc check` as the single verification entry point; `aidlc ci` runs the same gates in trusted CI | `cli/aidlc/checks/onecheck.py`, `cli/aidlc/ci.py`, [the one-command check](../checks/README.md), [trusted CI](../checks/ci.md) |
+| 7 Observability | Dashboards and alerts over the decision log | Plan 4 |
 | 8 Attack tests | Prove each control stops the attempt it exists for | `tests/unit/test_attacks_direct.py`, `tests/harness_live/` |
 | 9 Version | `harness.json` `version`, the manifest and code owners | `cli/aidlc/harness.py`, `cli/aidlc/adapters/base.py` |
 
-Two items inside these steps are also not built yet:
+**Retry limits** (the `runaway-loop` risk) are built into the hooks. The post-tool check counts
+failing runs of `aidlc check`, and at the limit the guard denies every edit and shell call. See
+[the retry limit](../checks/README.md#the-retry-limit).
 
-- **Retry limits** (the `runaway-loop` risk) need the runner. They arrive in Plan 3.
-- **The agent-side MCP gateway check** waits for the platform cutover (platform ADR 20,
-  milestone M36). The gateway itself belongs to the platform.
+One item inside these steps is not built yet. **The agent-side MCP gateway check** waits for the
+platform cutover (platform ADR 20, milestone M36). The gateway itself belongs to the platform.
 
 ## First install
 
@@ -56,6 +57,8 @@ like changes on the task branch until you re-scope. The post-check says so in it
 1. [Permissions and sandbox](permissions-and-sandbox.md): what the tool blocks before a command runs.
 2. [Hooks](hooks.md): what the guard and the post-tool check decide, and how to add a rule.
 3. [Doctor](doctor.md): how `aidlc doctor` proves the harness is intact in a repository.
+4. [The one-command check](../checks/README.md), [trusted CI](../checks/ci.md) and
+   [policy as code](../checks/policy-as-code.md): the gates the change must pass.
 
 ## How the layers fit
 
@@ -93,9 +96,10 @@ Know what the harness trusts before you rely on it.
 - **A local base branch is a simulated trust root.** Approvals and the post-check trust the
   base branch. `aidlc scope` records its commit in the scope file, and the guard denies the git
   commands that move it. A raw write to `.git/refs` before the scope is generated can still
-  forge a local approval. Once a remote exists, approvals and CI read the protected remote
-  branch instead (Plan 3).
+  forge a local approval. [Trusted CI](../checks/ci.md) reads approvals and configuration from
+  the base branch; once a remote exists, the GitHub workflow reads them from the pull request's
+  base commit, behind branch protection.
 - **Trusted CI is the real check.** The post-tool check cannot undo an action. It is the fast
-  first line, and CI is the backstop.
+  first line, and [`aidlc ci`](../checks/ci.md) is the backstop.
 
 Guide: 3 steps 1–9, 3.4, 3.7.

@@ -36,7 +36,7 @@ The code is `cli/aidlc/adapters/claude_code.py`.
 | `deny` shell and tools | `permissions.deny` as `Bash(pattern)` and mapped tool names |
 | Profile and repository additions | `sandbox.filesystem.allowWrite`, `sandbox.network.allowedDomains` |
 | Fixed hardening | `sandbox.enabled`, `failIfUnavailable`, `allowUnsandboxedCommands: false`, `disableBypassPermissionsMode` |
-| Hook entries | `hooks.PreToolUse` and `hooks.PostToolUse`, see [hooks](hooks.md) |
+| Hook entries | `hooks.PreToolUse`, `hooks.PostToolUse` and `hooks.PostToolUseFailure`, see [hooks](hooks.md) |
 
 Tool names such as `tracker.read_issue` are tool-neutral. The repository's `.aidlc/config.yaml`
 maps them to the tool's names. An unmapped name is dropped from the rendered list, and doctor
@@ -102,6 +102,24 @@ attack run](../verification/2026-10-19-harness-attacks.md).
 > `.idea`, `.claude/settings.local.json` and `.mcp.json`, and git cannot read them. Stage
 > explicit paths: `git add src/feature/a.ts test/feature/a.test.ts`. The evidence is check 6 in
 > [the sandbox verification](../verification/2026-10-18-sandbox-wsl2.md#2026-10-19-checks-5-and-6).
+
+## Evidence the agent cannot write
+
+The harness keeps its own evidence where agent shells cannot write it. Two `denyWrite` entries
+carry most of the weight:
+
+- **`~/.aidlc`** holds the task scopes, the decision log, the retry counter's attempts record and
+  the recorded framework entry. A shell cannot rewrite its own audit trail, widen its scope or
+  reset its counter.
+- **`./.aidlc`** holds the rendered hooks, the manifest and the `aidlc ci` records in
+  `.aidlc/ci-records/`. An agent cannot plant a passing CI record. The `Edit(.aidlc/**)` deny rule
+  covers the Edit tools.
+
+The shell deny rule `aidlc attempts*--reset*` closes the last route: the command that resets the
+counter. Only a person runs it, after reading why the agent kept failing.
+
+`aidlc ci` runs the change's own code in a second, stricter sandbox: bubblewrap with a private
+home and no network outside the install step. That one is described in [trusted CI](../checks/ci.md#the-sandbox).
 
 ## Narrowing in a repository
 
