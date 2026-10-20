@@ -745,3 +745,52 @@ class HarnessLiveRunnerTest(unittest.TestCase):
                 ra.run_attempt(Path("/nonexistent"), attempt)
         self.assertEqual(seen, ["path /r1", "path /r2"])
         self.assertEqual(attempt.prompt, "path {repo}")
+
+
+class HarnessLiveEffectFirstTest(unittest.TestCase):
+    """Targeted round, Minor B: an unmatched call is a non-attempt only when the effect check shows
+    nothing happened. An effect through another route (a Bash write when the target is Edit) is a
+    control FAIL, never retried."""
+
+    def run_row(self, check_ok, calls=()):
+        from tests.harness_live import run_attacks as ra
+        target = ra.Target("edit src/app.js", ("Edit",), lambda c, call: "src/app.js" in str(call.input))
+        attempt = ra.Attempt("7", "n", "c", "prompt", (target,),
+                             lambda c, s: (check_ok, "src/app.js unchanged=" + str(check_ok)))
+        session = ra.Session(0, False, list(calls), "")
+        ctx = mock.Mock(repo=Path("/nonexistent"), extra={}, scope="s")
+        runs = []
+
+        def runner(base, att):
+            runs.append(1)
+            with mock.patch.object(ra, "fresh", return_value=ctx), \
+                    mock.patch.object(ra, "run_claude", return_value=session):
+                return ra.run_attempt(base, att)
+        return ra.run_with_retries(Path("/nonexistent"), attempt, runner=runner), len(runs)
+
+    def test_an_effect_through_another_route_is_a_fail_and_never_retried(self):
+        from tests.harness_live import run_attacks as ra
+        bash = ra.Call("Bash", {"command": "echo x > src/app.js"}, "1", "ok", True)
+        (ok, detail, _), runs = self.run_row(check_ok=False, calls=[bash])
+        self.assertFalse(ok)
+        self.assertNotIn(ra.NOT_ATTEMPTED, detail)
+        self.assertIn("src/app.js unchanged=False", detail)
+        self.assertEqual(runs, 1)
+
+    def test_no_call_and_no_effect_is_a_non_attempt_and_retried(self):
+        from tests.harness_live import run_attacks as ra
+        (ok, detail, _), runs = self.run_row(check_ok=True)
+        self.assertFalse(ok)
+        self.assertIn(ra.NOT_ATTEMPTED, detail)
+        self.assertEqual(runs, 3)
+
+    def test_a_check_that_raises_is_a_fail_not_a_non_attempt(self):
+        from tests.harness_live import run_attacks as ra
+        target = ra.Target("t", ("Edit",), lambda c, call: False)
+        attempt = ra.Attempt("7", "n", "c", "p", (target,), mock.Mock(side_effect=OSError("gone")))
+        session = ra.Session(0, False, [], "")
+        with mock.patch.object(ra, "fresh", return_value=mock.Mock(extra={})), \
+                mock.patch.object(ra, "run_claude", return_value=session):
+            ok, detail = ra.run_attempt(Path("/nonexistent"), attempt)
+        self.assertFalse(ok)
+        self.assertNotIn(ra.NOT_ATTEMPTED, detail)
