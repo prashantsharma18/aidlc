@@ -25,6 +25,15 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8").lstrip("﻿").replace("\r\n", "\n")
 
 
+def _refused(repo: Path, rel: str, want: str = "file") -> Finding | None:
+    """A FAIL when rel, or a folder on the way to it inside the checkout, is a symlink or not the
+    kind wanted; None when it is plain or absent. Every file this judge reads is checked first, so
+    a branch cannot point it at a host file and copy an excerpt into a finding or a CI record."""
+    from .conftest_check import _unfollowed       # imported here: conftest_check imports onecheck
+    why = _unfollowed(repo, rel, want)
+    return Finding("FAIL", why.split(" is ")[0], 0, why) if why else None
+
+
 def _has_ext(span: str) -> bool:
     last = span.rstrip("/").rsplit("/", 1)[-1]
     return "." in last and last.rsplit(".", 1)[1] in EXTS
@@ -76,6 +85,9 @@ def _command_findings(repo: Path, rel: str, lineno: int, span: str,
     out = []
     if words[:2] == ["npm", "run"] and len(words) >= 3:
         pkg = repo / "package.json"
+        refused = _refused(repo, "package.json")
+        if refused:
+            return [refused]
         try:
             data = json.loads(_read(pkg)) if pkg.is_file() else {}
             scripts = data.get("scripts", {})
@@ -89,6 +101,9 @@ def _command_findings(repo: Path, rel: str, lineno: int, span: str,
     elif words[0] == "make" and len(words) >= 2:
         text = ""
         for name in MAKEFILES:                      # GNU make's lookup order
+            refused = _refused(repo, name) if os.path.lexists(repo / name) else None
+            if refused:
+                return [refused]
             if (repo / name).is_file():
                 try:
                     text = _read(repo / name)
@@ -139,7 +154,10 @@ def check_context_drift(repo: Path, today: date) -> list[Finding]:
     rules_file, map_file = "AGENTS.md", "docs/codebase-map.md"
     findings: list[Finding] = []
     cfg_path = repo / ".aidlc" / "config.yaml"
-    if cfg_path.is_file():
+    refused = _refused(repo, ".aidlc/config.yaml")
+    if refused:
+        findings.append(refused)
+    elif cfg_path.is_file():
         from ..repo import load_config
         try:
             ctx = load_config(repo).context
@@ -158,15 +176,28 @@ def check_context_drift(repo: Path, today: date) -> list[Finding]:
 
     subcommands = _aidlc_subcommands()
     texts: dict[Path, str] = {}
-    for path in [repo / rules_file, repo / "CLAUDE.md", repo / map_file,
-                 *sorted((repo / ".aidlc" / "rules").glob("*.md"))]:
+    sources = [rules_file, "CLAUDE.md", map_file]
+    refused = _refused(repo, ".aidlc/rules", "dir")
+    if refused:
+        findings.append(refused)
+    elif (repo / ".aidlc" / "rules").is_dir():
+        with os.scandir(repo / ".aidlc" / "rules") as entries:
+            sources += sorted(f".aidlc/rules/{e.name}" for e in entries if e.name.endswith(".md"))
+    unread: set[str] = set()                           # refused: never read, never reported missing
+    for rel in sources:
+        refused = _refused(repo, rel)
+        if refused:
+            unread.add(rel)
+            if refused not in findings:
+                findings.append(refused)
+            continue
+        path = repo / rel
         if path.is_file():
             try:
                 texts[path] = _read(path)
             except (ValueError, OSError) as exc:    # UnicodeDecodeError is a ValueError
-                findings.append(Finding("FAIL", str(path.relative_to(repo)), 0,
-                                        f"unreadable ({type(exc).__name__}); save it as UTF-8"))
-    if not (repo / rules_file).is_file():
+                findings.append(Finding("FAIL", rel, 0, f"unreadable ({type(exc).__name__}); save it as UTF-8"))
+    if rules_file not in unread and not (repo / rules_file).is_file():
         findings.append(Finding("FAIL", rules_file, 0, "rules file missing"))
     for path, text in texts.items():
         if path.name != "README.md":
@@ -182,6 +213,8 @@ def check_context_drift(repo: Path, today: date) -> list[Finding]:
         findings.append(Finding("FAIL", "CLAUDE.md", 0, "more than 40 lines; keep it thin"))
 
     cmap = repo / map_file
+    if map_file in unread:
+        return findings                                # refused: already reported
     if not cmap.is_file():
         findings.append(Finding("FAIL", map_file, 0, "codebase map missing"))
         return findings

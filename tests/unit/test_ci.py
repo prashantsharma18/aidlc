@@ -989,3 +989,77 @@ class ApprovalRefTest(unittest.TestCase):
                           "requires the full SHA", err)
             code, out, err = run_cli("scope", "--branch", "feat/y", "--repo", str(root), "--out", str(out_file))
             self.assertNotIn("warning", err)
+
+
+class ContextDriftLinksTest(unittest.TestCase):
+    """I2b: context drift never reads a head file through a symlink or a non-regular file; review
+    probe p3 put an excerpt of a host secret into a CI record that way."""
+
+    SECRET = f"aidlc-host-secret-{uuid.uuid4().hex}"
+
+    def drift(self, plant):
+        from aidlc.checks.context_drift import check_context_drift
+        from tests.unit.test_context_drift import TODAY, files, with_real_commit
+        with TempRepo(files()) as root, tempfile.TemporaryDirectory() as host:
+            with_real_commit(root)
+            secret = Path(host) / "secret.md"
+            secret.write_text(f"# {self.SECRET}\nOwner: x · Last verified: 2026-10-10, against commit abc1234\n"
+                              f"`{self.SECRET}.md` `npm run {self.SECRET}` `make {self.SECRET}`\n"
+                              f"{{\"scripts\": {{\"{self.SECRET}\": 1}}}}\n")
+            (Path(host) / "dir").mkdir()
+            (Path(host) / "dir" / "codebase-map.md").write_text(secret.read_text())
+            (Path(host) / "dir" / "x.md").write_text(secret.read_text())
+            plant(root, Path(host))
+            return [str(f) for f in check_context_drift(root, TODAY)]
+
+    def link(self, root, rel, target):
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if os.path.lexists(path):
+            path.unlink() if not path.is_dir() or path.is_symlink() else shutil.rmtree(path)
+        path.symlink_to(target)
+
+    def test_every_file_the_judge_reads_is_refused_through_a_symlink(self):
+        cases = {
+            ".aidlc/config.yaml": lambda root, host: self.link(root, ".aidlc/config.yaml", host / "secret.md"),
+            ".aidlc": lambda root, host: self.link(root, ".aidlc", host / "dir"),
+            "AGENTS.md": lambda root, host: self.link(root, "AGENTS.md", host / "secret.md"),
+            "CLAUDE.md": lambda root, host: self.link(root, "CLAUDE.md", host / "secret.md"),
+            "docs/codebase-map.md": lambda root, host: self.link(root, "docs/codebase-map.md", host / "secret.md"),
+            "docs": lambda root, host: self.link(root, "docs", host / "dir"),
+            ".aidlc/rules/x.md": lambda root, host: self.link(root, ".aidlc/rules/x.md", host / "secret.md"),
+            ".aidlc/rules": lambda root, host: self.link(root, ".aidlc/rules", host / "dir"),
+            "package.json": lambda root, host: self.link(root, "package.json", host / "secret.md"),
+            "Makefile": lambda root, host: self.link(root, "Makefile", host / "secret.md"),
+        }
+        for rel, plant in cases.items():
+            with self.subTest(rel=rel):
+                msgs = self.drift(plant)
+                self.assertTrue(any(m.startswith(f"FAIL {rel}") and f"{rel} is a symlink" in m
+                                    and "not follow" in m for m in msgs), msgs)
+                self.assertFalse(any(self.SECRET in m for m in msgs), msgs)
+
+    def test_a_fifo_is_not_a_regular_file_and_never_blocks(self):
+        def plant(root, host):
+            (root / "CLAUDE.md").unlink(missing_ok=True)
+            os.mkfifo(root / "CLAUDE.md")
+        msgs = self.drift(plant)
+        self.assertTrue(any(m.startswith("FAIL CLAUDE.md") and "not a regular file" in m for m in msgs), msgs)
+
+    @NEEDS_SANDBOX
+    def test_a_symlinked_config_never_reaches_the_ci_record(self):
+        with CiRepo() as r, tempfile.TemporaryDirectory() as host:
+            secret = Path(host) / "secret.ini"
+            secret.write_text(f"[db]\npassword = {self.SECRET}\n")
+            (r.root / ".aidlc/config.yaml").unlink()
+            (r.root / ".aidlc/config.yaml").symlink_to(secret)
+            (r.root / "CLAUDE.md").unlink(missing_ok=True)
+            (r.root / "CLAUDE.md").symlink_to(secret)
+            git(r.root, "add", "-A")
+            git(r.root, "commit", "-qm", "link the host secret")
+            code, out, err = run_cli("ci", "--repo", str(r.root))
+            drift = steps(last(r))["context-drift"]
+            self.assertEqual(drift["status"], "FAIL")
+            self.assertIn(".aidlc/config.yaml is a symlink", drift["detail"])
+            self.assertNotIn(self.SECRET, r.records()[-1].read_text())
+            self.assertNotIn(self.SECRET, out + err)
