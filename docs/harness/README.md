@@ -95,10 +95,12 @@ Know what the harness trusts before you rely on it.
   under `~/.aidlc` for the same reason.
 - **A local base branch is a simulated trust root.** Approvals and the post-check trust the
   base branch. `aidlc scope` records its commit in the scope file, and the guard denies the git
-  commands that move it. A raw write to `.git/refs` before the scope is generated can still
-  forge a local approval. [Trusted CI](../checks/ci.md) reads approvals and configuration from
-  the base branch; once a remote exists, the GitHub workflow reads them from the pull request's
-  base commit, behind branch protection.
+  commands that move it. The guard cannot see a raw shell write to `.git/refs/heads/<base>`,
+  though, at any time. So [trusted CI](../checks/ci.md) never trusts the live ref on its own:
+  local `aidlc ci` judges against the commit pinned in the scope file, and refuses to run when
+  the live ref no longer matches it. A forged ref costs the agent nothing but a refused run; a
+  person then re-runs `aidlc scope`. Once a remote exists, the GitHub workflow reads approvals
+  and configuration from the pull request's base commit, behind branch protection.
 - **Trusted CI is the real check.** The post-tool check cannot undo an action. It is the fast
   first line, and [`aidlc ci`](../checks/ci.md) is the backstop.
 

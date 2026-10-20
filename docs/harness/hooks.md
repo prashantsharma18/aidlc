@@ -111,10 +111,12 @@ usual ways to move it anyway: `git branch -f|-d|-D|-m|-M|-c|-C <base>`, `git upd
 -c|-C <base>`, and `git fetch|push <remote> <x>:<base>`. `git symbolic-ref HEAD
 refs/heads/<base>` is allowed.
 
-> ⚠️ **Watch out:** A local base branch is a simulated trust root. A raw write such as
-> `echo <sha> > .git/refs/heads/main` before the scope is generated can still forge a local
-> approval. Once a remote exists, the GitHub workflow reads approvals from the pull request's
-> base commit, behind branch protection ([trusted CI](../checks/ci.md)).
+> ⚠️ **Watch out:** A local base branch is a simulated trust root. The guard cannot see a raw
+> write such as `echo <sha> > .git/refs/heads/main`. Before the scope is generated, such a write
+> can forge the approval that `aidlc scope` reads, so look at the base branch before you scope.
+> After that, local `aidlc ci` refuses to run while the live ref differs from the commit pinned
+> in the scope file. Once a remote exists, the GitHub workflow reads approvals from the pull
+> request's base commit, behind branch protection ([trusted CI](../checks/ci.md)).
 
 ## Protected files that a person owns
 

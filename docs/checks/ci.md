@@ -44,10 +44,25 @@ repository when you render on the base branch and no record exists yet. To chang
 the new base and run `aidlc render --tool claude-code --trusted-base NAME`. If the record is
 missing, or the base's configuration names another branch, `aidlc ci` stops and says so.
 
+The base commit is trusted data too. An agent shell can move `refs/heads/<base>` with a plain
+redirect into `.git/refs/heads/`, and no git command is involved for the guard to deny. So local
+mode never trusts the live ref on its own. It reads the commit that `aidlc scope` pinned in the
+branch's scope file, the `base:` line. That file lives under `~/.aidlc` (`AIDLC_HOME_DIR`), where
+agents cannot write. The base checkout is that pinned commit. If the scope is missing or
+unreadable, or the live ref no longer equals the pinned commit, `aidlc ci` exits 2:
+
+```text
+the base branch moved since the scope was generated (scope base <sha>, main now <sha>); a person must re-run aidlc scope
+```
+
+When the base branch moves for a good reason, such as another merge, you re-run
+`aidlc scope --branch <task branch>` and then `aidlc ci`.
+
 ## Local mode and GitHub mode
 
 **Local mode** is `aidlc ci [--repo PATH] [--branch NAME] [--group NAME]`. It checks out the base
-and the head as detached worktrees in a private temporary directory, and always removes them:
+(the commit pinned in the scope file) and the head as detached worktrees in a private temporary
+directory, and always removes them:
 Python deletes the folders, then git drops its record of each. It requires the sandbox. It
 refuses to check the base branch itself, and needs `--branch` on a detached HEAD.
 

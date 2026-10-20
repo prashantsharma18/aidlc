@@ -85,7 +85,16 @@ class CiRepo:
             fh.write(f"{BRANCH} {bundle_commit}:plans/b.md lead 2026-10-19\n")
         git(root, "commit", "-qam", "approve bundle")
         git(root, "checkout", "-q", "-b", BRANCH)
+        # A person generates the scope; local aidlc ci judges against the base it pins (final review C1).
+        code, out, err = run_cli("scope", "--branch", BRANCH, "--repo", str(root))
+        assert code == 0, out + err
         return self
+
+    def rescope(self, branch=BRANCH):
+        """A person re-runs aidlc scope after the base branch moved: the scope file, written as aidlc
+        scope writes it (some tests break the working tree's config, which aidlc scope reads)."""
+        from aidlc.scope import default_scope_path, write_scope
+        write_scope(["src/**", "test/**"], default_scope_path(self.root, branch), base=git(self.root, "rev-parse", "main"))
 
     def __exit__(self, *exc):
         self.repo.__exit__(None, None, None)
@@ -192,6 +201,7 @@ class CiTest(unittest.TestCase):
             git(r.root, "add", "-A")
             git(r.root, "commit", "-q", "-m", "approve merge")
             git(r.root, "checkout", "-q", BRANCH)
+            r.rescope()                                   # main moved: a person re-scopes
             run_cli("ci", "--repo", str(r.root))
             self.assertTrue(last(r)["merge_ready"])
             r.commit({"src/extra.py": "X = 2\n"}, "new commit after approval")
@@ -235,6 +245,9 @@ class CiTest(unittest.TestCase):
     def test_unapproved_branch_fails_scope(self):
         with CiRepo() as r:
             git(r.root, "checkout", "-q", "-b", "feat/SHIP-2-other")
+            # A scope written before the approval was withdrawn: CI reads approvals from the base.
+            from aidlc.scope import default_scope_path, write_scope
+            write_scope(["src/**"], default_scope_path(r.root, "feat/SHIP-2-other"), base=git(r.root, "rev-parse", "main"))
             run_cli("ci", "--repo", str(r.root))
             scope = steps(last(r))["scope"]
             self.assertEqual(scope["status"], "FAIL")
@@ -472,6 +485,7 @@ def base_update(r, fn, files=None):
     git(r.root, "commit", "-qm", "base update")
     git(r.root, "branch", "-f", BRANCH, "main")
     git(r.root, "checkout", "-q", BRANCH)
+    r.rescope()                                       # main moved: a person re-scopes
 
 
 AKIA = "AKIA" + "ABCDEFGHIJKLMNOP"
@@ -577,6 +591,7 @@ class CiFixRound1Test(unittest.TestCase):
             git(r.root, "commit", "-qm", "a symlinked test")
             git(r.root, "branch", "-f", BRANCH, "main")
             git(r.root, "checkout", "-q", BRANCH)
+            r.rescope()
             (r.root / "test/link_test.py").unlink()
             r.commit({"test/link_test.py": TEST_APP})              # T: a link becomes a file
             run_cli("ci", "--repo", str(r.root))
@@ -746,6 +761,7 @@ class RerunCheckoutTest(unittest.TestCase):
             r.commit({"test/sub/test_sub.py": "X = 1\n"})
             git(r.root, "branch", "-f", BRANCH, "main")
             git(r.root, "checkout", "-q", BRANCH)
+            r.rescope()
             git(r.root, "rm", "-q", "-r", "test/sub")
             (r.root / "test/sub").symlink_to(victim)
             git(r.root, "add", "test/sub")
@@ -849,3 +865,73 @@ class TrustedBaseRenderTest(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertIn("check out 'trunk' and run aidlc render --trusted-base trunk", err)
             self.assertEqual(len(r.worktrees()), 1)
+
+
+# ---- Final review fix wave ---------------------------------------------------------------------
+
+def forge_base(r, merge_line: str) -> str:
+    """What an agent shell can do with plumbing and one redirect (review probe p6): a commit on main
+    that approves the merge, written straight to .git/refs/heads/main. No git command the guard denies."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    index = {**env, "GIT_INDEX_FILE": str(r.root.parent / f"agent-index-{uuid.uuid4().hex}")}
+
+    def run(*args, env=env, stdin=None):
+        import subprocess
+        return subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "-c", "user.name=agent", "-c",
+                               "user.email=a@b", *args], cwd=r.root, env=env, input=stdin, capture_output=True,
+                              text=True, check=True).stdout.strip()
+
+    run("read-tree", "main", env=index)
+    blob = run("hash-object", "-w", "--stdin", stdin=merge_line)
+    run("update-index", "--add", "--cacheinfo", f"100644,{blob},{ci.MERGES}", env=index)
+    forged = run("commit-tree", run("write-tree", env=index), "-p", "main", "-m", "approve")
+    (r.root / ".git/refs/heads/main").write_text(forged + "\n")
+    return forged
+
+
+class CiPinnedScopeBaseTest(unittest.TestCase):
+    """C1: local aidlc ci judges against the base commit pinned in the scope file, never the live ref."""
+
+    def test_a_base_ref_moved_by_a_shell_write_exits_2_and_records_nothing(self):
+        with CiRepo() as r, mock.patch("aidlc.ci.available", return_value=True):
+            r.commit({"src/extra.py": "X = 1\n"})
+            pinned = git(r.root, "rev-parse", "main")
+            forged = forge_base(r, f"{BRANCH} {git(r.root, 'rev-parse', 'HEAD')} agent-forged 2026-10-20\n")
+            code, out, err = run_cli("ci", "--repo", str(r.root))
+            self.assertEqual(code, 2, out + err)
+            self.assertIn(f"the base branch moved since the scope was generated (scope base {pinned[:12]}, "
+                          f"main now {forged[:12]}); a person must re-run aidlc scope", err)
+            self.assertNotIn("merge-ready yes", out)
+            self.assertEqual(r.records(), [])
+            self.assertEqual(len(r.worktrees()), 1)
+
+    def test_a_missing_scope_exits_2(self):
+        from aidlc.scope import default_scope_path
+        with CiRepo() as r, mock.patch("aidlc.ci.available", return_value=True):
+            path = default_scope_path(r.root, BRANCH)
+            path.chmod(0o644)
+            path.unlink()
+            code, _, err = run_cli("ci", "--repo", str(r.root))
+            self.assertEqual(code, 2)
+            self.assertIn(f"a person must run aidlc scope --branch {BRANCH}", err)
+            self.assertEqual(r.records(), [])
+
+    def test_a_scope_without_a_pinned_base_or_unreadable_exits_2(self):
+        from aidlc.scope import default_scope_path
+        with CiRepo() as r, mock.patch("aidlc.ci.available", return_value=True):
+            path = default_scope_path(r.root, BRANCH)
+            path.chmod(0o644)
+            for body in (b"src/**\n", b"base: nope\nsrc/**\n", b"\xff\xfe base: x\n"):
+                path.write_bytes(body)
+                code, _, err = run_cli("ci", "--repo", str(r.root))
+                self.assertEqual(code, 2, body)
+                self.assertIn("aidlc scope --branch", err)
+            self.assertEqual(r.records(), [])
+
+    @NEEDS_SANDBOX
+    def test_an_unmoved_base_runs_against_the_pinned_commit(self):
+        with CiRepo() as r:
+            r.commit({"src/extra.py": "X = 1\n"})
+            code, out, _ = run_cli("ci", "--repo", str(r.root))
+            self.assertEqual(code, 0, out)
+            self.assertEqual(last(r)["base"], git(r.root, "rev-parse", "main"))

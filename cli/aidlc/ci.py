@@ -515,6 +515,27 @@ def _run_ci_and_print(plan: CiPlan, group: str | None, work: Path) -> tuple[Chec
     return result, record
 
 
+def pinned_base(repo: Path, branch: str, base_branch: str) -> str:
+    """The base commit pinned by `aidlc scope` in the branch's scope file, which lives under
+    AIDLC_HOME_DIR where agent shells cannot write. Local CI judges against it and checks it out as
+    the trusted tree. The live refs/heads/<base> is only compared: a plain shell redirect into
+    .git/refs/heads/<base> moves it, so it is never trusted on its own (final review C1)."""
+    guard = hooks().guard
+    path = guard.scope_file(repo, branch)
+    try:
+        scope = guard.read_scope_file(path, repo)
+    except (OSError, ValueError):                      # unreadable, or not UTF-8: fail closed
+        scope = None
+    if scope is None or scope[1] is None:
+        raise CiError(f"no readable scope with a pinned base for '{branch}' ({path}); a person must run "
+                      f"aidlc scope --branch {branch}")
+    pinned, live = scope[1], base_commit(repo, base_branch)
+    if live != pinned:
+        raise CiError(f"the base branch moved since the scope was generated (scope base {pinned[:12]}, "
+                      f"{base_branch} now {live[:12]}); a person must re-run aidlc scope")
+    return pinned
+
+
 def ci_local(repo: Path, branch: str | None, group: str | None) -> tuple[CheckResult, dict, Path]:
     """Local mode: the base and the head as detached worktrees of `repo`; the sandbox is required."""
     base_branch = recorded_base(repo)             # never the working copy's config: that is the branch's
@@ -529,7 +550,7 @@ def ci_local(repo: Path, branch: str | None, group: str | None) -> tuple[CheckRe
     if not available():
         raise CiError(NO_SANDBOX)
     head = git(repo, "rev-parse", "--verify", "-q", f"refs/heads/{branch}^{{commit}}").strip()
-    base = base_commit(repo, base_branch)
+    base = pinned_base(repo, branch, base_branch)
     records = safe_target(repo, RECORDS)
     with checkouts(repo, base, head) as (trusted, work):
         plan = CiPlan(repo=repo, branch=branch, head=head, trusted=trusted, work=work,

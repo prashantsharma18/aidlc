@@ -174,7 +174,12 @@ def _read_scope(root: Path) -> tuple[list[str], str | None] | None:
     branch = current_branch(root)
     if not branch:
         return None
-    path = scope_file(root, branch)
+    return read_scope_file(scope_file(root, branch), root)
+
+
+def read_scope_file(path: Path, root: Path) -> tuple[list[str], str | None] | None:
+    """One scope file, as _read_scope reads it (aidlc ci reads the task branch's this way). A scope
+    inside the repository is ignored: the agent can write there."""
     if path.resolve().is_relative_to(root.resolve()) or not path.is_file():
         return None
     patterns, base = [], None
