@@ -138,3 +138,64 @@ test_non_object_permissions_are_denied if {
 test_read_all_permissions_pass if {
 	count(denials(json.patch(good, [{"op": "replace", "path": "/permissions", "value": "read-all"}]))) == 0
 }
+
+review_action := "anthropics/claude-code-action@6fed3ca145920b639991cb756090506e1bcaf515"
+
+review := {
+	"on": {"pull_request": {}},
+	"permissions": {"contents": "read"},
+	"jobs": {"ai-review": {
+		"runs-on": "ubuntu-24.04",
+		"environment": "ai-gates",
+		"permissions": {"contents": "read", "pull-requests": "write"},
+		"steps": [
+			{"uses": checkout, "with": {"persist-credentials": false}},
+			{"uses": review_action, "with": {"prompt": "review"}},
+		],
+	}},
+}
+
+test_review_job_may_comment if {
+	count(denials(review)) == 0
+}
+
+test_review_job_environment_as_object_may_comment if {
+	ok := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/environment", "value": {"name": "ai-gates"}}])
+	count(denials(ok)) == 0
+}
+
+test_review_write_outside_ai_gates_is_denied if {
+	bad := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/environment", "value": "production"}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_review_write_without_environment_is_denied if {
+	bad := json.patch(review, [{"op": "remove", "path": "/jobs/ai-review/environment"}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_review_job_with_a_shell_step_is_denied if {
+	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/steps/-", "value": {"run": "gh pr review --approve"}}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_review_job_with_another_action_is_denied if {
+	other := "someone/else@0123456789012345678901234567890123456789"
+	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/steps/-", "value": {"uses": other}}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_review_job_cannot_also_write_contents if {
+	bad := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/permissions/contents", "value": "write"}])
+	"job ai-review grants contents: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_id_token_write_stays_denied_in_the_review_job if {
+	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/permissions/id-token", "value": "write"}])
+	"job ai-review grants id-token: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_empty_review_job_is_denied if {
+	bad := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/steps", "value": []}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}

@@ -564,7 +564,7 @@ class AiGatesDocsTest(unittest.TestCase):
 
 **4. Design §8 note,** dated 2026-10-22, pointing to ADR 0004: "`aidlc eval` and `aidlc review` are replaced by the official Action, GitHub conversation resolution, and the live attack suite; skill evals use `claude plugin eval` (Plan 5); repository evals come in Plan 6."
 
-**5. `docs/checks/ci.md`:** replace the Plan 4 line under "Limits" with "The AI gates (`ai-review`, `agent-config-evals`) run in a separate workflow; see [ai-gates.md](ai-gates.md)."
+**5. `docs/checks/ci.md`:** replace the Plan 4 line under "Limits" with "The AI gates (`ai-review`, `agent-config-evals`) run in a separate workflow; see `ai-gates.md` (a relative link from `docs/checks/ci.md`)."
 
 **6. Codebase map:** add the area line ``.github/workflows/ai-gates.yml   The AI gates: review and harness evals (ADR 0004); needs approval per run.``, and the "Where common changes go" line "New harness path that should trigger evals: the scope pattern in `.github/workflows/ai-gates.yml` and its test." Add the README link.
 - [ ] **Step 4: Run the tests and the checks, and watch them pass.** Run the Step 2 command, `bin/aidlc policy validate`, `bin/aidlc trace --check`, `bin/aidlc check context-drift .`, and `make test`. Expected: everything passes.

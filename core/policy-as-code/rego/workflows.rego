@@ -1,5 +1,6 @@
-# Trusted-CI policy for GitHub Actions workflows (ADR 0001; guide 9.7, 13.8): read-only tokens,
-# actions pinned to full commit SHAs, no pull_request_target, no untrusted text inside run:.
+# Trusted-CI policy for GitHub Actions workflows (ADR 0001; guide 9.7, 13.8): read-only tokens, except
+# one narrow, approved pull-requests: write for the AI review job (ADR 0004); actions pinned to full
+# commit SHAs; no pull_request_target; no untrusted text inside run:.
 package aidlc.workflows
 
 # YAML 1.1 parsers read the key `on` as the boolean true; accept both spellings.
@@ -69,8 +70,31 @@ deny contains msg if {
 	is_object(perms)
 	some scope, level in perms
 	level == "write"
+	not allowed_write(job, scope)
 	msg := sprintf("job %s grants %s: write; the verify workflow needs read only", [job_id, scope])
 }
+
+# The one write a job may hold (ADR 0004): pull-requests: write, for the AI review job, so it can post
+# inline comments. That job runs in the ai-gates environment (a person approves each run), runs no
+# shell step, and uses only actions/checkout and anthropics/claude-code-action (pinned by the next
+# rule). Its token cannot push (contents stays read) and cannot approve (repository setting).
+review_actions := {"actions/checkout", "anthropics/claude-code-action"}
+
+job_environment(job) := job.environment if is_string(job.environment)
+
+job_environment(job) := job.environment.name if is_object(job.environment)
+
+review_job(job) if {
+	job_environment(job) == "ai-gates"
+	steps := object.get(job, "steps", [])
+	count(steps) > 0
+	every step in steps {
+		object.get(step, "run", null) == null
+		split(object.get(step, "uses", ""), "@")[0] in review_actions
+	}
+}
+
+allowed_write(job, "pull-requests") if review_job(job)
 
 deny contains msg if {
 	some job_id, job in jobs
