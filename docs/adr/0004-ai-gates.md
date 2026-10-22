@@ -91,7 +91,14 @@ The workflow's own `GITHUB_TOKEN`, limited to `pull-requests: write`, is narrowe
 - both review steps deny reading `.git/` (`--disallowedTools "Read(./.git/**)"`), because the Action
   writes the job token into `.git/config`;
 - the job may set no job-level `env`, `defaults`, `container` or `services`, so nothing changes how its
-  steps run.
+  steps run;
+- each review action step must keep `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1`, may not set `settings`,
+  `allowed_non_write_users` or `allowed_bots`, and may not grant `gh api` or an open `Bash` in
+  `claude_args`.
+
+This policy judges the pull request's own copy of the workflow and of itself. It protects against
+drift and mistakes. Against a deliberate change, the control is code review of `.github/` and
+`core/policy-as-code/`.
 
 If the token cannot post live, the owner decides between installing the Claude GitHub App (another
 narrow exception, for `id-token: write`) and keeping only what the token can do. The outcome is

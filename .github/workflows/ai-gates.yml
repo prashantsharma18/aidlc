@@ -55,7 +55,7 @@ jobs:
             --model claude-sonnet-5-5 --max-turns 40
             --allowedTools "mcp__github_inline_comment__create_inline_comment"
             --disallowedTools "Read(./.git/**)"
-            --json-schema '{"type":"object","properties":{"reviewed":{"type":"boolean","description":"true only if you read the whole change and completed this review pass; false if any tool, command or the sandbox failed"},"findings_posted":{"type":"integer","minimum":0},"summary":{"type":"string"}},"required":["reviewed","findings_posted","summary"],"additionalProperties":false}'
+            --json-schema '{"type":"object","properties":{"reviewed":{"type":"boolean","description":"true only if you read the whole change and completed this review pass; false if any tool, command or the sandbox failed"},"skipped_reason":{"type":"string","enum":["none","already_reviewed","draft","closed","trivial","failed"],"description":"none if you reviewed; already_reviewed if you stopped because Claude already reviewed this pull request; failed if a tool, command or the sandbox failed"},"findings_posted":{"type":"integer","minimum":0},"summary":{"type":"string"}},"required":["reviewed","skipped_reason","findings_posted","summary"],"additionalProperties":false}'
       - name: Security pass
         id: security
         uses: anthropics/claude-code-action@6fed3ca145920b639991cb756090506e1bcaf515  # v1.0.245
@@ -80,7 +80,7 @@ jobs:
             --model claude-sonnet-5-5 --max-turns 30
             --allowedTools "Read(./**),Bash(git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}),mcp__github_inline_comment__create_inline_comment"
             --disallowedTools "Read(./.git/**)"
-            --json-schema '{"type":"object","properties":{"reviewed":{"type":"boolean","description":"true only if you read the whole change and completed this review pass; false if any tool, command or the sandbox failed"},"findings_posted":{"type":"integer","minimum":0},"summary":{"type":"string"}},"required":["reviewed","findings_posted","summary"],"additionalProperties":false}'
+            --json-schema '{"type":"object","properties":{"reviewed":{"type":"boolean","description":"true only if you read the whole change and completed this review pass; false if any tool, command or the sandbox failed"},"skipped_reason":{"type":"string","enum":["none","already_reviewed","draft","closed","trivial","failed"],"description":"none if you reviewed; already_reviewed if you stopped because Claude already reviewed this pull request; failed if a tool, command or the sandbox failed"},"findings_posted":{"type":"integer","minimum":0},"summary":{"type":"string"}},"required":["reviewed","skipped_reason","findings_posted","summary"],"additionalProperties":false}'
   # The required check. It reads only the two passes' structured reports: no secrets, no writes. It
   # fails unless the review job succeeded and both passes report that they reviewed the change, so a
   # pass that could not read the diff never shows green (live run 2026-10-22). A model that lies about
@@ -110,9 +110,15 @@ jobs:
                   report = json.loads(os.environ.get(name, ""))
               except ValueError:
                   sys.exit(f"{name.lower()} pass: no structured report")
-              if not isinstance(report, dict) or report.get("reviewed") is not True:
+              if not isinstance(report, dict):
+                  sys.exit(f"{name.lower()} pass: no structured report")
+              if report.get("reviewed") is True:
+                  print(f"{name.lower()} pass: reviewed, {report.get('findings_posted')} finding(s) posted")
+              elif name == "BUG" and report.get("skipped_reason") == "already_reviewed":
+                  # The code-review plugin reviews once per pull request; the security pass every push.
+                  print("bug pass: already reviewed earlier on this pull request")
+              else:
                   sys.exit(f"{name.lower()} pass did not review the change: {report!r}"[:500])
-              print(f"{name.lower()} pass: reviewed, {report.get('findings_posted')} finding(s) posted")
           PY
   agent-config-evals:
     runs-on: ubuntu-24.04

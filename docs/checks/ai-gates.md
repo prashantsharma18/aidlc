@@ -16,7 +16,8 @@ marked ready for review.
   Each finding is an inline comment. Each step ends with a short structured report saying whether
   it really reviewed the change. A draft pull request is not reviewed until you mark it ready.
 - **`ai-review`** is the required check. It holds no secrets. It passes only when the review job
-  succeeded and both steps report they reviewed the change. A step that could not read the diff
+  succeeded and both steps report they reviewed the change. The one exception: the bug pass may
+  report that it already reviewed this pull request. A step that could not read the diff
   therefore fails the check, instead of showing green. It cannot catch a model that falsely claims
   it reviewed.
 - **`agent-config-evals`** first checks whether the change touches anything outside `docs/`. If it
@@ -38,11 +39,15 @@ changes to `cli/`, `core/hooks/`, `tests/` and `.github/`.
 The reviewer never approves, and nothing it says counts as approval: a person approves. The job's
 success means only that the review steps ran.
 
-**What a green `ai-review` does not tell you.** The `code-review` plugin skips a pull request it
-judges trivial, and one where Claude has already commented; with `--comment` and no findings it
-posts one "No issues found" comment. So on later pushes the bug and compliance passes may skip,
-while the security pass reviews every push. For a large change after the first review, ask for a
-fresh review in a new pull request, or run `/code-review` yourself.
+**What a green `ai-review` means.**
+- **The security pass reviewed this push.** Its own report must say so.
+- **The bug and compliance pass reviewed this push, or an earlier push of the same pull request.**
+  Anthropic's `code-review` plugin reviews once per pull request: after its first comment, it skips
+  later pushes and reports `skipped_reason: already_reviewed`. The check accepts only that skip.
+  Any other skip fails the check, including one where the plugin judged the change trivial.
+
+For a large change after the first review, open a new pull request, or run `/code-review`
+yourself.
 
 For each comment:
 

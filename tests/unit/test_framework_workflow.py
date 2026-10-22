@@ -257,8 +257,10 @@ class AiReviewGateTest(unittest.TestCase):
     """Live run 2026-10-22: a review step that could not read the diff ended "success" and the check went
     green. The required check now passes only when both passes report they reviewed the change."""
 
-    OK = json.dumps({"reviewed": True, "findings_posted": 0, "summary": "read the diff"})
-    NOT = json.dumps({"reviewed": False, "findings_posted": 0, "summary": "sandbox failed"})
+    OK = json.dumps({"reviewed": True, "skipped_reason": "none", "findings_posted": 0, "summary": "read the diff"})
+    NOT = json.dumps({"reviewed": False, "skipped_reason": "none", "findings_posted": 0, "summary": "sandbox failed"})
+    AGAIN = json.dumps({"reviewed": False, "skipped_reason": "already_reviewed", "findings_posted": 0, "summary": "s"})
+    TRIVIAL = json.dumps({"reviewed": False, "skipped_reason": "trivial", "findings_posted": 0, "summary": "s"})
 
     def gate(self, result, bug, security, draft="false") -> int:
         env = {"PATH": "/usr/bin:/bin", "RESULT": result, "BUG": bug, "SECURITY": security, "DRAFT": draft}
@@ -281,6 +283,13 @@ class AiReviewGateTest(unittest.TestCase):
             with self.subTest(result=result):
                 self.assertNotEqual(self.gate(result, self.OK, self.OK), 0)
 
+    def test_only_the_bug_pass_may_skip_an_already_reviewed_pull_request(self):
+        # The plugin reviews once per pull request (live run 5); the security pass reviews every push.
+        self.assertEqual(self.gate("success", self.AGAIN, self.OK), 0)
+        self.assertNotEqual(self.gate("success", self.OK, self.AGAIN), 0)
+        self.assertNotEqual(self.gate("success", self.TRIVIAL, self.OK), 0)
+        self.assertNotEqual(self.gate("success", self.AGAIN, self.NOT), 0)
+
     def test_a_draft_skips_the_review(self):
         self.assertEqual(self.gate("skipped", "", "", draft="true"), 0)
 
@@ -293,7 +302,8 @@ class AiReviewGateTest(unittest.TestCase):
         for sid in ("bug", "security"):
             with self.subTest(step=sid):
                 schema = json.loads(re.search(r"--json-schema '([^']+)'", steps[sid]["with"]["claude_args"]).group(1))
-                self.assertEqual(schema["required"], ["reviewed", "findings_posted", "summary"])
+                self.assertEqual(schema["required"], ["reviewed", "skipped_reason", "findings_posted", "summary"])
+                self.assertIn("already_reviewed", schema["properties"]["skipped_reason"]["enum"])
                 self.assertEqual(steps[sid]["env"]["CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"], "1")
 
     def test_review_steps_cannot_read_the_git_directory(self):

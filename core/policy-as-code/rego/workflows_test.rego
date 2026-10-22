@@ -150,7 +150,7 @@ review := {
 		"permissions": {"contents": "read", "pull-requests": "write"},
 		"steps": [
 			{"uses": checkout, "with": {"persist-credentials": false}},
-			{"uses": review_action, "with": {"prompt": "review"}},
+			{"uses": review_action, "env": {"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1"}, "with": {"prompt": "review"}},
 		],
 	}},
 }
@@ -239,6 +239,27 @@ test_every_review_job_level_override_is_denied if {
 		{"services": {"db": {"image": "attacker/db:1"}}},
 	] {
 		bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review", "value": object.union(review.jobs["ai-review"], override)}])
+		"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+	}
+}
+
+test_review_action_without_key_scrubbing_is_denied if {
+	every env in [{}, {"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "0"}] {
+		bad := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/steps/1/env", "value": env}])
+		"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+	}
+}
+
+test_review_action_risky_inputs_are_denied if {
+	every inputs in [
+		{"prompt": "review", "settings": "{}"},
+		{"prompt": "review", "allowed_non_write_users": "*"},
+		{"prompt": "review", "allowed_bots": "*"},
+		{"prompt": "review", "claude_args": "--allowedTools \"Bash(gh api:*)\""},
+		{"prompt": "review", "claude_args": "--allowedTools \"Bash\""},
+		{"prompt": "review", "claude_args": "--allowedTools \"Bash(*)\""},
+	] {
+		bad := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/steps/1/with", "value": inputs}])
 		"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
 	}
 }

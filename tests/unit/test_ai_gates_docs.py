@@ -19,7 +19,7 @@ class AiGatesDocsTest(unittest.TestCase):
         text = (ROOT / "docs/checks/ai-gates.md").read_text()
         for needle in ("Fixed:", "Dismissed:", "never approves", "Require conversation resolution",
                        "ai-gates", "fork", "make harness-live", "/code-review", "claude plugin eval",
-                       "only `docs/`", "already commented", "Read the diff before you approve",
+                       "only `docs/`", "already_reviewed", "Read the diff before you approve",
                        "rotate the key", "gh secret set ANTHROPIC_API_KEY --env ai-gates"):
             self.assertIn(needle, text)
 

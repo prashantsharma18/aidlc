@@ -89,7 +89,22 @@ review_setup := {
 
 review_step(step) if {
 	object.get(step, "run", null) == null
-	split(object.get(step, "uses", ""), "@")[0] in review_actions
+	split(object.get(step, "uses", ""), "@")[0] == "actions/checkout"
+}
+
+# The review action keeps its key scrubbing, takes no settings or extra users, and grants no gh api
+# or open shell (live review finding, 2026-10-22).
+review_step(step) if {
+	object.get(step, "run", null) == null
+	split(object.get(step, "uses", ""), "@")[0] == "anthropics/claude-code-action"
+	object.get(object.get(step, "env", {}), "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB", "") == "1"
+	inputs := object.get(step, "with", {})
+	not inputs.settings
+	not inputs.allowed_non_write_users
+	not inputs.allowed_bots
+	args := object.get(inputs, "claude_args", "")
+	not contains(args, "gh api")
+	not regex.match(`"Bash"|Bash\(\*|Bash\(gh`, args)
 }
 
 review_step(step) if {
