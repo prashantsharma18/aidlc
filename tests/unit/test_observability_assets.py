@@ -52,3 +52,44 @@ class MetricCatalogueTest(unittest.TestCase):
                     self.assertIn(label, KEPT)
                 if "unwrap" in expr:
                     self.assertIn('__error__=""', expr)
+
+
+RUNBOOK_URL = "https://github.com/prashantsharma18/aidlc/blob/main/docs/observability/runbooks.md#"
+
+
+class AlertRulesTest(unittest.TestCase):
+    def rules(self) -> list[dict]:
+        doc = yaml.safe_load((OBS / "alerting" / "aidlc.yaml").read_text())
+        self.assertEqual(doc["apiVersion"], 1)
+        return [r for g in doc["groups"] for r in g["rules"]]
+
+    def test_every_alert_is_complete_and_evaluable(self):
+        rules = self.rules()
+        self.assertEqual({r["uid"] for r in rules}, {"aidlc-guard-hook-health", "aidlc-session-cost"})
+        for rule in rules:
+            with self.subTest(rule=rule["uid"]):
+                self.assertTrue(rule["title"])
+                self.assertEqual(rule["condition"], "C")
+                self.assertIn("for", rule)
+                self.assertEqual(rule["labels"]["owner"], "harness-owners")
+                self.assertEqual(rule["annotations"]["runbook_url"], RUNBOOK_URL + rule["uid"])
+                by_ref = {d["refId"]: d for d in rule["data"]}
+                self.assertEqual(set(by_ref), {"A", "B", "C"})
+                self.assertEqual(by_ref["A"]["datasourceUid"], "loki")
+                self.assertEqual(by_ref["A"]["model"]["queryType"], "instant")
+                self.assertIn('service_name="claude-code"', by_ref["A"]["model"]["expr"])
+                self.assertIn("relativeTimeRange", by_ref["A"])
+                self.assertEqual(by_ref["B"]["model"]["type"], "reduce")
+                self.assertEqual(by_ref["B"]["model"]["expression"], "A")
+                self.assertEqual(by_ref["C"]["model"]["type"], "threshold")
+                self.assertEqual(by_ref["C"]["model"]["expression"], "B")
+
+    def test_alert_queries_use_only_attributes_the_collector_keeps(self):
+        for rule in self.rules():
+            expr = {d["refId"]: d for d in rule["data"]}["A"]["model"]["expr"]
+            with self.subTest(rule=rule["uid"]):
+                for label in re.findall(r"\b([a-z_]+)\s*(?:=|!=|=~|!~)\s*\"", expr):
+                    self.assertIn(label, KEPT)
+                for label in re.findall(r"unwrap\s+([a-z_]+)", expr):
+                    self.assertIn(label, KEPT)
+                self.assertIn('__error__=""', expr)

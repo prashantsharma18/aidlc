@@ -1,0 +1,58 @@
+# core/observability/alerting/aidlc.yaml
+# Proposed Grafana alert rules for the platform owner (docs/observability/platform-patch.md). Built on
+# Claude Code's built-in telemetry only (ADR 0003). Copy to PC/lab/grafana/provisioning/alerting/.
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: aidlc
+    folder: aidlc
+    interval: 5m
+    rules:
+      - uid: aidlc-guard-hook-health
+        title: aidlc guard hook errored or timed out
+        condition: C
+        for: 0m
+        labels: {owner: harness-owners, severity: warning}
+        annotations:
+          summary: A PreToolUse hook run errored without blocking, or was cancelled, in the last 15 minutes.
+          runbook_url: https://github.com/prashantsharma18/aidlc/blob/main/docs/observability/runbooks.md#aidlc-guard-hook-health
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: {from: 900, to: 0}
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: instant
+              expr: '(sum(sum_over_time({service_name="claude-code"} | event_name="hook_execution_complete" | hook_event="PreToolUse" | unwrap num_non_blocking_error | __error__="" [15m])) or vector(0)) + (sum(sum_over_time({service_name="claude-code"} | event_name="hook_execution_complete" | hook_event="PreToolUse" | unwrap num_cancelled | __error__="" [15m])) or vector(0))'
+          - refId: B
+            datasourceUid: __expr__
+            model: {refId: B, type: reduce, reducer: last, expression: A}
+          - refId: C
+            datasourceUid: __expr__
+            model: {refId: C, type: threshold, expression: B, conditions: [{evaluator: {type: gt, params: [0]}}]}
+      - uid: aidlc-session-cost
+        title: aidlc session over budget
+        condition: C
+        for: 0m
+        labels: {owner: harness-owners, severity: warning}
+        annotations:
+          summary: A Claude Code session spent more than 5 USD (list price) in the last 24 hours.
+          runbook_url: https://github.com/prashantsharma18/aidlc/blob/main/docs/observability/runbooks.md#aidlc-session-cost
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: {from: 86400, to: 0}
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: instant
+              expr: 'max(sum by (session_id) (sum_over_time({service_name="claude-code"} | event_name="api_request" | unwrap cost_usd | __error__="" [24h]))) or vector(0)'
+          - refId: B
+            datasourceUid: __expr__
+            model: {refId: B, type: reduce, reducer: last, expression: A}
+          - refId: C
+            datasourceUid: __expr__
+            model: {refId: C, type: threshold, expression: B, conditions: [{evaluator: {type: gt, params: [5]}}]}
