@@ -80,8 +80,6 @@ deny contains msg if {
 # step except two fixed setup commands for the sandbox that scrubs the key from subprocesses, with
 # no env or shell override. Its token cannot push (contents stays read) and cannot approve
 # (repository setting).
-review_actions := {"actions/checkout", "anthropics/claude-code-action"}
-
 review_setup := {
 	"sudo apt-get update -q && sudo apt-get install -y -q bubblewrap socat",
 	"sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true",
@@ -92,19 +90,36 @@ review_step(step) if {
 	split(object.get(step, "uses", ""), "@")[0] == "actions/checkout"
 }
 
-# The review action keeps its key scrubbing, takes no settings or extra users, and grants no gh api
-# or open shell (live review finding, 2026-10-22).
+# The review action is allow-listed, never deny-listed (live review findings, 2026-10-22): only known
+# inputs, Anthropic's plugin marketplace, key scrubbing on, and claude_args of exactly one shape whose
+# allowed tools come from a fixed set.
+review_inputs := {"anthropic_api_key", "github_token", "prompt", "claude_args", "plugins", "plugin_marketplaces"}
+
+review_env_flags := {"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB", "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"}
+
+review_tool := `(mcp__github_inline_comment__create_inline_comment|Read\(\./\*\*\)|Bash\(git diff \$\{\{ github\.event\.pull_request\.base\.sha \}\}\.\.\.\$\{\{ github\.event\.pull_request\.head\.sha \}\}\))`
+
+review_args := concat("", [
+	`^--model [a-z0-9.-]+ --max-turns [0-9]+ --allowedTools "`, review_tool, `(,`, review_tool, `)*" `,
+	`--disallowedTools "Read\(\./\.git/\*\*\)" --json-schema '[^']*'$`,
+])
+
 review_step(step) if {
 	object.get(step, "run", null) == null
 	split(object.get(step, "uses", ""), "@")[0] == "anthropics/claude-code-action"
-	object.get(object.get(step, "env", {}), "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB", "") == "1"
+	env := object.get(step, "env", {})
+	is_object(env)
+	{key | some key, _ in env} - review_env_flags == set()
+	every _, value in env {
+		value == "1"
+	}
+	env.CLAUDE_CODE_SUBPROCESS_ENV_SCRUB == "1"
 	inputs := object.get(step, "with", {})
-	not inputs.settings
-	not inputs.allowed_non_write_users
-	not inputs.allowed_bots
-	args := object.get(inputs, "claude_args", "")
-	not contains(args, "gh api")
-	not regex.match(`"Bash"|Bash\(\*|Bash\(gh`, args)
+	is_object(inputs)
+	{key | some key, _ in inputs} - review_inputs == set()
+	object.get(inputs, "plugin_marketplaces", "https://github.com/anthropics/claude-code.git") == "https://github.com/anthropics/claude-code.git"
+	object.get(inputs, "plugins", "code-review@claude-code-plugins") == "code-review@claude-code-plugins"
+	regex.match(review_args, object.get(inputs, "claude_args", ""))
 }
 
 review_step(step) if {

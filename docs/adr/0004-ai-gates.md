@@ -92,9 +92,16 @@ The workflow's own `GITHUB_TOKEN`, limited to `pull-requests: write`, is narrowe
   writes the job token into `.git/config`;
 - the job may set no job-level `env`, `defaults`, `container` or `services`, so nothing changes how its
   steps run;
-- each review action step must keep `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1`, may not set `settings`,
-  `allowed_non_write_users` or `allowed_bots`, and may not grant `gh api` or an open `Bash` in
-  `claude_args`.
+- each review action step is allow-listed, never deny-listed:
+  - its inputs come from a fixed set (key, token, prompt, `claude_args`, the plugin and
+    Anthropic's marketplace URL);
+  - its environment holds only `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` and
+    `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`;
+  - `claude_args` has exactly one shape: model, max turns, allowed tools from a fixed set (the
+    inline-comment tool, `Read(./**)` and the one exact `git diff`), the `.git` deny, and the report
+    schema.
+
+  A denylist missed flags such as `--dangerously-skip-permissions` (live review finding).
 
 This policy judges the pull request's own copy of the workflow and of itself. It protects against
 drift and mistakes. Against a deliberate change, the control is code review of `.github/` and

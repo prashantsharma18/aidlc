@@ -141,6 +141,13 @@ test_read_all_permissions_pass if {
 
 review_action := "anthropics/claude-code-action@6fed3ca145920b639991cb756090506e1bcaf515"
 
+valid_args := concat(" ", [
+	"--model claude-sonnet-5-5 --max-turns 30",
+	"--allowedTools \"Read(./**),mcp__github_inline_comment__create_inline_comment\"",
+	"--disallowedTools \"Read(./.git/**)\"",
+	"--json-schema '{\"type\":\"object\"}'",
+])
+
 review := {
 	"on": {"pull_request": {}},
 	"permissions": {"contents": "read"},
@@ -150,7 +157,7 @@ review := {
 		"permissions": {"contents": "read", "pull-requests": "write"},
 		"steps": [
 			{"uses": checkout, "with": {"persist-credentials": false}},
-			{"uses": review_action, "env": {"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1"}, "with": {"prompt": "review"}},
+			{"uses": review_action, "env": {"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1"}, "with": {"prompt": "review", "claude_args": valid_args}},
 		],
 	}},
 }
@@ -250,16 +257,65 @@ test_review_action_without_key_scrubbing_is_denied if {
 	}
 }
 
-test_review_action_risky_inputs_are_denied if {
-	every inputs in [
-		{"prompt": "review", "settings": "{}"},
-		{"prompt": "review", "allowed_non_write_users": "*"},
-		{"prompt": "review", "allowed_bots": "*"},
-		{"prompt": "review", "claude_args": "--allowedTools \"Bash(gh api:*)\""},
-		{"prompt": "review", "claude_args": "--allowedTools \"Bash\""},
-		{"prompt": "review", "claude_args": "--allowedTools \"Bash(*)\""},
+review_with(inputs) := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/steps/1/with", "value": inputs}])
+
+denied_review(doc) if {
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(doc)
+}
+
+test_review_action_inputs_outside_the_allowlist_are_denied if {
+	every extra in [
+		{"settings": "{}"},
+		{"allowed_non_write_users": "*"},
+		{"allowed_bots": "*"},
+		{"plugin_marketplaces": "https://example.com/evil.git"},
 	] {
-		bad := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/steps/1/with", "value": inputs}])
-		"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+		denied_review(review_with(object.union({"prompt": "review", "claude_args": valid_args}, extra)))
 	}
+}
+
+test_review_action_needs_the_exact_argument_shape if {
+	every args in [
+		"",
+		concat(" ", [valid_args, "--dangerously-skip-permissions"]),
+		concat(" ", [valid_args, "--permission-mode bypassPermissions"]),
+		concat(" ", [valid_args, "--settings x.json"]),
+		concat(" ", [valid_args, "--mcp-config x.json"]),
+		replace(valid_args, "Read(./**),", "Bash,"),
+		replace(valid_args, "Read(./**),", "Bash(curl:*),"),
+		replace(valid_args, "Read(./**),", "Bash(gh api:*),"),
+		replace(valid_args, "Read(./**),", "Read,"),
+		replace(valid_args, "--disallowedTools \"Read(./.git/**)\" ", ""),
+	] {
+		denied_review(review_with({"prompt": "review", "claude_args": args}))
+	}
+}
+
+test_review_action_env_is_only_the_known_flags if {
+	every env in [
+		{"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1", "BASH_ENV": "./evil.sh"},
+		{"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1", "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "0"},
+	] {
+		denied_review(json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/steps/1/env", "value": env}]))
+	}
+}
+
+test_the_real_review_shapes_pass if {
+	security := {"prompt": "review", "claude_args": concat(" ", [
+		"--model claude-sonnet-5-5 --max-turns 30",
+		"--allowedTools \"Read(./**),Bash(git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}),mcp__github_inline_comment__create_inline_comment\"",
+		"--disallowedTools \"Read(./.git/**)\"",
+		"--json-schema '{\"type\":\"object\"}'",
+	])}
+	plugin := {"prompt": "/code-review:code-review --comment x", "plugins": "code-review@claude-code-plugins",
+		"plugin_marketplaces": "https://github.com/anthropics/claude-code.git",
+		"anthropic_api_key": "${{ secrets.ANTHROPIC_API_KEY }}", "github_token": "${{ secrets.GITHUB_TOKEN }}",
+		"claude_args": concat(" ", [
+			"--model claude-sonnet-5-5 --max-turns 40",
+			"--allowedTools \"mcp__github_inline_comment__create_inline_comment\"",
+			"--disallowedTools \"Read(./.git/**)\"",
+			"--json-schema '{\"type\":\"object\"}'",
+		])}
+	count(denials(review_with(security))) == 0
+	count(denials(review_with(plugin))) == 0
 }
