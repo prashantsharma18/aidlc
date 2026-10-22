@@ -1,7 +1,7 @@
 meta: {id: policy-branch-protection, owner: "@platform-team", review_by: "2027-04-18", guide: ["11.8", "9.7", "14.16"]}
 branch: main
 require_pull_request: true
-required_checks: [compile, check, scans, agent-config-evals, ai-review-dispositioned]
+required_checks: [compile, check, scans, agent-config-evals, ai-review]
 require_branch_up_to_date: true
 approvals:
   required: 1

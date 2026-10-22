@@ -210,7 +210,7 @@ is skipped, as `make policy-test` does for conftest.
 ## Limits
 
 - A local run is a preview. Only a GitHub run, under the repository's ruleset, counts.
-- Plan 4 adds the remaining required jobs: `agent-config-evals` and `ai-review-dispositioned`.
+- The AI gates (`ai-review`, `agent-config-evals`) run in a separate workflow; see [ai-gates.md](ai-gates.md).
 - Every sandboxed step, the networked install step included, can read the common git directory.
   The sandbox binds it read-only, because git needs it, but it is not filtered. In local mode
   that is your whole `.git`: every branch and its history, and `.git/config` with any
