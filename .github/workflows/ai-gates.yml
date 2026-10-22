@@ -42,6 +42,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          show_full_output: "true"   # DIAGNOSTIC (Plan 4b Task 4): remove before merge
           plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
           plugins: "code-review@claude-code-plugins"
           prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
@@ -52,6 +53,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          show_full_output: "true"   # DIAGNOSTIC (Plan 4b Task 4): remove before merge
           prompt: |
             You are the security pass of an AI code review for pull request
             ${{ github.repository }}#${{ github.event.pull_request.number }}. Review only the change.
