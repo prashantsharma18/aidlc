@@ -77,6 +77,7 @@ def to_generic(payload: dict, phase: str) -> dict:
 
 def main(argv: list[str]) -> int:
     guard = None
+    payload = None
     try:
         phase = argv[1] if len(argv) > 1 else ""
         if phase not in ("pre", "post", "post-failure"):
@@ -117,7 +118,11 @@ def main(argv: list[str]) -> int:
             try:
                 detail = guard._redact(f"{type(exc).__name__}: {exc}")
                 pre = phase == "pre"
-                guard._log({"hook": "pre-tool-guard" if pre else "post-tool-check", "tool": None},
+                ids = payload if isinstance(payload, dict) else {}
+                session, call = ids.get("session_id"), ids.get("tool_use_id")
+                guard._log({"hook": "pre-tool-guard" if pre else "post-tool-check", "tool": None,
+                            "session": session if isinstance(session, str) else None,
+                            "call": call if isinstance(call, str) else None},
                            {"decision": "deny" if pre else "flag", "rule": "fail-safe",
                             "reason": f"aidlc hook failed ({detail}); blocked to be safe"})
             except Exception:  # noqa: BLE001 - logging must never change the outcome
