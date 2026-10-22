@@ -317,6 +317,8 @@ Same commands, cases, prompts and versions in both profiles, so local results pr
 - On a developer's machine it is a preview: the same gates, with the change's code in the sandbox, labelled `local-preview` and never counted as evidence.
 - It writes a hash-sealed record to `.aidlc/ci-records/` (untracked) and emits OTel events.
 
+**Amended 2026-10-22 (Plan 4b, [ADR 0004](../adr/0004-ai-gates.md)).** `aidlc eval` and `aidlc review` are not built. The official `anthropics/claude-code-action` runs the review (Anthropic's `code-review` plugin, plus a security pass), and GitHub's "Require conversation resolution before merging" is the disposition gate. The live attack suite is the harness eval (`agent-config-evals`). Skill evals use `claude plugin eval` (Plan 5); repository evals come in Plan 6.
+
 ## 9. Security and governance
 
 - **Policy files.** Every file in `core/policy/` has an owner and a review date:

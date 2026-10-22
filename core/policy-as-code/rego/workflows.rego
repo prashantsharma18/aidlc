@@ -1,5 +1,6 @@
-# Trusted-CI policy for GitHub Actions workflows (ADR 0001; guide 9.7, 13.8): read-only tokens,
-# actions pinned to full commit SHAs, no pull_request_target, no untrusted text inside run:.
+# Trusted-CI policy for GitHub Actions workflows (ADR 0001; guide 9.7, 13.8): read-only tokens, except
+# one narrow, approved pull-requests: write for the AI review job (ADR 0004); actions pinned to full
+# commit SHAs; no pull_request_target; no untrusted text inside run:.
 package aidlc.workflows
 
 # YAML 1.1 parsers read the key `on` as the boolean true; accept both spellings.
@@ -69,8 +70,83 @@ deny contains msg if {
 	is_object(perms)
 	some scope, level in perms
 	level == "write"
+	not allowed_write(job, scope)
 	msg := sprintf("job %s grants %s: write; the verify workflow needs read only", [job_id, scope])
 }
+
+# The one write a job may hold (ADR 0004): pull-requests: write, for the AI review job, so it can post
+# inline comments. That job runs in the ai-gates environment (a person approves each run), uses only
+# actions/checkout and anthropics/claude-code-action (pinned by the next rule), and runs no shell
+# step except two fixed setup commands for the sandbox that scrubs the key from subprocesses, with
+# no env or shell override. Its token cannot push (contents stays read) and cannot approve
+# (repository setting).
+review_setup := {
+	"sudo apt-get update -q && sudo apt-get install -y -q bubblewrap socat",
+	"sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true",
+}
+
+review_step(step) if {
+	object.get(step, "run", null) == null
+	split(object.get(step, "uses", ""), "@")[0] == "actions/checkout"
+}
+
+# The review action is allow-listed, never deny-listed (live review findings, 2026-10-22): only known
+# inputs, Anthropic's plugin marketplace, key scrubbing on, and claude_args of exactly one shape whose
+# allowed tools come from a fixed set.
+review_inputs := {"anthropic_api_key", "github_token", "prompt", "claude_args", "plugins", "plugin_marketplaces"}
+
+review_env_flags := {"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB", "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"}
+
+review_tool := `(mcp__github_inline_comment__create_inline_comment|Read\(\./\*\*\)|Bash\(git diff \$\{\{ github\.event\.pull_request\.base\.sha \}\}\.\.\.\$\{\{ github\.event\.pull_request\.head\.sha \}\}\))`
+
+review_args := concat("", [
+	`^--model [a-z0-9.-]+ --max-turns [0-9]+ --allowedTools "`, review_tool, `(,`, review_tool, `)*" `,
+	`--disallowedTools "Read\(\./\.git/\*\*\)" --json-schema '[^']*'$`,
+])
+
+review_step(step) if {
+	object.get(step, "run", null) == null
+	split(object.get(step, "uses", ""), "@")[0] == "anthropics/claude-code-action"
+	env := object.get(step, "env", {})
+	is_object(env)
+	{key | some key, _ in env} - review_env_flags == set()
+	every _, value in env {
+		value == "1"
+	}
+	env.CLAUDE_CODE_SUBPROCESS_ENV_SCRUB == "1"
+	inputs := object.get(step, "with", {})
+	is_object(inputs)
+	{key | some key, _ in inputs} - review_inputs == set()
+	object.get(inputs, "plugin_marketplaces", "https://github.com/anthropics/claude-code.git") == "https://github.com/anthropics/claude-code.git"
+	object.get(inputs, "plugins", "code-review@claude-code-plugins") == "code-review@claude-code-plugins"
+	regex.match(review_args, object.get(inputs, "claude_args", ""))
+}
+
+review_step(step) if {
+	object.get(step, "uses", null) == null
+	step.run in review_setup
+	{key | some key, _ in step} - {"name", "run"} == set()
+}
+
+job_environment(job) := job.environment if is_string(job.environment)
+
+job_environment(job) := job.environment.name if is_object(job.environment)
+
+review_job(job) if {
+	job_environment(job) == "ai-gates"
+	# No job-level override can change how its steps run (live review finding, 2026-10-22).
+	not job.env
+	not job.defaults
+	not job.container
+	not job.services
+	steps := object.get(job, "steps", [])
+	count(steps) > 0
+	every step in steps {
+		review_step(step)
+	}
+}
+
+allowed_write(job, "pull-requests") if review_job(job)
 
 deny contains msg if {
 	some job_id, job in jobs

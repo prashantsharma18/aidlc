@@ -13,7 +13,7 @@ with a Claude Code adapter and extension points for other tools.
 - [Context engineering](docs/context-engineering/README.md)
 - [Adapters](docs/adapters/interface.md)
 - [Harness](docs/harness/README.md): [permissions and sandbox](docs/harness/permissions-and-sandbox.md), [hooks](docs/harness/hooks.md), [doctor](docs/harness/doctor.md)
-- [Checks](docs/checks/README.md): [the one-command check](docs/checks/README.md), [trusted CI](docs/checks/ci.md), [policy as code](docs/checks/policy-as-code.md)
+- [Checks](docs/checks/README.md): [the one-command check](docs/checks/README.md), [trusted CI](docs/checks/ci.md), [policy as code](docs/checks/policy-as-code.md), [AI gates](docs/checks/ai-gates.md)
 - [Observability](docs/observability/README.md): [runbooks](docs/observability/runbooks.md), [proposed platform changes](docs/observability/platform-patch.md)
 - [Traceability to the guide](docs/traceability.md)
 - [Codebase map](docs/codebase-map.md)

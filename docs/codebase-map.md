@@ -26,6 +26,7 @@ repository's own commands inside bubblewrap, and `aidlc tools install` downloads
 `core/policy-as-code/`   The Rego pack (settings, narrowing, workflows) and its tests; run by conftest.
 `core/hooks/`            Harness hook sources (guard, post-check, shim); standard library only. Rendered into the hooks folder under `.aidlc` in installed repositories (generated; never edit).
 `core/observability/`    Metric catalogue (`core/observability/metrics.yaml`) and proposed Grafana alert rules; built on Claude Code's built-in telemetry (ADR 0003).
+`.github/workflows/ai-gates.yml`  The AI gates: review and harness evals (ADR 0004); a person approves each run.
 `tests/`                 unittest suites; `tests/helpers.py` builds throwaway git repositories.
 
 ## Key flows
@@ -41,6 +42,7 @@ Invariant: every exit is 0 (pass), 1 (findings) or 2 (usage); nothing passes sil
 - New built-in step of the one-command check: BUILTINS in `cli/aidlc/checks/onecheck.py`; for CI, JUDGE_STEPS or AFTER_STEPS in `cli/aidlc/ci.py`.
 - New Rego rule: a failing case in its `*_test.rego` first, then the rule in `core/policy-as-code/rego/`; `make policy-test`.
 - New tool output: an adapter method in `cli/aidlc/adapters/`; never in the core.
+- New harness path that should trigger evals: the scope pattern in `.github/workflows/ai-gates.yml` and its test.
 - New metric: an entry in `core/observability/metrics.yaml` naming its real source; never a new emitter (ADR 0003).
 
 ## Shared capabilities (reuse; do not duplicate)

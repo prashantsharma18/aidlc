@@ -138,3 +138,184 @@ test_non_object_permissions_are_denied if {
 test_read_all_permissions_pass if {
 	count(denials(json.patch(good, [{"op": "replace", "path": "/permissions", "value": "read-all"}]))) == 0
 }
+
+review_action := "anthropics/claude-code-action@6fed3ca145920b639991cb756090506e1bcaf515"
+
+valid_args := concat(" ", [
+	"--model claude-sonnet-5-5 --max-turns 30",
+	"--allowedTools \"Read(./**),mcp__github_inline_comment__create_inline_comment\"",
+	"--disallowedTools \"Read(./.git/**)\"",
+	"--json-schema '{\"type\":\"object\"}'",
+])
+
+review := {
+	"on": {"pull_request": {}},
+	"permissions": {"contents": "read"},
+	"jobs": {"ai-review": {
+		"runs-on": "ubuntu-24.04",
+		"environment": "ai-gates",
+		"permissions": {"contents": "read", "pull-requests": "write"},
+		"steps": [
+			{"uses": checkout, "with": {"persist-credentials": false}},
+			{"uses": review_action, "env": {"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1"}, "with": {"prompt": "review", "claude_args": valid_args}},
+		],
+	}},
+}
+
+test_review_job_may_comment if {
+	count(denials(review)) == 0
+}
+
+test_review_job_environment_as_object_may_comment if {
+	ok := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/environment", "value": {"name": "ai-gates"}}])
+	count(denials(ok)) == 0
+}
+
+test_review_write_outside_ai_gates_is_denied if {
+	bad := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/environment", "value": "production"}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_review_write_without_environment_is_denied if {
+	bad := json.patch(review, [{"op": "remove", "path": "/jobs/ai-review/environment"}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_review_job_with_a_shell_step_is_denied if {
+	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/steps/-", "value": {"run": "gh pr review --approve"}}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_review_job_with_another_action_is_denied if {
+	other := "someone/else@0123456789012345678901234567890123456789"
+	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/steps/-", "value": {"uses": other}}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_review_job_cannot_also_write_contents if {
+	bad := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/permissions/contents", "value": "write"}])
+	"job ai-review grants contents: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_id_token_write_stays_denied_in_the_review_job if {
+	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/permissions/id-token", "value": "write"}])
+	"job ai-review grants id-token: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_empty_review_job_is_denied if {
+	bad := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/steps", "value": []}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+sandbox_setup := [
+	{"name": "bubblewrap", "run": "sudo apt-get update -q && sudo apt-get install -y -q bubblewrap socat"},
+	{"name": "userns", "run": "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true"},
+]
+
+test_review_job_may_install_the_sandbox if {
+	ok := json.patch(review, [
+		{"op": "add", "path": "/jobs/ai-review/steps/1", "value": sandbox_setup[0]},
+		{"op": "add", "path": "/jobs/ai-review/steps/2", "value": sandbox_setup[1]},
+	])
+	count(denials(ok)) == 0
+}
+
+test_review_setup_step_with_env_is_denied if {
+	step := object.union(sandbox_setup[0], {"env": {"BASH_ENV": "./evil.sh"}})
+	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/steps/1", "value": step}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_review_setup_step_with_another_shell_is_denied if {
+	step := object.union(sandbox_setup[0], {"shell": "python {0}"})
+	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/steps/1", "value": step}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_review_setup_command_with_more_is_denied if {
+	step := {"run": "sudo apt-get update -q && sudo apt-get install -y -q bubblewrap socat && curl x"}
+	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/steps/1", "value": step}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_every_review_job_level_override_is_denied if {
+	every override in [
+		{"env": {"BASH_ENV": "./evil.sh"}},
+		{"defaults": {"run": {"shell": "python {0}"}}},
+		{"container": "attacker/image:1"},
+		{"services": {"db": {"image": "attacker/db:1"}}},
+	] {
+		bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review", "value": object.union(review.jobs["ai-review"], override)}])
+		"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+	}
+}
+
+test_review_action_without_key_scrubbing_is_denied if {
+	every env in [{}, {"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "0"}] {
+		bad := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/steps/1/env", "value": env}])
+		"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+	}
+}
+
+review_with(inputs) := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/steps/1/with", "value": inputs}])
+
+denied_review(doc) if {
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(doc)
+}
+
+test_review_action_inputs_outside_the_allowlist_are_denied if {
+	every extra in [
+		{"settings": "{}"},
+		{"allowed_non_write_users": "*"},
+		{"allowed_bots": "*"},
+		{"plugin_marketplaces": "https://example.com/evil.git"},
+	] {
+		denied_review(review_with(object.union({"prompt": "review", "claude_args": valid_args}, extra)))
+	}
+}
+
+test_review_action_needs_the_exact_argument_shape if {
+	every args in [
+		"",
+		concat(" ", [valid_args, "--dangerously-skip-permissions"]),
+		concat(" ", [valid_args, "--permission-mode bypassPermissions"]),
+		concat(" ", [valid_args, "--settings x.json"]),
+		concat(" ", [valid_args, "--mcp-config x.json"]),
+		replace(valid_args, "Read(./**),", "Bash,"),
+		replace(valid_args, "Read(./**),", "Bash(curl:*),"),
+		replace(valid_args, "Read(./**),", "Bash(gh api:*),"),
+		replace(valid_args, "Read(./**),", "Read,"),
+		replace(valid_args, "--disallowedTools \"Read(./.git/**)\" ", ""),
+	] {
+		denied_review(review_with({"prompt": "review", "claude_args": args}))
+	}
+}
+
+test_review_action_env_is_only_the_known_flags if {
+	every env in [
+		{"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1", "BASH_ENV": "./evil.sh"},
+		{"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1", "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "0"},
+	] {
+		denied_review(json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/steps/1/env", "value": env}]))
+	}
+}
+
+test_the_real_review_shapes_pass if {
+	security := {"prompt": "review", "claude_args": concat(" ", [
+		"--model claude-sonnet-5-5 --max-turns 30",
+		"--allowedTools \"Read(./**),Bash(git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}),mcp__github_inline_comment__create_inline_comment\"",
+		"--disallowedTools \"Read(./.git/**)\"",
+		"--json-schema '{\"type\":\"object\"}'",
+	])}
+	plugin := {"prompt": "/code-review:code-review --comment x", "plugins": "code-review@claude-code-plugins",
+		"plugin_marketplaces": "https://github.com/anthropics/claude-code.git",
+		"anthropic_api_key": "${{ secrets.ANTHROPIC_API_KEY }}", "github_token": "${{ secrets.GITHUB_TOKEN }}",
+		"claude_args": concat(" ", [
+			"--model claude-sonnet-5-5 --max-turns 40",
+			"--allowedTools \"mcp__github_inline_comment__create_inline_comment\"",
+			"--disallowedTools \"Read(./.git/**)\"",
+			"--json-schema '{\"type\":\"object\"}'",
+		])}
+	count(denials(review_with(security))) == 0
+	count(denials(review_with(plugin))) == 0
+}
