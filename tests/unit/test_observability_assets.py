@@ -93,3 +93,27 @@ class AlertRulesTest(unittest.TestCase):
                 for label in re.findall(r"unwrap\s+([a-z_]+)", expr):
                     self.assertIn(label, KEPT)
                 self.assertIn('__error__=""', expr)
+
+
+DOCS = framework_root() / "docs" / "observability"
+
+
+class ObservabilityDocsTest(unittest.TestCase):
+    def test_runbooks_cover_every_alert_and_the_trace_procedure(self):
+        text = (DOCS / "runbooks.md").read_text()
+        anchors = set(re.findall(r"^## (aidlc-[a-z0-9-]+)$", text, re.M))
+        self.assertEqual(anchors, {"aidlc-guard-hook-health", "aidlc-session-cost"})
+        self.assertIn("## From a Grafana rejection to the local record", text)
+        self.assertIn('"call": "toolu_', text)
+
+    def test_platform_patch_covers_the_alerts_and_the_panel(self):
+        text = (DOCS / "platform-patch.md").read_text()
+        for needle in ("core/observability/alerting/aidlc.yaml", "provisioning/alerting/aidlc.yaml",
+                       "tools/grafana_dashboards.py", "test_grafana_dashboards.py", "guard_denial_rate"):
+            self.assertIn(needle, text)
+
+    def test_readme_states_the_boundary(self):
+        text = (DOCS / "README.md").read_text()
+        for needle in ("CLAUDE_CODE_ENABLE_TELEMETRY", "tool_use_id", "never leave", "ADR 0003",
+                       "claude-apps-gateway", "OTEL_LOG_TOOL_DETAILS"):
+            self.assertIn(needle, text)

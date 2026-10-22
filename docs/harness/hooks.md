@@ -19,6 +19,16 @@ and back. The full contract is in [the adapter interface](../adapters/interface.
   error, which the tool treats as a block, and writes a `fail-safe` record to the decision log.
   The settings also set `onFailure: block`, so a crash or a timeout blocks too.
 
+## The decision log and telemetry
+
+Every decision goes to the local decision log, `~/.aidlc/logs/decisions.jsonl` (or
+`$AIDLC_LOG_DIR`). Each record carries `session` (Claude Code's `session_id`) and `call`
+(`tool_use_id`), fail-safe records included whenever the payload parsed. The log never leaves the
+machine. Centrally, Claude Code's own telemetry shows the block as a `tool_decision` with
+`source="hook"`, and the shared `tool_use_id` leads back to the record. See
+[observability](../observability/README.md) and
+[ADR 0003](../adr/0003-observability-built-in-telemetry.md).
+
 ## Which tools reach the hooks
 
 Every tool call reaches the pre-tool guard: the rendered `PreToolUse` matcher is `.*`. The shim

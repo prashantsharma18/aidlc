@@ -1,6 +1,6 @@
 <!-- aidlc template: codebase-map -->
 # aidlc: codebase map
-Owner: framework owners (Prashant Sharma) · Last verified: 2026-10-20, against commit 28ab1cc
+Owner: framework owners (Prashant Sharma) · Last verified: 2026-10-22, against commit 2a6eb1d
 Read this before planning a change. Paths are from the repository root.
 
 ## What this service does
@@ -25,6 +25,7 @@ repository's own commands inside bubblewrap, and `aidlc tools install` downloads
 `core/ci/`               CI templates: the GitHub workflow and its per-profile setup steps.
 `core/policy-as-code/`   The Rego pack (settings, narrowing, workflows) and its tests; run by conftest.
 `core/hooks/`            Harness hook sources (guard, post-check, shim); standard library only. Rendered into the hooks folder under `.aidlc` in installed repositories (generated; never edit).
+`core/observability/`    Metric catalogue (`core/observability/metrics.yaml`) and proposed Grafana alert rules; built on Claude Code's built-in telemetry (ADR 0003).
 `tests/`                 unittest suites; `tests/helpers.py` builds throwaway git repositories.
 
 ## Key flows
@@ -40,6 +41,7 @@ Invariant: every exit is 0 (pass), 1 (findings) or 2 (usage); nothing passes sil
 - New built-in step of the one-command check: BUILTINS in `cli/aidlc/checks/onecheck.py`; for CI, JUDGE_STEPS or AFTER_STEPS in `cli/aidlc/ci.py`.
 - New Rego rule: a failing case in its `*_test.rego` first, then the rule in `core/policy-as-code/rego/`; `make policy-test`.
 - New tool output: an adapter method in `cli/aidlc/adapters/`; never in the core.
+- New metric: an entry in `core/observability/metrics.yaml` naming its real source; never a new emitter (ADR 0003).
 
 ## Shared capabilities (reuse; do not duplicate)
 load_yaml, load_policy   `cli/aidlc/policy.py`     raise PolicyError; never return partial data
@@ -51,6 +53,7 @@ write_rendered           `cli/aidlc/adapters/base.py`  never overwrites a non-ge
 - Generated files (`docs/traceability.md`, `docs/operating-model/tiers-table.md`, `CLAUDE.md`): edit sources, then regenerate.
 - Changing `core/policy/permissions.yaml` changes every installed repository's harness: it needs a design change.
 - Tests that commit must use `tests/helpers.py` (it disables the user's global git hooks).
+- Hook records must keep `session` and `call` (`tool_use_id`): they are the only link from Grafana to the local record (`tests/unit/test_hook_record_ids.py`).
 - `aidlc ci` must judge before the change's code runs and must never run git in the checkout afterwards: keep new steps in the right phase.
 
 ## Tests
