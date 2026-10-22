@@ -88,6 +88,10 @@ The workflow's own `GITHUB_TOKEN`, limited to `pull-requests: write`, is narrowe
   and post inline comments;
 - both review steps set `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1`, which removes the key from every
   subprocess's environment.
+- both review steps deny reading `.git/` (`--disallowedTools "Read(./.git/**)"`), because the Action
+  writes the job token into `.git/config`;
+- the job may set no job-level `env`, `defaults`, `container` or `services`, so nothing changes how its
+  steps run.
 
 If the token cannot post live, the owner decides between installing the Claude GitHub App (another
 narrow exception, for `id-token: write`) and keeping only what the token can do. The outcome is

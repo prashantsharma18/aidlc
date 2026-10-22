@@ -295,3 +295,11 @@ class AiReviewGateTest(unittest.TestCase):
                 schema = json.loads(re.search(r"--json-schema '([^']+)'", steps[sid]["with"]["claude_args"]).group(1))
                 self.assertEqual(schema["required"], ["reviewed", "findings_posted", "summary"])
                 self.assertEqual(steps[sid]["env"]["CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"], "1")
+
+    def test_review_steps_cannot_read_the_git_directory(self):
+        # The Action writes the job token into .git/config; a reviewer must not read it (live run 4).
+        wf = yaml.safe_load(AI_GATES.read_text(encoding="utf-8"))
+        for step in wf["jobs"]["ai-review-passes"]["steps"]:
+            if step.get("uses", "").startswith("anthropics/claude-code-action@"):
+                with self.subTest(step=step.get("name")):
+                    self.assertIn('--disallowedTools "Read(./.git/**)"', step["with"]["claude_args"])

@@ -104,6 +104,11 @@ job_environment(job) := job.environment.name if is_object(job.environment)
 
 review_job(job) if {
 	job_environment(job) == "ai-gates"
+	# No job-level override can change how its steps run (live review finding, 2026-10-22).
+	not job.env
+	not job.defaults
+	not job.container
+	not job.services
 	steps := object.get(job, "steps", [])
 	count(steps) > 0
 	every step in steps {

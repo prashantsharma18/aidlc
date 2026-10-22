@@ -230,3 +230,15 @@ test_review_setup_command_with_more_is_denied if {
 	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/steps/1", "value": step}])
 	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
 }
+
+test_every_review_job_level_override_is_denied if {
+	every override in [
+		{"env": {"BASH_ENV": "./evil.sh"}},
+		{"defaults": {"run": {"shell": "python {0}"}}},
+		{"container": "attacker/image:1"},
+		{"services": {"db": {"image": "attacker/db:1"}}},
+	] {
+		bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review", "value": object.union(review.jobs["ai-review"], override)}])
+		"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+	}
+}
