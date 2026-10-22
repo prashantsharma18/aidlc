@@ -354,6 +354,12 @@ The framework emits into that contract and adds a small `aidlc.*` namespace. It 
 
 **Prerequisite.** The collector, Loki, Mimir and Grafana containers are currently stopped. While they stay down, Claude Code's exports are dropped. Phase 4 starts them with the platform's own compose file, with the owner's agreement.
 
+**Amended 2026-10-22 (Plan 4a, [ADR 0003](../adr/0003-observability-built-in-telemetry.md)).** The harness emits no telemetry. The rows above that name `aidlc.*` records, a SessionEnd shipper or `aidlc.check.result` emitters are superseded:
+- Correlation ids are Claude Code's `session.id` and `tool_use_id`; every local hook record carries both. `aidlc.bundle` and `aidlc.tier` are not emitted.
+- Hook decisions are seen centrally as `tool_decision` with `source="hook"`; the rule and reason stay in the local decision log.
+- Check results come from GitHub CI (ADR 0002); the metrics built on them come from `aidlc metrics` (Plan 6).
+- Dashboards are the platform's. The framework keeps the metric catalogue (`core/observability/metrics.yaml`) and proposes alerts and panels (`docs/observability/platform-patch.md`).
+
 ## 11. Demo workspace
 
 ```
