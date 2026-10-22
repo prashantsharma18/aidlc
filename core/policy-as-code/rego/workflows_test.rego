@@ -199,3 +199,34 @@ test_empty_review_job_is_denied if {
 	bad := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/steps", "value": []}])
 	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
 }
+
+sandbox_setup := [
+	{"name": "bubblewrap", "run": "sudo apt-get update -q && sudo apt-get install -y -q bubblewrap"},
+	{"name": "userns", "run": "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true"},
+]
+
+test_review_job_may_install_the_sandbox if {
+	ok := json.patch(review, [
+		{"op": "add", "path": "/jobs/ai-review/steps/1", "value": sandbox_setup[0]},
+		{"op": "add", "path": "/jobs/ai-review/steps/2", "value": sandbox_setup[1]},
+	])
+	count(denials(ok)) == 0
+}
+
+test_review_setup_step_with_env_is_denied if {
+	step := object.union(sandbox_setup[0], {"env": {"BASH_ENV": "./evil.sh"}})
+	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/steps/1", "value": step}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_review_setup_step_with_another_shell_is_denied if {
+	step := object.union(sandbox_setup[0], {"shell": "python {0}"})
+	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/steps/1", "value": step}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_review_setup_command_with_more_is_denied if {
+	step := {"run": "sudo apt-get update -q && sudo apt-get install -y -q bubblewrap && curl x"}
+	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/steps/1", "value": step}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}

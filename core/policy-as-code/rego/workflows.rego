@@ -75,10 +75,28 @@ deny contains msg if {
 }
 
 # The one write a job may hold (ADR 0004): pull-requests: write, for the AI review job, so it can post
-# inline comments. That job runs in the ai-gates environment (a person approves each run), runs no
-# shell step, and uses only actions/checkout and anthropics/claude-code-action (pinned by the next
-# rule). Its token cannot push (contents stays read) and cannot approve (repository setting).
+# inline comments. That job runs in the ai-gates environment (a person approves each run), uses only
+# actions/checkout and anthropics/claude-code-action (pinned by the next rule), and runs no shell
+# step except two fixed setup commands for the sandbox that scrubs the key from subprocesses, with
+# no env or shell override. Its token cannot push (contents stays read) and cannot approve
+# (repository setting).
 review_actions := {"actions/checkout", "anthropics/claude-code-action"}
+
+review_setup := {
+	"sudo apt-get update -q && sudo apt-get install -y -q bubblewrap",
+	"sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true",
+}
+
+review_step(step) if {
+	object.get(step, "run", null) == null
+	split(object.get(step, "uses", ""), "@")[0] in review_actions
+}
+
+review_step(step) if {
+	object.get(step, "uses", null) == null
+	step.run in review_setup
+	{key | some key, _ in step} - {"name", "run"} == set()
+}
 
 job_environment(job) := job.environment if is_string(job.environment)
 
@@ -89,8 +107,7 @@ review_job(job) if {
 	steps := object.get(job, "steps", [])
 	count(steps) > 0
 	every step in steps {
-		object.get(step, "run", null) == null
-		split(object.get(step, "uses", ""), "@")[0] in review_actions
+		review_step(step)
 	}
 }
 

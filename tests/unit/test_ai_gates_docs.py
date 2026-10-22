@@ -27,7 +27,8 @@ class AiGatesDocsTest(unittest.TestCase):
         text = (ROOT / "docs/adr/0004-ai-gates.md").read_text()
         for needle in ("pull-requests: write", "can_approve_pull_request_reviews", "not pinned",
                        "6fed3ca145920b639991cb756090506e1bcaf515", "Claude GitHub App",
-                       "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB", "gh pr comment", "same process"):
+                       "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB", "gh pr comment", "same process",
+                       "two fixed setup commands"):
             self.assertIn(needle, text)
 
     def test_no_claim_that_the_review_tools_are_read_only(self):

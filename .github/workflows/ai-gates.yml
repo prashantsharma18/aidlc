@@ -30,6 +30,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with: {fetch-depth: 0, persist-credentials: false}
+      # CLAUDE_CODE_SUBPROCESS_ENV_SCRUB needs bubblewrap, and bubblewrap needs unprivileged user
+      # namespaces. The only shell steps the policy allows in this job (workflows.rego, ADR 0004).
+      - name: bubblewrap, for the subprocess isolation that scrubs the key
+        run: sudo apt-get update -q && sudo apt-get install -y -q bubblewrap
+      - name: Allow unprivileged user namespaces for bubblewrap (ephemeral runner)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: Bug and compliance passes (Anthropic code-review plugin)
         uses: anthropics/claude-code-action@6fed3ca145920b639991cb756090506e1bcaf515  # v1.0.245
         env: {CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"}

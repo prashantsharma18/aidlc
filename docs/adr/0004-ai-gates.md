@@ -55,8 +55,12 @@ not build a review or eval engine. What exists:
 `pull-requests: write`, for a job that meets all of these:
 
 - it runs in the `ai-gates` environment;
-- it has at least one step, and no `run:` step;
-- it uses only `actions/checkout` and `anthropics/claude-code-action`, each pinned to a full SHA.
+- it has at least one step;
+- it uses only `actions/checkout` and `anthropics/claude-code-action`, each pinned to a full SHA;
+- its only shell steps are two fixed setup commands: `sudo apt-get update -q && sudo apt-get install
+  -y -q bubblewrap`, and the `kernel.apparmor_restrict_unprivileged_userns=0` sysctl. Each has no
+  `env:`, `shell:` or other key. The key scrubbing (`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`) needs
+  bubblewrap, which the first live run showed: without it, the review step stopped.
 
 Every other write, `id-token: write` included, stays denied.
 

@@ -85,9 +85,13 @@ class AiGatesWorkflowTest(unittest.TestCase):
         job = self.jobs["ai-review"]
         self.assertEqual(job["permissions"], {"contents": "read", "pull-requests": "write"})
         self.assertNotIn("permissions", self.jobs["agent-config-evals"])
-        for step in job["steps"]:
-            self.assertNotIn("run", step)
-        uses = [s["uses"] for s in job["steps"]]
+        setup = {"sudo apt-get update -q && sudo apt-get install -y -q bubblewrap",
+                 "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true"}
+        runs = [s for s in job["steps"] if "run" in s]
+        self.assertEqual({s["run"] for s in runs}, setup)       # only the sandbox setup, exactly
+        for step in runs:
+            self.assertLessEqual(set(step), {"name", "run"})
+        uses = [s["uses"] for s in job["steps"] if "uses" in s]
         self.assertEqual(uses.count(ACTION), 2)
         self.assertTrue(all(u == ACTION or u.startswith("actions/checkout@") for u in uses))
 
@@ -220,7 +224,7 @@ class AiGatesReviewFixesTest(unittest.TestCase):
 
     def test_security_pass_tools_are_exact(self):
         wf = yaml.safe_load(AI_GATES.read_text())
-        security = wf["jobs"]["ai-review"]["steps"][2]
+        [security] = [s for s in wf["jobs"]["ai-review"]["steps"] if s.get("name") == "Security pass"]
         tools = re.search(r'--allowedTools "([^"]+)"', security["with"]["claude_args"]).group(1).split(",")
         self.assertEqual(tools, ["Read(./**)",
                                  "Bash(git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }})",
