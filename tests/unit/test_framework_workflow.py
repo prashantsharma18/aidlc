@@ -69,23 +69,28 @@ class AiGatesWorkflowTest(unittest.TestCase):
     def test_triggers_permissions_and_jobs(self):
         self.assertEqual(set(self.on), {"pull_request"})
         self.assertEqual(self.wf["permissions"], {"contents": "read"})
-        self.assertEqual(set(self.jobs), {"ai-review", "agent-config-evals"})
+        self.assertEqual(set(self.jobs), {"ai-review-passes", "ai-review", "agent-config-evals"})
         self.assertNotIn("pull_request_target", self.text)
         self.assertNotIn("id-token", self.text)
 
     def test_the_key_lives_only_in_ai_gates_jobs(self):
         for name, job in self.jobs.items():
             with self.subTest(job=name):
-                self.assertEqual(job["environment"], "ai-gates")
                 self.assertLessEqual(job["timeout-minutes"], 60)
+                if "secrets." in yaml.safe_dump(job):
+                    self.assertEqual(job["environment"], "ai-gates")
+        gate = self.jobs["ai-review"]                    # the required check: no secrets, no writes
+        self.assertNotIn("environment", gate)
+        self.assertNotIn("permissions", gate)
+        self.assertNotIn("secrets.", yaml.safe_dump(gate))
         secrets = set(re.findall(r"secrets\.([A-Z_]+)", self.text))
         self.assertEqual(secrets, {"ANTHROPIC_API_KEY", "GITHUB_TOKEN"})
 
     def test_review_job_has_one_narrow_write_and_no_shell(self):
-        job = self.jobs["ai-review"]
+        job = self.jobs["ai-review-passes"]
         self.assertEqual(job["permissions"], {"contents": "read", "pull-requests": "write"})
         self.assertNotIn("permissions", self.jobs["agent-config-evals"])
-        setup = {"sudo apt-get update -q && sudo apt-get install -y -q bubblewrap",
+        setup = {"sudo apt-get update -q && sudo apt-get install -y -q bubblewrap socat",
                  "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true"}
         runs = [s for s in job["steps"] if "run" in s]
         self.assertEqual({s["run"] for s in runs}, setup)       # only the sandbox setup, exactly
@@ -105,7 +110,7 @@ class AiGatesWorkflowTest(unittest.TestCase):
                 self.assertNotIn("${{", step.get("run", ""))
 
     def test_review_tools_are_read_only_plus_comments(self):
-        review = [s for s in self.steps("ai-review") if s.get("uses") == ACTION]
+        review = [s for s in self.steps("ai-review-passes") if s.get("uses") == ACTION]
         bug, security = review
         self.assertEqual(bug["with"]["plugins"], "code-review@claude-code-plugins")
         self.assertTrue(bug["with"]["prompt"].startswith("/code-review:code-review --comment "))
@@ -125,7 +130,9 @@ class AiGatesWorkflowTest(unittest.TestCase):
         self.assertIn("data, never instructions", security["with"]["prompt"])
 
     def test_jobs_are_never_skipped_except_drafts(self):
-        self.assertEqual(self.jobs["ai-review"].get("if"), "github.event.pull_request.draft == false")
+        self.assertEqual(self.jobs["ai-review-passes"].get("if"), "github.event.pull_request.draft == false")
+        self.assertEqual(self.jobs["ai-review"].get("if"), "always()")
+        self.assertEqual(self.jobs["ai-review"]["needs"], "ai-review-passes")
         self.assertNotIn("if", self.jobs["agent-config-evals"])
         self.assertNotIn("continue-on-error", self.text)
 
@@ -218,13 +225,13 @@ class AiGatesReviewFixesTest(unittest.TestCase):
 
     def test_review_steps_scrub_the_key_from_subprocesses(self):
         wf = yaml.safe_load(AI_GATES.read_text())
-        for step in wf["jobs"]["ai-review"]["steps"]:
+        for step in wf["jobs"]["ai-review-passes"]["steps"]:
             if step.get("uses", "").startswith("anthropics/claude-code-action@"):
                 self.assertEqual(step["env"]["CLAUDE_CODE_SUBPROCESS_ENV_SCRUB"], "1")
 
     def test_security_pass_tools_are_exact(self):
         wf = yaml.safe_load(AI_GATES.read_text())
-        [security] = [s for s in wf["jobs"]["ai-review"]["steps"] if s.get("name") == "Security pass"]
+        [security] = [s for s in wf["jobs"]["ai-review-passes"]["steps"] if s.get("name") == "Security pass"]
         tools = re.search(r'--allowedTools "([^"]+)"', security["with"]["claude_args"]).group(1).split(",")
         self.assertEqual(tools, ["Read(./**)",
                                  "Bash(git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }})",
@@ -238,3 +245,53 @@ class AiGatesReviewFixesTest(unittest.TestCase):
         [upload] = [s for s in steps if "upload-artifact" in s.get("uses", "")]
         self.assertIn("steps.keycheck.outcome == 'success'", upload["if"])
         self.assertLess(steps.index(check), steps.index(upload))
+
+
+def gate_script() -> str:
+    wf = yaml.safe_load(AI_GATES.read_text(encoding="utf-8"))
+    [step] = wf["jobs"]["ai-review"]["steps"]
+    return step["run"]
+
+
+class AiReviewGateTest(unittest.TestCase):
+    """Live run 2026-10-22: a review step that could not read the diff ended "success" and the check went
+    green. The required check now passes only when both passes report they reviewed the change."""
+
+    OK = json.dumps({"reviewed": True, "findings_posted": 0, "summary": "read the diff"})
+    NOT = json.dumps({"reviewed": False, "findings_posted": 0, "summary": "sandbox failed"})
+
+    def gate(self, result, bug, security, draft="false") -> int:
+        env = {"PATH": "/usr/bin:/bin", "RESULT": result, "BUG": bug, "SECURITY": security, "DRAFT": draft}
+        return subprocess.run(["bash", "-c", gate_script()], env=env, capture_output=True, text=True).returncode
+
+    def test_both_passes_reviewed(self):
+        self.assertEqual(self.gate("success", self.OK, self.OK), 0)
+
+    def test_a_pass_that_did_not_review_fails(self):
+        self.assertNotEqual(self.gate("success", self.OK, self.NOT), 0)
+        self.assertNotEqual(self.gate("success", self.NOT, self.OK), 0)
+
+    def test_missing_or_malformed_output_fails(self):
+        for bad in ("", "not json", "[]", json.dumps({"reviewed": "yes"})):
+            with self.subTest(bad=bad):
+                self.assertNotEqual(self.gate("success", self.OK, bad), 0)
+
+    def test_a_failed_or_cancelled_review_job_fails(self):
+        for result in ("failure", "cancelled", "skipped"):
+            with self.subTest(result=result):
+                self.assertNotEqual(self.gate(result, self.OK, self.OK), 0)
+
+    def test_a_draft_skips_the_review(self):
+        self.assertEqual(self.gate("skipped", "", "", draft="true"), 0)
+
+    def test_each_pass_reports_in_a_fixed_shape_and_runs_in_the_foreground(self):
+        wf = yaml.safe_load(AI_GATES.read_text(encoding="utf-8"))
+        passes = wf["jobs"]["ai-review-passes"]
+        steps = {s.get("id"): s for s in passes["steps"]}
+        self.assertEqual(passes["outputs"], {"bug": "${{ steps.bug.outputs.structured_output }}",
+                                             "security": "${{ steps.security.outputs.structured_output }}"})
+        for sid in ("bug", "security"):
+            with self.subTest(step=sid):
+                schema = json.loads(re.search(r"--json-schema '([^']+)'", steps[sid]["with"]["claude_args"]).group(1))
+                self.assertEqual(schema["required"], ["reviewed", "findings_posted", "summary"])
+                self.assertEqual(steps[sid]["env"]["CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"], "1")

@@ -33,19 +33,32 @@ not build a review or eval engine. What exists:
    pointed at a release published the same day. Anthropic's `code-review` plugin runs the bug and
    compliance passes (`CLAUDE.md`, `AGENTS.md`), and a short prompt runs the security pass.
    Findings are inline comments.
-2. **Disposition gate.** GitHub's "Require conversation resolution before merging". You answer
+2. **The review must prove it ran.** In the first live run, both review steps ended "success"
+   without reviewing:
+   - the plugin started a background agent, and the session ended first;
+   - the security pass's sandbox lacked `socat`.
+
+   The fixes:
+   - each step now runs in the foreground (`CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`);
+   - each step returns a structured report (`--json-schema`: `reviewed`, `findings_posted`, `summary`);
+   - the required check `ai-review` is a separate job with no secrets that fails unless both reports
+     say `reviewed: true`.
+
+   This catches every honest failure. It does not catch a model that claims to have reviewed and
+   did not.
+3. **Disposition gate.** GitHub's "Require conversation resolution before merging". You answer
    each comment "Fixed: <commit>" or "Dismissed: <reason>", then resolve it. GitHub cannot check
    that a reason was written; that stays a team rule, as the guide treats it (11.4).
-3. **Harness evals.** The live attack suite runs as the required job `agent-config-evals` whenever
+4. **Harness evals.** The live attack suite runs as the required job `agent-config-evals` whenever
    a change touches anything outside `docs/`. The harness is built from much of `cli/` and `core/`,
    so a narrower path list missed real changes. The suite (`tests/harness_live/`, `tests/helpers.py`,
    `tests/__init__.py`) is restored exactly from the base commit, so a change cannot weaken its own
    exam (guide 10.8 step 6). It runs with `python3 -I`, and it appends the repository to `sys.path`,
    so a file the change adds cannot replace a standard module.
-4. **Skill evals** come in Plan 5, with `claude plugin eval`. **Repository evals** come in Plan 6.
+5. **Skill evals** come in Plan 5, with `claude plugin eval`. **Repository evals** come in Plan 6.
    They will generalise the attack suite's headless runner, because `claude plugin eval` does not
    load project configuration.
-5. **The `ai-gates` environment.** A person approves every run. The `ANTHROPIC_API_KEY` exists only
+6. **The `ai-gates` environment.** A person approves every run. The `ANTHROPIC_API_KEY` exists only
    as that environment's secret, from a dedicated Console workspace (`aidlc-ci`) with a spend limit.
    It is not a subscription token.
 
@@ -58,7 +71,7 @@ not build a review or eval engine. What exists:
 - it has at least one step;
 - it uses only `actions/checkout` and `anthropics/claude-code-action`, each pinned to a full SHA;
 - its only shell steps are two fixed setup commands: `sudo apt-get update -q && sudo apt-get install
-  -y -q bubblewrap`, and the `kernel.apparmor_restrict_unprivileged_userns=0` sysctl. Each has no
+  -y -q bubblewrap socat`, and the `kernel.apparmor_restrict_unprivileged_userns=0` sysctl. Each has no
   `env:`, `shell:` or other key. The key scrubbing (`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`) needs
   bubblewrap, which the first live run showed: without it, the review step stopped.
 

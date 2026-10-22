@@ -83,7 +83,7 @@ deny contains msg if {
 review_actions := {"actions/checkout", "anthropics/claude-code-action"}
 
 review_setup := {
-	"sudo apt-get update -q && sudo apt-get install -y -q bubblewrap",
+	"sudo apt-get update -q && sudo apt-get install -y -q bubblewrap socat",
 	"sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true",
 }
 

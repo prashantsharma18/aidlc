@@ -201,7 +201,7 @@ test_empty_review_job_is_denied if {
 }
 
 sandbox_setup := [
-	{"name": "bubblewrap", "run": "sudo apt-get update -q && sudo apt-get install -y -q bubblewrap"},
+	{"name": "bubblewrap", "run": "sudo apt-get update -q && sudo apt-get install -y -q bubblewrap socat"},
 	{"name": "userns", "run": "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true"},
 ]
 
@@ -226,7 +226,7 @@ test_review_setup_step_with_another_shell_is_denied if {
 }
 
 test_review_setup_command_with_more_is_denied if {
-	step := {"run": "sudo apt-get update -q && sudo apt-get install -y -q bubblewrap && curl x"}
+	step := {"run": "sudo apt-get update -q && sudo apt-get install -y -q bubblewrap socat && curl x"}
 	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/steps/1", "value": step}])
 	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
 }

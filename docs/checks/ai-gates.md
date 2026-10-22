@@ -9,11 +9,16 @@ Both use Anthropic's official GitHub Action or Claude Code itself. Neither is a 
 Both jobs run on every pull request: when it is opened, gets new commits, is reopened, or is
 marked ready for review.
 
-- **`ai-review`** runs two review steps:
+- **`ai-review-passes`** runs two review steps:
   - Anthropic's `code-review` plugin, for the bug and compliance passes (`CLAUDE.md`, `AGENTS.md`);
   - a security pass.
 
-  Each finding is an inline comment. A draft pull request is not reviewed until you mark it ready.
+  Each finding is an inline comment. Each step ends with a short structured report saying whether
+  it really reviewed the change. A draft pull request is not reviewed until you mark it ready.
+- **`ai-review`** is the required check. It holds no secrets. It passes only when the review job
+  succeeded and both steps report they reviewed the change. A step that could not read the diff
+  therefore fails the check, instead of showing green. It cannot catch a model that falsely claims
+  it reviewed.
 - **`agent-config-evals`** first checks whether the change touches anything outside `docs/`. If it
   does, it runs the live attack suite.
 
