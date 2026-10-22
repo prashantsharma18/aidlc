@@ -1,0 +1,121 @@
+# core/observability/metrics.yaml
+meta: {id: observability-metrics, owner: "@harness-owners", review_by: "2027-04-22", guide: ["3.4", "3.9", "12.11", "12.12", "12.16"]}
+# The guide's agent metrics, each mapped to where its data really lives (ADR 0003):
+#   - Claude Code's built-in telemetry (Loki, service_name="claude-code"), switched on centrally;
+#   - the platform's generated dashboards (PC/grafana/dashboards), which we reuse, never copy;
+#   - GitHub CI, the trusted record of check results (ADR 0002);
+#   - the local hook record (~/.aidlc/logs/decisions.jsonl), matched to telemetry by tool_use_id.
+# Usage is read, never targeted (guide 3.4).
+metrics:
+  - id: guard_denial_rate
+    guide: ["3.4", "3.9"]
+    definition: Tool calls a hook rejected, over all tool decisions.
+    status: query
+    source: claude-code tool_decision (source="hook")
+    query: 'sum(count_over_time({service_name="claude-code"} | event_name="tool_decision" | decision="reject" | source="hook" [$__range])) / sum(count_over_time({service_name="claude-code"} | event_name="tool_decision" [$__range]))'
+    read_with: [override_rate, fail_safe_blocks]
+    action: A jump after a harness change - read the local records of a few rejected calls (runbook); a fall to zero - check that the hooks still run.
+  - id: override_rate
+    guide: ["3.4", "3.9"]
+    definition: Calls a person approved, over calls a person was asked about (accepts and rejects from a user source).
+    status: query
+    source: claude-code tool_decision (source user_temporary, user_permanent, user_reject)
+    query: 'sum(count_over_time({service_name="claude-code"} | event_name="tool_decision" | decision="accept" | source=~"user_(temporary|permanent)" [$__range])) / sum(count_over_time({service_name="claude-code"} | event_name="tool_decision" | source=~"user_(temporary|permanent|reject)" [$__range]))'
+    read_with: [guard_denial_rate, approval_time]
+    action: Close to 100% - people approve by reflex (guide 3.9); narrow the ask rules or move safe calls to allow.
+  - id: approval_time
+    guide: ["3.4"]
+    definition: Time a tool call waited for a person's answer.
+    status: langfuse
+    source: claude_code.tool.blocked_on_user spans (enhanced telemetry beta traces)
+    where: Langfuse traces, span claude_code.tool.blocked_on_user, duration; needs CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1 and OTEL_TRACES_EXPORTER=otlp, both on in the lab's managed settings.
+    read_with: [override_rate]
+    action: Long waits - unattended work stalls on asks; review which rules ask.
+  - id: cost_per_session
+    guide: ["12.16"]
+    definition: Claude Code list-price cost per session.
+    status: platform-panel
+    source: claude-code api_request cost_usd
+    panel: agent-flow/Costliest sessions (open one in Langfuse)
+    read_with: [tool_failure_rate]
+    action: An outlier - open the session in Langfuse; check retries, context size and model tier.
+  - id: cost_per_task
+    guide: ["12.16"]
+    definition: Cost per ticket.
+    status: not-available
+    source: claude-code api_request plus a ticket key
+    gap: Claude Code events carry no branch or ticket key, and the hook records stay local, so no central join exists. Plan 6 (aidlc metrics) joins GitHub PRs to sessions.
+    read_with: [cost_per_session]
+    action: Until then, read cost per session.
+  - id: tool_failure_rate
+    guide: ["3.4"]
+    definition: Tool calls that ran and failed, over tool calls that ran.
+    status: platform-panel
+    source: claude-code tool_result (success="false")
+    panel: agent-flow/Tool failure rate per day
+    read_with: [guard_denial_rate]
+    action: Rising - read the failing tools (agent-flow/Failed tool calls by tool (M7)).
+  - id: guard_hook_health
+    guide: ["3.9"]
+    definition: PreToolUse hook runs that errored without blocking, or were cancelled (timeout).
+    status: query
+    source: claude-code hook_execution_complete (hook_event="PreToolUse")
+    query: '(sum(sum_over_time({service_name="claude-code"} | event_name="hook_execution_complete" | hook_event="PreToolUse" | unwrap num_non_blocking_error | __error__="" [$__range])) or vector(0)) + (sum(sum_over_time({service_name="claude-code"} | event_name="hook_execution_complete" | hook_event="PreToolUse" | unwrap num_cancelled | __error__="" [$__range])) or vector(0))'
+    read_with: [fail_safe_blocks, hook_latency]
+    action: Any - the guard did not decide; run aidlc doctor in the repository and read the local record.
+  - id: hook_latency
+    guide: ["3.9"]
+    definition: 95th percentile of hook run time, per hook.
+    status: platform-panel
+    source: claude-code hook_execution_complete total_duration_ms
+    panel: agent-flow/Hook time p95 by hook
+    read_with: [guard_hook_health]
+    action: Near the hook timeout - profile the guard; a slow guard is cancelled and blocks the call.
+  - id: fail_safe_blocks
+    guide: ["3.9"]
+    definition: Calls the harness blocked because a hook failed (rule fail-safe).
+    status: local-log
+    source: hook record rule="fail-safe"
+    where: ~/.aidlc/logs/decisions.jsonl; centrally each one is a tool_decision reject with source="hook", traced by tool_use_id (docs/observability/runbooks.md).
+    read_with: [guard_hook_health]
+    action: Any - read the record's reason and fix the hook.
+  - id: decisions_stopped
+    guide: ["3.9"]
+    definition: Sessions in an aidlc repository whose tool calls produced no hook decision.
+    status: not-available
+    source: claude-code tool_decision and hook_execution_complete
+    gap: Claude Code events carry no repository, so a central query cannot tell aidlc repositories from others. aidlc doctor (D4) and the live attack preflight check that the hooks are wired.
+    read_with: [guard_hook_health]
+    action: Run aidlc doctor; start sessions at the repository root.
+  - id: first_attempt_green_rate
+    guide: ["3.4", "12.11"]
+    definition: Pull requests whose first aidlc-verify run passed.
+    status: github-ci
+    source: GitHub Actions runs of the aidlc-verify workflow
+    where: GitHub run history per pull request; computed by aidlc metrics in Plan 6.
+    read_with: [retries_per_task]
+    action: Falling - read the failing steps; fix the context or the harness, not the agent.
+  - id: retries_per_task
+    guide: ["3.4"]
+    definition: Failing aidlc-verify runs before the first pass, per pull request.
+    status: github-ci
+    source: GitHub Actions runs of the aidlc-verify workflow
+    where: GitHub run history per pull request; computed by aidlc metrics in Plan 6. Locally, check-attempts records in the decision log.
+    read_with: [first_attempt_green_rate]
+    action: Above three - read the step that keeps failing.
+  - id: p95_time_to_green
+    guide: ["3.4", "12.12"]
+    definition: 95th percentile of the time from a pull request's first push to its first passing aidlc-verify run.
+    status: github-ci
+    source: GitHub Actions runs and pull request events
+    where: Computed by aidlc metrics in Plan 6.
+    read_with: [first_attempt_green_rate]
+    action: Rising - look for slow steps or long retries.
+  - id: retry_limit_hits
+    guide: ["3.4"]
+    definition: Times an agent reached the one-command check's retry limit.
+    status: local-log
+    source: hook record hook="check-attempts", rule="retry-limit"
+    where: ~/.aidlc/logs/decisions.jsonl on the developer's machine.
+    read_with: [retries_per_task]
+    action: Any - a person reads why the agent kept failing before resetting the counter.

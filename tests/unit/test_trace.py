@@ -15,6 +15,12 @@ class TraceTest(unittest.TestCase):
         kinds = {e.kind for e in elements}
         self.assertTrue({"policy", "template"} <= kinds)
 
+    def test_observability_files_are_traced(self):
+        from aidlc.trace import collect
+        elements, problems = collect()
+        self.assertIn("observability", {e.kind for e in elements})
+        self.assertEqual([p for p in problems if "observability" in p], [])
+
     def test_traceability_lists_every_chapter(self):
         text = render_traceability(collect()[0])
         for n in range(1, 17):

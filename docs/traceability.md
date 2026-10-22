@@ -10,7 +10,7 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 |---|---|---|
 | 1 | The AI-native lifecycle, end to end | ctx-authority, intent, policy-tiers |
 | 2 | Context engineering | agents-md, codebase-map, ctx-authority, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, ctx-rules-file, ctx-task-bundle, policy-context-classes, policy-memory-policy, policy-tiers, progress-note, task-bundle, workspace |
-| 3 | The agent harness | ctx-harness, ctx-task-bundle, policy-permissions, policy-risk-inventory |
+| 3 | The agent harness | ctx-harness, ctx-task-bundle, observability-metrics, policy-permissions, policy-risk-inventory |
 | 4 | Understanding a codebase before you change it | codebase-map, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, evidence-pack, explorer-brief, policy-tiers |
 | 5 | Intent to specification | intent, policy-data-classes, policy-tiers, spec |
 | 6 | Architecture, boundaries and contracts | adr, decision-frame, design-note, policy-tiers |
@@ -19,7 +19,7 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | 9 | Testing AI-written code | ci-github, evidence-table, policy-branch-protection, policy-tiers |
 | 10 | Evaluating agents and AI workflows | (none yet) |
 | 11 | Review, approval and release | change-record, ci-github, policy-branch-protection, policy-tiers, pr-description, readiness, release-runbook, review-record |
-| 12 | Operate, measure and improve | incident, policy-model-routes, policy-routing, runbook |
+| 12 | Operate, measure and improve | incident, observability-metrics, policy-model-routes, policy-routing, runbook |
 | 13 | Security and guardrails | ci-github, ctx-openwiki-governance, policy-data-classes, policy-dependency-policy, policy-model-routes, policy-permissions, policy-risk-inventory, policy-tool-register, security-review |
 | 14 | Changes that span repositories | compat-matrix, coordination-plan, explorer-brief, policy-branch-protection, policy-tiers, release-runbook, workspace |
 | 15 | Modernising legacy systems | (none yet) |
@@ -37,6 +37,7 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | ctx-openwiki-governance | context | `core/context/openwiki/governance.md` | 4.3, 4.6, 2.2, 13.4 |
 | ctx-rules-file | context | `core/context/standards/rules-file.md` | 2.6, 2.8 A3, 2.8 A5 |
 | ctx-task-bundle | context | `core/context/standards/task-bundle.md` | 2.9 B3, 2.9 B4, 7.10, 3 step 5 |
+| observability-metrics | observability | `core/observability/metrics.yaml` | 3.4, 3.9, 12.11, 12.12, 12.16 |
 | policy-branch-protection | policy | `core/policy/branch-protection.yaml` | 11.8, 9.7, 14.16 |
 | policy-context-classes | policy | `core/policy/context-classes.yaml` | 2.2, 2.3, 2.4 |
 | policy-data-classes | policy | `core/policy/data-classes.yaml` | 13.5, 5.11 |
