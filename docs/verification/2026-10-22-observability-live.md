@@ -70,7 +70,7 @@ over 7 days. Each parsed and returned a value:
 |---|---|
 | `guard_denial_rate` | 0.028 |
 | `override_rate` | 0.82 |
-| `guard_hook_health` | 0 |
+| `hook_health` (named `guard_hook_health` when run) | 0 |
 | `aidlc-session-cost` (max per session) | 7.16 USD, so the proposed 5 USD threshold would fire |
 
 ## Not verified

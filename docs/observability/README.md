@@ -11,7 +11,7 @@ generated dashboards already show most of what you need.
 | Question | Event | Where to look |
 |---|---|---|
 | Did a hook block a call? | `tool_decision`, `decision="reject"`, `source="hook"` | `agent-flow`: "Rejected actions by tool", "Hook refusals by hook" |
-| Did a hook fail or time out? | `hook_execution_complete`, `hook_event="PreToolUse"` | the `guard_hook_health` query, and the `aidlc-guard-hook-health` alert |
+| Did a hook fail or time out? | `hook_execution_complete`, `hook_event="PreToolUse"` | the `hook_health` query, and the `aidlc-hook-health` alert (errors and timeouts only: a guard crash is a block) |
 | How slow are the hooks? | `hook_execution_complete`, `total_duration_ms` | `agent-flow`: "Hook time p95 by hook" |
 | What did a session cost? | `api_request`, `cost_usd` | `ai-usage-overview`, and `agent-flow`: "Costliest sessions" |
 | Which tool calls failed? | `tool_result`, `success="false"` | `agent-flow`: "Tool failure rate per day" |
@@ -57,6 +57,7 @@ An organisation switches telemetry on centrally. A developer never sets it per r
 | `OTEL_METRICS_EXPORTER=otlp` | Counters such as active time, commits and lines (platform panels). |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | Claude Code has no default; `http/protobuf` in this lab. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` and `otelHeadersHelper` | Where to send, and the bearer token. Not needed behind a gateway. |
+| `OTEL_METRICS_INCLUDE_REPOSITORY=true` | Tags metrics and events with the session's repository (`vcs.repository.url.full`, from the `origin` remote; Claude Code 2.1.269 or later). Lets you scope queries to aidlc repositories. Anthropic documents the value `true`. |
 | `OTEL_RESOURCE_ATTRIBUTES` | `team`, `cost_center`, `env`, `enduser.pseudonym`: the platform's slicing keys. |
 | `OTEL_TRACES_EXPORTER=otlp` and `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1` | Optional. Traces in Langfuse, including how long a call waited for approval. |
 

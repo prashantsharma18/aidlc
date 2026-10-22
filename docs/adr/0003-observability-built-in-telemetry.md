@@ -53,8 +53,10 @@ Claude Code's built-in events already record what matters centrally:
 
 - **Centrally, you see that a hook blocked a call**: which tool, in which session, and when. The
   rule name, reason and target stay on the developer's machine.
-- **Cost per task and "decisions stopped" have no central source.** Claude Code events carry no
-  ticket or repository. `metrics.yaml` records each gap and where to look instead.
+- **Cost per task has no central source.** Claude Code events carry no branch or ticket. They
+  carry the repository only with `OTEL_METRICS_INCLUDE_REPOSITORY=true`, which would let
+  "decisions stopped" become a query per repository. `metrics.yaml` records each gap and where to
+  look instead.
 - **Hooks gain no network code and no new failure modes.**
 - **`aidlc.bundle`, `aidlc.tier` and the `aidlc.*` attribute namespace are not emitted.** The
   platform's allow-list needs no `aidlc.*` entry.

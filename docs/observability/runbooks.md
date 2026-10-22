@@ -24,12 +24,17 @@ If nothing matches, one of these is true:
 - the hook could not parse its input. That fail-safe record has no ids, so look for `fail-safe`
   records at the same time.
 
-## aidlc-guard-hook-health
+## aidlc-hook-health
 
 - **Fires when** any PreToolUse hook run errored without blocking, or was cancelled (timed out), in
   the last 15 minutes.
 - **Owner:** harness owners.
-- **It means** the guard did not decide on some calls.
+- **It means** some PreToolUse hook did not decide on some calls. It counts every PreToolUse hook:
+  the aidlc guard, plugin hooks, and hooks in other repositories.
+- **It does not see a guard crash.** The guard's shim turns any internal error into exit 2, a
+  fail-safe block. Claude Code counts that in `num_blocking` and records the call as a
+  `tool_decision` with `source="hook"`, the same as a deliberate deny. Only the local record says
+  `rule: fail-safe` ([from a Grafana rejection to the local record](#from-a-grafana-rejection-to-the-local-record)).
 - **First checks:**
   1. Run `bin/aidlc doctor` in the repository: are the hooks wired and the rendered files current?
   2. Look at `agent-flow`, "Hook time p95 by hook". A guard near its timeout is cancelled.

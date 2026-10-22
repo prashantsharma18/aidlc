@@ -44,7 +44,7 @@ metrics:
     definition: Cost per ticket.
     status: not-available
     source: claude-code api_request plus a ticket key
-    gap: Claude Code events carry no branch or ticket key, and the hook records stay local, so no central join exists. Plan 6 (aidlc metrics) joins GitHub PRs to sessions.
+    gap: Claude Code events carry no branch or ticket key (only the repository, with OTEL_METRICS_INCLUDE_REPOSITORY=true), and the hook records stay local, so no central join to a ticket exists. Plan 6 (aidlc metrics) joins GitHub PRs to sessions.
     read_with: [cost_per_session]
     action: Until then, read cost per session.
   - id: tool_failure_rate
@@ -55,21 +55,21 @@ metrics:
     panel: agent-flow/Tool failure rate per day
     read_with: [guard_denial_rate]
     action: Rising - read the failing tools (agent-flow/Failed tool calls by tool (M7)).
-  - id: guard_hook_health
+  - id: hook_health
     guide: ["3.9"]
-    definition: PreToolUse hook runs that errored without blocking, or were cancelled (timeout).
+    definition: PreToolUse hook runs that errored without blocking, or were cancelled (timeout); every PreToolUse hook counts, not only the aidlc guard. A guard crash exits 2, so Claude Code counts it in num_blocking, not here.
     status: query
     source: claude-code hook_execution_complete (hook_event="PreToolUse")
     query: '(sum(sum_over_time({service_name="claude-code"} | event_name="hook_execution_complete" | hook_event="PreToolUse" | unwrap num_non_blocking_error | __error__="" [$__range])) or vector(0)) + (sum(sum_over_time({service_name="claude-code"} | event_name="hook_execution_complete" | hook_event="PreToolUse" | unwrap num_cancelled | __error__="" [$__range])) or vector(0))'
     read_with: [fail_safe_blocks, hook_latency]
-    action: Any - the guard did not decide; run aidlc doctor in the repository and read the local record.
+    action: Any - some hook did not decide; run aidlc doctor in the repository. Guard crashes are fail-safe blocks (num_blocking, tool_decision source=hook) and show only in the local record.
   - id: hook_latency
     guide: ["3.9"]
     definition: 95th percentile of hook run time, per hook.
     status: platform-panel
     source: claude-code hook_execution_complete total_duration_ms
     panel: agent-flow/Hook time p95 by hook
-    read_with: [guard_hook_health]
+    read_with: [hook_health]
     action: Near the hook timeout - profile the guard; a slow guard is cancelled and blocks the call.
   - id: fail_safe_blocks
     guide: ["3.9"]
@@ -77,15 +77,15 @@ metrics:
     status: local-log
     source: hook record rule="fail-safe"
     where: ~/.aidlc/logs/decisions.jsonl; centrally each one is a tool_decision reject with source="hook", traced by tool_use_id (docs/observability/runbooks.md).
-    read_with: [guard_hook_health]
+    read_with: [hook_health]
     action: Any - read the record's reason and fix the hook.
   - id: decisions_stopped
     guide: ["3.9"]
     definition: Sessions in an aidlc repository whose tool calls produced no hook decision.
     status: not-available
     source: claude-code tool_decision and hook_execution_complete
-    gap: Claude Code events carry no repository, so a central query cannot tell aidlc repositories from others. aidlc doctor (D4) and the live attack preflight check that the hooks are wired.
-    read_with: [guard_hook_health]
+    gap: Claude Code tags events with the repository only when OTEL_METRICS_INCLUDE_REPOSITORY=true. The lab sets it to 1, and no event carried vcs.* attributes on 2026-10-22, so a central query cannot yet scope sessions to aidlc repositories. Once events carry vcs.repository.url.full, this becomes a query per repository (sessions with tool decisions but no PreToolUse hook run). aidlc doctor (D4) and the live attack preflight check that the hooks are wired.
+    read_with: [hook_health]
     action: Run aidlc doctor; start sessions at the repository root.
   - id: first_attempt_green_rate
     guide: ["3.4", "12.11"]

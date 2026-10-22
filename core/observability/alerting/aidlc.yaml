@@ -8,14 +8,14 @@ groups:
     folder: aidlc
     interval: 5m
     rules:
-      - uid: aidlc-guard-hook-health
-        title: aidlc guard hook errored or timed out
+      - uid: aidlc-hook-health
+        title: PreToolUse hook errored or timed out
         condition: C
         for: 0m
         labels: {owner: harness-owners, severity: warning}
         annotations:
-          summary: A PreToolUse hook run errored without blocking, or was cancelled, in the last 15 minutes.
-          runbook_url: https://github.com/prashantsharma18/aidlc/blob/main/docs/observability/runbooks.md#aidlc-guard-hook-health
+          summary: A PreToolUse hook run (any hook, any repository) errored without blocking, or was cancelled, in the last 15 minutes. A crash of the aidlc guard is a fail-safe block (num_blocking), not counted here.
+          runbook_url: https://github.com/prashantsharma18/aidlc/blob/main/docs/observability/runbooks.md#aidlc-hook-health
         noDataState: OK
         execErrState: Error
         data:

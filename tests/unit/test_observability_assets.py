@@ -15,7 +15,7 @@ KEPT = {"service_name", "event_name", "decision", "source", "tool_name", "tool_u
         "total_duration_ms", "session_id", "session_key", "team", "__error__"}
 GUIDE_METRICS = {"first_attempt_green_rate", "retries_per_task", "p95_time_to_green", "guard_denial_rate",
                  "override_rate", "approval_time", "cost_per_session", "cost_per_task", "retry_limit_hits",
-                 "fail_safe_blocks", "guard_hook_health", "decisions_stopped", "tool_failure_rate", "hook_latency"}
+                 "fail_safe_blocks", "hook_health", "decisions_stopped", "tool_failure_rate", "hook_latency"}
 
 
 def catalogue() -> dict:
@@ -65,7 +65,7 @@ class AlertRulesTest(unittest.TestCase):
 
     def test_every_alert_is_complete_and_evaluable(self):
         rules = self.rules()
-        self.assertEqual({r["uid"] for r in rules}, {"aidlc-guard-hook-health", "aidlc-session-cost"})
+        self.assertEqual({r["uid"] for r in rules}, {"aidlc-hook-health", "aidlc-session-cost"})
         for rule in rules:
             with self.subTest(rule=rule["uid"]):
                 self.assertTrue(rule["title"])
@@ -102,7 +102,7 @@ class ObservabilityDocsTest(unittest.TestCase):
     def test_runbooks_cover_every_alert_and_the_trace_procedure(self):
         text = (DOCS / "runbooks.md").read_text()
         anchors = set(re.findall(r"^## (aidlc-[a-z0-9-]+)$", text, re.M))
-        self.assertEqual(anchors, {"aidlc-guard-hook-health", "aidlc-session-cost"})
+        self.assertEqual(anchors, {"aidlc-hook-health", "aidlc-session-cost"})
         self.assertIn("## From a Grafana rejection to the local record", text)
         self.assertIn('"call": "toolu_', text)
 
@@ -117,3 +117,31 @@ class ObservabilityDocsTest(unittest.TestCase):
         for needle in ("CLAUDE_CODE_ENABLE_TELEMETRY", "tool_use_id", "never leave", "ADR 0003",
                        "claude-apps-gateway", "OTEL_LOG_TOOL_DETAILS"):
             self.assertIn(needle, text)
+
+
+class ReviewFixesTest(unittest.TestCase):
+    """Final review of Plan 4a: I1 (hook-health alert is not the aidlc guard's, and cannot see a
+    crash) and I2 (Claude Code can tag events with the repository)."""
+
+    def test_hook_health_is_not_attributed_to_the_guard_and_explains_crashes(self):
+        doc = yaml.safe_load((OBS / "alerting" / "aidlc.yaml").read_text())
+        [rule] = [r for g in doc["groups"] for r in g["rules"] if r["uid"] == "aidlc-hook-health"]
+        self.assertNotIn("guard", rule["title"].lower())
+        runbooks = (DOCS / "runbooks.md").read_text()
+        section = runbooks.split("## aidlc-hook-health", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("num_blocking", section)
+        self.assertIn("fail-safe", section)
+        [metric] = [m for m in catalogue()["metrics"] if m["id"] == "hook_health"]
+        self.assertIn("num_blocking", metric["action"] + metric["definition"])
+
+    def test_repository_tagging_is_documented_not_denied(self):
+        for metric in catalogue()["metrics"]:
+            text = " ".join(str(metric.get(k, "")) for k in ("gap", "where", "definition"))
+            self.assertNotIn("carry no repository", text)
+        [stopped] = [m for m in catalogue()["metrics"] if m["id"] == "decisions_stopped"]
+        self.assertIn("OTEL_METRICS_INCLUDE_REPOSITORY", stopped["gap"])
+        readme = (DOCS / "README.md").read_text()
+        self.assertIn("OTEL_METRICS_INCLUDE_REPOSITORY=true", readme)
+        adr = (framework_root() / "docs/adr/0003-observability-built-in-telemetry.md").read_text()
+        self.assertNotIn("carry no ticket or repository", adr)
+        self.assertIn("OTEL_METRICS_INCLUDE_REPOSITORY", (DOCS / "platform-patch.md").read_text())

@@ -30,12 +30,18 @@ the generator, never as a hand-written JSON file.
 This is the only panel the platform lacks. Every other metric in the catalogue uses an existing
 panel, a query or another source.
 
+## 3. Managed settings: tag events with the repository
+
+`/etc/claude-code/managed-settings.json` sets `OTEL_METRICS_INCLUDE_REPOSITORY` to `1`. Anthropic
+documents the value `true`, and on 2026-10-22 no event in Loki carried `vcs.*` attributes, not even
+from a repository with an `origin` remote. Set it to `true`, start a new session, and check that its
+events carry `vcs_repository_url_full`. The collector's allow-list already keeps `vcs.*`.
+
 ## Platform notes (observed 2026-10-20 to 2026-10-22)
 
 - Loki's `/ready` answered 503 ("Ingester not ready") at times and `ready` at others. There is no
   runbook entry for it.
-- `hook_execution_complete` appears in the lab's Claude Code data, but not in the parts of
-  Anthropic's monitoring page read so far. If it is renamed, the `guard_hook_health` query and its
-  alert need the new name.
+- `hook_execution_complete` is documented by Anthropic, with its `num_*` attributes. If it is
+  renamed, the `hook_health` query and its alert need the new name.
 - In the last 7 days, one session's list-price cost exceeded the proposed 5 USD threshold. Check
   the threshold against your normal sessions before you add a contact point.
