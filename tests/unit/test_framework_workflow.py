@@ -49,12 +49,8 @@ class FrameworkWorkflowTest(unittest.TestCase):
                 self.assertLessEqual(job["timeout-minutes"], 30)
 
 
-from aidlc.tools import which_tool
-
 AI_GATES = ROOT / ".github/workflows/ai-gates.yml"
 ACTION = "anthropics/claude-code-action@6fed3ca145920b639991cb756090506e1bcaf515"
-HARNESS_PATHS = ("core/hooks/", "core/policy/", "cli/aidlc/adapters/", "cli/aidlc/harness\\.py",
-                 "cli/aidlc/hookbridge\\.py", "tests/harness_live/", "\\.github/workflows/ai-gates\\.yml")
 
 
 class AiGatesWorkflowTest(unittest.TestCase):
@@ -115,8 +111,8 @@ class AiGatesWorkflowTest(unittest.TestCase):
             with self.subTest(step=step.get("name")):
                 self.assertIn("mcp__github_inline_comment__create_inline_comment", tools)
                 for tool in tools:
-                    self.assertRegex(tool, r"^(Read|Glob|Grep|Bash\(git (diff|log|show):\*\)|"
-                                           r"mcp__github_inline_comment__create_inline_comment)$")
+                    self.assertNotIn(":*)", tool)             # no wildcard command rules (Plan 4b review)
+                    self.assertNotIn(tool, ("Read", "Glob", "Grep", "Bash"))
                 self.assertIn("--model claude-sonnet-5-5", args)
                 self.assertRegex(args, r"--max-turns \d+")
                 self.assertEqual(step["with"]["anthropic_api_key"], "${{ secrets.ANTHROPIC_API_KEY }}")
@@ -132,16 +128,14 @@ class AiGatesWorkflowTest(unittest.TestCase):
     def test_scope_detection_fails_closed(self):
         [scope] = [s for s in self.steps("agent-config-evals") if s.get("id") == "scope"]
         self.assertIn("set -euo pipefail", scope["run"])
-        self.assertIn('git diff --name-only "$BASE" "$HEAD"', scope["run"])
-        for path in HARNESS_PATHS:
-            self.assertIn(path, scope["run"])
+        self.assertIn('git diff --quiet --no-renames "$BASE" "$HEAD" -- . \':(exclude)docs/\'', scope["run"])
         later = self.steps("agent-config-evals")[self.steps("agent-config-evals").index(scope) + 1:]
         for step in later:
             self.assertIn("steps.scope.outputs.changed == 'true'", step.get("if", ""))
 
     def test_the_suite_comes_from_the_base_commit(self):
         runs = "\n".join(s.get("run", "") for s in self.steps("agent-config-evals"))
-        self.assertIn('git checkout "$BASE" -- tests/harness_live', runs)
+        self.assertIn('git checkout --no-overlay "$BASE" -- tests/harness_live', runs)
         self.assertIn("npm install -g @anthropic-ai/claude-code@2.1.296", runs)
         self.assertIn("tests/harness_live/run_attacks.py --out", runs)
         suite = [s for s in self.steps("agent-config-evals") if "run_attacks.py" in s.get("run", "")]
@@ -160,3 +154,83 @@ class FrameworkWorkflowsPassThePackTest(unittest.TestCase):
                                        "--data", str(data), "--namespace", "aidlc.workflows", "--output", "json"],
                                       capture_output=True, text=True, timeout=60, cwd=tmp)
                 self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+
+def scope_script() -> str:
+    wf = yaml.safe_load(AI_GATES.read_text(encoding="utf-8"))
+    [step] = [s for s in wf["jobs"]["agent-config-evals"]["steps"] if s.get("id") == "scope"]
+    return step["run"]
+
+
+class AiGatesReviewFixesTest(unittest.TestCase):
+    """Final review of Plan 4b: detection that cannot miss a change, a judge the change cannot alter,
+    tools that cannot read the key, and a report that never publishes it."""
+
+    def detect(self, change) -> tuple[int, str]:
+        from tests.helpers import TempRepo, git
+        files = {"core/hooks/guard.py": "g\n", "cli/aidlc/scope.py": "s\n", "docs/a.md": "a\n"}
+        with TempRepo(files) as root, tempfile.TemporaryDirectory() as tmp:
+            base = git(root, "rev-parse", "HEAD")
+            change(root, git)
+            git(root, "add", "-A")
+            git(root, "commit", "-qm", "head")
+            head = git(root, "rev-parse", "HEAD").strip()
+            out = Path(tmp) / "out"
+            out.write_text("")
+            env = {"PATH": "/usr/bin:/bin", "HOME": tmp, "BASE": base, "HEAD": head,
+                   "GITHUB_OUTPUT": str(out), "GIT_CONFIG_NOSYSTEM": "1"}
+            if getattr(change, "bad_base", False):
+                env["BASE"] = "0" * 40
+            done = subprocess.run(["bash", "-c", scope_script()], cwd=root, env=env, capture_output=True, text=True)
+            return done.returncode, out.read_text()
+
+    def test_a_rename_out_of_the_harness_is_a_change(self):
+        code, out = self.detect(lambda root, git: git(root, "mv", "core/hooks/guard.py", "tools_guard.py"))
+        self.assertEqual((code, out.strip()), (0, "changed=true"))
+
+    def test_any_code_change_outside_docs_is_a_change(self):
+        code, out = self.detect(lambda root, git: (root / "cli/aidlc/scope.py").write_text("t\n"))
+        self.assertEqual((code, out.strip()), (0, "changed=true"))
+
+    def test_a_docs_only_change_skips_the_suite(self):
+        code, out = self.detect(lambda root, git: (root / "docs/a.md").write_text("b\n"))
+        self.assertEqual((code, out.strip()), (0, "changed=false"))
+
+    def test_an_unknown_base_fails_the_job(self):
+        def change(root, git):
+            (root / "docs/a.md").write_text("b\n")
+        change.bad_base = True
+        code, out = self.detect(change)
+        self.assertNotEqual(code, 0)
+        self.assertNotIn("changed=", out)
+
+    def test_the_judge_is_restored_exactly_and_runs_isolated(self):
+        runs = "\n".join(s.get("run", "") for s in yaml.safe_load(AI_GATES.read_text())["jobs"]["agent-config-evals"]["steps"])
+        self.assertIn('git checkout --no-overlay "$BASE" -- tests/harness_live tests/helpers.py tests/__init__.py', runs)
+        self.assertIn("python3 -I tests/harness_live/run_attacks.py", runs)
+        suite = (ROOT / "tests/harness_live/run_attacks.py").read_text()
+        self.assertNotIn("sys.path.insert(0", suite)
+        self.assertIn("sys.path.append(str(ROOT))", suite)
+
+    def test_review_steps_scrub_the_key_from_subprocesses(self):
+        wf = yaml.safe_load(AI_GATES.read_text())
+        for step in wf["jobs"]["ai-review"]["steps"]:
+            if step.get("uses", "").startswith("anthropics/claude-code-action@"):
+                self.assertEqual(step["env"]["CLAUDE_CODE_SUBPROCESS_ENV_SCRUB"], "1")
+
+    def test_security_pass_tools_are_exact(self):
+        wf = yaml.safe_load(AI_GATES.read_text())
+        security = wf["jobs"]["ai-review"]["steps"][2]
+        tools = re.search(r'--allowedTools "([^"]+)"', security["with"]["claude_args"]).group(1).split(",")
+        self.assertEqual(tools, ["Read(./**)",
+                                 "Bash(git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }})",
+                                 "mcp__github_inline_comment__create_inline_comment"])
+
+    def test_the_report_is_uploaded_only_without_the_key(self):
+        steps = yaml.safe_load(AI_GATES.read_text())["jobs"]["agent-config-evals"]["steps"]
+        [check] = [s for s in steps if s.get("id") == "keycheck"]
+        self.assertIn('grep -qF -- "$KEY"', check["run"])
+        self.assertEqual(check["env"]["KEY"], "${{ secrets.ANTHROPIC_API_KEY }}")
+        [upload] = [s for s in steps if "upload-artifact" in s.get("uses", "")]
+        self.assertIn("steps.keycheck.outcome == 'success'", upload["if"])
+        self.assertLess(steps.index(check), steps.index(upload))

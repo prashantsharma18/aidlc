@@ -14,8 +14,8 @@ marked ready for review.
   - a security pass.
 
   Each finding is an inline comment. A draft pull request is not reviewed until you mark it ready.
-- **`agent-config-evals`** first checks whether the change touches the harness. If it does, it runs
-  the live attack suite.
+- **`agent-config-evals`** first checks whether the change touches anything outside `docs/`. If it
+  does, it runs the live attack suite.
 
 Both jobs run in the `ai-gates` environment, so each run waits for your approval.
 
@@ -24,10 +24,20 @@ Both jobs run in the `ai-gates` environment, so each run waits for your approval
 On the pull request, choose **Review deployments**, tick `ai-gates`, and approve. One approval
 covers both jobs. A new commit starts new runs, which need approval again.
 
+**Approving runs the pull request's code with the API key set**, on a runner with network access:
+the evals execute its `cli/`, `core/` and hooks. Read the diff before you approve, above all
+changes to `cli/`, `core/hooks/`, `tests/` and `.github/`.
+
 ## Answering review findings
 
-The reviewer never approves, and nothing it says counts as approval: a person approves. A clean
-review posts nothing; the job's success means only that the review ran.
+The reviewer never approves, and nothing it says counts as approval: a person approves. The job's
+success means only that the review steps ran.
+
+**What a green `ai-review` does not tell you.** The `code-review` plugin skips a pull request it
+judges trivial, and one where Claude has already commented; with `--comment` and no findings it
+posts one "No issues found" comment. So on later pushes the bug and compliance passes may skip,
+while the security pass reviews every push. For a large change after the first review, ask for a
+fresh review in a new pull request, or run `/code-review` yourself.
 
 For each comment:
 
@@ -41,25 +51,18 @@ an open comment cannot merge. GitHub cannot check that you wrote a reason; the t
 
 ## Harness evals
 
-`agent-config-evals` runs the suite when the change touches any of these:
-
-- `core/hooks/`
-- `core/policy/`
-- `cli/aidlc/adapters/`
-- `cli/aidlc/harness.py`
-- `cli/aidlc/hookbridge.py`
-- `tests/harness_live/`
-- `.github/workflows/ai-gates.yml`
-
-Otherwise it passes without running. If it cannot tell whether the harness changed, it fails.
+`agent-config-evals` runs the suite unless the change touches only `docs/`. The harness is built
+from much of `cli/` and `core/`, so any code change runs it. A change to only `docs/` passes
+without running. If the job cannot tell what changed, it fails.
 
 **How the run works:**
 
-1. The suite (`tests/harness_live/`) comes from the base commit, so a change cannot weaken its own
-   exam.
+1. The suite (`tests/harness_live/`, `tests/helpers.py`, `tests/__init__.py`) is restored exactly
+   from the base commit, so a change cannot weaken its own exam.
 2. The suite runs about 16 short Haiku sessions against the change's harness.
 3. The job passes only when every row passes.
-4. The report is the `harness-attacks` artifact of the run.
+4. The report is the `harness-attacks` artifact of the run. It is uploaded only when it does not
+   contain the API key.
 
 Run the same suite on your machine with `make harness-live`. It uses your own Claude login.
 
@@ -85,15 +88,18 @@ Neither counts toward a merge. Only the GitHub runs do (ADR 0002).
 
 ## Forks
 
-GitHub gives pull requests from forks no secrets, so both jobs fail on them. A maintainer
-re-creates the change on a branch in this repository.
+GitHub gives pull requests from forks no secrets. So `ai-review` fails on them, and so does
+`agent-config-evals` unless the change touches only `docs/`. A maintainer re-creates the change on
+a branch in this repository.
 
 ## Cost
 
 Each run approved costs:
 
-- about one Sonnet review;
-- when the harness changed, about 16 short Haiku sessions.
+- the review. The `code-review` plugin starts several subagents (Haiku, Sonnet and Opus); `--model`
+  sets only the main session;
+- one Sonnet security pass;
+- unless the change touches only `docs/`, about 16 short Haiku sessions.
 
 Read the real figures in the `aidlc-ci` Console workspace.
 
@@ -101,3 +107,12 @@ Read the real figures in the `aidlc-ci` Console workspace.
 
 - **Skills and agents:** evals come with them in Plan 5, as `claude plugin eval` suites.
 - **Each project repository:** its own small set of real tasks comes in Plan 6.
+
+## If the key leaks
+
+If a comment, a log or an artifact ever shows the key, rotate the key at once:
+
+1. Delete the key in the `aidlc-ci` Console workspace.
+2. Create a new key.
+3. Run `gh secret set` again.
+4. Delete the comment.

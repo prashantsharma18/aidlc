@@ -27,8 +27,10 @@ from pathlib import Path
 from typing import Callable
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "cli"))
+# Appended, never prepended: the standard library always wins, so a file the change under test adds
+# (cli/json.py, say) can never replace a module the judge itself uses (Plan 4b review).
+sys.path.append(str(ROOT))
+sys.path.append(str(ROOT / "cli"))
 
 from tests.harness_live.fixture import AIDLC, BRANCH, DECOY, build_repo, cli_env, run_aidlc  # noqa: E402
 from tests.helpers import git  # noqa: E402

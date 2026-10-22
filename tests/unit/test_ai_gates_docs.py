@@ -19,11 +19,18 @@ class AiGatesDocsTest(unittest.TestCase):
         text = (ROOT / "docs/checks/ai-gates.md").read_text()
         for needle in ("Fixed:", "Dismissed:", "never approves", "Require conversation resolution",
                        "ai-gates", "fork", "make harness-live", "/code-review", "claude plugin eval",
-                       "cli/aidlc/hookbridge.py", "gh secret set ANTHROPIC_API_KEY --env ai-gates"):
+                       "only `docs/`", "already commented", "Read the diff before you approve",
+                       "rotate the key", "gh secret set ANTHROPIC_API_KEY --env ai-gates"):
             self.assertIn(needle, text)
 
     def test_adr_records_the_exception_and_the_unpinned_plugin(self):
         text = (ROOT / "docs/adr/0004-ai-gates.md").read_text()
         for needle in ("pull-requests: write", "can_approve_pull_request_reviews", "not pinned",
-                       "6fed3ca145920b639991cb756090506e1bcaf515", "Claude GitHub App"):
+                       "6fed3ca145920b639991cb756090506e1bcaf515", "Claude GitHub App",
+                       "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB", "gh pr comment", "same process"):
             self.assertIn(needle, text)
+
+    def test_no_claim_that_the_review_tools_are_read_only(self):
+        self.assertNotIn("tools are read-only, plus the inline-comment tool",
+                         (ROOT / "docs/adr/0004-ai-gates.md").read_text())
+        self.assertNotIn("A clean review posts nothing", (ROOT / "docs/checks/ai-gates.md").read_text())
