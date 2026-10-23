@@ -1,0 +1,29 @@
+# Stack hints for `aidlc adopt`: how to recognise a stack, and suggested commands for a repository that
+# uses the `generic` profile. Suggestions only; the repository's .aidlc/config.yaml decides.
+- {name: node, files: [package.json], profile: node}
+- {name: dotnet, files: ["*.csproj", "*.sln", global.json], profile: dotnet}
+- name: python
+  files: [pyproject.toml, setup.py, setup.cfg, requirements.txt]
+  profile: generic
+  commands: {test: "python3 -m pytest -q --junitxml=.check/junit.xml"}
+  check_steps: [test]
+  test_reports: [.check/junit.xml]
+- name: maven
+  files: [pom.xml]
+  profile: generic
+  commands: {test: "mvn -B -q verify"}
+  check_steps: [test]
+  test_reports: ["target/surefire-reports/*.xml"]
+- name: gradle
+  files: [build.gradle, build.gradle.kts]
+  profile: generic
+  commands: {test: "./gradlew test --console=plain"}
+  check_steps: [test]
+  test_reports: ["build/test-results/test/*.xml"]
+- name: go
+  files: [go.mod]
+  profile: generic
+  commands: {test: "gotestsum --junitfile .check/junit.xml ./..."}
+  check_steps: [test]
+  test_reports: [.check/junit.xml]
+  note: "go test writes no JUnit report; gotestsum does (install it in the repository's toolchain)"
