@@ -175,7 +175,7 @@ So guards stay fast (under 1 s, no network), and the sandbox and trusted CI rema
 
 ## 5. Lifecycle implementation
 
-> **Plan 5a (2026-10-22).** The first-path skills (context setup, intent, specify, plan, build-slice, verify) are built; see [the plugin guide](../skills/README.md) and [ADR 0005](../adr/0005-skills-plugin.md). The rest follow in Plan 5b.
+> **Plan 5a (2026-10-22).** The first-path skills (context setup, intent, specify, plan, build-slice, verify) are built; see [the plugin guide](../skills/README.md) and [ADR 0005](../adr/0005-skills-plugin.md). Plan 5b-B (2026-10-23) built discover, design, review, release, operate and feedback; the security procedures and cross-repository work follow in Plan 5b-C.
 
 One skill per procedure. Each skill names its inputs, produces its template artefact and stops at the human gate. A skill is advice. The gate is held by an approval record in the system of record, and the checks in §7 refuse work that lacks one.
 

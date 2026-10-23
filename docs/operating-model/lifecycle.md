@@ -27,7 +27,8 @@ and gate the framework provides at each stage.
 Discovery (`evidence-pack`, `explorer-brief`) runs before Design whenever the tier asks for it.
 
 The skills for Intent, Specify, Plan, Build and Verify, and `aidlc-context-setup`, are in the
-[aidlc plugin](../skills/README.md). The others follow in Plan 5b.
+[aidlc plugin](../skills/README.md), and since Plan 5b-B so are discover, design, review, release, operate and
+feedback. The security procedures (guide 13A–13D) and cross-repository work follow in Plan 5b-C.
 
 **Three kinds of work** use the same stages: new work takes the full path by tier; a defect starts
 with a failing test that reproduces it; a change request amends the spec through its owner (spec

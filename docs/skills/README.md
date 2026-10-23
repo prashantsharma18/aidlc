@@ -11,10 +11,16 @@ one stage's artefact and stops at that stage's human gate. The decision is
 | `aidlc-context-setup` | Context | drafts of `AGENTS.md` and `docs/codebase-map.md` | Placement, enforcement and the merge |
 | `aidlc-intent` | Intent | a draft of `plans/<KEY>/intent.md` | The product owner accepts the work |
 | `aidlc-specify` | Specify | a draft of `plans/<KEY>/spec.md`, or its new version | The spec owner approves the version |
+| `aidlc-discover` | Discover | the evidence pack: what the change touches, owners, contracts, tests | The tech lead decides proceed, escalate or raise the tier |
+| `aidlc-design` | Design | the design note (often "none needed"), decision frames, ADR, contract and its failing tests | The tech lead or architect approves; consumers approve a contract |
 | `aidlc-plan` | Plan | drafts of `plans/<KEY>/plan.md` and one bundle per slice | The tech lead approves the plan |
 | `aidlc-build-slice` | Build | commits (each records its step), a hand-off note | Local check green, diff in scope |
 | `aidlc-adopt` | Context | the init command, decisions on other tools' files, a draft baseline | Code owners merge the adoption pull request |
 | `aidlc-verify` | Verify | the evidence table and the pull request description | A code owner approves the pull request |
+| `aidlc-review` | Review | the PR description, a disposition per finding, reviewers' questions, the review record | A code owner who is not the author approves |
+| `aidlc-release` | Release | readiness checklist, stop criteria, change record, release runbook | The release approver decides ship, limit or hold |
+| `aidlc-operate` | Operate | signal log, containment options, diagnosis, incident record, new work item text | On-call owns the incident; a person acts on production |
+| `aidlc-feedback` | Operate | each lesson routed to a test, eval case, context, guardrail or checklist | The owner of each source reviews its change |
 
 **You save the drafts.** The harness denies the agent writes to `plans/**` and `AGENTS.md`, and every
 edit outside an approved task scope. So each skill gives its complete draft in its reply, and you save
@@ -36,10 +42,13 @@ instructions, and lists its "Common excuses" and "Red flags".
 ```text
 Jira story (acceptance criteria)          Git, branch <type>/<KEY>-<slug>
         │                                          │
-  aidlc-intent ──► aidlc-specify ──► aidlc-plan ──► aidlc-build-slice (one slice per session)
-   (owner accepts)   (spec v1 approved)  (plan approved;     │
-                                          bundles pinned)    ▼
-                                                      pull request ──► aidlc-verify ──► code owner
+  aidlc-intent ──► aidlc-specify ──► [aidlc-discover] ──► aidlc-design ──► aidlc-plan ──► aidlc-build-slice
+   (owner accepts)   (spec v1 approved)  (when the tier      ("none needed"     (plan approved;      (one slice
+                                          asks for it)        or ADR approved)   bundles pinned)      per session)
+                                                                                                          │
+        aidlc-feedback ◄── aidlc-operate ◄── aidlc-release ◄── aidlc-review ◄── aidlc-verify ◄── pull request
+   (lessons to the strongest   (incident)     (ship, limit    (code owner       (trusted
+    layer)                                     or hold)        approves)         evidence)
 ```
 
 - Jira holds the story at **story level**. Its acceptance criteria are the start of the spec.

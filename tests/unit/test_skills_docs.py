@@ -24,3 +24,9 @@ class SkillsDocsTest(unittest.TestCase):
     def test_no_stale_plan_references(self):
         self.assertNotIn("aidlc eval --suite", (ROOT / "docs/context-engineering/procedure-a.md").read_text(encoding="utf-8"))
         self.assertNotIn("Copilot Plan 5", (ROOT / "docs/adapters/interface.md").read_text(encoding="utf-8"))
+
+    def test_the_guide_lists_every_stage_skill(self):
+        text = (ROOT / "docs/skills/README.md").read_text(encoding="utf-8")
+        for name in ("aidlc-discover", "aidlc-design", "aidlc-review", "aidlc-release", "aidlc-operate",
+                     "aidlc-feedback"):
+            self.assertIn(name, text)
