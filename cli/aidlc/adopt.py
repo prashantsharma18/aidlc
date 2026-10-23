@@ -3,7 +3,9 @@ moves other tools' rule files into AGENTS.md and .aidlc/rules/. It writes nothin
 and applies the patch. Secrets are never baselined: the survey stops the adoption until they are fixed."""
 from __future__ import annotations
 
+import difflib
 import fnmatch
+import json
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -15,6 +17,7 @@ from .hookbridge import hooks
 from .paths import framework_root
 from .policy import load_yaml
 from .repo import CONFIG
+from .templates import TemplateError, parse_front_matter
 
 MAX_SCAN = 1_000_000
 
@@ -109,3 +112,62 @@ def report(s: Survey) -> str:
               "(docs/adoption/README.md).",
               "5. Open the adoption pull request; after it merges, switch on the required checks."]
     return "\n".join(lines) + "\n"
+
+
+def _diff(rel: str, old: str | None, new: str | None) -> str:
+    """One file's change in the form `git apply` reads."""
+    a = [] if old is None else old.splitlines(keepends=True)
+    b = [] if new is None else new.splitlines(keepends=True)
+    head = [f"diff --git a/{rel} b/{rel}\n"]
+    if old is None:
+        head.append("new file mode 100644\n")
+    if new is None:
+        head.append("deleted file mode 100644\n")
+    body = difflib.unified_diff(a, b, "/dev/null" if old is None else f"a/{rel}",
+                                "/dev/null" if new is None else f"b/{rel}")
+    out = "".join(head)
+    for line in body:
+        out += line if line.endswith("\n") else line + "\n\\ No newline at end of file\n"
+    return out
+
+
+def _rule(paths: list[str], body: str) -> str:
+    return "---\npaths:\n" + "".join(f"  - {json.dumps(p)}\n" for p in paths) + "---\n" + body.lstrip("\n")
+
+
+def _globs(value: object) -> list[str]:
+    items = value if isinstance(value, list) else str(value or "").split(",")
+    return [g.strip().strip("'\"") for g in items if isinstance(g, str) and g.strip()]
+
+
+def import_patch(repo: Path) -> tuple[str, list[str]]:
+    if not (repo / CONFIG).is_file():
+        raise AdoptError("run `aidlc init-repo` first: the import appends to its AGENTS.md")
+    agents_old = (repo / "AGENTS.md").read_text(encoding="utf-8")
+    appended, changes, problems = "", [], []
+    for rel, _tool, action in survey(repo).agent_config:
+        if action != "import":
+            continue
+        text = (repo / rel).read_text(encoding="utf-8")
+        target = None
+        if rel.endswith((".mdc", ".instructions.md")):
+            try:
+                meta, body = parse_front_matter(text, repo / rel)
+            except TemplateError:
+                meta, body = {}, text
+            paths = _globs(meta.get("globs") if rel.endswith(".mdc") else meta.get("applyTo"))
+            if paths and not meta.get("alwaysApply"):
+                name = PurePosixPath(rel).name.removesuffix(".mdc").removesuffix(".instructions.md")
+                target = f".aidlc/rules/{name}.md"
+                if (repo / target).exists():
+                    problems.append(f"{rel}: {target} already exists; merge it by hand (nothing overwritten)")
+                    continue
+                changes.append((target, None, _rule(paths, body)))
+            else:
+                text = body
+        if target is None:
+            appended += f"\n## Imported from {rel} (review: keep what every tool needs)\n\n{text.rstrip()}\n"
+        changes.append((rel, (repo / rel).read_text(encoding="utf-8"), None))
+    if appended:
+        changes.insert(0, ("AGENTS.md", agents_old, agents_old.rstrip("\n") + "\n" + appended))
+    return "".join(_diff(rel, old, new) for rel, old, new in changes), problems
