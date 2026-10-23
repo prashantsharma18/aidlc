@@ -2,7 +2,10 @@
 """Claude Code adapter shim: translates Claude Code hook payloads to the generic contract and
 back. Usage: claude_shim.py pre|post|post-failure. "No objection" is no output (never permissionDecision
 "allow"). Any internal error exits 2, which Claude Code treats as a block; settings also set
-onFailure: block so a crash or timeout blocks too."""
+onFailure: block so a crash or timeout blocks too.
+
+The tool-neutral flow is `run`; Claude Code is the `CLAUDE` dialect (its payload decoding and output
+encoding). A second tool adds a dialect and reuses `run` (ADR 0006)."""
 from __future__ import annotations
 
 import json
@@ -10,6 +13,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.dont_write_bytecode = True  # never leave __pycache__ in the repository (post-check would flag it)
 MAX_OUTPUT_CHARS = 5_000_000  # larger output is flagged unscanned, never passed
@@ -75,27 +79,46 @@ def to_generic(payload: dict, phase: str) -> dict:
     return event
 
 
-def main(argv: list[str]) -> int:
+def _claude_pre(result: dict, redact) -> str | None:
+    if result["decision"] in ("ask", "deny"):
+        return json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse", "permissionDecision": result["decision"],
+            "permissionDecisionReason": redact(f"[aidlc {result['rule']}] {result['reason']}")}})
+    return None
+
+
+def _claude_post(result: dict, redact) -> str | None:
+    if result["decision"] == "flag":
+        return json.dumps({"decision": "block", "reason": redact(f"[aidlc {result['rule']}] {result['reason']}")})
+    return None
+
+
+CLAUDE = SimpleNamespace(phases=("pre", "post", "post-failure"), to_generic=to_generic,
+                         encode_pre=_claude_pre, encode_post=_claude_post, error_exit=2)
+
+
+def run(argv: list[str], dialect) -> int:
+    """The tool-neutral flow: decode with the dialect, run the guard or post-check, encode the
+    result with the dialect. Any internal error exits with the dialect's blocking code."""
     guard = None
     payload = None
     try:
         phase = argv[1] if len(argv) > 1 else ""
-        if phase not in ("pre", "post", "post-failure"):
-            raise ValueError(f"phase must be pre, post or post-failure, got '{phase}'")
+        if phase not in dialect.phases:
+            raise ValueError(f"phase must be {', '.join(dialect.phases)}; got '{phase}'")
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         import guard  # noqa: E402
         import post_check  # noqa: E402
         payload = json.loads(sys.stdin.read())
         if not isinstance(payload, dict):
             raise ValueError("payload is not an object")
-        event = to_generic(payload, phase)
+        event = dialect.to_generic(payload, phase)
         if phase == "pre":
             result, version = guard._decide(event)
             guard._log(event, result, version)
-            if result["decision"] in ("ask", "deny"):
-                print(json.dumps({"hookSpecificOutput": {
-                    "hookEventName": "PreToolUse", "permissionDecision": result["decision"],
-                    "permissionDecisionReason": guard._redact(f"[aidlc {result['rule']}] {result['reason']}")}}))
+            text = dialect.encode_pre(result, guard._redact)
+            if text:
+                print(text)
             return 0
         attempt = post_check.record_check(event)
         if attempt is not None:
@@ -108,16 +131,17 @@ def main(argv: list[str]) -> int:
         if result["decision"] != "flag" and attempt is not None and attempt["decision"] == "flag":
             result = attempt
         guard._log(event, result)
-        if result["decision"] == "flag":
-            print(json.dumps({"decision": "block",
-                              "reason": guard._redact(f"[aidlc {result['rule']}] {result['reason']}")}))
+        text = dialect.encode_post(result, guard._redact)
+        if text:
+            print(text)
         return 0
-    except Exception as exc:  # noqa: BLE001 - exit 2 blocks in Claude Code
+    except Exception as exc:  # noqa: BLE001 - the dialect's error exit blocks (exit 2 in Claude Code)
         detail = type(exc).__name__
         if guard is not None:
             try:
                 detail = guard._redact(f"{type(exc).__name__}: {exc}")
                 pre = phase == "pre"
+                # Record ids by Claude Code's key names; a dialect with other names adds its own lookup here.
                 ids = payload if isinstance(payload, dict) else {}
                 session, call = ids.get("session_id"), ids.get("tool_use_id")
                 guard._log({"hook": "pre-tool-guard" if pre else "post-tool-check", "tool": None,
@@ -128,7 +152,11 @@ def main(argv: list[str]) -> int:
             except Exception:  # noqa: BLE001 - logging must never change the outcome
                 pass
         print(f"aidlc hook failed ({detail}); blocked to be safe", file=sys.stderr)
-        return 2
+        return dialect.error_exit
+
+
+def main(argv: list[str]) -> int:
+    return run(argv, CLAUDE)
 
 
 if __name__ == "__main__":
