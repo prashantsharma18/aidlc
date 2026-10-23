@@ -142,29 +142,21 @@ class StageSkills5bTest(unittest.TestCase):
         self.assertLessEqual(EXPECTED_5B, {p.parent.name for p, _, _ in skills()})
 
     def test_design_puts_the_contract_first(self):
-        if not (SKILLS / "aidlc-design").is_dir():
-            self.skipTest("Task 1")
         body = self.body("aidlc-design")
         self.assertIn("Uncertain counts as yes", body)
         self.assertIn("contract first", body)
         self.assertIn("The build is making a design decision", body)
 
     def test_review_never_offers_ai_review_as_approval(self):
-        if not (SKILLS / "aidlc-review").is_dir():
-            self.skipTest("Task 2")
         self.assertIn("AI review clean", self.body("aidlc-review"))
         self.assertIn("is never the approval", self.body("aidlc-review"))
 
     def test_release_requires_stop_criteria_and_rollback(self):
-        if not (SKILLS / "aidlc-release").is_dir():
-            self.skipTest("Task 2")
         body = self.body("aidlc-release")
         self.assertIn("There are no stop criteria", body)
         self.assertIn("The rollback has not been rehearsed", body)
 
     def test_operate_never_acts_on_production(self):
-        if not (SKILLS / "aidlc-operate").is_dir():
-            self.skipTest("Task 3")
         body = self.body("aidlc-operate")
         self.assertIn("A person runs every runbook step", body)
         self.assertIn("unmasked personal data", body)
@@ -172,3 +164,35 @@ class StageSkills5bTest(unittest.TestCase):
     def test_the_design_note_records_its_approval(self):
         text = (ROOT / "core" / "templates" / "design-note.md").read_text(encoding="utf-8")
         self.assertIn("APPROVED", text)
+
+    def test_review_passes_run_in_their_own_agents(self):
+        body = self.body("aidlc-review")
+        for agent in ("reviewer-bug", "reviewer-security", "reviewer-compliance"):
+            self.assertIn(agent, body)
+        self.assertIn("advisory", body)
+
+    def test_design_carries_the_approval_checklist_and_a_decided_none_needed(self):
+        body = self.body("aidlc-design")
+        for check in ("Every decision has a Proposed record with a named decider",
+                      "Every non-functional requirement has a test, check or monitor",
+                      "Every must-hold constraint is enforced, and its check was seen to fail",
+                      "The map and rules file are updated", "No decision is left for the build to make"):
+            self.assertIn(check, body)
+        self.assertIn('decides and records "none needed"', body)
+
+    def test_discover_leaves_the_tier_to_the_person_and_spot_checks_as_the_guide_says(self):
+        body = self.body("aidlc-discover")
+        self.assertIn("the person sets them", body)
+        self.assertIn("two or three references", body)
+        self.assertIn("at Tier 3, every reference behind a", body)
+
+    def test_operate_has_a_person_run_every_query_and_confirm_the_cause(self):
+        body = self.body("aidlc-operate")
+        self.assertIn("a person runs it and shares the masked result", body)
+        self.assertIn("stays a hypothesis until a named person confirms it", body)
+
+    def test_feedback_maps_each_kind_of_lesson_to_its_layer(self):
+        body = self.body("aidlc-feedback")
+        for phrase in ("behaviour that can regress", "an agent mistake that could recur", "missing knowledge",
+                       "must never happen", "only a person can judge", "a regression test for every fix"):
+            self.assertIn(phrase, body)

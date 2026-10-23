@@ -46,7 +46,7 @@ Each skill drafts its stage's artefact from an existing template and stops at th
   - `incident`, `runbook`.
 
   `references: [tiers]` gives the tier table.
-- **The tracker policy:** reading is allowed, comments ask, transitions are denied, and creating an issue is not allowed. So a new work item is drafted in the reply, and the person raises it.
+- **The tracker policy:** reading is allowed, comments ask, transitions are denied, and creating an issue asks the person (`tracker.create_issue` is `ask` in `permissions.yaml`). So a new work item is drafted in the reply, and the person raises it or approves the request.
 - **`ops-diagnoser`** has only `read` tools and works on the masked extracts it is given. Runbook steps, even the ones the guide marks "agent may execute", are run by a person here.
 - **Posting to a pull request asks the person first,** like tracker comments.
 

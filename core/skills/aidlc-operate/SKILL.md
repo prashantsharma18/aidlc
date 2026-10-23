@@ -18,9 +18,9 @@ The alert and its evidence, the runbook, masked logs and metrics the person shar
 ## Steps
 1. Log the signal and its context: the alert rule, the values, recent deploys and flag changes.
 2. A person runs every runbook step, including the ones the runbook marks safe for an agent; you read the output they share. You have no production access.
-3. List the containment options and their cost, preferring the rehearsed, reversible action. A person chooses.
-4. Send the masked evidence to the `ops-diagnoser` agent: competing hypotheses, including "our change is wrong", each tested by a cited query and labelled FACT, INFERENCE or UNKNOWN.
-5. Draft the incident record from `assets/incident.md`, and, if the runbook lacked a step, a runbook change from `assets/runbook.md`.
+3. List the containment options and their cost, preferring the rehearsed, reversible action. A person chooses. If containment needs a code or configuration change, it is the smallest reviewed change through the change process; you may draft it.
+4. Send the masked evidence to the `ops-diagnoser` agent: competing hypotheses, including "our change is wrong", each with the query that would test it; a person runs it and shares the masked result. Label each FACT, INFERENCE or UNKNOWN. A cause stays a hypothesis until a named person confirms it.
+5. Draft the incident record from `assets/incident.md`, filling Measures honestly (a change that caused the incident counts as failed), and, if the runbook lacked a step, a runbook change from `assets/runbook.md`.
 6. Draft a new work item that states the problem, not a solution, for the person to raise.
 7. Hand the lessons to `aidlc-feedback`.
 

@@ -72,8 +72,8 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | aidlc-adopt | skill | `core/skills/aidlc-adopt/SKILL.md` | 16.5, 2.8, 15.7, 4.2 |
 | aidlc-build-slice | skill | `core/skills/aidlc-build-slice/SKILL.md` | 8.4, 8.5, 8.6, 8.7, 8.8, 8.9, 8.14, 2.4, 3.4, 1.4 |
 | aidlc-context-setup | skill | `core/skills/aidlc-context-setup/SKILL.md` | 2.8 A1, 2.8 A2, 2.8 A3, 2.8 A4, 2.8 A5, 2.8 A6, 2.8 A7, 2.6 |
-| aidlc-design | skill | `core/skills/aidlc-design/SKILL.md` | 6.6, 6.7, 6.8, 6.9, 6.10, 6.11, 6.12, 6.13, 6.15 |
-| aidlc-discover | skill | `core/skills/aidlc-discover/SKILL.md` | 4.6, 4.7, 4.8, 4.9, 4.10, 4.12, 4.13 |
+| aidlc-design | skill | `core/skills/aidlc-design/SKILL.md` | 6.6, 6.7, 6.8, 6.9, 6.10, 6.11, 6.12, 6.13, 6.15, 6.16 |
+| aidlc-discover | skill | `core/skills/aidlc-discover/SKILL.md` | 4.6, 4.7, 4.8, 4.9, 4.10, 4.11, 4.12, 4.13 |
 | aidlc-feedback | skill | `core/skills/aidlc-feedback/SKILL.md` | 12.9, 12.10, 16.3 |
 | aidlc-intent | skill | `core/skills/aidlc-intent/SKILL.md` | 5.4, 1.3, 1.10, 12.7, 12.8 |
 | aidlc-operate | skill | `core/skills/aidlc-operate/SKILL.md` | 12.2, 12.4, 12.5, 12.6, 12.7, 12.15, 12.16 |

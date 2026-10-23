@@ -1,6 +1,6 @@
 ---
 name: aidlc-review
-description: Prepares a pull request for its human reviewers. It checks the inputs, drafts the description that maps changes to criteria, runs read-only bug, security and compliance passes, drafts a disposition for every finding, and prepares the code owner's and specialists' questions. It stops for the code owner. Use when CI is green on the pull request.
+description: Prepares a pull request for its human reviewers. It checks the inputs, drafts the description that maps changes to criteria, runs read-only bug, security and compliance passes, drafts a disposition for every finding, and prepares the code owner's and specialists' questions. It stops for the code owner. Use when CI is green on the pull request, after aidlc-verify.
 metadata:
   stage: review
   invocation: manual
@@ -28,12 +28,12 @@ disable-model-invocation: true
 After `aidlc-verify`, when every required check is green on the pull request.
 
 ## Inputs
-The pull request, its evidence table, the spec, plan and task bundle it implements, and the tier (`assets/tiers.md`).
+The pull request, its evidence table, the spec, plan and task bundle it implements, the tier (`assets/tiers.md`), and the session's and hooks' decision logs, which the person supplies (the security review's TOOLS row needs them).
 
 ## Steps
 1. Check the inputs: every required check green, a code owner who is not the author or pusher, the evidence table filled. If any is missing, go back to the stage that owns it.
-2. Draft the description from `assets/pr-description.md`: links, not copies; each change mapped to its criteria; the decisions with who confirmed them; the tier and the rollback; one question for each specialist. Check that the pull request is one slice.
-3. Read the change in three read-only passes, bug, security and compliance, using the rules from the protected branch, never the pull request's own copy.
+2. Start from `aidlc-verify`'s description draft, and complete it from `assets/pr-description.md`: links, not copies; each change mapped to its criteria; the decisions with who confirmed them; the tier and the rollback; one question for each specialist. Check that the pull request is one slice.
+3. Send the change to the `reviewer-bug`, `reviewer-security` and `reviewer-compliance` agents, one pass each, so the review does not run in the session that wrote the code. They use the rules from the protected branch, never the pull request's own copy. These local passes are advisory; CI's AI review, with its own identity, is the one on record.
 4. Draft a disposition for every finding, yours and CI's AI review: fixed (with the commit) or dismissed (with the reason). The engineer decides each one.
 5. Prepare the code owner's questions in this order: context, evidence, tests, diff, risk.
 6. Prepare each required specialist's questions, with pointers to the hunks. At Tier 3, and whenever the change touches secrets, permissions, tool calls, dependencies or prompts, draft the security review from `assets/security-review.md`.

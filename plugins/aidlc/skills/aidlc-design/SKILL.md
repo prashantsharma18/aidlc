@@ -14,6 +14,7 @@ metadata:
   - '6.12'
   - '6.13'
   - '6.15'
+  - '6.16'
   templates:
   - design-note
   - decision-frame
@@ -30,19 +31,19 @@ After the spec is approved and any discovery is decided, before `aidlc-plan`. Ev
 The approved spec, the evidence pack (if any), the architecture contract (codebase map, ADRs, contract files), and the approved UI design with its version, if there is a UI.
 
 ## Steps
-1. Ask the three questions of the design note, `assets/design-note.md`: does the change alter the system's shape, move a boundary, or change a contract someone outside the team relies on? Uncertain counts as yes. If all three are no, draft the note with "none needed" and its reason, and stop.
+1. Ask the three questions of the design note, `assets/design-note.md`: does the change alter the system's shape, move a boundary, or change a contract someone outside the team relies on? Uncertain counts as yes. If all three are no, draft the note with "none needed" and its reason; the tech lead or architect decides and records "none needed" (the note's RECORDED BY line). Then stop.
 2. For each yes, draft a decision frame from `assets/decision-frame.md`: one question, one owner, checkable drivers, at least two real options (including the cheapest workaround), and the unknowns with their owners.
 3. For each option, draft the impact, labelled FACT, INFERENCE or UNKNOWN, and add the strongest argument against your recommendation.
 4. Draft the ADR from `assets/adr.md` with status Proposed, the named decider, and the consumers who must agree.
-5. Work contract first: draft the contract change and the failing provider and consumer tests before any code.
+5. Work contract first: draft the contract change and the failing provider and consumer tests before any code. The consumer tests are drafts for the consumer team, which owns them.
 6. For each consequence that must always hold, propose its enforcement (a boundary rule or a check), and show the check failing once. Advisory consequences get one line each.
-7. Present the decision with the design note's review checklist, for approval.
+7. Present the decision for approval against this checklist: Every decision has a Proposed record with a named decider. Contract changes follow the versioning rules, and their consumers approved them. Every non-functional requirement has a test, check or monitor that shows whether it holds. Every must-hold constraint is enforced, and its check was seen to fail. The map and rules file are updated (as drafts for their owners). No decision is left for the build to make.
 
 ## Produces
 In your reply: the design note (for `plans/<KEY>/design-note.md`), the decision frames, the ADR draft, the contract change and its failing tests, and the proposed enforcement.
 
 ## Gate
-The tech lead or architect approves the design, and the consumers approve a contract change; Tier 3 adds the specialists. The ADR becomes Accepted when the design is approved, and the APPROVED line of the design note records it. You draft; you never approve.
+The tech lead or architect approves the design, and the consumers approve a contract change; Tier 3 adds the specialists. The ADR becomes Accepted when the design is approved, and the APPROVED line of the design note records it. A "none needed" note is decided and recorded by the tech lead or architect too. You draft; you never approve.
 
 ## Stop if
 - The evidence cannot support a choice: return to discovery, or to the spec owner.

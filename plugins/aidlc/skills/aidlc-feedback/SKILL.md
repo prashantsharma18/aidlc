@@ -16,16 +16,16 @@ disable-model-invocation: true
 # Feedback: make the next mistake impossible
 
 ## When to use
-After an incident's blameless review, or when the same finding appears in several reviews.
+Once an incident is contained, before its blameless review closes it, or when the same finding appears in several reviews.
 
 ## Inputs
 The incident record (its Prevention line) or the repeated findings, and the owners of each source: tests, eval cases, rules files, harness policy, review checklists.
 
 ## Steps
 1. List the lessons, one per line, each with its evidence.
-2. For each lesson, ask which layer would have caught it soonest: a test, an eval case, the context (rules file or map), a guardrail (permission, hook, CI check) or the review checklist. Prefer the strongest layer that fits.
+2. Choose each lesson's layer by its kind: behaviour that can regress goes to a test; an agent mistake that could recur goes to an eval case; missing knowledge goes to the context (rules file or map); something that must never happen, or an unsafe action, goes to a guardrail (permission, hook, CI check); something only a person can judge goes to the review checklist; a signal nobody saw goes to a measure (an alert or dashboard). Always add a regression test for every fix, and an eval case wherever an agent mistake could recur. When two layers fit, prefer the enforced one.
 3. Draft the change for that layer, for the owner of that source to review.
-4. Fill the incident record's Prevention line from `assets/incident.md`: the lesson, the layer and where it went.
+4. Fill the incident record's Prevention line from `assets/incident.md`: the lesson, the layer and where it went. Lessons from repeated review findings have no incident: list them in your reply instead.
 5. Record each change as merged or declined, with who declined it and why.
 
 ## Produces
