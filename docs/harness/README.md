@@ -34,6 +34,7 @@ For a repository that already has code, start with [the adoption guide](../adopt
 > ([check 7](../verification/2026-10-18-sandbox-wsl2.md#2026-10-19-check-7)).
 > Start at a repository root, or at a workspace root (read-only). The optional
 > [root guard](root-guard.md) can enforce this; without it, trusted CI and branch protection are the backstop.
+> A workspace root gets its read-only harness from [`aidlc workspace init`](workspace.md).
 
 1. **Commit on the base branch.** The base branch (`harness.base_branch`, default `main`) must
    exist with at least one commit. Approvals are read from it, and the post-check diffs against
