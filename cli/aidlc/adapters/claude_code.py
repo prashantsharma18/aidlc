@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 
 from ..harness import HarnessError, effective_permissions, harness_data, map_tools
 from ..hookbridge import hooks
 from ..paths import CI_WORKFLOW, framework_root
-from ..policy import load_yaml
+from ..policy import load_policy, load_yaml
 from ..repo import CONFIG, load_config
 from ..templates import TemplateError, parse_front_matter
 from .base import RenderedFile
@@ -126,6 +127,8 @@ def _hook(phase: str) -> dict:
             "timeout": 10, "onFailure": "block"}
 
 
+PLUGIN_ID = re.compile(r"[a-z0-9][a-z0-9._-]*@[a-z0-9][a-z0-9._-]*")   # <plugin>@<marketplace>
+
 class ClaudeCodeAdapter:
     name = "claude-code"
     managed_dirs = (".claude/rules", ".aidlc/hooks")
@@ -202,8 +205,22 @@ class ClaudeCodeAdapter:
             "autoMemoryEnabled": bool(cfg.harness.get("auto_memory", False)),
         }
         plugins = cfg.harness.get("disable_user_plugins") or []
-        if plugins:
-            settings["enabledPlugins"] = {p: False for p in plugins}
+        enable = cfg.harness.get("enable_plugins") or []
+        if not isinstance(enable, list) or not all(isinstance(p, str) and PLUGIN_ID.fullmatch(p) for p in enable):
+            raise ValueError(f"{CONFIG}: harness.enable_plugins must be a list of '<plugin>@<marketplace>', "
+                             f"got {enable!r}")
+        approved = load_policy("plugins")["marketplaces"]
+        for p in enable:
+            if p.split("@", 1)[1] not in approved:
+                raise ValueError(f"{CONFIG}: '{p}' is not from an approved marketplace (core/policy/plugins.yaml)")
+        both = set(enable) & set(plugins)
+        if both:
+            raise ValueError(f"{CONFIG}: {sorted(both)} both enabled and disabled")
+        if plugins or enable:
+            settings["enabledPlugins"] = {**{p: False for p in plugins}, **{p: True for p in enable}}
+        if enable:   # ADR 0008: the domain and team levels, from approved marketplaces only
+            settings["extraKnownMarketplaces"] = {
+                m: {"source": dict(approved[m])} for m in sorted({p.split("@", 1)[1] for p in enable})}
         return [RenderedFile(".claude/settings.json", json.dumps(settings, indent=2) + "\n",
                              "core/policy/permissions.yaml or .aidlc/permissions.yaml")]
 

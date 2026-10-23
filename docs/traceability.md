@@ -10,7 +10,7 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 |---|---|---|
 | 1 | The AI-native lifecycle, end to end | aidlc-build-slice, aidlc-intent, aidlc-verify, ctx-authority, intent, policy-tiers |
 | 2 | Context engineering | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, agents-md, aidlc-adopt, aidlc-build-slice, aidlc-context-setup, aidlc-plan, codebase-map, ctx-authority, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, ctx-rules-file, ctx-task-bundle, explorer, policy-context-classes, policy-memory-policy, policy-tiers, progress-note, task-bundle, workspace |
-| 3 | The agent harness | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, aidlc-build-slice, ctx-harness, ctx-task-bundle, observability-metrics, policy-permissions, policy-risk-inventory |
+| 3 | The agent harness | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, aidlc-build-slice, ctx-harness, ctx-task-bundle, observability-metrics, policy-permissions, policy-plugins, policy-risk-inventory |
 | 4 | Understanding a codebase before you change it | aidlc-adopt, codebase-map, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, evidence-pack, explorer, explorer-brief, policy-tiers |
 | 5 | Intent to specification | aidlc-intent, aidlc-specify, intent, policy-data-classes, policy-tiers, spec |
 | 6 | Architecture, boundaries and contracts | adr, api-and-interface-design, decision-frame, deprecation-and-migration, design-note, frontend-ui-engineering, policy-tiers |
@@ -23,7 +23,7 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | 13 | Security and guardrails | ci-github, ctx-openwiki-governance, policy-data-classes, policy-dependency-policy, policy-model-routes, policy-permissions, policy-risk-inventory, policy-tool-register, reviewer-security, security-and-hardening, security-review |
 | 14 | Changes that span repositories | api-and-interface-design, compat-matrix, coordination-plan, explorer-brief, policy-branch-protection, policy-tiers, release-runbook, workspace |
 | 15 | Modernising legacy systems | aidlc-adopt, deprecation-and-migration |
-| 16 | Your workflow: individual, team and organisation | aidlc-adopt, policy-tool-register, working-agreement |
+| 16 | Your workflow: individual, team and organisation | aidlc-adopt, policy-plugins, policy-tool-register, working-agreement |
 
 ## By element
 
@@ -56,6 +56,7 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | policy-memory-policy | policy | `core/policy/memory-policy.yaml` | 2.10, 2.13 |
 | policy-model-routes | policy | `core/policy/model-routes.yaml` | 13.5, 12.13 |
 | policy-permissions | policy | `core/policy/permissions.yaml` | 3 step 3, 3.4, 13.4, 13.10 |
+| policy-plugins | policy | `core/policy/plugins.yaml` | 16.4, 16.5, 3.4 |
 | policy-risk-inventory | policy | `core/policy/risk-inventory.yaml` | 3 step 1, 3.4, 13.10 |
 | policy-routing | policy | `core/policy/routing.yaml` | 12.13, 12.12 |
 | policy-tiers | policy | `core/policy/tiers.yaml` | 1.10, 2.14, 4.7, 5.9, 6.17, 7.14, 8.15, 9.13, 11.13, 14.18 |

@@ -82,7 +82,8 @@ def policy_data(repo: Path) -> dict:
         deny_read += [p for p in _sandbox_paths(secret) if p not in deny_read]
     return {"aidlc": {"effective": eff, "sandbox_deny_read": deny_read,
                       "baseline": {"deny": baseline.get("deny", {})},
-                      "refused_writes": list(REFUSED_WRITE)}}
+                      "refused_writes": list(REFUSED_WRITE),
+                      "plugin_marketplaces": load_policy("plugins")["marketplaces"]}}
 
 
 def _refusal(repo: Path, rel: str) -> str:

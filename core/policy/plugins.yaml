@@ -1,0 +1,9 @@
+meta:
+  id: policy-plugins
+  owner: "@platform-team"
+  review_by: "2027-04-23"
+  guide: ["16.4", "16.5", "3.4"]
+# Marketplaces a repository may enable plugins from (harness.enable_plugins in .aidlc/config.yaml;
+# ADR 0008). The organisation's managed settings register the same marketplaces for every machine.
+marketplaces:
+  aidlc: {source: github, repo: prashantsharma18/aidlc}

@@ -113,3 +113,19 @@ test_wildcard_argument_allows_are_bare_tool_rules if {
 test_specific_argument_allow_is_not_bare if {
 	count(denials(object.union(good, {"permissions": {"allow": ["Read", "Bash(git status:*)"]}}))) == 0
 }
+
+test_enabled_plugin_from_unknown_marketplace_is_denied if {
+	bad := json.patch(good, [{"op": "add", "path": "/enabledPlugins", "value": {"evil@somewhere": true}}])
+	"enabledPlugins: 'evil@somewhere' is not from an approved marketplace" in denials(bad)
+}
+
+test_unknown_marketplace_registration_is_denied if {
+	bad := json.patch(good, [{"op": "add", "path": "/extraKnownMarketplaces",
+		"value": {"somewhere": {"source": {"source": "github", "repo": "evil/x"}}}}])
+	"extraKnownMarketplaces: 'somewhere' is not an approved marketplace, or its source differs" in denials(bad)
+}
+
+test_a_disabled_plugin_from_anywhere_is_allowed if {
+	ok := json.patch(good, [{"op": "add", "path": "/enabledPlugins", "value": {"any@where": false}}])
+	count(denials(ok)) == 0
+}

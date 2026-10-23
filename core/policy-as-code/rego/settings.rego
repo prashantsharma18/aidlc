@@ -93,3 +93,21 @@ deny contains msg if {
 	regex.match(`^\s*[A-Za-z_][A-Za-z0-9_]*\s*\(\s*(\*|:\*|\*\*)\s*\)\s*$`, rule)
 	msg := sprintf("permissions.allow has the bare tool rule '%s': it allows every use of the tool", [rule])
 }
+
+# Plugins per repository (ADR 0008): only from marketplaces approved in core/policy/plugins.yaml.
+default approved_marketplaces := {}
+
+approved_marketplaces := data.aidlc.plugin_marketplaces
+
+deny contains msg if {
+	some id, on in object.get(input, "enabledPlugins", {})
+	on == true
+	not approved_marketplaces[split(id, "@")[1]]
+	msg := sprintf("enabledPlugins: '%s' is not from an approved marketplace", [id])
+}
+
+deny contains msg if {
+	some name, entry in object.get(input, "extraKnownMarketplaces", {})
+	not object.get(approved_marketplaces, name, null) == object.get(entry, "source", null)
+	msg := sprintf("extraKnownMarketplaces: '%s' is not an approved marketplace, or its source differs", [name])
+}
