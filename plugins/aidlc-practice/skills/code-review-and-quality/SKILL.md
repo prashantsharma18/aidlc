@@ -18,7 +18,7 @@ disable-model-invocation: true
 
 Multi-dimensional code review with quality gates. Every change gets reviewed before merge — no exceptions. Review covers five axes: correctness, readability, architecture, security, and performance.
 
-**The recommendation standard:** recommend a change to the human reviewer when it definitely improves overall code health, even if it isn't perfect. Perfect code doesn't exist — the goal is continuous improvement. Don't block a change because it isn't exactly how you would have written it. If it improves the codebase and follows the project's conventions, approve it.
+**The recommendation standard:** recommend a change to the human reviewer when it definitely improves overall code health, even if it isn't perfect. Perfect code doesn't exist — the goal is continuous improvement. Don't block a change because it isn't exactly how you would have written it. If it improves the codebase and follows the project's conventions, recommend it.
 
 > **In this framework:** this is a rubric for your own review before you push. In CI, review is Anthropic's code-review plugin plus the security pass, and only a code owner who did not write the change approves it. Nothing here is approval.
 

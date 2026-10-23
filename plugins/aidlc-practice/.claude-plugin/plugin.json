@@ -1,6 +1,6 @@
 {
   "name": "aidlc-practice",
-  "version": "0.1.0+fefbd759733c",
+  "version": "0.1.0+c6963f839948",
   "description": "Engineering-practice skills (API design, debugging, security, observability, performance, frontend UI, deprecation and migration, code review), adapted from addyosmani/agent-skills (MIT) to the aidlc rules.",
   "author": {
     "name": "Prashant Sharma"

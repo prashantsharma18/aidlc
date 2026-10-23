@@ -5,5 +5,7 @@ meta:
   guide: ["16.4", "16.5", "3.4"]
 # Marketplaces a repository may enable plugins from (harness.enable_plugins in .aidlc/config.yaml;
 # ADR 0008). The organisation's managed settings register the same marketplaces for every machine.
+# No `ref` here: a repository-level entry follows the default branch. Organisations pin a release tag in
+# managed settings, whose marketplace entry replaces a repository's entry of the same name.
 marketplaces:
   aidlc: {source: github, repo: prashantsharma18/aidlc}

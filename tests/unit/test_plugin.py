@@ -186,6 +186,17 @@ class PluginErrorsTest(unittest.TestCase):
             plugin.build(self.root)
 
 
+    def test_a_linked_folder_inside_a_practice_fails_the_build(self):
+        import os
+        practice = self.root / "core" / "practices" / "probe"
+        practice.mkdir(parents=True)
+        (practice / "SKILL.md").write_text("---\nname: probe\ndescription: d\nmetadata: {kind: practice, "
+                                           "invocation: auto, guide: ['9.2'], source: s}\n---\nx\n", encoding="utf-8")
+        os.symlink(self.root / "core" / "policy", practice / "references")
+        with self.assertRaisesRegex(plugin.PluginError, "link"):
+            plugin.build(self.root)
+
+
 class PracticePluginTest(unittest.TestCase):
     def setUp(self):
         self.files = plugin.build(ROOT)

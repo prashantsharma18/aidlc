@@ -27,7 +27,11 @@ CREDIT = ("Adapted from addyosmani/agent-skills (MIT, Copyright (c) 2025 Addy Os
 FORBIDDEN = (r"\bnpx\b", r"@latest", r"npm install", r"npm audit fix", r"--autoConnect", r"git push",
              r"\bApprove\b", r"\.\./\.\./references", r"spec-driven-development", r"planning-and-task-breakdown",
              r"incremental-implementation", r"shipping-and-launch", r"test-driven-development",
-             r"ci-cd-and-automation", r"interview-me", r"idea-refine", r"browser-testing-with-devtools")
+             r"ci-cd-and-automation", r"interview-me", r"idea-refine", r"browser-testing-with-devtools",
+             # final review of Plan 5b-A: approval in any case, and other installers and pipes
+             r"(?i)\bapprove (it|the|this|that|a)\b", r"(?i)\bapprove only\b", r"(?i)\bmerge it\b",
+             r"(?i)commit and push", r"pip install", r"yarn add", r"pnpm add", r"brew install", r"go install",
+             r"cargo install", r"curl[^\n]*\|\s*(ba)?sh")
 
 
 def practices():
@@ -86,3 +90,10 @@ class PracticeFormatTest(unittest.TestCase):
         for path, meta, _ in practices():
             with self.subTest(practice=path.parent.name):
                 self.assertRegex(meta["metadata"]["source"], r"^addyosmani/agent-skills@aeac41d skills/[a-z-]+$")
+
+    def test_the_security_practice_never_tells_the_agent_to_install(self):
+        body = (PRACTICES / "security-and-hardening" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertNotRegex(body, r"(?i)bootstrap with")
+        self.assertNotRegex(body, r"(?i)manager matrix and install-script gate")
+        refs = (PRACTICES / "security-and-hardening" / "references" / "hardening-patterns.md").read_text(encoding="utf-8")
+        self.assertNotRegex(refs, r"(?i)install-script gate")

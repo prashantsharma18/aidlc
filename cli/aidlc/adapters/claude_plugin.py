@@ -141,9 +141,11 @@ def _practice_files(root: Path) -> dict[str, str]:
         hidden = {"disable-model-invocation": True} if invocation == "manual" else {}
         base = f"{PRACTICE_DIR}/skills/{name}"
         files[f"{base}/SKILL.md"] = _front({**meta, **hidden}, _header(str(rel)) + body)
-        for extra in sorted(p for p in path.parent.rglob("*") if p.is_file() and p != path):
-            if extra.is_symlink():
+        for extra in sorted(p for p in path.parent.rglob("*") if p != path):
+            if extra.is_symlink():     # checked first: rglob never descends a linked folder, so it would be skipped
                 raise PluginError(f"{extra.relative_to(root)}: a link; practice files are plain files")
+            if not extra.is_file():
+                continue
             files[f"{base}/{extra.relative_to(path.parent).as_posix()}"] = extra.read_text(encoding="utf-8")
     notice = source / "NOTICE"
     if files or notice.is_file():

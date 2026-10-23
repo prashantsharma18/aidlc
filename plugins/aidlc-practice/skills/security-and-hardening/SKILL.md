@@ -144,11 +144,11 @@ Pattern: [Secrets management](references/hardening-patterns.md#secrets-managemen
 ### Dependencies and supply chain
 
 1. **Find the installation boundary and manager.** Use the workspace root that owns the lockfile, or an independent nested project only when it is outside that workspace. Corroborate `packageManager` (when present), the lockfile, and CI; stop on disagreement or competing lockfiles. Pin the manager version.
-2. **Block dependency scripts before first execution.** Bootstrap with scripts disabled or a documented fail-closed policy, inspect the pending script source, approve only the minimum, commit the policy, then verify with a clean frozen/immutable install. Never blanket-approve.
+2. **Check that dependency scripts are blocked before first execution.** Report whether the repository disables them or has a documented fail-closed policy, and whether that policy is committed. Any install, and any script allowance, is proposed for a person to approve and run (the guide's Procedure 13C); never run one yourself.
 3. **Run the native audit against the committed lockfile before every release.** Triage critical/high by **reachability** (runtime, build, test, deploy paths) and fix availability. Never apply forced remediation (an audit fix with a force flag, or equivalent) automatically, since forced fixes may cross declared dependency ranges; preview, read changelogs, test each upgrade. Document every deferral with a reason and a review date.
 4. **Audits only match known advisories.** They do not catch a newly malicious or typosquatted package (`cross-env` vs `crossenv`). Review new dependencies, lockfile diffs, and script-policy changes together: ownership, maintenance, release age, provenance, transitive graph. Verify registry signatures where supported (`npm audit signatures`, `pnpm audit signatures`) and treat their absence as a signal to investigate, not automatic proof of compromise (A06, LLM03).
 
-Triage decision tree: [Dependency audit triage](references/hardening-patterns.md#dependency-audit-triage). Manager matrix and install-script gate: [references/security-checklist.md](references/security-checklist.md).
+Triage decision tree: [Dependency audit triage](references/hardening-patterns.md#dependency-audit-triage). What a dependency review checks: [references/security-checklist.md](references/security-checklist.md).
 
 ### Personal data and privacy
 

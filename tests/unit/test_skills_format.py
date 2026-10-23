@@ -128,4 +128,4 @@ class SkillFormatTest(unittest.TestCase):
         body = (SKILLS / "aidlc-intent" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("Ask one question at a time", body)
         self.assertIn("Restate what you heard and ask the person to confirm it", body)
-        self.assertIn("interview-me and idea-refine techniques of addyosmani/agent-skills (MIT)", body)
+        self.assertTrue(body.rstrip().endswith("interview-me and idea-refine techniques of addyosmani/agent-skills (MIT)."))

@@ -99,11 +99,22 @@ default approved_marketplaces := {}
 
 approved_marketplaces := data.aidlc.plugin_marketplaces
 
+plugin_id := `^[a-z0-9][a-z0-9._-]*@[a-z0-9][a-z0-9._-]*$`
+
+# Anything but `false` must be `true`, a well-formed <plugin>@<marketplace>, from an approved marketplace.
 deny contains msg if {
-	some id, on in object.get(input, "enabledPlugins", {})
-	on == true
-	not approved_marketplaces[split(id, "@")[1]]
+	some id, value in object.get(input, "enabledPlugins", {})
+	value != false
+	not plugin_enabled_ok(id, value)
 	msg := sprintf("enabledPlugins: '%s' is not from an approved marketplace", [id])
+}
+
+plugin_enabled_ok(id, value) if {
+	value == true
+	regex.match(plugin_id, id)
+	parts := split(id, "@")
+	count(parts) == 2
+	approved_marketplaces[parts[1]]
 }
 
 deny contains msg if {

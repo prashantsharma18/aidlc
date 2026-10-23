@@ -129,3 +129,17 @@ test_a_disabled_plugin_from_anywhere_is_allowed if {
 	ok := json.patch(good, [{"op": "add", "path": "/enabledPlugins", "value": {"any@where": false}}])
 	count(denials(ok)) == 0
 }
+
+
+# Final review of Plan 5b-A: malformed ids and non-boolean values fail closed.
+test_malformed_plugin_ids_are_denied if {
+	every id in ["evil", "x@aidlc@evil", "@aidlc", "x@"] {
+		bad := json.patch(good, [{"op": "add", "path": "/enabledPlugins", "value": {id: true}}])
+		count(denials(bad)) > 0
+	}
+}
+
+test_a_non_boolean_plugin_value_is_denied if {
+	bad := json.patch(good, [{"op": "add", "path": "/enabledPlugins", "value": {"x@evil": "true"}}])
+	count(denials(bad)) > 0
+}
