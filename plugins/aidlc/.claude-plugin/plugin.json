@@ -1,6 +1,6 @@
 {
   "name": "aidlc",
-  "version": "0.1.0+ba155a72413e",
+  "version": "0.1.0+ca08d4439d2f",
   "description": "Stage skills and agent roles of the aidlc framework: context setup, intent, specification, planning, building a slice and verification, each stopping at its human gate.",
   "author": {
     "name": "Prashant Sharma"

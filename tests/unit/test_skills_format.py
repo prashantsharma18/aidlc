@@ -129,3 +129,47 @@ class SkillFormatTest(unittest.TestCase):
         self.assertIn("Ask one question at a time", body)
         self.assertIn("Restate what you heard and ask the person to confirm it", body)
         self.assertTrue(body.rstrip().endswith("interview-me and idea-refine techniques of addyosmani/agent-skills (MIT)."))
+
+
+EXPECTED_5B = {"aidlc-discover", "aidlc-design", "aidlc-review", "aidlc-release", "aidlc-operate", "aidlc-feedback"}
+
+
+class StageSkills5bTest(unittest.TestCase):
+    def body(self, name):
+        return (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
+
+    @unittest.expectedFailure  # removed in Task 3, when all six exist
+    def test_the_5b_skills_exist(self):
+        self.assertLessEqual(EXPECTED_5B, {p.parent.name for p, _, _ in skills()})
+
+    def test_design_puts_the_contract_first(self):
+        if not (SKILLS / "aidlc-design").is_dir():
+            self.skipTest("Task 1")
+        body = self.body("aidlc-design")
+        self.assertIn("Uncertain counts as yes", body)
+        self.assertIn("contract first", body)
+        self.assertIn("The build is making a design decision", body)
+
+    def test_review_never_offers_ai_review_as_approval(self):
+        if not (SKILLS / "aidlc-review").is_dir():
+            self.skipTest("Task 2")
+        self.assertIn("AI review clean", self.body("aidlc-review"))
+        self.assertIn("is never the approval", self.body("aidlc-review"))
+
+    def test_release_requires_stop_criteria_and_rollback(self):
+        if not (SKILLS / "aidlc-release").is_dir():
+            self.skipTest("Task 2")
+        body = self.body("aidlc-release")
+        self.assertIn("There are no stop criteria", body)
+        self.assertIn("The rollback has not been rehearsed", body)
+
+    def test_operate_never_acts_on_production(self):
+        if not (SKILLS / "aidlc-operate").is_dir():
+            self.skipTest("Task 3")
+        body = self.body("aidlc-operate")
+        self.assertIn("A person runs every runbook step", body)
+        self.assertIn("unmasked personal data", body)
+
+    def test_the_design_note_records_its_approval(self):
+        text = (ROOT / "core" / "templates" / "design-note.md").read_text(encoding="utf-8")
+        self.assertIn("APPROVED", text)

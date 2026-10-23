@@ -11,9 +11,9 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | 1 | The AI-native lifecycle, end to end | aidlc-build-slice, aidlc-intent, aidlc-verify, ctx-authority, intent, policy-tiers |
 | 2 | Context engineering | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, agents-md, aidlc-adopt, aidlc-build-slice, aidlc-context-setup, aidlc-plan, codebase-map, ctx-authority, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, ctx-rules-file, ctx-task-bundle, explorer, policy-context-classes, policy-memory-policy, policy-tiers, progress-note, task-bundle, workspace |
 | 3 | The agent harness | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, aidlc-build-slice, ctx-harness, ctx-task-bundle, observability-metrics, policy-permissions, policy-plugins, policy-risk-inventory |
-| 4 | Understanding a codebase before you change it | aidlc-adopt, codebase-map, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, evidence-pack, explorer, explorer-brief, policy-tiers |
+| 4 | Understanding a codebase before you change it | aidlc-adopt, aidlc-discover, codebase-map, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, evidence-pack, explorer, explorer-brief, policy-tiers |
 | 5 | Intent to specification | aidlc-intent, aidlc-specify, intent, policy-data-classes, policy-tiers, spec |
-| 6 | Architecture, boundaries and contracts | adr, api-and-interface-design, decision-frame, deprecation-and-migration, design-note, frontend-ui-engineering, policy-tiers |
+| 6 | Architecture, boundaries and contracts | adr, aidlc-design, api-and-interface-design, decision-frame, deprecation-and-migration, design-note, frontend-ui-engineering, policy-tiers |
 | 7 | Planning and task design | aidlc-plan, coordination-plan, ctx-task-bundle, plan, planner, policy-tiers, task-bundle |
 | 8 | Building with an agent | aidlc-build-slice, aidlc-verify, debugging-and-error-recovery, evidence-table, implementer, policy-tiers, pr-description, progress-note |
 | 9 | Testing AI-written code | aidlc-verify, ci-github, debugging-and-error-recovery, evidence-table, frontend-ui-engineering, performance-optimization, policy-branch-protection, policy-tiers |
@@ -72,6 +72,8 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | aidlc-adopt | skill | `core/skills/aidlc-adopt/SKILL.md` | 16.5, 2.8, 15.7, 4.2 |
 | aidlc-build-slice | skill | `core/skills/aidlc-build-slice/SKILL.md` | 8.4, 8.5, 8.6, 8.7, 8.8, 8.9, 8.14, 2.4, 3.4, 1.4 |
 | aidlc-context-setup | skill | `core/skills/aidlc-context-setup/SKILL.md` | 2.8 A1, 2.8 A2, 2.8 A3, 2.8 A4, 2.8 A5, 2.8 A6, 2.8 A7, 2.6 |
+| aidlc-design | skill | `core/skills/aidlc-design/SKILL.md` | 6.6, 6.7, 6.8, 6.9, 6.10, 6.11, 6.12, 6.13, 6.15 |
+| aidlc-discover | skill | `core/skills/aidlc-discover/SKILL.md` | 4.6, 4.7, 4.8, 4.9, 4.10, 4.12, 4.13 |
 | aidlc-intent | skill | `core/skills/aidlc-intent/SKILL.md` | 5.4, 1.3, 1.10, 12.7, 12.8 |
 | aidlc-plan | skill | `core/skills/aidlc-plan/SKILL.md` | 7.2, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 7.10, 7.11, 2.9 B3 |
 | aidlc-specify | skill | `core/skills/aidlc-specify/SKILL.md` | 5.2, 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.11 |

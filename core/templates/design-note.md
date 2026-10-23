@@ -15,3 +15,4 @@ Uncertain counts as yes.
 
 OUTCOME  <"none needed" with reason | decisions, each with its owner -> decision frame>
 RECORDED BY  <tech lead or architect>, <YYYY-MM-DD>
+APPROVED  <ADR now Accepted · contract version and its tests · boundary rules · approvers (tech lead or architect; consumers for a contract), YYYY-MM-DD>
