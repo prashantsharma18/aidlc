@@ -41,7 +41,8 @@ marker is never overwritten either.
   `agent_config` paths as agent configuration, so a hand-written file for any known tool FAILs.
 - **Dialects.** The shim's `run(argv, dialect)` is the shared flow. A dialect supplies `phases`,
   `to_generic`, `encode_pre`, `encode_post` and `error_exit`. Adding a tool means a new dialect,
-  not a new shim.
+  not a new shim. Phase names are aidlc's, not the tool's: `pre`, `post` and `post-failure`. The
+  tool's hook entry passes one of them on the command line.
 
 ## Generic hook contract (guide 3, step 5)
 

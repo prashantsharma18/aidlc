@@ -67,3 +67,13 @@ class ManifestOwnersTest(unittest.TestCase):
             (root / MANIFEST).write_text(json.dumps({"files": {}, "owners": ["x"]}), encoding="utf-8")
             problems = write_rendered(root, [RenderedFile("a.md", GEN)], check=False, owner="copilot")
             self.assertEqual(problems, [f"{MANIFEST} is malformed; restore it from git"])
+
+    def test_an_unknown_owner_fails_closed(self):
+        with TempRepo() as root:
+            (root / "CLAUDE.md").write_text(GEN, encoding="utf-8")
+            sha = hashlib.sha256(GEN.encode()).hexdigest()
+            (root / ".aidlc").mkdir()
+            (root / MANIFEST).write_text(json.dumps({"files": {"CLAUDE.md": sha}, "owners": {"CLAUDE.md": "claude"}}),
+                                         encoding="utf-8")
+            problems = write_rendered(root, [RenderedFile("CLAUDE.md", GEN)], check=True, owner="claude-code")
+            self.assertEqual(problems, [f"{MANIFEST} is malformed; restore it from git"])

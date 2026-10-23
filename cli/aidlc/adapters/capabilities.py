@@ -3,6 +3,7 @@ core/schemas/adapter.schema.json. An adapter reads its own descriptor; the trust
 them to recognise any tool's agent configuration; trace renders the comparison."""
 from __future__ import annotations
 
+import copy
 from functools import lru_cache
 from pathlib import Path
 
@@ -11,7 +12,8 @@ from ..policy import PolicyError, _errors, _schema, load_yaml
 
 
 def load_capabilities(root: Path | None = None) -> dict[str, dict]:
-    return dict(_load(str((root or framework_root()).resolve())))
+    """Every descriptor by tool name. A deep copy: callers cannot change the cached data."""
+    return copy.deepcopy(dict(_load(str((root or framework_root()).resolve()))))
 
 
 @lru_cache(maxsize=4)

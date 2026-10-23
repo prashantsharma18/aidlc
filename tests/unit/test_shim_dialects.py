@@ -60,3 +60,10 @@ class ShimDialectTest(unittest.TestCase):
         with GuardEnv():
             code, _ = run(fake_dialect(), ["x", "post"], "{}")
         self.assertEqual(code, 2)
+
+    def test_a_dialect_without_an_error_exit_still_blocks(self):
+        dialect = fake_dialect()
+        del dialect.error_exit
+        with GuardEnv():
+            code, _ = run(dialect, ["x", "pre"], "not json")
+        self.assertEqual(code, 2)

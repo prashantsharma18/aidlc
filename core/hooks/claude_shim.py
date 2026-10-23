@@ -152,7 +152,7 @@ def run(argv: list[str], dialect) -> int:
             except Exception:  # noqa: BLE001 - logging must never change the outcome
                 pass
         print(f"aidlc hook failed ({detail}); blocked to be safe", file=sys.stderr)
-        return dialect.error_exit
+        return getattr(dialect, "error_exit", 2)  # a dialect missing it still blocks
 
 
 def main(argv: list[str]) -> int:

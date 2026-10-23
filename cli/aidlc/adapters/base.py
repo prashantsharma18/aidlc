@@ -63,40 +63,32 @@ def _sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def _load_manifest(repo: Path) -> dict[str, str]:
-    """The recorded {path: sha256} map; {} when there is no manifest yet. Raises ValueError
-    for a symlinked or malformed manifest."""
+def _load_manifest(repo: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """The recorded {path: sha256} and {path: owner} maps; both {} when there is no manifest yet.
+    An owner is an adapter name or "shared". A manifest written before owners existed came from
+    Claude Code, the only tool then, so a missing map or entry reads as claude-code (the CI
+    workflow as shared). Raises ValueError for a symlinked or malformed manifest, including an
+    owner that is not a known adapter."""
+    from . import adapter_names  # local: the adapter registry imports this module
+
     path = safe_target(repo, MANIFEST)
     if not path.is_file():
-        return {}
+        return {}, {}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         data = None
     files = data.get("files") if isinstance(data, dict) else None
-    if not isinstance(files, dict) or not all(
-            isinstance(k, str) and isinstance(v, str) for k, v in files.items()):
+    recorded = data.get("owners", {}) if isinstance(data, dict) else None
+    known = {*adapter_names(), "shared"}
+    if (not isinstance(files, dict) or not isinstance(recorded, dict)
+            or not all(isinstance(k, str) and isinstance(v, str) for k, v in files.items())
+            or not all(isinstance(k, str) and v in known for k, v in recorded.items())):
         raise ValueError(f"{MANIFEST} is malformed; restore it from git")
     files.pop(MANIFEST, None)
-    return dict(files)
-
-
-def _load_owners(repo: Path, files: dict[str, str]) -> dict[str, str]:
-    """The recorded {path: owner} map, owner being an adapter name or "shared". A manifest
-    written before owners existed came from Claude Code, the only tool then, so a missing map
-    or entry reads as claude-code (the CI workflow as shared). Raises ValueError for a
-    malformed map."""
     owners = {rel: "shared" if rel == CI_WORKFLOW else "claude-code" for rel in files}
-    path = safe_target(repo, MANIFEST)
-    if not path.is_file():
-        return owners
-    data = json.loads(path.read_text(encoding="utf-8"))
-    recorded = data.get("owners", {})
-    if not isinstance(recorded, dict) or not all(
-            isinstance(k, str) and isinstance(v, str) for k, v in recorded.items()):
-        raise ValueError(f"{MANIFEST} is malformed; restore it from git")
     owners.update({rel: who for rel, who in recorded.items() if rel in files})
-    return owners
+    return dict(files), owners
 
 
 def _atomic_write(target: Path, text: str) -> None:
@@ -151,8 +143,7 @@ def write_rendered(repo: Path, files: list[RenderedFile], check: bool,
     shared entries, so rendering one tool never removes or reports another tool's files, and
     two tools cannot render the same path."""
     try:
-        manifest = _load_manifest(repo)
-        owners = _load_owners(repo, manifest)
+        manifest, owners = _load_manifest(repo)
     except ValueError as exc:
         return [str(exc)]
     original, original_owners = dict(manifest), dict(owners)

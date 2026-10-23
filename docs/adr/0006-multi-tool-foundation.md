@@ -49,7 +49,9 @@ happens when a hook breaks:
    verified. `bin/aidlc trace` generates the comparison in
    [capabilities.md](../adapters/capabilities.md).
 4. **The judge knows every tool.** Agent configuration is the union of every descriptor's
-   `agent_config`. Unmanaged configuration from any known tool FAILs the trusted CI judge.
+   `agent_config`. The judge compares the head with the files of every tool the trusted
+   configuration lists, together, so one tool's files are never another's extras. Unmanaged
+   configuration from any known tool FAILs.
 5. **The shim has dialects.** `run(argv, dialect)` is the shared flow. A dialect decodes the tool's
    payload and encodes its answer. `CLAUDE` is the first dialect; `main` is `run(argv, CLAUDE)`.
 
@@ -61,6 +63,12 @@ happens when a hook breaks:
 3. Each tool reads only its own rendered files. A tool that also runs Claude Code's hooks
    (`also_runs`) needs a test proving the guard does not run twice for one call.
 4. Run the shared hook fixtures through its dialect.
+5. Decide whether the tool-neutral hook files (`guard.py`, `post_check.py`) become `shared`. Today
+   Claude Code's render owns them, so a second tool that renders them is refused as a conflict.
+6. Make protected paths independent of render order. Claude Code's `denyWrite` list is read from
+   the folders that exist, so rendering a second tool that creates a new top-level folder (such as
+   `.github/`) makes Claude Code's settings stale until it is rendered again. Render every listed
+   tool in one pass, or derive the list from every tool's outputs.
 
 ## Consequences
 

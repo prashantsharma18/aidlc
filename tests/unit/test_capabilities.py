@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 
 from aidlc.adapters import adapter_names
 from aidlc.adapters.capabilities import agent_config_markers, capabilities_doc, load_capabilities
@@ -55,3 +56,37 @@ class CapabilitiesTest(unittest.TestCase):
             self.assertIn(needle, doc)
         code, out, _ = run_cli("trace", "--check")
         self.assertEqual(code, 0, out)
+
+
+class CapabilitiesRobustnessTest(unittest.TestCase):
+    def test_callers_cannot_change_the_cached_descriptors(self):
+        load_capabilities()["claude-code"]["agents"]["tool_names"]["read"].append("Bash")
+        self.assertNotIn("Bash", load_capabilities()["claude-code"]["agents"]["tool_names"]["read"])
+
+    def test_a_descriptor_with_bad_meta_is_an_error(self):
+        import shutil
+        import tempfile
+        from pathlib import Path
+
+        from aidlc.paths import framework_root
+        from aidlc.policy import PolicyError
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "core/schemas").mkdir(parents=True)
+            shutil.copy(framework_root() / "core/schemas/adapter.schema.json", root / "core/schemas")
+            shutil.copytree(framework_root() / "core/adapters", root / "core/adapters")
+            path = root / "core/adapters/cursor.yaml"
+            path.write_text(path.read_text(encoding="utf-8").replace('review_by: "2027-01-23"', 'review_by: "soon"'),
+                            encoding="utf-8")
+            with self.assertRaises(PolicyError):
+                load_capabilities(root)
+
+    def test_the_judge_loads_the_descriptors_once_not_per_path(self):
+        from aidlc.adapters import capabilities
+        from aidlc.checks import conftest_check
+        from tests.helpers import TempRepo
+        files = {f"src/f{i}.py": "x\n" for i in range(20)}
+        with TempRepo(files) as root, mock.patch.object(conftest_check, "agent_config_markers",
+                                                        wraps=capabilities.agent_config_markers) as markers:
+            conftest_check._judge_tracked_paths(root, set())
+        self.assertEqual(markers.call_count, 1)
