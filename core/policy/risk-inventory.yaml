@@ -16,5 +16,5 @@ risks:
   - {id: recursive-delete, action: "rm -rf / rm -fr", harm: "Lost work", reversible: false, severity: high, controls: [hook-pre, permission, sandbox]}
   - {id: log-personal-data, action: "Log a plain email address or other personal data", harm: "Personal data in logs", reversible: false, severity: medium, controls: [rule, ci]}
   - {id: tracker-write, action: "Comment on, transition or delete tracker issues", harm: "False status; noise for other people", reversible: true, severity: medium, controls: [permission, gateway]}
-  - {id: harness-not-loaded, action: "Start Claude Code in a subdirectory of an installed repository, or work on its files from another folder", harm: "The repository's settings never load: no permissions, sandbox or hooks apply", reversible: true, severity: high, controls: [hook-pre, ci]}
+  - {id: harness-not-loaded, action: "Start Claude Code in a subdirectory of an installed repository, or work on its files from another folder", harm: "The repository's settings never load: no permissions, sandbox or hooks apply", reversible: true, severity: high, controls: [ci, branch-protection]}
   - {id: runaway-loop, action: "Retry the same failing check without limit", harm: "Cost and time", reversible: true, severity: low, controls: [retry-limit, budget, hook-pre, hook-post]}

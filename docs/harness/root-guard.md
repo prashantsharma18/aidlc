@@ -1,4 +1,4 @@
-# The root guard: start Claude Code at the repository root
+# The root guard (optional): start Claude Code at the repository root
 
 Claude Code loads a repository's `.claude/settings.json` only when the session starts at that
 repository's root. Start it in a subdirectory, or work on the repository's files from another
@@ -6,9 +6,26 @@ folder, and none of its permissions, sandbox or hooks apply. This was tested on 
 write from a subdirectory went through unchecked
 ([check 7](../verification/2026-10-18-sandbox-wsl2.md#2026-10-19-check-7)).
 
-A repository's own settings cannot fix this, because they are the part that does not load. The fix
-belongs one level up, in **managed settings**: the file an organisation controls for every session
-on a machine, which a developer and an agent cannot change.
+A repository's own settings cannot fix this, because they are the part that does not load. Only a
+layer above the repository can catch it: **managed settings**, the file an organisation controls for
+every session on a machine.
+
+## The framework does not require it
+
+The owner decided on 2026-10-23 not to deploy the guard: an organisation may not accept a custom hook
+pushed to every machine. Without it:
+
+- **Start a session in one of the places a harness covers.** A repository's root (its own harness, for
+  building), or a workspace root (a read-only harness for discovery and planning across repositories;
+  Plan 6). In VS Code, open the repository or the workspace folder, never a subfolder.
+- **What still protects you everywhere.** Nothing reaches `main` without the trusted CI, the required
+  checks and branch protection, and agents hold no push credential. A session started in the wrong
+  folder cannot get a change merged.
+- **What is left.** Local harm in such a session, such as reading a secret on the machine. The risk
+  inventory records it as accepted (`harness-not-loaded`), with CI and branch protection as its
+  controls.
+
+An organisation that wants the extra layer installs the guard as described below.
 
 ## What it does
 
@@ -30,7 +47,7 @@ It fails closed: unreadable input exits 2, and `onFailure: block` blocks a crash
 inputs. A shell command that reaches another repository by its own path (`cd /other && …`) is not
 parsed. That repository's trusted CI still judges every change.
 
-## Install it (the machine's administrator)
+## If your organisation wants it: install it (the machine's administrator)
 
 You need root, because managed settings and the guard must be files the developer cannot edit.
 
