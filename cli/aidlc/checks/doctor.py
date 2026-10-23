@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 from ..adapters import get_adapter
-from ..adapters.base import write_rendered
+from ..adapters.base import render_outputs, write_rendered
 from ..adapters.claude_code import (HOOK_FILES, POST_MATCHER, PRE_MATCHER, _deny_write,
                                     _is_literal_protected, _sandbox_paths, _tracked_files)
 from ..ci_templates import render_ci
@@ -61,12 +61,10 @@ def _get(data: dict, *keys, default=None):
 def check_d1(repo: Path) -> list[Finding]:
     adapter = get_adapter("claude-code")
     try:
-        files = (adapter.render_rules(repo) + adapter.render_folder_rules(repo)
-                 + adapter.render_permissions(repo) + adapter.render_hooks(repo)
-                 + render_ci(repo))
+        files = render_outputs(adapter, repo) + render_ci(repo)
     except (ValueError, HarnessError, PolicyError, OSError) as exc:
         return [_fail(".", f"D1 cannot render the expected files: {exc}")]
-    problems = write_rendered(repo, files, check=True, managed_dirs=adapter.managed_dirs)
+    problems = write_rendered(repo, files, check=True, managed_dirs=adapter.managed_dirs, owner=adapter.name)
     return [_fail(".", f"D1 {p}") for p in problems]
 
 

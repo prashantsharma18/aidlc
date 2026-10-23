@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from ..adapters import adapter_names, get_adapter
-from ..adapters.base import AdapterNotImplemented, write_rendered
+from ..adapters.base import AdapterNotImplemented, render_outputs, write_rendered
 from ..ci_templates import render_ci
 from ..cli import command
 from ..cliinfo import record_entry
@@ -33,9 +33,7 @@ def _run(args: argparse.Namespace) -> int:
         return 2
     adapter = get_adapter(args.tool)
     try:
-        files = (adapter.render_rules(repo) + adapter.render_folder_rules(repo)
-                 + adapter.render_permissions(repo) + adapter.render_hooks(repo)
-                 + render_ci(repo))
+        files = render_outputs(adapter, repo) + render_ci(repo)
     except AdapterNotImplemented as exc:
         print(f"aidlc render: {exc}", file=sys.stderr)
         return 2
@@ -46,7 +44,7 @@ def _run(args: argparse.Namespace) -> int:
         print(f"aidlc render: {exc}", file=sys.stderr)
         return 2
     problems = write_rendered(repo, files, check=args.check,
-                              managed_dirs=adapter.managed_dirs)
+                              managed_dirs=adapter.managed_dirs, owner=adapter.name)
     for problem in problems:
         print(problem)
     if not problems and not args.check and args.tool == "claude-code":

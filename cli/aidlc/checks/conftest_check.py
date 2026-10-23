@@ -21,7 +21,7 @@ import unicodedata
 from pathlib import Path
 
 from ..adapters import get_adapter
-from ..adapters.base import AdapterNotImplemented, RenderedFile, write_rendered
+from ..adapters.base import AdapterNotImplemented, RenderedFile, render_outputs, write_rendered
 from ..adapters.claude_code import _deny_write, _sandbox_paths
 from ..ci_templates import render_ci
 from ..harness import REFUSED_WRITE, HarnessError, effective_permissions
@@ -399,11 +399,10 @@ def judge_generated(head: Path, trusted: Path) -> list[Finding]:
     for name in tools:
         try:
             adapter = get_adapter(name)
-            files = (adapter.render_rules(head) + adapter.render_folder_rules(head)
-                     + adapter.render_permissions(head) + adapter.render_hooks(head)
-                     + _render_ci_for(head, github_ci))
+            files = render_outputs(adapter, head) + _render_ci_for(head, github_ci)
             files = [_with_committed_settings(head, f) for f in files]
-            problems = write_rendered(head, files, check=True, managed_dirs=adapter.managed_dirs)
+            problems = write_rendered(head, files, check=True, managed_dirs=adapter.managed_dirs,
+                                      owner=adapter.name)
         except (AdapterNotImplemented, ValueError, HarnessError, PolicyError, OSError) as exc:
             findings.append(Finding("FAIL", "", 0, f"cannot render the {name} files to compare: {exc}"))
             continue

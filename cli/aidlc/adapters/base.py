@@ -41,6 +41,17 @@ class Adapter(Protocol):
 
     def render_hooks(self, repo: Path) -> list[RenderedFile]: ...
 
+    def render_skills(self, repo: Path) -> list[RenderedFile]: ...
+
+    def render_agents(self, repo: Path) -> list[RenderedFile]: ...
+
+
+def render_outputs(adapter: Adapter, repo: Path) -> list[RenderedFile]:
+    """Everything an adapter renders into a repository. aidlc render, doctor D1 and the trusted CI judge
+    all use this list, so a new render function reaches all three at once."""
+    return (adapter.render_rules(repo) + adapter.render_folder_rules(repo) + adapter.render_permissions(repo)
+            + adapter.render_hooks(repo) + adapter.render_skills(repo) + adapter.render_agents(repo))
+
 
 def _is_generated(text: str) -> bool:
     """Generated files carry a marker on one of their first lines (rule files start
