@@ -29,6 +29,7 @@ class RepoConfig:
     tool_names: dict = field(default_factory=dict)
     test_reports: list[str] = field(default_factory=list)
     ci: list[str] = field(default_factory=list)
+    legacy_paths: list[str] = field(default_factory=list)   # code with no pinning tests (ADR 0007)
 
 
 def _mapping(data: dict, key: str) -> dict:
@@ -71,9 +72,17 @@ def load_config(repo: Path) -> RepoConfig:
         ci_list = []
     if not isinstance(ci_list, list) or not all(c == "github" for c in ci_list):
         raise ValueError(f"{CONFIG}: 'ci' must be a list drawn from [github], got {ci_list!r}")
+    legacy = data.get("legacy_paths")
+    if legacy is None:
+        legacy = []
+    if not isinstance(legacy, list) or not all(
+            isinstance(p, str) and p.strip() and not p.startswith(("/", "~")) and ".." not in Path(p).parts
+            for p in legacy):
+        raise ValueError(f"{CONFIG}: 'legacy_paths' must be a list of relative globs, got {legacy!r}")
     return RepoConfig(data["name"], data["owner"], data["profile"], data.get("purpose", ""),
                       _mapping(data, "commands"), list(steps), ctx,
-                      harness=harness, tool_names=_mapping(data, "tool_names"), test_reports=reports, ci=list(ci_list))
+                      harness=harness, tool_names=_mapping(data, "tool_names"), test_reports=reports, ci=list(ci_list),
+                      legacy_paths=list(legacy))
 
 
 def _write(repo: Path, rel: str, text: str, report: list[tuple[str, str]]) -> None:

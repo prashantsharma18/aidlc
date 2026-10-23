@@ -34,7 +34,7 @@ The approved spec and its version, design decisions, discovery evidence, and the
 ## Steps
 1. Restate the outcome, criteria, edge cases and non-goals before reading any code, and list every ambiguity. Wait for the person to confirm. An ambiguity goes to the criterion's owner (`aidlc-specify`, amendment mode).
 2. Inspect the code read-only. Send heavy reading to the `explorer` agent with one precise question. Label every finding FACT, INFERENCE or UNKNOWN with `file:line`, and give every unknown an owner.
-3. Write the constraints: task boundary; implementation rules; dependency policy (no new dependency: stop and ask); data and security; testing contract (failing tests first; never edit an existing assertion); output evidence. Each must be checkable from the diff or a command.
+3. Write the constraints: task boundary; implementation rules; dependency policy (no new dependency: stop and ask); data and security; testing contract (failing tests first; never edit an existing assertion); output evidence. Each must be checkable from the diff or a command. Files matching `legacy_paths` in `.aidlc/config.yaml` have no tests that pin their behaviour: change one only after a characterisation test records what it does today. Say so in the plan, and put that test first in its slice.
 4. Draft the plan, `plans/<KEY>/plan.md`, by filling `assets/plan.md` and replacing each `{{FIELD}}`:
    - every criterion and edge case maps to a named test;
    - every file has a reason;

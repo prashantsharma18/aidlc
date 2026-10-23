@@ -32,6 +32,7 @@ Commits on `<type>/<KEY>-<slug>`, tests named after the criteria, and a hand-off
 The local check is green with no unexplained skips, the diff stays inside MAY CHANGE, and the person reviews the diff before pushing. You draft; you never approve.
 
 ## Stop if
+- Files matching `legacy_paths` in `.aidlc/config.yaml` have no tests that pin their behaviour: change one only after a characterisation test records what it does today. If none exists yet, write it first, or stop.
 - A test can only pass by changing an existing assertion. Never change it: the criterion's owner decides.
 - A new dependency seems necessary.
 - The plan looks wrong, or the code differs from what the plan assumed. Never improvise a new approach: it goes back to `aidlc-plan`.

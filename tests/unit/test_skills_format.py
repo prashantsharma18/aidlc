@@ -116,3 +116,10 @@ class SkillFormatTest(unittest.TestCase):
     def test_build_slice_needs_the_scope_first(self):
         body = (SKILLS / "aidlc-build-slice" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("aidlc scope --branch", body)
+
+    def test_legacy_paths_need_a_pinning_test_first(self):
+        rule = ("Files matching `legacy_paths` in `.aidlc/config.yaml` have no tests that pin their behaviour: "
+                "change one only after a characterisation test records what it does today.")
+        for name in ("aidlc-plan", "aidlc-build-slice"):
+            with self.subTest(skill=name):
+                self.assertIn(rule, (SKILLS / name / "SKILL.md").read_text(encoding="utf-8"))
