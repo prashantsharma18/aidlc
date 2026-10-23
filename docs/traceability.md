@@ -8,15 +8,15 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 
 | Chapter | Title | Elements |
 |---|---|---|
-| 1 | The AI-native lifecycle, end to end | aidlc-build-slice, aidlc-intent, ctx-authority, intent, policy-tiers |
-| 2 | Context engineering | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, agents-md, aidlc-build-slice, aidlc-plan, codebase-map, ctx-authority, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, ctx-rules-file, ctx-task-bundle, explorer, policy-context-classes, policy-memory-policy, policy-tiers, progress-note, task-bundle, workspace |
+| 1 | The AI-native lifecycle, end to end | aidlc-build-slice, aidlc-intent, aidlc-verify, ctx-authority, intent, policy-tiers |
+| 2 | Context engineering | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, agents-md, aidlc-build-slice, aidlc-context-setup, aidlc-plan, codebase-map, ctx-authority, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, ctx-rules-file, ctx-task-bundle, explorer, policy-context-classes, policy-memory-policy, policy-tiers, progress-note, task-bundle, workspace |
 | 3 | The agent harness | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, aidlc-build-slice, ctx-harness, ctx-task-bundle, observability-metrics, policy-permissions, policy-risk-inventory |
 | 4 | Understanding a codebase before you change it | codebase-map, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, evidence-pack, explorer, explorer-brief, policy-tiers |
 | 5 | Intent to specification | aidlc-intent, aidlc-specify, intent, policy-data-classes, policy-tiers, spec |
 | 6 | Architecture, boundaries and contracts | adr, decision-frame, design-note, policy-tiers |
 | 7 | Planning and task design | aidlc-plan, coordination-plan, ctx-task-bundle, plan, planner, policy-tiers, task-bundle |
-| 8 | Building with an agent | aidlc-build-slice, evidence-table, implementer, policy-tiers, pr-description, progress-note |
-| 9 | Testing AI-written code | ci-github, evidence-table, policy-branch-protection, policy-tiers |
+| 8 | Building with an agent | aidlc-build-slice, aidlc-verify, evidence-table, implementer, policy-tiers, pr-description, progress-note |
+| 9 | Testing AI-written code | aidlc-verify, ci-github, evidence-table, policy-branch-protection, policy-tiers |
 | 10 | Evaluating agents and AI workflows | (none yet) |
 | 11 | Review, approval and release | change-record, ci-github, policy-branch-protection, policy-tiers, pr-description, readiness, release-runbook, review-record, reviewer-bug, reviewer-compliance, reviewer-security |
 | 12 | Operate, measure and improve | aidlc-intent, incident, observability-metrics, ops-diagnoser, policy-model-routes, policy-routing, runbook |
@@ -61,9 +61,11 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | policy-tiers | policy | `core/policy/tiers.yaml` | 1.10, 2.14, 4.7, 5.9, 6.17, 7.14, 8.15, 9.13, 11.13, 14.18 |
 | policy-tool-register | policy | `core/policy/tool-register.yaml` | 13.4, 16.4 |
 | aidlc-build-slice | skill | `core/skills/aidlc-build-slice/SKILL.md` | 8.4, 8.5, 8.6, 8.7, 8.8, 8.9, 8.14, 2.4, 3.4, 1.4 |
+| aidlc-context-setup | skill | `core/skills/aidlc-context-setup/SKILL.md` | 2.8 A1, 2.8 A2, 2.8 A3, 2.8 A4, 2.8 A5, 2.8 A6, 2.8 A7, 2.6 |
 | aidlc-intent | skill | `core/skills/aidlc-intent/SKILL.md` | 5.4, 1.3, 1.10, 12.7, 12.8 |
 | aidlc-plan | skill | `core/skills/aidlc-plan/SKILL.md` | 7.2, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 7.10, 7.11, 2.9 B3 |
 | aidlc-specify | skill | `core/skills/aidlc-specify/SKILL.md` | 5.2, 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.11 |
+| aidlc-verify | skill | `core/skills/aidlc-verify/SKILL.md` | 9.6, 9.9, 9.10, 9.11, 8.10, 1.4 |
 | adr | template | `core/templates/adr.md` | 6.10, 6.12 |
 | agents-md | template | `core/templates/agents-md.md` | 2.6, 2.8 A3 |
 | change-record | template | `core/templates/change-record.md` | 11.9 |

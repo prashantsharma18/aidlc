@@ -34,7 +34,6 @@ class SkillFormatTest(unittest.TestCase):
     """The contract every skill in core/skills meets. Tasks 3-5 add the skills; this test then covers
     each one. Until Task 5, only test_the_5a_skills_exist fails."""
 
-    @unittest.expectedFailure  # removed in Task 5, when all six skills exist
     def test_the_5a_skills_exist(self):
         self.assertLessEqual(EXPECTED_5A, {p.parent.name for p, _, _ in skills()})
 
