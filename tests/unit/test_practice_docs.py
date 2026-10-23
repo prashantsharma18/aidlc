@@ -22,3 +22,9 @@ class PracticeDocsTest(unittest.TestCase):
                      "observability-and-instrumentation", "performance-optimization", "frontend-ui-engineering",
                      "deprecation-and-migration", "code-review-and-quality", "browser-testing-with-devtools"):
             self.assertIn(name, practices)
+
+    def test_the_rules_template_carries_the_working_behaviours(self):
+        text = (ROOT / "core/templates/agents-md.md").read_text(encoding="utf-8")
+        for needle in ("## How to work", "State your assumptions", "stop and ask", "Push back",
+                       "simplest", "Touch only", "evidence", "using-agent-skills of addyosmani/agent-skills (MIT)"):
+            self.assertIn(needle, text)
