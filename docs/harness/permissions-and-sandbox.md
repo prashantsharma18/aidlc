@@ -10,6 +10,7 @@ repeat them.
 > ⚠️ **Watch out:** Start Claude Code at the repository root. A session started in a
 > subdirectory does not load the project settings, so no permissions, sandbox or hooks apply
 > ([check 7](../verification/2026-10-18-sandbox-wsl2.md#2026-10-19-check-7)).
+> The [root guard](root-guard.md), installed through managed settings, refuses such sessions.
 
 ## Precedence and defaults
 

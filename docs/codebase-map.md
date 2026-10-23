@@ -27,6 +27,7 @@ repository's own commands inside bubblewrap, and `aidlc tools install` downloads
 `core/ci/`               CI templates: the GitHub workflow and its per-profile setup steps.
 `core/policy-as-code/`   The Rego pack (settings, narrowing, workflows) and its tests; run by conftest.
 `core/hooks/`            Harness hook sources (guard, post-check, shim); standard library only. Rendered into the hooks folder under `.aidlc` in installed repositories (generated; never edit).
+`core/managed/`          Machine-level pieces an organisation installs through managed settings: the root guard (`docs/harness/root-guard.md`).
 `core/observability/`    Metric catalogue (`core/observability/metrics.yaml`) and proposed Grafana alert rules; built on Claude Code's built-in telemetry (ADR 0003).
 `.github/workflows/ai-gates.yml`  The AI gates: review and harness evals (ADR 0004); a person approves each run.
 `tests/`                 unittest suites; `tests/helpers.py` builds throwaway git repositories.

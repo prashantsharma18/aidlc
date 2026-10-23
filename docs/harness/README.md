@@ -31,6 +31,7 @@ Install the harness in a repository in this order. Each step depends on the one 
 > subdirectory does not load the project settings, so no permissions, sandbox or hooks apply.
 > `aidlc doctor` cannot detect where a session starts
 > ([check 7](../verification/2026-10-18-sandbox-wsl2.md#2026-10-19-check-7)).
+> The [root guard](root-guard.md), installed through managed settings, refuses such sessions.
 
 1. **Commit on the base branch.** The base branch (`harness.base_branch`, default `main`) must
    exist with at least one commit. Approvals are read from it, and the post-check diffs against

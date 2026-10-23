@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {"type": "command", "command": "python3 -I /etc/claude-code/hooks/aidlc_root_guard.py", "timeout": 5, "onFailure": "block"}
+        ]
+      }
+    ]
+  }
+}
