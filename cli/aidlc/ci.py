@@ -32,7 +32,7 @@ from typing import Callable, Iterator
 from . import __version__
 from .checks.findings import Finding
 from .checks.conftest_check import judge_generated, run_conftest
-from .checks.onecheck import (DIFF_FLAGS, FAIL, OK, STEERING, CheckContext, CheckError, CheckResult, StepResult,
+from .checks.onecheck import (DIFF_FLAGS, FAIL, OK, STEERING, report_only, CheckContext, CheckError, CheckResult, StepResult,
                               _excepted, prepare_check_dir,
                               begin_command_steps, git, print_result, run_command, step_context_drift,
                               step_protected_tests, step_records, step_scope, step_secrets, step_skips)
@@ -349,7 +349,7 @@ def _run_phases(ctx: CheckContext, group: str | None) -> CheckResult:
     commands = install + [n for n in ctx.config.check_steps if n not in install]
     commands = [n for n in commands if n in install or _selected(n, group, command=True)]
     for name in commands:
-        guarded(name, lambda n=name: run_command(ctx, n))
+        guarded(name, lambda n=name: report_only(ctx, run_command(ctx, n)))
     if group != "compile":
         for name, fn in AFTER_STEPS:
             guarded(name, lambda f=fn: f(ctx))

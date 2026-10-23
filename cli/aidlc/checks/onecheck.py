@@ -23,6 +23,7 @@ from typing import Any, Callable
 from ..hookbridge import hooks
 from ..paths import safe_target
 from ..repo import RepoConfig
+from ..baseline import BASELINE, active, parse as parse_baseline
 from .test_reports import NOTRUN, ReportError, parse_report
 
 CHECK_DIR = ".check"
@@ -31,6 +32,7 @@ STEP_TIMEOUT_S = 1800
 TAIL_LINES = 15
 STEP_NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,39}")
 OK, FAIL, SKIPPED, NA = "ok", "FAIL", "SKIPPED", "n/a"
+REPORTED = "reported"   # failed, but the baseline accepts it for now: not a failure (ADR 0007)
 
 
 class CheckError(Exception):
@@ -218,7 +220,7 @@ def step_context_drift(ctx: CheckContext) -> StepResult:
 
 EXCEPTIONS = "test/protected-exceptions.txt"
 ALLOWED_SKIPS = "test/allowed-skips.txt"
-STEERING = (EXCEPTIONS, ALLOWED_SKIPS)          # files that steer the checks: never judged as tests
+STEERING = (EXCEPTIONS, ALLOWED_SKIPS, BASELINE)   # files that steer the checks: never judged as tests
 MAX_SCAN_BYTES = 1_000_000
 
 
@@ -355,6 +357,29 @@ def _report_snapshot(ctx: CheckContext) -> dict[str, tuple[int, int, int]]:
     return snap
 
 
+def _baseline(ctx: CheckContext) -> list:
+    """The accepted debt. CI: the base branch's copy (ctx.steering); locally: the working copy."""
+    if ctx.steering is not None:
+        return parse_baseline(ctx.steering.get(BASELINE, ""), f"base {BASELINE}")
+    path = ctx.repo / BASELINE
+    if path.is_symlink():
+        raise ValueError(f"{BASELINE} is a symlink; the check does not follow it")
+    return parse_baseline(path.read_text(encoding="utf-8") if path.is_file() else "")
+
+
+def report_only(ctx: CheckContext, result: StepResult) -> StepResult:
+    """A failing command step the baseline lists, before its review date, is reported, not failed."""
+    if result.status != FAIL:
+        return result
+    entry = active(_baseline(ctx), "report_only").get(result.name)
+    if entry is None:
+        return result
+    result.status = REPORTED
+    result.detail = (f"{result.detail} " if result.detail else "") + \
+        f"[report-only until {entry.review_by}, owner {entry.owner}: {entry.reason}]"
+    return result
+
+
 def _allowed_skips(ctx: CheckContext) -> set[str]:
     """Declared skips. CI: the base branch's text (ctx.steering); locally: the working copy's file."""
     if ctx.steering is not None:
@@ -404,7 +429,7 @@ def step_skips(ctx: CheckContext) -> StepResult:
         return StepResult("skips", FAIL, str(exc))
     if not results:
         return StepResult("skips", FAIL, "the test report lists no tests")
-    allowed = _allowed_skips(ctx)
+    allowed = _allowed_skips(ctx) | set(active(_baseline(ctx), "skips"))
     not_run = [name for name, status in results if status == NOTRUN]
     unexpected = [name for name in not_run if name not in allowed]
     detail = f"{len(results)} tests, {len(not_run)} not run, {len(unexpected)} unexpected"
@@ -442,7 +467,7 @@ def begin_command_steps(ctx: CheckContext) -> None:
 def run_check(ctx: CheckContext, builtins=None) -> CheckResult:
     """Run the command steps, then the built-in steps; every step runs."""
     begin_command_steps(ctx)
-    steps = [_guarded(name, lambda n=name: run_command(ctx, n)) for name in ctx.config.check_steps]
+    steps = [_guarded(name, lambda n=name: report_only(ctx, run_command(ctx, n))) for name in ctx.config.check_steps]
     for name, fn in (BUILTINS if builtins is None else builtins):
         steps.append(_guarded(name, lambda f=fn: f(ctx)))
     return CheckResult(steps)
