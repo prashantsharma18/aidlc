@@ -69,6 +69,32 @@ repository's hooks see every agent's tool calls, so the harness applies to them 
 Context setup then does only its survey and asks before drafting anything. Every gated stage starts
 only when you type it, for example `/aidlc:aidlc-intent`. You can also type `/aidlc:aidlc-verify`.
 
+## Skill levels: stage, practice, domain and team
+
+```text
+ORGANISATION   one marketplace (this repository), two plugins, switched on by managed settings:
+                 aidlc            stage skills + agent roles: which step, which artefact, which gate
+                 aidlc-practice   practice skills: how to do the work well (docs/skills/practices.md)
+DOMAIN / TEAM  extra plugins a repository lists in .aidlc/config.yaml (harness.enable_plugins),
+               from marketplaces approved in core/policy/plugins.yaml
+PERSONAL       ~/.claude/skills: an engineer's own helpers (an organisation may lock it)
+```
+
+Plugin skills are namespaced (`/aidlc:aidlc-intent`, `/aidlc-practice:debugging-and-error-recovery`),
+so the levels add up and never clash. Every installed skill costs context in every session, so each
+level stays curated ([ADR 0008](../adr/0008-practice-layer-and-plugin-levels.md)).
+
+**A domain or team plugin.** List it in the repository's config, and render:
+
+```yaml
+# .aidlc/config.yaml
+harness:
+  enable_plugins: ["aidlc-practice@aidlc"]     # <plugin>@<marketplace>; the marketplace must be approved
+```
+
+`aidlc render` writes it into `.claude/settings.json` (`enabledPlugins`, `extraKnownMarketplaces`).
+A marketplace that is not in `core/policy/plugins.yaml` fails the render, and the trusted CI denies it.
+
 ## Using it
 
 For yourself:
@@ -76,6 +102,7 @@ For yourself:
 ```bash
 claude plugin marketplace add prashantsharma18/aidlc
 claude plugin install aidlc@aidlc
+claude plugin install aidlc-practice@aidlc     # the practice skills
 ```
 
 To try a local build in one session, without installing: `claude --plugin-dir plugins/aidlc`.
@@ -95,7 +122,7 @@ turns the plugin on:
       "autoUpdate": false
     }
   },
-  "enabledPlugins": {"aidlc@aidlc": true}
+  "enabledPlugins": {"aidlc@aidlc": true, "aidlc-practice@aidlc": true}
 }
 ```
 
