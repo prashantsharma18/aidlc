@@ -8,12 +8,21 @@ one stage's artefact and stops at that stage's human gate. The decision is
 
 | Skill | Stage | Produces | Gate (a person decides) |
 |---|---|---|---|
-| `aidlc-context-setup` | Context | `AGENTS.md`, `docs/codebase-map.md` drafts | Placement, enforcement and the merge |
-| `aidlc-intent` | Intent | `plans/<KEY>/intent.md` | The product owner accepts the work |
-| `aidlc-specify` | Specify | `plans/<KEY>/spec.md`, or a new version | The spec owner approves the version |
-| `aidlc-plan` | Plan | `plans/<KEY>/plan.md`, one bundle per slice | The tech lead approves the plan |
-| `aidlc-build-slice` | Build | commits, `plans/<KEY>/progress-<slice>.md` | Local check green, diff in scope |
-| `aidlc-verify` | Verify | `plans/<KEY>/evidence-<slice>.md` | A code owner approves the pull request |
+| `aidlc-context-setup` | Context | drafts of `AGENTS.md` and `docs/codebase-map.md` | Placement, enforcement and the merge |
+| `aidlc-intent` | Intent | a draft of `plans/<KEY>/intent.md` | The product owner accepts the work |
+| `aidlc-specify` | Specify | a draft of `plans/<KEY>/spec.md`, or its new version | The spec owner approves the version |
+| `aidlc-plan` | Plan | drafts of `plans/<KEY>/plan.md` and one bundle per slice | The tech lead approves the plan |
+| `aidlc-build-slice` | Build | commits (each records its step), a hand-off note | Local check green, diff in scope |
+| `aidlc-verify` | Verify | the evidence table and the pull request description | A code owner approves the pull request |
+
+**You save the drafts.** The harness denies the agent writes to `plans/**` and `AGENTS.md`, and every
+edit outside an approved task scope. So each skill gives its complete draft in its reply, and you save
+it, for example with `aidlc new intent --out plans/SHIP-42/intent.md`, and commit it through a
+reviewed pull request. Build-slice edits code only inside its bundle's MAY CHANGE, after you run
+`aidlc scope --branch <branch>`.
+
+**Slices on one branch.** The scope check reads the whole branch against the latest approved bundle,
+so each later bundle's MAY CHANGE also lists the earlier slices' paths.
 
 The seven agent roles are `explorer`, `planner`, `implementer`, `reviewer-bug`, `reviewer-security`,
 `reviewer-compliance` and `ops-diagnoser`. All but the `implementer` are read-only.
@@ -92,7 +101,8 @@ turns the plugin on:
 - **Pinning.** A marketplace source takes a branch or tag (`ref`), not a commit sha. Pin a release
   tag, and move it to roll out a new version.
 - **Limit the sources** with `strictKnownMarketplaces`, and reject `--plugin-dir` with
-  `disableSideloadFlags`.
+  `disableSideloadFlags`. An allowlist entry matches `ref` exactly, so give it the same tag:
+  `{"source": "github", "repo": "prashantsharma18/aidlc", "ref": "<release tag>"}`.
 - The field names follow https://code.claude.com/docs/en/plugins/org and the marketplace reference
   (checked 2026-10-23).
 
@@ -102,7 +112,8 @@ sandbox and hooks.
 ## Checks
 
 - **Today:** free structural checks on every pull request (the skill and agent format tests,
-  `bin/aidlc plugin build --check`), and `claude plugin validate --strict`.
+  `bin/aidlc plugin build --check`), and `claude plugin validate --strict` where Claude Code is
+  installed.
 - **Later (Plan 5c):** behaviour evals with `claude plugin eval`: a behaviour case and a pressure
   case per skill, plus a "fires" and a "stays quiet" case for each skill that starts on its own.
 

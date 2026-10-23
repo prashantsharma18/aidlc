@@ -16,7 +16,13 @@ STAGES = {"context", "intent", "specify", "discover", "design", "plan", "build",
           "operate"}
 EXPECTED_5A = {"aidlc-context-setup", "aidlc-intent", "aidlc-specify", "aidlc-plan", "aidlc-build-slice",
                "aidlc-verify"}
-AUTO = {"aidlc-context-setup", "aidlc-verify"}    # read-only skills the model may start (user decision 2026-10-23)
+AUTO = {"aidlc-context-setup", "aidlc-verify"}
+# The harness denies writes to plans/** and AGENTS.md, and every edit outside an approved task scope
+# (core/policy/permissions.yaml, core/hooks/guard.py). Drafting skills therefore hand their drafts to
+# the person (Plan 5a review, 2026-10-23).
+SAVES = ("The harness protects `plans/` and `AGENTS.md` and allows edits only inside an approved task "
+         "scope, so you never write them: put the complete draft in your reply, under the path where it "
+         "belongs, and the person saves it and commits it through a reviewed pull request.")    # read-only skills the model may start (user decision 2026-10-23)
 
 
 def section(body, title):
@@ -93,3 +99,20 @@ class SkillFormatTest(unittest.TestCase):
             with self.subTest(skill=path.parent.name):
                 named = set(re.findall(r"assets/([a-z0-9-]+)\.md", body))
                 self.assertEqual(named, set(md.get("templates", [])) | set(md.get("references", [])))
+
+    def test_drafting_skills_hand_their_drafts_to_the_person(self):
+        for path, _, body in skills():
+            name = path.parent.name
+            with self.subTest(skill=name):
+                self.assertNotRegex(body, r"(?im)^\s*\d+\.\s*(create|write|save|update)\b[^\n]*`plans/")
+                self.assertNotIn("progress-<slice>.md", body)      # progress lives in commit messages
+                if name != "aidlc-build-slice":
+                    self.assertIn(SAVES, body)
+
+    def test_one_branch_per_story_keeps_every_slice_in_scope(self):
+        body = (SKILLS / "aidlc-plan" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("each later bundle's MAY CHANGE also lists every path an earlier slice may change", body)
+
+    def test_build_slice_needs_the_scope_first(self):
+        body = (SKILLS / "aidlc-build-slice" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("aidlc scope --branch", body)

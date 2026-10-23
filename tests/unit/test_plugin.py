@@ -151,3 +151,36 @@ class PluginSkillsTest(unittest.TestCase):
     def test_intent_template_records_the_kind_of_work(self):
         text = (ROOT / "core" / "templates" / "intent.md").read_text(encoding="utf-8")
         self.assertTrue(any(line.startswith("Kind") for line in text.splitlines()))
+
+
+class PluginErrorsTest(unittest.TestCase):
+    """A bad source is a clear PluginError naming the file, never a traceback (Plan 5a review)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        shutil.copytree(ROOT / "core", self.root / "core")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def agent(self, **change):
+        meta = {"name": "probe", "description": "Reads x. Use for y.", "tools": ["read"], "model_tier": "general",
+                "guide": ["4.9"], **change}
+        text = "---\n" + "\n".join(f"{k}: {json.dumps(v)}" for k, v in meta.items()) + "\n---\n# Probe\n"
+        (self.root / "core" / "agents" / "probe.md").write_text(text, encoding="utf-8")
+
+    def test_an_unknown_tier_or_tool_class_is_a_clear_error(self):
+        for change in ({"model_tier": "huge"}, {"tools": ["web"]}, {"tools": "read"}, {"tools": []}):
+            with self.subTest(change=change):
+                self.agent(**change)
+                with self.assertRaisesRegex(plugin.PluginError, "core/agents/probe.md"):
+                    plugin.build(self.root)
+
+    def test_two_skills_cannot_share_an_eval_case_name(self):
+        for skill in ("aidlc-intent", "aidlc-specify"):
+            case = self.root / "core" / "skills" / skill / "evals" / "same-case"
+            case.mkdir(parents=True)
+            (case / "prompt.md").write_text("x\n", encoding="utf-8")
+        with self.assertRaisesRegex(plugin.PluginError, "same-case"):
+            plugin.build(self.root)

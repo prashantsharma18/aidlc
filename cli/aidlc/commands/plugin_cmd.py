@@ -8,6 +8,7 @@ import sys
 from ..cli import command
 from ..paths import framework_root
 from ..adapters.claude_plugin import PluginError, build, check, write_files
+from ..policy import PolicyError
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -20,10 +21,11 @@ def _run(args: argparse.Namespace) -> int:
             print(f"plugin: {len(problems)} problem(s)" + (" (run bin/aidlc plugin build)" if problems else ""))
             return 1 if problems else 0
         files = build(root)
-        write_files(root, files)
+        for rel in write_files(root, files):
+            print(f"removed {rel} (no longer generated)")
         print(f"plugin: wrote {len(files)} file(s) to plugins/aidlc and .claude-plugin/marketplace.json")
         return 0
-    except PluginError as exc:
+    except (PluginError, PolicyError) as exc:
         print(f"aidlc plugin: {exc}", file=sys.stderr)
         return 2
 

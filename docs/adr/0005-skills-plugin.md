@@ -32,8 +32,8 @@ Work item: none (framework decision) · Tier: 2 (changes what every developer's 
   (`ref`). A marketplace source takes a branch or tag, not a commit.
 - **The harness stays in each repository's rendered settings.** The plugin adds skills and roles; it
   enforces nothing.
-- **Skills declare how they start** (`metadata.invocation`). Only the read-only
-  `aidlc-context-setup` (its survey) and `aidlc-verify` are `auto`. Every gated stage is `manual`,
+- **Skills declare how they start** (`metadata.invocation`). Only `aidlc-context-setup` (its
+  survey) and `aidlc-verify`, which read and draft but change nothing, are `auto`. Every gated stage is `manual`,
   rendered as Claude's `disable-model-invocation: true`, so only a person starts it. An unknown value
   fails the build.
 - **Every skill has "Common excuses" and "Red flags"**: the reasons an agent gives for skipping a gate,
@@ -51,8 +51,15 @@ Work item: none (framework decision) · Tier: 2 (changes what every developer's 
 ## Consequences
 
 - A repository's `config-policy` does not judge the plugin, which lives outside the repository. The
-  framework's own CI does, with `plugin build --check` and `claude plugin validate --strict`.
-- Skills write under `plans/<KEY>/`, which is outside the edit allow-list, so each write asks the person.
+  framework's own CI does, with `plugin build --check`. `claude plugin validate --strict` runs
+  locally (`make test` runs it where Claude Code is installed; framework CI does not install it).
+- **Skills hand their drafts to the person.** The harness denies writes to `plans/**` and `AGENTS.md`,
+  and every edit outside an approved task scope, so intent, specify, plan, verify and context setup
+  put the complete draft in their reply; the person saves it (`aidlc new <template> --out …`) and
+  commits it through a reviewed pull request. Build-slice edits only inside its bundle's MAY CHANGE,
+  after the person runs `aidlc scope`, and keeps its progress in commit messages.
+- **One branch per story.** The scope check reads the whole branch against the latest approved
+  bundle, so each later bundle's MAY CHANGE also lists the earlier slices' paths.
 - Copilot later needs its own `render_skills` (`.agents/skills`) and `render_agents`
   (`.github/agents/*.agent.md`).
 

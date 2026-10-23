@@ -112,7 +112,7 @@ Later the same day the user deferred all behaviour evals (no eval authoring, CI 
   - states the injection rule word for word;
   - says "You draft; you never approve."
 - **Every skill** also has a "Common excuses" table (at least three rows of excuse and reality) and a "Red flags" list (at least three), in our own words.
-- **Skills never approve, never change a work item's status, and never overwrite an existing file.** A skill writes artefacts under `plans/<KEY>/`. (`plans/**` is not in the edit allow-list, so each write asks the person. That is intended.) Posting to the tracker asks the person.
+- **Skills never approve, never change a work item's status, and never overwrite an existing file.** The harness denies writes to `plans/**` and `AGENTS.md` and every edit outside an approved task scope, so the drafting skills give their drafts in the reply and the person saves them (corrected 2026-10-23 after the final review; the earlier text wrongly said each write asks). Posting to the tracker asks the person.
 - **Tests.**
   - `make test` stays model-free; the structural tests are free.
   - No `claude plugin eval` run in this plan. The only model use is Task 7's one short dry run, on the user's subscription, with their go-ahead.

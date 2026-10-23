@@ -17,7 +17,7 @@ from pathlib import Path
 import yaml
 
 from ..policy import load_policy
-from ..templates import load_template, parse_front_matter
+from ..templates import TemplateError, load_template, parse_front_matter
 from ..trace import generated_docs
 from .capabilities import load_capabilities
 
@@ -53,21 +53,33 @@ def _front(meta: dict, body: str) -> str:
     return "---\n" + yaml.safe_dump(meta, sort_keys=False, allow_unicode=True, width=1000) + "---\n" + body
 
 
+def _read(path: Path, root: Path) -> tuple[dict, str]:
+    try:
+        return parse_front_matter(path.read_text(encoding="utf-8"), path)
+    except (TemplateError, OSError, UnicodeDecodeError) as exc:
+        raise PluginError(f"{path.relative_to(root)}: cannot read its front matter ({exc})") from exc
+
+
 def _skill_files(root: Path) -> dict[str, str]:
     files: dict[str, str] = {}
     docs = {str(path.relative_to(root)): text for path, text in generated_docs(root).items()}
     for path in sorted((root / "core" / "skills").glob("*/SKILL.md")):
         name, rel = path.parent.name, path.relative_to(root)
-        meta, body = parse_front_matter(path.read_text(encoding="utf-8"), path)
+        meta, body = _read(path, root)
         base = f"{PLUGIN_DIR}/skills/{name}"
         metadata = meta.get("metadata") or {}
+        if not isinstance(metadata, dict):
+            raise PluginError(f"{rel}: metadata must be a mapping")
         invocation = metadata.get("invocation")
         if invocation not in ("auto", "manual"):
             raise PluginError(f"{rel}: metadata.invocation must be auto or manual, got {invocation!r}")
         hidden = {"disable-model-invocation": True} if invocation == "manual" else {}   # only a person starts it
         files[f"{base}/SKILL.md"] = _front({**meta, **hidden}, _header(str(rel)) + body)
         for tid in metadata.get("templates") or []:
-            template = load_template(tid, root)
+            try:
+                template = load_template(tid, root)
+            except TemplateError as exc:
+                raise PluginError(f"{rel}: template '{tid}': {exc}") from exc
             files[f"{base}/assets/{tid}.md"] = f"<!-- aidlc template: {template.id} -->\n{template.body}"
         for ref in metadata.get("references") or []:
             if ref not in REFERENCES:
@@ -77,7 +89,11 @@ def _skill_files(root: Path) -> dict[str, str]:
         for case_file in sorted(p for p in evals.rglob("*") if p.is_file()):
             if case_file.is_symlink():
                 raise PluginError(f"{case_file.relative_to(root)}: a link; eval cases are plain files")
-            files[f"{PLUGIN_DIR}/evals/{case_file.relative_to(evals)}"] = case_file.read_text(encoding="utf-8")
+            target = f"{PLUGIN_DIR}/evals/{case_file.relative_to(evals)}"
+            if target in files:                       # every skill's cases share one evals/ folder
+                raise PluginError(f"{case_file.relative_to(root)}: eval case '{case_file.relative_to(evals).parts[0]}' "
+                                  f"is also another skill's; case names start with their skill's name")
+            files[target] = case_file.read_text(encoding="utf-8")
     return files
 
 
@@ -87,7 +103,15 @@ def _agent_files(root: Path) -> dict[str, str]:
     files: dict[str, str] = {}
     for path in sorted((root / "core" / "agents").glob("*.md")):
         rel = path.relative_to(root)
-        meta, body = parse_front_matter(path.read_text(encoding="utf-8"), path)
+        meta, body = _read(path, root)
+        classes = meta.get("tools")
+        if not all(isinstance(meta.get(key), str) and meta[key] for key in ("name", "description")):
+            raise PluginError(f"{rel}: name and description must be non-empty text")
+        if (not isinstance(classes, list) or not classes
+                or not all(isinstance(c, str) and c in tools for c in classes)):
+            raise PluginError(f"{rel}: tools must be a non-empty list of {', '.join(sorted(tools))}")
+        if not isinstance(meta.get("model_tier"), str) or meta["model_tier"] not in tiers:
+            raise PluginError(f"{rel}: model_tier must be one of {', '.join(sorted(tiers))}")
         out = {"name": meta["name"], "description": meta["description"],
                "tools": ", ".join(tool for cls in meta["tools"] for tool in tools[cls]),
                "model": tiers[meta["model_tier"]]["model"]}
@@ -134,12 +158,14 @@ def _on_disk(root: Path) -> dict[str, str]:
     return found
 
 
-def write_files(root: Path, files: dict[str, str]) -> None:
+def write_files(root: Path, files: dict[str, str]) -> list[str]:
+    """Write the plugin; returns the files it removed because the build no longer produces them."""
     for rel in files:
         if not _owned(rel) or ".." in Path(rel).parts:
             raise PluginError(f"{rel}: outside {PLUGIN_DIR}/ and {MARKETPLACE}")
     _refuse_links(root)
-    for rel in set(_on_disk(root)) - set(files):
+    removed = sorted(set(_on_disk(root)) - set(files))
+    for rel in removed:
         (root / rel).unlink()
     for rel, text in files.items():
         target = root / rel
@@ -151,6 +177,7 @@ def write_files(root: Path, files: dict[str, str]) -> None:
     for directory in sorted((root / PLUGIN_DIR).rglob("*"), reverse=True):
         if directory.is_dir() and not any(directory.iterdir()):
             directory.rmdir()
+    return removed
 
 
 def check(root: Path) -> list[str]:
