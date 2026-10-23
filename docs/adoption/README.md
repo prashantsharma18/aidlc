@@ -41,7 +41,7 @@ skips:                # the test may be skipped until the date
 ```
 
 - `report_only` takes command steps such as lint, format and typecheck. Never `test`, `build`,
-  `install` or `restore`: a failing build or failing tests are a broken repository, fixed first.
+  `compile`, `install` or `restore`: a failing build or failing tests are a broken repository, fixed first.
 - **Secrets are never baselined.** `aidlc adopt` stops until they are rotated and removed.
 - The judge steps (scope, protected tests, secrets, config-policy) have no baseline: they are the harness.
 - A report-only step shows as `reported` in the check output, with its owner and date.
@@ -50,11 +50,12 @@ skips:                # the test may be skipped until the date
 
 The trusted CI compares the change's baseline with the base branch's copy:
 
-- **A new entry fails**: the baseline may only shrink. The one exception is a step that is new in
-  the same change, which may start report-only.
+- **A new entry fails**: the baseline may only shrink. The one exception is a step the change itself
+  adds to `check_steps` (absent from the base's), which may start report-only.
 - **An entry past its `review_by` date fails** every pull request until it is fixed, or its owner
-  moves the date in a reviewed change.
-- **Removing an entry always passes.** The check output says how many were paid off.
+  moves the date in a reviewed change. A date moved later is named in the check's result, so the code
+  owners see it. Give `.aidlc/` a CODEOWNERS entry so those changes need their review.
+- **Removing an entry passes**, as long as no other entry has expired. The check output says how many were paid off.
 - The trusted CI reads the base branch's copy, so a pull request cannot widen its own allowance.
 
 Your local `aidlc check` honours the baseline but does not run the ratchet; the trusted CI does.

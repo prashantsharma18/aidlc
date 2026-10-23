@@ -29,6 +29,8 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Callable, Iterator
 
+import yaml
+
 from . import __version__
 from .checks.findings import Finding
 from .checks.conftest_check import judge_generated, run_conftest
@@ -41,7 +43,7 @@ from .harness import BRANCH_RE
 from .harness import base_branch as configured_base
 from .hookbridge import hooks
 from .paths import safe_target
-from .repo import load_config
+from .repo import CONFIG, load_config
 from .sandbox import Sandbox, available, toolchain_env, toolchain_paths
 from .scope import FULL_SHA, ScopeError, base_commit, bundle_at, parse_approvals, parse_may_change
 
@@ -252,35 +254,57 @@ def step_config_policy(ctx: CheckContext) -> StepResult:
     return StepResult("config-policy", OK, f"{warns} warning(s)" if warns else "")
 
 
+def _head_text(ctx: CheckContext, rel: str) -> str:
+    """A file of the change: from git objects at ctx.head in CI (never the working tree, never through a
+    link), the working copy locally. "" when the change has no such file; a link or other non-file raises."""
+    if ctx.head is not None:
+        entry = git(ctx.repo, "ls-tree", "-z", ctx.head, "--", rel).strip("\0")
+        if not entry:
+            return ""
+        if entry.split(" ", 1)[0] not in ("100644", "100755"):
+            raise ValueError(f"{rel} is not a regular file in the change")
+        return _blob(ctx.repo, ctx.head, rel).decode("utf-8")
+    path = ctx.repo / rel
+    if path.is_symlink():
+        raise ValueError(f"{rel} is a symlink; the judge does not follow it")
+    return path.read_text(encoding="utf-8") if path.is_file() else ""
+
+
 def step_baseline(ctx: CheckContext) -> StepResult:
     """The ratchet (ADR 0007): the change's .aidlc/baseline.yaml may only shrink. It is compared with the
-    base's copy, read before any of the change's code runs. A skip, or a report-only step the base
-    already runs, that the base does not list FAILs; so does any entry past its review date. A step new
-    in this change may start report-only. Moving an owner, reason or date is a decision the code owners
-    review, not growth."""
+    base's copy, read before any of the change's code runs. A skip, or a report-only step, that the base
+    does not list FAILs, unless the step is new: absent from the base's check_steps and added by this
+    change. Any entry past its review date FAILs. A date moved later is allowed (the code owners review
+    it) and named in the result, so it is never silent."""
     try:
         base = parse_baseline((ctx.steering or {}).get(BASELINE, ""), f"base {BASELINE}")
-        path = ctx.repo / BASELINE
-        if path.is_symlink():
-            return StepResult("baseline", FAIL, f"{BASELINE} is a symlink; the judge does not follow it")
-        head = parse_baseline(path.read_text(encoding="utf-8") if path.is_file() else "")
-    except (BaselineError, OSError, UnicodeDecodeError) as exc:
+        head = parse_baseline(_head_text(ctx, BASELINE))
+        head_config = yaml.safe_load(_head_text(ctx, str(CONFIG)) or "{}") or {}
+    except (BaselineError, CiError, ValueError, OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
         return StepResult("baseline", FAIL, str(exc))
-    known = {(e.kind, e.key) for e in base}
+    head_steps = head_config.get("check_steps") if isinstance(head_config, dict) else None
+    head_steps = set(head_steps) if isinstance(head_steps, list) and all(isinstance(x, str) for x in head_steps) else set()
+    known = {(e.kind, e.key): e for e in base}
     runs = set(ctx.config.check_steps)                # the base's configuration judges the change
     today = date.today()
-    problems = []
+    problems, moved = [], []
     for e in head:
-        new_step = e.kind == "report_only" and e.key not in runs
-        if (e.kind, e.key) not in known and not new_step:
+        new_step = e.kind == "report_only" and e.key not in runs and e.key in head_steps
+        before = known.get((e.kind, e.key))
+        if before is None and not new_step:
             problems.append(f"{e.kind} '{e.key}' is new: the baseline may only shrink")
         if e.review_by < today:
             problems.append(f"{e.kind} '{e.key}' passed its review date {e.review_by}: fix it, or its owner "
                             "moves the date in a reviewed change")
+        if before is not None and e.review_by > before.review_by:
+            moved.append(f"{e.key}: {before.review_by} -> {e.review_by}")
     if problems:
         return StepResult("baseline", FAIL, "; ".join(problems[:5]))
-    paid = len(known - {(e.kind, e.key) for e in head})
-    return StepResult("baseline", OK, f"{len(head)} entries" + (f", {paid} paid off" if paid else ""))
+    paid = len(set(known) - {(e.kind, e.key) for e in head})
+    detail = f"{len(head)} entries" + (f", {paid} paid off" if paid else "")
+    if moved:
+        detail += "; dates moved later (code owners review): " + ", ".join(moved)
+    return StepResult("baseline", OK, detail)
 
 
 # Judges: run before any of the change's code, from git objects (ctx.head) or the untouched checkout.

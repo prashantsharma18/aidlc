@@ -12,13 +12,16 @@ judge step lets the file only shrink. `test`, `build`, `install` and `restore` c
 and secrets are never baselined: they are fixed before adoption."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 import yaml
 
 BASELINE = ".aidlc/baseline.yaml"
-NEVER_REPORT_ONLY = frozenset({"test", "build", "install", "restore"})
+NEVER_REPORT_ONLY = frozenset({"test", "build", "compile", "install", "restore"})
+STEP_NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,39}")      # the same rule as onecheck.STEP_NAME
+PLAIN_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 _KEY = {"report_only": "step", "skips": "test"}
 
 
@@ -36,11 +39,11 @@ class Entry:
 
 
 def _date(value: object, label: str) -> date:
-    if isinstance(value, date):
+    if isinstance(value, date) and not isinstance(value, datetime):
         return value
-    if isinstance(value, str):
+    if isinstance(value, str) and PLAIN_DATE.fullmatch(value.strip()):
         try:
-            return date.fromisoformat(value)
+            return date.fromisoformat(value.strip())
         except ValueError:
             pass
     raise BaselineError(f"{label}: review_by must be a date such as 2027-01-31, got {value!r}")
@@ -66,9 +69,12 @@ def parse(text: str, label: str = BASELINE) -> list[Entry]:
             key, owner, reason = item[field], item["owner"], item["reason"]
             if not all(isinstance(v, str) and v.strip() for v in (key, owner, reason)):
                 raise BaselineError(f"{label}: {kind} entries need a non-empty {field}, owner and reason")
+            key = key.strip()                     # checked after stripping: " test" is "test"
+            if kind == "report_only" and not STEP_NAME.fullmatch(key):
+                raise BaselineError(f"{label}: '{key}' is not a step name (lower case, digits and dashes)")
             if kind == "report_only" and key in NEVER_REPORT_ONLY:
                 raise BaselineError(f"{label}: '{key}' can never be report-only; a failing {key} is a broken repository")
-            out.append(Entry(kind, key.strip(), owner.strip(), _date(item["review_by"], label), reason.strip()))
+            out.append(Entry(kind, key, owner.strip(), _date(item["review_by"], label), reason.strip()))
     seen: set[tuple[str, str]] = set()
     for e in out:
         if (e.kind, e.key) in seen:

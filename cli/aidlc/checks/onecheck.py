@@ -371,7 +371,12 @@ def report_only(ctx: CheckContext, result: StepResult) -> StepResult:
     """A failing command step the baseline lists, before its review date, is reported, not failed."""
     if result.status != FAIL:
         return result
-    entry = active(_baseline(ctx), "report_only").get(result.name)
+    try:
+        entries = _baseline(ctx)
+    except (ValueError, OSError, UnicodeDecodeError) as exc:      # keep the real failure, its log and tail
+        result.detail = (f"{result.detail} " if result.detail else "") + f"[baseline not applied: {exc}]"
+        return result
+    entry = active(entries, "report_only").get(result.name)
     if entry is None:
         return result
     result.status = REPORTED
@@ -491,7 +496,7 @@ def print_result(result: CheckResult, repo: Path, prefix: str = "check") -> None
         line = f"{prefix}  {label}{step.status}"
         if step.detail:
             line += f"  {redact(step.detail)}"
-        if step.status == FAIL and step.log:
+        if step.status in (FAIL, REPORTED) and step.log:
             line += f"  (full log: {step.log})"
         print(line)
         for tail in step.tail:                    # captured at run time, never re-read from a path

@@ -45,3 +45,8 @@ class SurveyTest(unittest.TestCase):
         with TempRepo({"sub/x.py": "x\n"}) as root:
             code, _, _ = run_cli("adopt", str(root / "sub"))
             self.assertEqual(code, 2)
+
+    def test_large_files_are_counted_not_claimed_clean(self):
+        with TempRepo({"big.txt": "x" * 1_100_000 + "\n", "README.md": "x\n"}) as root:
+            text = adopt.report(adopt.survey(root))
+            self.assertIn("1 file(s) over 1 MB were not scanned", text)

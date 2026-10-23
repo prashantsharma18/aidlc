@@ -110,3 +110,48 @@ class BaselineSkipsTest(unittest.TestCase):
     def test_reported_does_not_count_as_a_failure(self):
         result = onecheck.CheckResult([StepResult("lint", REPORTED, "")])
         self.assertTrue(result.passed)
+
+
+class ReviewFixesTest(unittest.TestCase):
+    """Final review of Plan 5.1."""
+
+    def test_whitespace_cannot_smuggle_a_never_report_only_step(self):
+        for key in (" test", "test ", "compile", "Lint", "lint step"):
+            with self.subTest(key=key), self.assertRaises(BaselineError):
+                parse(entry(key=key))
+
+    def test_step_names_follow_the_check(self):
+        self.assertEqual(baseline.STEP_NAME.pattern, onecheck.STEP_NAME.pattern)
+
+    def test_review_by_is_a_plain_date(self):
+        for when in ("2027-01-31 10:00:00", "20270131", "2027-W05-1"):
+            text = f"report_only:\n  - {{step: lint, owner: '@t', review_by: {when}, reason: r}}\n"
+            with self.subTest(when=when), self.assertRaises(BaselineError):
+                parse(text)
+
+
+class BadBaselineKeepsTheFailureTest(unittest.TestCase):
+    def setUp(self):
+        self.env = GuardEnv().__enter__()
+        self.repo, self.root = installed({"lint": py("raise SystemExit(1)")}, ["lint"])
+
+    def tearDown(self):
+        self.repo.__exit__(None, None, None)
+        self.env.__exit__(None, None, None)
+
+    def test_a_bad_baseline_keeps_the_original_failure(self):
+        (self.root / baseline.BASELINE).write_text("report_only: nope\n", encoding="utf-8")
+        step = run_check(local_context(self.root, load_config(self.root)), builtins=[]).steps[0]
+        self.assertEqual(step.status, FAIL)
+        self.assertIn("exit 1", step.detail)
+        self.assertIn("baseline not applied", step.detail)
+        self.assertTrue(step.log)
+
+    def test_a_reported_step_still_points_to_its_log(self):
+        import contextlib
+        import io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            onecheck.print_result(onecheck.CheckResult([StepResult("lint", REPORTED, "x", log=".check/lint.log")]),
+                                  self.root)
+        self.assertIn("(full log: .check/lint.log)", out.getvalue())

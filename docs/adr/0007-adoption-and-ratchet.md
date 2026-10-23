@@ -20,10 +20,11 @@ Work item: none (framework decision) · Tier: 2 (changes how every existing repo
   configuration, existing CI, and secret-shaped text. `--import` prints a patch that moves the
   importable rule files into `AGENTS.md` and `.aidlc/rules/`; the person reads and applies it.
 - **The baseline**, `.aidlc/baseline.yaml`, lists accepted debt with an owner, a review date and a
-  reason: report-only command steps (never `test`, `build`, `install` or `restore`) and temporary
+  reason: report-only command steps (never `test`, `build`, `compile`, `install` or `restore`) and temporary
   skips. Trusted CI reads the base branch's copy.
 - **The ratchet** is a trusted CI judge step: the baseline may only shrink, and an entry past its
-  date fails. A step new in the same change may start report-only.
+  date fails. A step the change itself adds to `check_steps` may start report-only. A date moved
+  later is allowed and named in the result, for the code owners to review.
 - **Secrets are never baselined.** The survey stops the adoption until the secrets are rotated and removed.
 - **No profile per stack.** Existing repositories use `generic` with the commands the survey suggests;
   a profile is only a set of defaults, added as data when a team asks.

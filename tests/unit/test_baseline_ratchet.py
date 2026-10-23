@@ -1,12 +1,14 @@
 # tests/unit/test_baseline_ratchet.py
 import os
 import unittest
+
+import yaml
 from datetime import date, timedelta
 
 from aidlc import ci
 from aidlc.baseline import BASELINE
 from aidlc.checks.onecheck import FAIL, OK, local_context
-from aidlc.repo import load_config
+from aidlc.repo import CONFIG, load_config
 from tests.unit.test_baseline import FUTURE, PAST, entry
 from tests.unit.test_guard import GuardEnv
 from tests.unit.test_onecheck import installed, py
@@ -21,11 +23,15 @@ class RatchetTest(unittest.TestCase):
         self.repo.__exit__(None, None, None)
         self.env.__exit__(None, None, None)
 
-    def judge(self, base_text, head_text):
+    def judge(self, base_text, head_text, head_steps=None):
         if head_text is not None:
             (self.root / BASELINE).write_text(head_text, encoding="utf-8")
-        ctx = local_context(self.root, load_config(self.root))
+        ctx = local_context(self.root, load_config(self.root))      # the base's configuration
         ctx.steering = {} if base_text is None else {BASELINE: base_text}
+        if head_steps is not None:                                   # the change's configuration
+            data = yaml.safe_load((self.root / CONFIG).read_text(encoding="utf-8"))
+            data["check_steps"] = head_steps
+            (self.root / CONFIG).write_text(yaml.safe_dump(data), encoding="utf-8")
         return ci.step_baseline(ctx)
 
     def test_runs_in_ci_before_config_policy(self):
@@ -49,7 +55,30 @@ class RatchetTest(unittest.TestCase):
                 self.assertIn("may only shrink", step.detail)
 
     def test_a_new_step_may_start_report_only(self):
-        self.assertEqual(self.judge("", entry(key="format")).status, OK)   # format is not in the base's check_steps
+        # format is not in the base's check_steps, and the change adds it
+        self.assertEqual(self.judge("", entry(key="format"), head_steps=["lint", "format"]).status, OK)
+
+    def test_a_new_report_only_step_must_be_added_by_the_change(self):
+        step = self.judge("", entry(key="lint-v2"))                  # in neither configuration: pre-seeding
+        self.assertEqual(step.status, FAIL)
+        self.assertIn("may only shrink", step.detail)
+
+    def test_a_date_moved_later_is_named(self):
+        later = (date.today() + timedelta(days=90)).isoformat()
+        step = self.judge(entry(), entry(when=later))
+        self.assertEqual(step.status, OK)
+        self.assertIn(f"lint: {FUTURE} -> {later}", step.detail)
+
+    def test_ci_reads_the_head_baseline_from_git_objects(self):
+        from tests.helpers import git
+        (self.root / BASELINE).write_text(entry(), encoding="utf-8")
+        git(self.root, "add", BASELINE)
+        git(self.root, "commit", "-qm", "baseline")
+        head = git(self.root, "rev-parse", "HEAD")
+        (self.root / BASELINE).write_text(entry() + entry("skips", "pkg.A new")[len(""):], encoding="utf-8")
+        ctx = local_context(self.root, load_config(self.root))
+        ctx.steering, ctx.head = {BASELINE: entry()}, head
+        self.assertEqual(ci.step_baseline(ctx).status, OK)          # the uncommitted skip is not the change
 
     def test_an_expired_entry_fails(self):
         step = self.judge(entry(when=PAST), entry(when=PAST))
