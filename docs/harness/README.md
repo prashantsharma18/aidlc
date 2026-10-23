@@ -26,6 +26,7 @@ platform cutover (platform ADR 20, milestone M36). The gateway itself belongs to
 ## First install
 
 Install the harness in a repository in this order. Each step depends on the one before.
+For a repository that already has code, start with [the adoption guide](../adoption/README.md).
 
 > ⚠️ **Watch out:** Start Claude Code at the repository root. A session started in a
 > subdirectory does not load the project settings, so no permissions, sandbox or hooks apply.

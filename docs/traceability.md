@@ -9,9 +9,9 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | Chapter | Title | Elements |
 |---|---|---|
 | 1 | The AI-native lifecycle, end to end | aidlc-build-slice, aidlc-intent, aidlc-verify, ctx-authority, intent, policy-tiers |
-| 2 | Context engineering | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, agents-md, aidlc-build-slice, aidlc-context-setup, aidlc-plan, codebase-map, ctx-authority, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, ctx-rules-file, ctx-task-bundle, explorer, policy-context-classes, policy-memory-policy, policy-tiers, progress-note, task-bundle, workspace |
+| 2 | Context engineering | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, agents-md, aidlc-adopt, aidlc-build-slice, aidlc-context-setup, aidlc-plan, codebase-map, ctx-authority, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, ctx-rules-file, ctx-task-bundle, explorer, policy-context-classes, policy-memory-policy, policy-tiers, progress-note, task-bundle, workspace |
 | 3 | The agent harness | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, aidlc-build-slice, ctx-harness, ctx-task-bundle, observability-metrics, policy-permissions, policy-risk-inventory |
-| 4 | Understanding a codebase before you change it | codebase-map, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, evidence-pack, explorer, explorer-brief, policy-tiers |
+| 4 | Understanding a codebase before you change it | aidlc-adopt, codebase-map, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, evidence-pack, explorer, explorer-brief, policy-tiers |
 | 5 | Intent to specification | aidlc-intent, aidlc-specify, intent, policy-data-classes, policy-tiers, spec |
 | 6 | Architecture, boundaries and contracts | adr, decision-frame, design-note, policy-tiers |
 | 7 | Planning and task design | aidlc-plan, coordination-plan, ctx-task-bundle, plan, planner, policy-tiers, task-bundle |
@@ -22,8 +22,8 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | 12 | Operate, measure and improve | aidlc-intent, incident, observability-metrics, ops-diagnoser, policy-model-routes, policy-routing, runbook |
 | 13 | Security and guardrails | ci-github, ctx-openwiki-governance, policy-data-classes, policy-dependency-policy, policy-model-routes, policy-permissions, policy-risk-inventory, policy-tool-register, reviewer-security, security-review |
 | 14 | Changes that span repositories | compat-matrix, coordination-plan, explorer-brief, policy-branch-protection, policy-tiers, release-runbook, workspace |
-| 15 | Modernising legacy systems | (none yet) |
-| 16 | Your workflow: individual, team and organisation | policy-tool-register, working-agreement |
+| 15 | Modernising legacy systems | aidlc-adopt |
+| 16 | Your workflow: individual, team and organisation | aidlc-adopt, policy-tool-register, working-agreement |
 
 ## By element
 
@@ -60,6 +60,7 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | policy-routing | policy | `core/policy/routing.yaml` | 12.13, 12.12 |
 | policy-tiers | policy | `core/policy/tiers.yaml` | 1.10, 2.14, 4.7, 5.9, 6.17, 7.14, 8.15, 9.13, 11.13, 14.18 |
 | policy-tool-register | policy | `core/policy/tool-register.yaml` | 13.4, 16.4 |
+| aidlc-adopt | skill | `core/skills/aidlc-adopt/SKILL.md` | 16.5, 2.8, 15.7, 4.2 |
 | aidlc-build-slice | skill | `core/skills/aidlc-build-slice/SKILL.md` | 8.4, 8.5, 8.6, 8.7, 8.8, 8.9, 8.14, 2.4, 3.4, 1.4 |
 | aidlc-context-setup | skill | `core/skills/aidlc-context-setup/SKILL.md` | 2.8 A1, 2.8 A2, 2.8 A3, 2.8 A4, 2.8 A5, 2.8 A6, 2.8 A7, 2.6 |
 | aidlc-intent | skill | `core/skills/aidlc-intent/SKILL.md` | 5.4, 1.3, 1.10, 12.7, 12.8 |

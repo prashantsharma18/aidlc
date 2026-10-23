@@ -13,6 +13,7 @@ one stage's artefact and stops at that stage's human gate. The decision is
 | `aidlc-specify` | Specify | a draft of `plans/<KEY>/spec.md`, or its new version | The spec owner approves the version |
 | `aidlc-plan` | Plan | drafts of `plans/<KEY>/plan.md` and one bundle per slice | The tech lead approves the plan |
 | `aidlc-build-slice` | Build | commits (each records its step), a hand-off note | Local check green, diff in scope |
+| `aidlc-adopt` | Context | the init command, decisions on other tools' files, a draft baseline | Code owners merge the adoption pull request |
 | `aidlc-verify` | Verify | the evidence table and the pull request description | A code owner approves the pull request |
 
 **You save the drafts.** The harness denies the agent writes to `plans/**` and `AGENTS.md`, and every

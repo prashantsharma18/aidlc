@@ -13,6 +13,9 @@ repository's own commands inside bubblewrap, and `aidlc tools install` downloads
 `cli/aidlc/`             The CLI package. May depend on `core/` data; never on a repository it inspects.
 `cli/aidlc/commands/`    One module per subcommand; importing a module registers it (`cli/aidlc/cli.py`).
 `cli/aidlc/adapters/`    Tool adapters. Only here may tool file names (CLAUDE.md, .claude/) appear.
+`cli/aidlc/adopt.py`    `aidlc adopt`: the read-only survey and the import patch for an existing repository (ADR 0007).
+`cli/aidlc/baseline.py` The adoption baseline (.aidlc/baseline.yaml); the ratchet is `step_baseline` in `cli/aidlc/ci.py`.
+`core/context/stack-hints.yaml`  How `aidlc adopt` recognises a stack and the commands it suggests (data).
 `cli/aidlc/adapters/claude_plugin.py`  `aidlc plugin build`: generates the Claude Code plugin from core/skills and core/agents (ADR 0005).
 `cli/aidlc/adapters/capabilities.py`  Loads the tool descriptors; the CI judge and trace read them (ADR 0006).
 `core/adapters/`         One capability descriptor per tool (`<tool>.yaml`): what it reads and enforces, with sources.

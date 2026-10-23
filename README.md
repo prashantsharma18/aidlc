@@ -11,6 +11,7 @@ with a Claude Code adapter and extension points for other tools.
 
 - [Operating model: lifecycle](docs/operating-model/lifecycle.md), [tiers](docs/operating-model/tiers.md), [roles](docs/operating-model/roles.md), [autonomy and maturity](docs/operating-model/autonomy-and-maturity.md)
 - [Context engineering](docs/context-engineering/README.md)
+- [Adopting an existing repository](docs/adoption/README.md) ([ADR 0007](docs/adr/0007-adoption-and-ratchet.md))
 - [The aidlc plugin: skills and agents](docs/skills/README.md) ([ADR 0005](docs/adr/0005-skills-plugin.md))
 - [Adapters](docs/adapters/interface.md): [tool capabilities](docs/adapters/capabilities.md), [Copilot (planned)](docs/adapters/copilot.md), [ADR 0006 multi-tool foundation](docs/adr/0006-multi-tool-foundation.md)
 - [Harness](docs/harness/README.md): [permissions and sandbox](docs/harness/permissions-and-sandbox.md), [hooks](docs/harness/hooks.md), [doctor](docs/harness/doctor.md)
