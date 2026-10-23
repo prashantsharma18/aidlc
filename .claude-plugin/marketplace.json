@@ -9,6 +9,11 @@
       "name": "aidlc",
       "source": "./plugins/aidlc",
       "description": "Stage skills and agent roles of the aidlc framework: context setup, intent, specification, planning, building a slice and verification, each stopping at its human gate."
+    },
+    {
+      "name": "aidlc-practice",
+      "source": "./plugins/aidlc-practice",
+      "description": "Engineering-practice skills (API design, debugging, security, observability, performance, frontend UI, deprecation and migration, code review), adapted from addyosmani/agent-skills (MIT) to the aidlc rules."
     }
   ]
 }

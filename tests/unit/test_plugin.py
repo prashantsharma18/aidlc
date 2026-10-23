@@ -34,8 +34,8 @@ class PluginBuildTest(unittest.TestCase):
         market = json.loads(self.files[".claude-plugin/marketplace.json"])
         self.assertEqual(market["name"], "aidlc")
         self.assertTrue(market["description"])
-        self.assertEqual(market["plugins"], [{"name": "aidlc", "source": "./plugins/aidlc",
-                                              "description": manifest["description"]}])
+        self.assertEqual(market["plugins"][0], {"name": "aidlc", "source": "./plugins/aidlc",
+                                                "description": manifest["description"]})   # owner-approved 2026-10-23: a second plugin follows
 
     def test_tool_names_come_from_the_claude_descriptor(self):
         self.assertEqual(plugin.claude_tools(ROOT), load_capabilities()["claude-code"]["agents"]["tool_names"])
@@ -184,3 +184,38 @@ class PluginErrorsTest(unittest.TestCase):
             (case / "prompt.md").write_text("x\n", encoding="utf-8")
         with self.assertRaisesRegex(plugin.PluginError, "same-case"):
             plugin.build(self.root)
+
+
+class PracticePluginTest(unittest.TestCase):
+    def setUp(self):
+        self.files = plugin.build(ROOT)
+
+    def test_the_practice_plugin_is_built_beside_aidlc(self):
+        manifest = json.loads(self.files["plugins/aidlc-practice/.claude-plugin/plugin.json"])
+        self.assertEqual(manifest["name"], "aidlc-practice")
+        self.assertRegex(manifest["version"], r"^0\.1\.0\+[0-9a-f]{12}$")
+        self.assertIn("plugins/aidlc-practice/NOTICE", self.files)
+        for path in sorted((ROOT / "core" / "practices").glob("*/SKILL.md")):
+            name = path.parent.name
+            meta, body = front(self.files[f"plugins/aidlc-practice/skills/{name}/SKILL.md"])
+            core_meta, core_body = parse_front_matter(path.read_text(encoding="utf-8"), path)
+            manual = core_meta["metadata"]["invocation"] == "manual"
+            with self.subTest(practice=name):
+                self.assertEqual(meta, {**core_meta, **({"disable-model-invocation": True} if manual else {})})
+                self.assertTrue(body.endswith(core_body))
+
+    def test_the_marketplace_lists_both_plugins(self):
+        market = json.loads(self.files[".claude-plugin/marketplace.json"])
+        self.assertEqual([p["name"] for p in market["plugins"]], ["aidlc", "aidlc-practice"])
+        self.assertEqual(market["plugins"][1]["source"], "./plugins/aidlc-practice")
+
+    def test_the_committed_plugins_are_current(self):
+        code, out, err = run_cli("plugin", "build", "--check")
+        self.assertEqual(code, 0, out + err)
+
+    def test_write_owns_both_plugin_folders_and_nothing_else(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin.write_files(root, {"plugins/aidlc-practice/x.md": "x", "plugins/aidlc/y.md": "y"})
+            with self.assertRaises(plugin.PluginError):
+                plugin.write_files(root, {"plugins/other/z.md": "z"})

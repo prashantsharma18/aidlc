@@ -23,6 +23,12 @@ from .capabilities import load_capabilities
 
 PLUGIN = "aidlc"
 PLUGIN_DIR = "plugins/aidlc"
+PRACTICE = "aidlc-practice"
+PRACTICE_DIR = "plugins/aidlc-practice"
+PRACTICE_DESCRIPTION = ("Engineering-practice skills (API design, debugging, security, observability, performance, "
+                        "frontend UI, deprecation and migration, code review), adapted from addyosmani/agent-skills "
+                        "(MIT) to the aidlc rules.")
+PLUGIN_DIRS = (PLUGIN_DIR, PRACTICE_DIR)
 MARKETPLACE = ".claude-plugin/marketplace.json"
 BASE_VERSION = "0.1.0"
 DESCRIPTION = ("Stage skills and agent roles of the aidlc framework: context setup, intent, specification, "
@@ -119,39 +125,75 @@ def _agent_files(root: Path) -> dict[str, str]:
     return files
 
 
+def _practice_files(root: Path) -> dict[str, str]:
+    """core/practices/<name>/ → plugins/aidlc-practice/skills/<name>/ (ADR 0008), plus the NOTICE."""
+    files: dict[str, str] = {}
+    source = root / "core" / "practices"
+    for path in sorted(source.glob("*/SKILL.md")):
+        name, rel = path.parent.name, path.relative_to(root)
+        meta, body = _read(path, root)
+        metadata = meta.get("metadata") or {}
+        if not isinstance(metadata, dict) or metadata.get("kind") != "practice":
+            raise PluginError(f"{rel}: metadata.kind must be practice")
+        invocation = metadata.get("invocation")
+        if invocation not in ("auto", "manual"):
+            raise PluginError(f"{rel}: metadata.invocation must be auto or manual, got {invocation!r}")
+        hidden = {"disable-model-invocation": True} if invocation == "manual" else {}
+        base = f"{PRACTICE_DIR}/skills/{name}"
+        files[f"{base}/SKILL.md"] = _front({**meta, **hidden}, _header(str(rel)) + body)
+        for extra in sorted(p for p in path.parent.rglob("*") if p.is_file() and p != path):
+            if extra.is_symlink():
+                raise PluginError(f"{extra.relative_to(root)}: a link; practice files are plain files")
+            files[f"{base}/{extra.relative_to(path.parent).as_posix()}"] = extra.read_text(encoding="utf-8")
+    notice = source / "NOTICE"
+    if files or notice.is_file():
+        if not notice.is_file() or notice.is_symlink():
+            raise PluginError("core/practices/NOTICE is missing: the adapted skills ship their licence")
+        files[f"{PRACTICE_DIR}/NOTICE"] = notice.read_text(encoding="utf-8")
+    return files
+
+
+def _manifest(name: str, description: str, files: dict[str, str]) -> str:
+    digest = hashlib.sha256("".join(f"{k}\0{v}\0" for k, v in sorted(files.items())).encode()).hexdigest()[:12]
+    return json.dumps({"name": name, "version": f"{BASE_VERSION}+{digest}", "description": description,
+                       "author": AUTHOR}, indent=2) + "\n"
+
+
 def build(root: Path) -> dict[str, str]:
     files = {**_skill_files(root), **_agent_files(root)}
-    digest = hashlib.sha256("".join(f"{k}\0{v}\0" for k, v in sorted(files.items())).encode()).hexdigest()[:12]
-    manifest = {"name": PLUGIN, "version": f"{BASE_VERSION}+{digest}", "description": DESCRIPTION, "author": AUTHOR}
-    files[f"{PLUGIN_DIR}/.claude-plugin/plugin.json"] = json.dumps(manifest, indent=2) + "\n"
+    files[f"{PLUGIN_DIR}/.claude-plugin/plugin.json"] = _manifest(PLUGIN, DESCRIPTION, files)
+    practice = _practice_files(root)
+    practice[f"{PRACTICE_DIR}/.claude-plugin/plugin.json"] = _manifest(PRACTICE, PRACTICE_DESCRIPTION, practice)
+    files.update(practice)
     market = {"name": PLUGIN, "owner": OWNER, "description": MARKET_DESCRIPTION,
-              "plugins": [{"name": PLUGIN, "source": f"./{PLUGIN_DIR}", "description": DESCRIPTION}]}
+              "plugins": [{"name": PLUGIN, "source": f"./{PLUGIN_DIR}", "description": DESCRIPTION},
+                          {"name": PRACTICE, "source": f"./{PRACTICE_DIR}", "description": PRACTICE_DESCRIPTION}]}
     files[MARKETPLACE] = json.dumps(market, indent=2) + "\n"
     return files
 
 
 def _owned(rel: str) -> bool:
-    return rel == MARKETPLACE or rel.startswith(PLUGIN_DIR + "/")
+    return rel == MARKETPLACE or rel.startswith(tuple(d + "/" for d in PLUGIN_DIRS))
 
 
 def _refuse_links(root: Path) -> None:
-    for rel in ("plugins", PLUGIN_DIR, ".claude-plugin", MARKETPLACE):
+    for rel in ("plugins", *PLUGIN_DIRS, ".claude-plugin", MARKETPLACE):
         if (root / rel).is_symlink():
             raise PluginError(f"{rel} is a link; refusing to write through it")
-    plugin_dir = root / PLUGIN_DIR
-    if plugin_dir.is_dir():
-        for path in plugin_dir.rglob("*"):
-            if path.is_symlink():
-                raise PluginError(f"{path.relative_to(root)} is a link; refusing to write through it")
+    for plugin_dir in (root / d for d in PLUGIN_DIRS):
+        if plugin_dir.is_dir():
+            for path in plugin_dir.rglob("*"):
+                if path.is_symlink():
+                    raise PluginError(f"{path.relative_to(root)} is a link; refusing to write through it")
 
 
 def _on_disk(root: Path) -> dict[str, str]:
     found: dict[str, str] = {}
-    plugin_dir = root / PLUGIN_DIR
-    if plugin_dir.is_dir():
-        for path in plugin_dir.rglob("*"):
-            if path.is_file():
-                found[str(path.relative_to(root))] = path.read_text(encoding="utf-8")
+    for plugin_dir in (root / d for d in PLUGIN_DIRS):
+        if plugin_dir.is_dir():
+            for path in plugin_dir.rglob("*"):
+                if path.is_file():
+                    found[str(path.relative_to(root))] = path.read_text(encoding="utf-8")
     market = root / MARKETPLACE
     if market.is_file():
         found[MARKETPLACE] = market.read_text(encoding="utf-8")
@@ -162,7 +204,7 @@ def write_files(root: Path, files: dict[str, str]) -> list[str]:
     """Write the plugin; returns the files it removed because the build no longer produces them."""
     for rel in files:
         if not _owned(rel) or ".." in Path(rel).parts:
-            raise PluginError(f"{rel}: outside {PLUGIN_DIR}/ and {MARKETPLACE}")
+            raise PluginError(f"{rel}: outside {', '.join(d + '/' for d in PLUGIN_DIRS)} and {MARKETPLACE}")
     _refuse_links(root)
     removed = sorted(set(_on_disk(root)) - set(files))
     for rel in removed:
@@ -174,7 +216,7 @@ def write_files(root: Path, files: dict[str, str]) -> list[str]:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(text)
         os.replace(tmp, target)
-    for directory in sorted((root / PLUGIN_DIR).rglob("*"), reverse=True):
+    for directory in sorted((p for d in PLUGIN_DIRS for p in (root / d).rglob("*")), reverse=True):
         if directory.is_dir() and not any(directory.iterdir()):
             directory.rmdir()
     return removed

@@ -23,7 +23,8 @@ def _run(args: argparse.Namespace) -> int:
         files = build(root)
         for rel in write_files(root, files):
             print(f"removed {rel} (no longer generated)")
-        print(f"plugin: wrote {len(files)} file(s) to plugins/aidlc and .claude-plugin/marketplace.json")
+        print(f"plugin: wrote {len(files)} file(s) to plugins/aidlc, plugins/aidlc-practice and "
+              ".claude-plugin/marketplace.json")
         return 0
     except (PluginError, PolicyError) as exc:
         print(f"aidlc plugin: {exc}", file=sys.stderr)
