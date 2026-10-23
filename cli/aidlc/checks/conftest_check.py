@@ -22,6 +22,7 @@ from pathlib import Path
 
 from ..adapters import get_adapter
 from ..adapters.base import AdapterNotImplemented, RenderedFile, render_outputs, write_rendered
+from ..adapters.capabilities import agent_config_markers
 from ..adapters.claude_code import _deny_write, _sandbox_paths
 from ..ci_templates import render_ci
 from ..harness import REFUSED_WRITE, HarnessError, effective_permissions
@@ -278,8 +279,10 @@ def _extra_deny_write_ok(head: Path, protected: list[str]):
 
 
 def _is_agent_config(folded: str) -> bool:
+    """Any known tool's agent configuration (core/adapters/*.yaml agent_config), plus aidlc's own."""
+    dirs, files, prefixes = agent_config_markers()
     parts = folded.split("/")
-    return (".claude" in parts or parts[-1] in (".mcp.json", "claude.local.md")
+    return (any(part in dirs for part in parts) or parts[-1] in files or folded.startswith(prefixes)
             or folded.startswith((".aidlc/hooks/", ".aidlc/rules/")))
 
 
