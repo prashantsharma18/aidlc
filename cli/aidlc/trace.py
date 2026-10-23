@@ -95,7 +95,8 @@ def collect(root: Path | None = None) -> tuple[list[Element], list[str]]:
     md_sources = [("template", sorted((core / "templates").glob("*.md")), "guide"),
                   ("context", sorted(p for p in (core / "context").rglob("*.md")
                                      if p.name not in SKIP_NAMES), "guide"),
-                  ("skill", sorted((core / "skills").glob("*/SKILL.md")), "metadata.guide")]
+                  ("skill", sorted((core / "skills").glob("*/SKILL.md")), "metadata.guide"),
+                  ("agent", sorted((core / "agents").glob("*.md")), "guide")]
     for kind, paths, key in md_sources:
         for path in paths:
             rel = str(path.relative_to(root))

@@ -9,18 +9,18 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | Chapter | Title | Elements |
 |---|---|---|
 | 1 | The AI-native lifecycle, end to end | ctx-authority, intent, policy-tiers |
-| 2 | Context engineering | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, agents-md, codebase-map, ctx-authority, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, ctx-rules-file, ctx-task-bundle, policy-context-classes, policy-memory-policy, policy-tiers, progress-note, task-bundle, workspace |
+| 2 | Context engineering | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, agents-md, codebase-map, ctx-authority, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, ctx-rules-file, ctx-task-bundle, explorer, policy-context-classes, policy-memory-policy, policy-tiers, progress-note, task-bundle, workspace |
 | 3 | The agent harness | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, ctx-harness, ctx-task-bundle, observability-metrics, policy-permissions, policy-risk-inventory |
-| 4 | Understanding a codebase before you change it | codebase-map, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, evidence-pack, explorer-brief, policy-tiers |
+| 4 | Understanding a codebase before you change it | codebase-map, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, evidence-pack, explorer, explorer-brief, policy-tiers |
 | 5 | Intent to specification | intent, policy-data-classes, policy-tiers, spec |
 | 6 | Architecture, boundaries and contracts | adr, decision-frame, design-note, policy-tiers |
-| 7 | Planning and task design | coordination-plan, ctx-task-bundle, plan, policy-tiers, task-bundle |
-| 8 | Building with an agent | evidence-table, policy-tiers, pr-description, progress-note |
+| 7 | Planning and task design | coordination-plan, ctx-task-bundle, plan, planner, policy-tiers, task-bundle |
+| 8 | Building with an agent | evidence-table, implementer, policy-tiers, pr-description, progress-note |
 | 9 | Testing AI-written code | ci-github, evidence-table, policy-branch-protection, policy-tiers |
 | 10 | Evaluating agents and AI workflows | (none yet) |
-| 11 | Review, approval and release | change-record, ci-github, policy-branch-protection, policy-tiers, pr-description, readiness, release-runbook, review-record |
-| 12 | Operate, measure and improve | incident, observability-metrics, policy-model-routes, policy-routing, runbook |
-| 13 | Security and guardrails | ci-github, ctx-openwiki-governance, policy-data-classes, policy-dependency-policy, policy-model-routes, policy-permissions, policy-risk-inventory, policy-tool-register, security-review |
+| 11 | Review, approval and release | change-record, ci-github, policy-branch-protection, policy-tiers, pr-description, readiness, release-runbook, review-record, reviewer-bug, reviewer-compliance, reviewer-security |
+| 12 | Operate, measure and improve | incident, observability-metrics, ops-diagnoser, policy-model-routes, policy-routing, runbook |
+| 13 | Security and guardrails | ci-github, ctx-openwiki-governance, policy-data-classes, policy-dependency-policy, policy-model-routes, policy-permissions, policy-risk-inventory, policy-tool-register, reviewer-security, security-review |
 | 14 | Changes that span repositories | compat-matrix, coordination-plan, explorer-brief, policy-branch-protection, policy-tiers, release-runbook, workspace |
 | 15 | Modernising legacy systems | (none yet) |
 | 16 | Your workflow: individual, team and organisation | policy-tool-register, working-agreement |
@@ -33,6 +33,13 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | adapter-codex | adapter | `core/adapters/codex.yaml` | 2.6, 3.4, 3.6 |
 | adapter-copilot | adapter | `core/adapters/copilot.yaml` | 2.6, 3.4, 3.6 |
 | adapter-cursor | adapter | `core/adapters/cursor.yaml` | 2.6, 3.4, 3.6 |
+| explorer | agent | `core/agents/explorer.md` | 4.9, 2.8 A1, 2.9 B2 |
+| implementer | agent | `core/agents/implementer.md` | 8.4, 8.5, 8.6, 8.7, 8.8 |
+| ops-diagnoser | agent | `core/agents/ops-diagnoser.md` | 12.4, 12.15 |
+| planner | agent | `core/agents/planner.md` | 7.4, 7.7, 7.8, 7.10 |
+| reviewer-bug | agent | `core/agents/reviewer-bug.md` | 11.4 |
+| reviewer-compliance | agent | `core/agents/reviewer-compliance.md` | 11.4 |
+| reviewer-security | agent | `core/agents/reviewer-security.md` | 11.4, 13.11 |
 | ci-github | ci | `core/ci/github/setup.yaml` | 11.8, 9.7, 13.8 |
 | ctx-authority | context | `core/context/authority.md` | 2.4, 1.3 |
 | ctx-codebase-map | context | `core/context/standards/codebase-map.md` | 2.8 A4, 4.10, 2.8 A7 |
