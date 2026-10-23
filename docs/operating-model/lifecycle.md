@@ -26,6 +26,13 @@ and gate the framework provides at each stage.
 
 Discovery (`evidence-pack`, `explorer-brief`) runs before Design whenever the tier asks for it.
 
+The skills for Intent, Specify, Plan, Build and Verify, and `aidlc-context-setup`, are in the
+[aidlc plugin](../skills/README.md). The others follow in Plan 5b.
+
+**Three kinds of work** use the same stages: new work takes the full path by tier; a defect starts
+with a failing test that reproduces it; a change request amends the spec through its owner (spec
+v2), and the plan returns for approval.
+
 ## Rules that hold at every stage
 
 - The agent takes part in every stage and owns none. It drafts, it never approves.

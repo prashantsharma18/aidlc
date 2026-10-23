@@ -13,8 +13,8 @@ The core (`core/`) is tool-neutral. An adapter renders it, plus each repository'
 |---|---|---|---|---|
 | `render_rules` | `AGENTS.md`, `.aidlc/claude.md` | `CLAUDE.md` = `@AGENTS.md` + Claude-only lines | `.github/copilot-instructions.md` pointer (Copilot also reads `AGENTS.md`) | built |
 | `render_folder_rules` | `.aidlc/rules/*.md` (`paths:`) | `.claude/rules/*.md` (`paths:`) | `.github/instructions/*.instructions.md` (`applyTo:`) | built |
-| `render_skills` | `core/skills/*/SKILL.md` | none in the repository: the aidlc plugin carries them | `.agents/skills/` | in the contract; skills arrive in Plan 5a |
-| `render_agents` | `core/agents/*.md` | none in the repository: the aidlc plugin carries them | `.github/agents/*.agent.md` | in the contract; agents arrive in Plan 5a |
+| `render_skills` | `core/skills/*/SKILL.md` | none in the repository: `aidlc plugin build` puts them in the aidlc plugin | `.agents/skills/` | built (plugin) |
+| `render_agents` | `core/agents/*.md` | none in the repository: `aidlc plugin build` puts them in the aidlc plugin | `.github/agents/*.agent.md` | built (plugin) |
 | `render_permissions` | `core/policy/permissions.yaml` (+ repository narrowing) | `.claude/settings.json` `permissions` and `sandbox` | custom-agent tool limits; CI as backstop | built |
 | `render_hooks` | `core/hooks/*`, effective permissions | `.aidlc/hooks/` (`guard.py`, `post_check.py`, `claude_shim.py`, `harness.json`); the hook entries live in `.claude/settings.json` | `.github/hooks/*.json` (`preToolUse`) → a Copilot dialect | Claude Code built |
 | runtime shim | tool hook payload ↔ generic contract | `core/hooks/claude_shim.py`: the shared flow `run` and the `CLAUDE` dialect | a second dialect reusing `run` | Claude Code built |
