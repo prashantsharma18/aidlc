@@ -1,0 +1,3 @@
+/home/psharma/work/shipment-tracking/CLAUDE.md
+/home/psharma/work/shipment-tracking/customer-portal/CLAUDE.md
+/home/psharma/work/shipment-tracking/customer-portal/AGENTS.md

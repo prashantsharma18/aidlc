@@ -1,0 +1,3 @@
+plugins: ['aidlc-practice@inline', 'aidlc@inline', 'cc-plugin-agents-md@builtin', 'cc-plugin-plugin-authoring@builtin', 'cc-plugin-sec-default@builtin', 'cc-plugin-telemetry@builtin']
+mcp servers: ['lab-jira']
+clean
