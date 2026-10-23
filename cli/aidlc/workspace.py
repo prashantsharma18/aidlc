@@ -13,7 +13,8 @@ from .templates import load_template, render
 
 READ_ONLY_SHELL = ["git status", "git log*", "git show*", "git diff*", "ls*"]
 DENY_TOOLS = ["Edit", "Write", "NotebookEdit", "Bash(git commit*)", "Bash(git push*)",
-              "Bash(git checkout*)", "Bash(git switch*)", "Bash(git reset*)"]
+              "Bash(git checkout*)", "Bash(git switch*)", "Bash(git reset*)",
+              "Skill(anthropic-skills *)"]   # the account's synced skills (Plan 6 F2)
 ROW_PLACEHOLDER = "| <repo> | <team> | <slice, role> | AGENTS.md |"
 
 
@@ -46,6 +47,7 @@ def _settings(plugins: list[str]) -> dict:
                                    "denyWrite": ["./"]},
                     "network": {"allowedDomains": []}},
         "autoMemoryEnabled": False,
+        "disableClaudeAiConnectors": True,   # the account's connectors (Gmail, Drive, ...) can write elsewhere
     }
     if plugins:
         settings["enabledPlugins"] = {p: False for p in plugins}

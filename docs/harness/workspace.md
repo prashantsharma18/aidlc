@@ -32,6 +32,24 @@ write none. All writing happens in a session started inside one repository.
   by default.
 - **Switches off user plugins** you name with `--disable-plugin`. A user plugin brings its own
   skills and hooks, which would compete with the aidlc stage skills.
+- **Switches off the account's extensions.** claude.ai connectors (Gmail, Drive and the like) are
+  disabled, and the account's synced skills (`anthropic-skills`) are denied.
+
+## The same switches in a repository
+
+A repository opts in through `.aidlc/config.yaml`, and `aidlc render` writes the project settings:
+
+```yaml
+harness:
+  disable_user_plugins: [superpowers@claude-plugins-official]   # enabledPlugins: false
+  disable_claude_ai_connectors: true                            # disableClaudeAiConnectors
+  deny_skills: ["anthropic-skills *"]                           # permissions.deny Skill(...)
+```
+
+A denied skill is still listed in the session, but it cannot run. Removing it from the list needs
+`syncClaudeAiSkills: false`, which only user or local settings honour, and which also moves the
+synced skills out of every other session on that machine. That is the person's choice, not the
+repository's.
 
 ## Set it up
 

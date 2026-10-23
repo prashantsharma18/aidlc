@@ -128,6 +128,7 @@ def _hook(phase: str) -> dict:
 
 
 PLUGIN_ID = re.compile(r"[a-z0-9][a-z0-9._-]*@[a-z0-9][a-z0-9._-]*")   # <plugin>@<marketplace>
+SKILL_RULE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*(:[A-Za-z0-9][A-Za-z0-9._-]*| \*)?")   # Skill(...) rule body
 
 class ClaudeCodeAdapter:
     name = "claude-code"
@@ -218,6 +219,16 @@ class ClaudeCodeAdapter:
             raise ValueError(f"{CONFIG}: {sorted(both)} both enabled and disabled")
         if plugins or enable:
             settings["enabledPlugins"] = {**{p: False for p in plugins}, **{p: True for p in enable}}
+        connectors = cfg.harness.get("disable_claude_ai_connectors", False)
+        if not isinstance(connectors, bool):
+            raise ValueError(f"{CONFIG}: harness.disable_claude_ai_connectors must be true or false, got {connectors!r}")
+        if connectors:   # Plan 6 F2: the account's claude.ai connectors would load in every session
+            settings["disableClaudeAiConnectors"] = True
+        skills = cfg.harness.get("deny_skills") or []
+        if not isinstance(skills, list) or not all(isinstance(k, str) and SKILL_RULE.fullmatch(k) for k in skills):
+            raise ValueError(f"{CONFIG}: harness.deny_skills must be a list of skill rules such as "
+                             f"'anthropic-skills *' or 'plugin:skill', got {skills!r}")
+        settings["permissions"]["deny"] += [f"Skill({k})" for k in skills]   # e.g. the account's synced skills
         if enable:   # ADR 0008: the domain and team levels, from approved marketplaces only
             settings["extraKnownMarketplaces"] = {
                 m: {"source": dict(approved[m])} for m in sorted({p.split("@", 1)[1] for p in enable})}
