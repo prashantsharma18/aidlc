@@ -13,16 +13,16 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | 3 | The agent harness | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, aidlc-build-slice, ctx-harness, ctx-task-bundle, observability-metrics, policy-permissions, policy-risk-inventory |
 | 4 | Understanding a codebase before you change it | aidlc-adopt, codebase-map, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, evidence-pack, explorer, explorer-brief, policy-tiers |
 | 5 | Intent to specification | aidlc-intent, aidlc-specify, intent, policy-data-classes, policy-tiers, spec |
-| 6 | Architecture, boundaries and contracts | adr, decision-frame, design-note, policy-tiers |
+| 6 | Architecture, boundaries and contracts | adr, api-and-interface-design, decision-frame, deprecation-and-migration, design-note, frontend-ui-engineering, policy-tiers |
 | 7 | Planning and task design | aidlc-plan, coordination-plan, ctx-task-bundle, plan, planner, policy-tiers, task-bundle |
 | 8 | Building with an agent | aidlc-build-slice, aidlc-verify, debugging-and-error-recovery, evidence-table, implementer, policy-tiers, pr-description, progress-note |
-| 9 | Testing AI-written code | aidlc-verify, ci-github, debugging-and-error-recovery, evidence-table, performance-optimization, policy-branch-protection, policy-tiers |
+| 9 | Testing AI-written code | aidlc-verify, ci-github, debugging-and-error-recovery, evidence-table, frontend-ui-engineering, performance-optimization, policy-branch-protection, policy-tiers |
 | 10 | Evaluating agents and AI workflows | (none yet) |
-| 11 | Review, approval and release | change-record, ci-github, policy-branch-protection, policy-tiers, pr-description, readiness, release-runbook, review-record, reviewer-bug, reviewer-compliance, reviewer-security |
+| 11 | Review, approval and release | change-record, ci-github, code-review-and-quality, policy-branch-protection, policy-tiers, pr-description, readiness, release-runbook, review-record, reviewer-bug, reviewer-compliance, reviewer-security |
 | 12 | Operate, measure and improve | aidlc-intent, debugging-and-error-recovery, incident, observability-and-instrumentation, observability-metrics, ops-diagnoser, performance-optimization, policy-model-routes, policy-routing, runbook |
 | 13 | Security and guardrails | ci-github, ctx-openwiki-governance, policy-data-classes, policy-dependency-policy, policy-model-routes, policy-permissions, policy-risk-inventory, policy-tool-register, reviewer-security, security-and-hardening, security-review |
-| 14 | Changes that span repositories | compat-matrix, coordination-plan, explorer-brief, policy-branch-protection, policy-tiers, release-runbook, workspace |
-| 15 | Modernising legacy systems | aidlc-adopt |
+| 14 | Changes that span repositories | api-and-interface-design, compat-matrix, coordination-plan, explorer-brief, policy-branch-protection, policy-tiers, release-runbook, workspace |
+| 15 | Modernising legacy systems | aidlc-adopt, deprecation-and-migration |
 | 16 | Your workflow: individual, team and organisation | aidlc-adopt, policy-tool-register, working-agreement |
 
 ## By element
@@ -60,7 +60,11 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | policy-routing | policy | `core/policy/routing.yaml` | 12.13, 12.12 |
 | policy-tiers | policy | `core/policy/tiers.yaml` | 1.10, 2.14, 4.7, 5.9, 6.17, 7.14, 8.15, 9.13, 11.13, 14.18 |
 | policy-tool-register | policy | `core/policy/tool-register.yaml` | 13.4, 16.4 |
+| api-and-interface-design | practice | `core/practices/api-and-interface-design/SKILL.md` | 6.11, 6.12, 14.8 |
+| code-review-and-quality | practice | `core/practices/code-review-and-quality/SKILL.md` | 11.4, 11.5 |
 | debugging-and-error-recovery | practice | `core/practices/debugging-and-error-recovery/SKILL.md` | 8.8, 9.2, 12.6 |
+| deprecation-and-migration | practice | `core/practices/deprecation-and-migration/SKILL.md` | 15.10, 15.11, 6.11 |
+| frontend-ui-engineering | practice | `core/practices/frontend-ui-engineering/SKILL.md` | 6.4, 9.5 |
 | observability-and-instrumentation | practice | `core/practices/observability-and-instrumentation/SKILL.md` | 12.3, 12.4, 12.11 |
 | performance-optimization | practice | `core/practices/performance-optimization/SKILL.md` | 9.5, 12.11 |
 | security-and-hardening | practice | `core/practices/security-and-hardening/SKILL.md` | 13.2, 13.4, 13.11 |

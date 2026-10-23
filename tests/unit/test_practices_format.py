@@ -37,7 +37,6 @@ def practices():
 
 
 class PracticeFormatTest(unittest.TestCase):
-    @unittest.expectedFailure  # removed in Task 3, when all eight practices exist
     def test_the_curated_set(self):
         self.assertEqual({p.parent.name for p, _, _ in practices()}, EXPECTED)
 
