@@ -53,7 +53,7 @@ plays the existing product. The story's code is written only through the harness
 
 ## The story
 
-Jira SHIP story (the user creates it): **"Show customers an estimated delivery window."** Tier 2:
+Jira SHIP story (the user creates it): **"Show customers an estimated delivery window."** Its key (SHIP-n below) is known once created. Tier 2:
 an additive contract change consumed by another team.
 
 | Slice | Repository | Change |
@@ -115,7 +115,7 @@ claude -p "<skill invocation and inputs>" \
 
 1. `aidlc workspace init <dir> --repo <path>…`: `WORKSPACE.md` and the read-only harness, with tests.
 2. Demo runbook `docs/demo/shipment-tracking.md`: replay the demo step by step.
-3. Evidence `docs/verification/2026-10-2x-shipment-tracking-demo.md`: what ran, what blocked, what
+3. Evidence `docs/verification/<run date>-shipment-tracking-demo.md`: what ran, what blocked, what
    was simulated, with outputs.
 4. Findings: each one fixed in the framework (test first) or ruled on.
 
