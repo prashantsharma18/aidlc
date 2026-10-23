@@ -223,6 +223,11 @@ class AiGatesReviewFixesTest(unittest.TestCase):
         self.assertNotIn("sys.path.insert(0", suite)
         self.assertIn("sys.path.append(str(ROOT))", suite)
 
+    def test_the_attack_suite_has_room_for_its_worst_case(self):
+        # 17 sessions at the 180 s session timeout is about 51 minutes before any retry (Plan 4b minor).
+        wf = yaml.safe_load(AI_GATES.read_text())
+        self.assertEqual(wf["jobs"]["agent-config-evals"]["timeout-minutes"], 60)
+
     def test_review_steps_scrub_the_key_from_subprocesses(self):
         wf = yaml.safe_load(AI_GATES.read_text())
         for step in wf["jobs"]["ai-review-passes"]["steps"]:

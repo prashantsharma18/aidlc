@@ -65,9 +65,21 @@ no authentication failures, and it posted its finding.
 **No approval.** `gh api repos/prashantsharma18/aidlc/pulls/3/reviews` listed four `COMMENTED`
 reviews from `github-actions[bot]`, and no `APPROVED`.
 
+## Addendum (2026-10-23): runs 5 to 8 and the ruleset
+
+| Run | Commit | ai-review | agent-config-evals | What it showed |
+|---|---|---|---|---|
+| [39818864651](https://github.com/prashantsharma18/aidlc/actions/runs/39818864651) | `44c654c` | success | success | The diagnostic transcript output was removed; both passes still reviewed. |
+| [39820340375](https://github.com/prashantsharma18/aidlc/actions/runs/39820340375) | `150e1ae` | **failure** | success | The code-review plugin reviews a pull request once, so on the next push it reported it had already reviewed, and the gate failed. Fixed in `fa7c033`: only the bug pass may report `already_reviewed`; the security pass reviews every push. |
+| [39824303199](https://github.com/prashantsharma18/aidlc/actions/runs/39824303199) | `fa7c033` | success | **failure** | Attack row 11 failed on a tool error that happened before any control acted. Fixed in `8b1be54`: the suite retries a call that failed on its own with no effect. |
+| [39825853045](https://github.com/prashantsharma18/aidlc/actions/runs/39825853045) | `8b1be54` | success | success | The review action allow-listed (inputs, env flags, exact `claude_args`); every attack row passed. |
+
+**The ruleset after merge.** `gh api repos/prashantsharma18/aidlc/rulesets/25475561` on 2026-10-23
+returned: enforcement `active`; no bypass actors; deletion and non-fast-forward blocked; a pull
+request with `required_review_thread_resolution: true`; and the required checks `unit`, `sandbox`,
+`policy`, `ai-review` and `agent-config-evals`.
+
 ## Not verified
 
 - **Fork pull requests.** There are no secrets, so the jobs fail by design; this was not exercised.
-- **The ruleset change** (the two required checks and conversation resolution). It is applied after
-  merge and recorded in the pull request.
 - **A model that claims it reviewed when it did not.** The fail-closed check cannot detect that.

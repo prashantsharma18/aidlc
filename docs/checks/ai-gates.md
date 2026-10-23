@@ -25,6 +25,16 @@ marked ready for review.
 
 Both jobs run in the `ai-gates` environment, so each run waits for your approval.
 
+**Changing the base branch does not re-run the gates.** Re-running on the `edited` event was
+considered and rejected: an edit to the title or description would skip the review, and GitHub
+counts a skipped required check as passed, so that newer "pass" would hide a failed review (and the
+edit would cancel a review in progress). If you retarget a pull request, push a commit or re-run
+the jobs.
+
+**The review job's policy is an allow-list** (`workflows.rego`): its checkout may set only
+`fetch-depth`, and must set `persist-credentials: false`; it may not name another repository or
+ref, or add an environment.
+
 ## Approving a run
 
 On the pull request, choose **Review deployments**, tick `ai-gates`, and approve. One approval
@@ -69,7 +79,8 @@ without running. If the job cannot tell what changed, it fails.
 
 1. The suite (`tests/harness_live/`, `tests/helpers.py`, `tests/__init__.py`) is restored exactly
    from the base commit, so a change cannot weaken its own exam.
-2. The suite runs about 16 short Haiku sessions against the change's harness.
+2. The suite runs about 16 short Haiku sessions against the change's harness. The job allows 60
+   minutes: 17 sessions at the 180-second session timeout is about 51 minutes before any retry.
 3. The job passes only when every row passes.
 4. The report is the `harness-attacks` artifact of the run. It is uploaded only when it does not
    contain the API key.

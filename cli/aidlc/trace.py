@@ -82,6 +82,16 @@ def collect(root: Path | None = None) -> tuple[list[Element], list[str]]:
         problems += _guide_problems(meta.get("guide"), rel)
         elements.append(Element(meta.get("id", path.stem), "observability", rel, list(meta.get("guide") or [])))
 
+    for path in sorted((core / "adapters").glob("*.yaml")):
+        rel = str(path.relative_to(root))
+        try:
+            meta = load_yaml(path).get("meta", {})
+        except (PolicyError, AttributeError) as exc:
+            problems.append(f"{rel}: {exc}")
+            continue
+        problems += _guide_problems(meta.get("guide"), rel)
+        elements.append(Element(meta.get("id", path.stem), "adapter", rel, list(meta.get("guide") or [])))
+
     md_sources = [("template", sorted((core / "templates").glob("*.md")), "guide"),
                   ("context", sorted(p for p in (core / "context").rglob("*.md")
                                      if p.name not in SKIP_NAMES), "guide"),
@@ -155,7 +165,10 @@ def check_links(root: Path | None = None) -> list[str]:
 
 
 def generated_docs(root: Path | None = None) -> dict[Path, str]:
+    from .adapters.capabilities import capabilities_doc  # local: adapters import policy, which trace imports
+
     root = root or framework_root()
     elements, _ = collect(root)
     return {root / "docs" / "traceability.md": render_traceability(elements),
-            root / "docs" / "operating-model" / "tiers-table.md": render_tiers_table(root)}
+            root / "docs" / "operating-model" / "tiers-table.md": render_tiers_table(root),
+            root / "docs" / "adapters" / "capabilities.md": capabilities_doc(root)}

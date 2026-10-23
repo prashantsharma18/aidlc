@@ -73,7 +73,8 @@ Doctor reads the repository. It cannot see how a session starts.
 - **Where the session starts.** A session started in a subdirectory does not load the project
   settings, so no permissions, sandbox or hooks apply (check 7 in
   [the sandbox verification](../verification/2026-10-18-sandbox-wsl2.md#2026-10-19-check-7)).
-  Start Claude Code at the repository root. Enforcing this belongs to managed or user settings.
+  Start Claude Code at the repository root. The optional [root guard](root-guard.md) can enforce
+  it; the framework does not require it.
 - **Options given when a session starts.** D13 reads the settings files. It cannot see a
   `--settings` file or a permission mode passed on the command line.
 

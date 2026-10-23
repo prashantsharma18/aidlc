@@ -24,3 +24,9 @@ class CopilotAdapter:
 
     def render_hooks(self, repo: Path) -> list[RenderedFile]:
         raise AdapterNotImplemented(_MSG)
+
+    def render_skills(self, repo: Path) -> list[RenderedFile]:
+        raise AdapterNotImplemented(_MSG)
+
+    def render_agents(self, repo: Path) -> list[RenderedFile]:
+        raise AdapterNotImplemented(_MSG)

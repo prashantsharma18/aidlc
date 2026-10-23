@@ -319,3 +319,27 @@ test_the_real_review_shapes_pass if {
 	count(denials(review_with(security))) == 0
 	count(denials(review_with(plugin))) == 0
 }
+
+# The review job's checkout is allow-listed too (Plan 4b minor): no other repository or ref, and
+# credentials are never kept.
+test_review_checkout_with_another_input_is_denied if {
+	every inputs in [
+		{"persist-credentials": false, "repository": "someone/else"},
+		{"persist-credentials": false, "ref": "refs/heads/other"},
+		{"persist-credentials": true},
+		{},
+	] {
+		bad := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/steps/0/with", "value": inputs}])
+		"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+	}
+}
+
+test_review_checkout_with_env_is_denied if {
+	bad := json.patch(review, [{"op": "add", "path": "/jobs/ai-review/steps/0/env", "value": {"GIT_DIR": "x"}}])
+	"job ai-review grants pull-requests: write; the verify workflow needs read only" in denials(bad)
+}
+
+test_review_checkout_with_full_history_passes if {
+	ok := json.patch(review, [{"op": "replace", "path": "/jobs/ai-review/steps/0/with", "value": {"fetch-depth": 0, "persist-credentials": false}}])
+	count(denials(ok)) == 0
+}

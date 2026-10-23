@@ -1,0 +1,19 @@
+# What Cursor reads and enforces, from its official docs (ADR 0006). Planned: not rendered yet.
+meta: {id: adapter-cursor, owner: "@harness-owners", review_by: "2027-01-23", guide: ["2.6", "3.4", "3.6"]}
+tool: cursor
+status: planned
+verified: "2026-10-23"
+sources: ["https://cursor.com/docs/context/rules", "https://cursor.com/docs/context/skills",
+          "https://cursor.com/docs/context/subagents", "https://cursor.com/docs/agent/hooks",
+          "https://cursor.com/docs/reference/third-party-hooks", "https://cursor.com/docs/cli/reference/permissions"]
+surfaces: [ide, cli, cloud-agent]
+rules: {files: [AGENTS.md], agents_md: native, path_scoped: {location: ".cursor/rules/*.mdc", scope_key: globs}}
+skills: {dirs: [".cursor/skills", ".agents/skills", ".claude/skills"], delivery: repository-or-plugin}
+agents: {location: ".cursor/agents/*.md", tool_limits: readonly-flag}
+hooks: {location: ".cursor/hooks.json", pre_tool_event: preToolUse,
+        deny: "permission deny on stdout, or exit 2; set failClosed true",
+        on_error: configurable, on_timeout: configurable, also_runs: [".claude/settings.json"]}
+permissions: {location: ".cursor/permissions.json; .cursor/cli.json permissions (deny wins)", declarative: true}
+sandbox: {available: true, notes: "seatbelt on macOS; Landlock and seccomp on Linux 6.2 or later"}
+mcp: {location: ".cursor/mcp.json"}
+agent_config: {dir_names: [".cursor"], file_names: [".cursorrules"], prefixes: []}

@@ -38,10 +38,10 @@ class InitRepoTest(unittest.TestCase):
 
     def test_cli_requires_git_repo_root(self):
         with tempfile.TemporaryDirectory() as tmp:
-            code, out, _ = run_cli("init-repo", tmp, "--name", "x", "--owner", "o",
-                                   "--profile", "node", "--purpose", "p")
+            code, out, err = run_cli("init-repo", tmp, "--name", "x", "--owner", "o",
+                                     "--profile", "node", "--purpose", "p")
             self.assertEqual(code, 2)
-            self.assertIn("not the root of a git repository", out)
+            self.assertIn("not the root of a git repository", err)   # errors go to stderr (m7, owner-approved 2026-10-23)
 
     def test_cli_from_subdirectory_rejected(self):
         with TempRepo({"src/a.txt": "a\n"}) as root:

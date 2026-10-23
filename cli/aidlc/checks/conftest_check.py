@@ -21,7 +21,8 @@ import unicodedata
 from pathlib import Path
 
 from ..adapters import get_adapter
-from ..adapters.base import AdapterNotImplemented, RenderedFile, write_rendered
+from ..adapters.base import AdapterNotImplemented, RenderedFile, render_outputs, write_rendered
+from ..adapters.capabilities import agent_config_markers
 from ..adapters.claude_code import _deny_write, _sandbox_paths
 from ..ci_templates import render_ci
 from ..harness import REFUSED_WRITE, HarnessError, effective_permissions
@@ -277,9 +278,12 @@ def _extra_deny_write_ok(head: Path, protected: list[str]):
     return ok
 
 
-def _is_agent_config(folded: str) -> bool:
+def _is_agent_config(folded: str, markers: tuple | None = None) -> bool:
+    """Any known tool's agent configuration (core/adapters/*.yaml agent_config), plus aidlc's own.
+    Pass `markers` (from agent_config_markers) when judging many paths."""
+    dirs, files, prefixes = markers or agent_config_markers()
     parts = folded.split("/")
-    return (".claude" in parts or parts[-1] in (".mcp.json", "claude.local.md")
+    return (any(part in dirs for part in parts) or parts[-1] in files or folded.startswith(prefixes)
             or folded.startswith((".aidlc/hooks/", ".aidlc/rules/")))
 
 
@@ -298,9 +302,10 @@ def _judge_tracked_paths(head: Path, rendered: set[str]) -> list[Finding]:
     except (CheckError, OSError, subprocess.SubprocessError) as exc:
         return [Finding("FAIL", "", 0, f"cannot list the tracked files to judge agent configuration: {exc}")]
     out = []
+    markers = agent_config_markers()
     for path in tracked:
         folded = _fold(path)
-        if not _is_agent_config(folded) or path in rendered:
+        if not _is_agent_config(folded, markers) or path in rendered:
             continue
         if path.startswith(".aidlc/rules/") and "/" not in path[len(".aidlc/rules/"):]:
             continue
@@ -396,26 +401,28 @@ def judge_generated(head: Path, trusted: Path) -> list[Finding]:
     if refused:
         return refused
     findings: list[Finding] = _judge_tracked_entries(head)
+    rendered: set[str] = set()       # every listed tool's files: one tool's files are never another's extras
+    managed: list[str] = [".aidlc/hooks"]
     for name in tools:
         try:
             adapter = get_adapter(name)
-            files = (adapter.render_rules(head) + adapter.render_folder_rules(head)
-                     + adapter.render_permissions(head) + adapter.render_hooks(head)
-                     + _render_ci_for(head, github_ci))
+            files = render_outputs(adapter, head) + _render_ci_for(head, github_ci)
             files = [_with_committed_settings(head, f) for f in files]
-            problems = write_rendered(head, files, check=True, managed_dirs=adapter.managed_dirs)
+            problems = write_rendered(head, files, check=True, managed_dirs=adapter.managed_dirs,
+                                      owner=adapter.name)
         except (AdapterNotImplemented, ValueError, HarnessError, PolicyError, OSError) as exc:
             findings.append(Finding("FAIL", "", 0, f"cannot render the {name} files to compare: {exc}"))
             continue
         for problem in problems:
             findings.append(Finding("FAIL", problem.split(":", 1)[0] if ": " in problem else "", 0, problem))
-        rendered = {f.path for f in files}
-        findings += _walk_extras(head, rendered, tuple(dict.fromkeys((*adapter.managed_dirs, ".aidlc/hooks"))), False)
+        rendered |= {f.path for f in files}
+        managed += adapter.managed_dirs
         if name == "claude-code":
             findings += [Finding("FAIL", rel, 0, f"{rel}: {UNMANAGED}") for rel in UNMANAGED_FILES
                          if _kind(head / rel) != "missing"]
-            findings += _walk_extras(head, rendered, (".claude",), True)
-            findings += _judge_tracked_paths(head, rendered)
+            findings += _walk_extras(head, {f.path for f in files}, (".claude",), True)
+    findings += _walk_extras(head, rendered, tuple(dict.fromkeys(managed)), False)
+    findings += _judge_tracked_paths(head, rendered)
     return findings
 
 

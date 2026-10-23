@@ -221,3 +221,11 @@ class ClaudeCodeAdapter:
                                 json.dumps(harness_data(repo), indent=2) + "\n",
                                 "core/policy/permissions.yaml or .aidlc/permissions.yaml"))
         return out
+
+    def render_skills(self, repo: Path) -> list[RenderedFile]:
+        """Claude Code gets skills and agents from the aidlc plugin (ADR 0005), not from the repository."""
+        return []
+
+    def render_agents(self, repo: Path) -> list[RenderedFile]:
+        """Claude Code gets skills and agents from the aidlc plugin (ADR 0005), not from the repository."""
+        return []

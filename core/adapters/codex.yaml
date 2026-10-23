@@ -1,0 +1,19 @@
+# What Codex reads and enforces, from its official docs (ADR 0006). Planned: not rendered yet.
+meta: {id: adapter-codex, owner: "@harness-owners", review_by: "2027-01-23", guide: ["2.6", "3.4", "3.6"]}
+tool: codex
+status: planned
+verified: "2026-10-23"
+sources: ["https://learn.chatgpt.com/docs/agent-configuration/agents-md", "https://learn.chatgpt.com/docs/build-skills",
+          "https://learn.chatgpt.com/docs/agent-configuration/subagents", "https://learn.chatgpt.com/docs/hooks",
+          "https://learn.chatgpt.com/docs/agent-approvals-security", "https://learn.chatgpt.com/docs/enterprise/managed-configuration"]
+surfaces: [cli, ide, desktop, exec, cloud]
+rules: {files: [AGENTS.md], agents_md: native, path_scoped: {location: "nested AGENTS.md (32 KiB in total)", scope_key: directory}}
+skills: {dirs: [".agents/skills"], delivery: repository-or-plugin}
+agents: {location: ".codex/agents/*.toml", tool_limits: none}
+hooks: {location: ".codex/hooks.json or .codex/config.toml [hooks] (trusted projects only)", pre_tool_event: PreToolUse,
+        deny: "hookSpecificOutput.permissionDecision deny, or exit 2", on_error: fail-open, on_timeout: fail-open,
+        also_runs: []}
+permissions: {location: ".codex/config.toml sandbox_mode and approval_policy; .codex/rules/*.rules; requirements.toml (organisation)", declarative: true}
+sandbox: {available: true, notes: "seatbelt on macOS; bubblewrap and seccomp on Linux"}
+mcp: {location: ".codex/config.toml [mcp_servers]"}
+agent_config: {dir_names: [".codex", ".agents"], file_names: ["agents.override.md"], prefixes: []}

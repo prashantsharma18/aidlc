@@ -1,0 +1,19 @@
+# What Claude Code reads and enforces, from its official docs (ADR 0006). Rendered today.
+meta: {id: adapter-claude-code, owner: "@harness-owners", review_by: "2027-04-23", guide: ["2.6", "3.4", "3.6"]}
+tool: claude-code
+status: supported
+verified: "2026-10-23"
+sources: ["https://code.claude.com/docs/en/settings", "https://code.claude.com/docs/en/hooks",
+          "https://code.claude.com/docs/en/skills", "https://code.claude.com/docs/en/sub-agents"]
+surfaces: [cli, ide, desktop, headless]
+rules: {files: [CLAUDE.md], agents_md: import, path_scoped: {location: ".claude/rules/*.md", scope_key: paths}}
+skills: {dirs: [".claude/skills"], delivery: plugin}
+agents: {location: ".claude/agents/*.md (plugin agents/)", tool_limits: classes,
+         tool_names: {read: [Read, Glob, Grep], edit: [Edit, Write], shell: [Bash]}}
+hooks: {location: ".claude/settings.json", pre_tool_event: PreToolUse,
+        deny: "exit 2, or hookSpecificOutput.permissionDecision deny", on_error: fail-closed, on_timeout: fail-closed,
+        also_runs: []}
+permissions: {location: ".claude/settings.json (project); managed-settings.json (organisation)", declarative: true}
+sandbox: {available: true, notes: "bubblewrap and socat on Linux; seatbelt on macOS"}
+mcp: {location: ".mcp.json"}
+agent_config: {dir_names: [".claude"], file_names: [".mcp.json", "claude.local.md"], prefixes: []}

@@ -10,6 +10,8 @@ repeat them.
 > ⚠️ **Watch out:** Start Claude Code at the repository root. A session started in a
 > subdirectory does not load the project settings, so no permissions, sandbox or hooks apply
 > ([check 7](../verification/2026-10-18-sandbox-wsl2.md#2026-10-19-check-7)).
+> Start at a repository root, or at a workspace root (read-only). The optional
+> [root guard](root-guard.md) can enforce this; without it, trusted CI and branch protection are the backstop.
 
 ## Precedence and defaults
 

@@ -37,4 +37,4 @@ def render_ci(repo: Path) -> list[RenderedFile]:
     text = text.replace("{{BASE_BRANCH}}", base).replace("{{SETUP}}\n", setup)
     if "{{" in re.sub(r"\$\{\{.*?\}\}", "", text):
         raise ValueError(f"{TEMPLATE}: a template token was not replaced")
-    return [RenderedFile(OUTPUT, text, source=TEMPLATE)]
+    return [RenderedFile(OUTPUT, text, source=TEMPLATE, shared=True)]

@@ -9,8 +9,8 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | Chapter | Title | Elements |
 |---|---|---|
 | 1 | The AI-native lifecycle, end to end | ctx-authority, intent, policy-tiers |
-| 2 | Context engineering | agents-md, codebase-map, ctx-authority, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, ctx-rules-file, ctx-task-bundle, policy-context-classes, policy-memory-policy, policy-tiers, progress-note, task-bundle, workspace |
-| 3 | The agent harness | ctx-harness, ctx-task-bundle, observability-metrics, policy-permissions, policy-risk-inventory |
+| 2 | Context engineering | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, agents-md, codebase-map, ctx-authority, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, ctx-rules-file, ctx-task-bundle, policy-context-classes, policy-memory-policy, policy-tiers, progress-note, task-bundle, workspace |
+| 3 | The agent harness | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, ctx-harness, ctx-task-bundle, observability-metrics, policy-permissions, policy-risk-inventory |
 | 4 | Understanding a codebase before you change it | codebase-map, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, evidence-pack, explorer-brief, policy-tiers |
 | 5 | Intent to specification | intent, policy-data-classes, policy-tiers, spec |
 | 6 | Architecture, boundaries and contracts | adr, decision-frame, design-note, policy-tiers |
@@ -29,6 +29,10 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 
 | Element | Kind | File | Guide |
 |---|---|---|---|
+| adapter-claude-code | adapter | `core/adapters/claude-code.yaml` | 2.6, 3.4, 3.6 |
+| adapter-codex | adapter | `core/adapters/codex.yaml` | 2.6, 3.4, 3.6 |
+| adapter-copilot | adapter | `core/adapters/copilot.yaml` | 2.6, 3.4, 3.6 |
+| adapter-cursor | adapter | `core/adapters/cursor.yaml` | 2.6, 3.4, 3.6 |
 | ci-github | ci | `core/ci/github/setup.yaml` | 11.8, 9.7, 13.8 |
 | ctx-authority | context | `core/context/authority.md` | 2.4, 1.3 |
 | ctx-codebase-map | context | `core/context/standards/codebase-map.md` | 2.8 A4, 4.10, 2.8 A7 |

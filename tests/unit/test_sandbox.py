@@ -176,7 +176,9 @@ class RootLayoutTest(unittest.TestCase):
         install = self.box.argv("x", "install")
         pairs = [(install[i + 1], install[i + 2]) for i, a in enumerate(install) if a == "--ro-bind"]
         self.assertIn((real, real), pairs)
-        self.assertNotIn(str(Path(real).parent), [b for _, b in pairs])
+        parent = str(Path(real).parent)
+        if parent not in sandbox.ROOT_BINDS:     # /etc is always bound read-only (owner-approved change, 2026-10-23)
+            self.assertNotIn(parent, [b for _, b in pairs])
         test = self.box.argv("x", "test")
         self.assertNotIn(real, test)
 
