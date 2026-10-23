@@ -64,7 +64,8 @@ You need root, because managed settings and the guard must be files the develope
    install it:
 
    ```bash
-   python3 - core/managed/managed-settings.hooks.json /etc/claude-code/managed-settings.json > /tmp/managed-settings.json <<'PY'
+   staged=$(mktemp)    # a private file only you can write, never a fixed name under /tmp
+   python3 - core/managed/managed-settings.hooks.json /etc/claude-code/managed-settings.json > "$staged" <<'PY'
    import json, sys
    add = json.load(open(sys.argv[1]))["hooks"]["PreToolUse"]
    try:
@@ -75,8 +76,9 @@ You need root, because managed settings and the guard must be files the develope
    current["hooks"]["PreToolUse"] = [e for e in current["hooks"]["PreToolUse"] if e not in add] + add
    print(json.dumps(current, indent=2))
    PY
-   cat /tmp/managed-settings.json
-   sudo install -m 644 /tmp/managed-settings.json /etc/claude-code/managed-settings.json
+   cat "$staged"
+   sudo install -m 644 "$staged" /etc/claude-code/managed-settings.json
+   rm "$staged"
    ```
 
 3. Check it: start `claude` in a subdirectory of an aidlc repository and ask it to read a file.

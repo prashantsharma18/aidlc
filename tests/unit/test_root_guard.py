@@ -100,8 +100,11 @@ class RootGuardTest(unittest.TestCase):
         [entry] = hooks
         self.assertEqual(entry["matcher"], ".*")
         [hook] = entry["hooks"]
-        self.assertEqual(hook["command"], f"python3 -I {INSTALLED}")
+        # An absolute interpreter: the session's PATH must not choose the program that judges it (PR #4 review).
+        self.assertEqual(hook["command"], f"/usr/bin/python3 -I {INSTALLED}")
         self.assertEqual(hook["onFailure"], "block")
         doc = (ROOT / "docs" / "harness" / "root-guard.md").read_text(encoding="utf-8")
         self.assertIn(INSTALLED, doc)
         self.assertIn("managed-settings.json", doc)
+        self.assertNotIn("/tmp/managed-settings.json", doc)   # no fixed, world-writable staging file
+        self.assertIn("mktemp", doc)
