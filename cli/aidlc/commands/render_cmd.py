@@ -38,7 +38,7 @@ def _run(args: argparse.Namespace) -> int:
         print(f"aidlc render: {exc}", file=sys.stderr)
         return 2
     except (ValueError, HarnessError) as exc:
-        print(f"aidlc render: {exc}")  # existing test asserts stdout
+        print(f"aidlc render: {exc}", file=sys.stderr)
         return 1
     except PolicyError as exc:
         print(f"aidlc render: {exc}", file=sys.stderr)

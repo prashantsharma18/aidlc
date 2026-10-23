@@ -29,9 +29,9 @@ class RenderLocationTest(unittest.TestCase):  # Important 1
 
     def test_render_requires_agents_md(self):
         with TempRepo({"README.md": "x\n"}) as root:
-            code, out, _ = run_cli("render", "--tool", "claude-code", str(root))
-            self.assertEqual(code, 1, out)
-            self.assertIn("AGENTS.md", out)
+            code, out, err = run_cli("render", "--tool", "claude-code", str(root))
+            self.assertEqual(code, 1, out + err)
+            self.assertIn("AGENTS.md", err)   # errors go to stderr (m7, owner-approved 2026-10-23)
             self.assertFalse((root / "CLAUDE.md").exists())
 
 

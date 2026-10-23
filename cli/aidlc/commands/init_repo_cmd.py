@@ -15,7 +15,7 @@ from ..repo import init_repo
 def _run(args: argparse.Namespace) -> int:
     repo = Path(args.path).resolve()
     if not (repo / ".git").exists():
-        print(f"aidlc init-repo: {repo} is not the root of a git repository")  # existing test asserts stdout
+        print(f"aidlc init-repo: {repo} is not the root of a git repository", file=sys.stderr)
         return 2
     try:
         report = init_repo(repo, args.name, args.owner, args.profile, args.purpose, date.today())
