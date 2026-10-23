@@ -581,6 +581,40 @@ class PracticeDocsTest(unittest.TestCase):
 - [ ] **Step 4: Run the tests and the checks.** Run the Step 2 command, `bin/aidlc trace --check`, `bin/aidlc check context-drift .` and `make test`.
 - [ ] **Step 5: Commit.** Commit with `docs(practices): ADR 0008, the practice catalogue and the skill levels`.
 
+### Task 7: The six working behaviours in the AGENTS.md template
+
+**Why:** `using-agent-skills` is a router to agent-skills' 24 skills (not adopted: it would steer the agent to their ungated spec, plan and ship skills, and loads in every session). Its "core operating behaviours" are standing rules, so they belong in the rules file every tool reads, not in a skill.
+
+**Files:** Modify `core/templates/agents-md.md`. Test: one new test in `tests/unit/test_templates.py`'s neighbour, `tests/unit/test_practice_docs.py`.
+
+- [ ] **Step 1: Write the failing test.**
+
+```python
+    def test_the_rules_template_carries_the_working_behaviours(self):
+        text = (ROOT / "core/templates/agents-md.md").read_text(encoding="utf-8")
+        for needle in ("## How to work", "State your assumptions", "stop and ask", "Push back",
+                       "simplest", "Touch only", "evidence", "using-agent-skills of addyosmani/agent-skills (MIT)"):
+            self.assertIn(needle, text)
+```
+
+- [ ] **Step 2: Run it and watch it fail.**
+- [ ] **Step 3: Add the section** after the title block of `core/templates/agents-md.md`:
+
+```markdown
+## How to work
+- State your assumptions before a non-trivial change, and let the person correct them.
+- When the request, the spec and the code disagree, stop and ask; never pick one silently.
+- Push back on a weak approach: say what it costs, offer an alternative, then accept the person's decision.
+- Prefer the simplest change that meets the criteria.
+- Touch only what the task needs: no drive-by refactors, no removing what you do not understand.
+- Done means evidence: tests run, counts read, behaviour checked; never "looks right".
+(Adapted from the core operating behaviours of using-agent-skills of addyosmani/agent-skills (MIT).)
+```
+
+  Existing repositories are untouched: `init-repo` never overwrites `AGENTS.md`. Adoption and `aidlc-context-setup` propose the section.
+- [ ] **Step 4: Run the tests.** Run the Step 2 command, `PYTHONPATH=cli:. python3 -m unittest tests.unit.test_templates tests.unit.test_init_repo -v`, `bin/aidlc plugin build` (the template is a plugin asset), `bin/aidlc plugin build --check`, and `make test`. Any existing test that pins the template's exact text is a finding: stop and report.
+- [ ] **Step 5: Commit.** Commit with `feat(templates): the AGENTS.md template carries six working behaviours (from using-agent-skills, MIT)`.
+
 ---
 
 ## Self-review notes
@@ -595,6 +629,7 @@ class PracticeDocsTest(unittest.TestCase):
   | interview-me and idea-refine techniques into intent | 4 |
   | the domain and team levels | 5 |
   | context-cost curation | 6 (ADR) |
+  | using-agent-skills: the behaviours, not the router | 7 |
 
 - **Deliberately later:**
   - `browser-testing-with-devtools`: once a pinned Chrome DevTools MCP server is approved through the gateway;
