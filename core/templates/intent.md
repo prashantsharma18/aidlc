@@ -7,6 +7,7 @@ fields: [KEY, TITLE]
 ---
 # {{KEY}} · {{TITLE}} · intent
 
+Kind      <new feature | defect | incident follow-up>   (a change to an approved spec is an amendment, not new intent)
 Problem   <what is wrong, for whom, why now; link the evidence (support reports, incidents)>
 Outcome   <the observable change, not an implementation>
 Not now   <what is deliberately out>
