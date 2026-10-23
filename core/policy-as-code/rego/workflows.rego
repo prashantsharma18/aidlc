@@ -85,9 +85,16 @@ review_setup := {
 	"sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true",
 }
 
+# Its checkout is allow-listed too: only the depth may change, credentials are never kept, and no
+# other repository or ref, env or step option is allowed.
 review_step(step) if {
 	object.get(step, "run", null) == null
 	split(object.get(step, "uses", ""), "@")[0] == "actions/checkout"
+	{key | some key, _ in step} - {"name", "uses", "with"} == set()
+	inputs := object.get(step, "with", {})
+	is_object(inputs)
+	{key | some key, _ in inputs} - {"fetch-depth", "persist-credentials"} == set()
+	inputs["persist-credentials"] == false
 }
 
 # The review action is allow-listed, never deny-listed (live review findings, 2026-10-22): only known

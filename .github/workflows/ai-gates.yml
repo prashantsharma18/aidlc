@@ -122,7 +122,7 @@ jobs:
           PY
   agent-config-evals:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60   # 17 sessions x 180 s is about 51 minutes before any retry
     environment: ai-gates
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
