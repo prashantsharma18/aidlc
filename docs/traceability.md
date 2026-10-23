@@ -8,18 +8,18 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 
 | Chapter | Title | Elements |
 |---|---|---|
-| 1 | The AI-native lifecycle, end to end | ctx-authority, intent, policy-tiers |
+| 1 | The AI-native lifecycle, end to end | aidlc-intent, ctx-authority, intent, policy-tiers |
 | 2 | Context engineering | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, agents-md, codebase-map, ctx-authority, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, ctx-rules-file, ctx-task-bundle, explorer, policy-context-classes, policy-memory-policy, policy-tiers, progress-note, task-bundle, workspace |
 | 3 | The agent harness | adapter-claude-code, adapter-codex, adapter-copilot, adapter-cursor, ctx-harness, ctx-task-bundle, observability-metrics, policy-permissions, policy-risk-inventory |
 | 4 | Understanding a codebase before you change it | codebase-map, ctx-codebase-map, ctx-folder-rules, ctx-openwiki-governance, evidence-pack, explorer, explorer-brief, policy-tiers |
-| 5 | Intent to specification | intent, policy-data-classes, policy-tiers, spec |
+| 5 | Intent to specification | aidlc-intent, aidlc-specify, intent, policy-data-classes, policy-tiers, spec |
 | 6 | Architecture, boundaries and contracts | adr, decision-frame, design-note, policy-tiers |
 | 7 | Planning and task design | coordination-plan, ctx-task-bundle, plan, planner, policy-tiers, task-bundle |
 | 8 | Building with an agent | evidence-table, implementer, policy-tiers, pr-description, progress-note |
 | 9 | Testing AI-written code | ci-github, evidence-table, policy-branch-protection, policy-tiers |
 | 10 | Evaluating agents and AI workflows | (none yet) |
 | 11 | Review, approval and release | change-record, ci-github, policy-branch-protection, policy-tiers, pr-description, readiness, release-runbook, review-record, reviewer-bug, reviewer-compliance, reviewer-security |
-| 12 | Operate, measure and improve | incident, observability-metrics, ops-diagnoser, policy-model-routes, policy-routing, runbook |
+| 12 | Operate, measure and improve | aidlc-intent, incident, observability-metrics, ops-diagnoser, policy-model-routes, policy-routing, runbook |
 | 13 | Security and guardrails | ci-github, ctx-openwiki-governance, policy-data-classes, policy-dependency-policy, policy-model-routes, policy-permissions, policy-risk-inventory, policy-tool-register, reviewer-security, security-review |
 | 14 | Changes that span repositories | compat-matrix, coordination-plan, explorer-brief, policy-branch-protection, policy-tiers, release-runbook, workspace |
 | 15 | Modernising legacy systems | (none yet) |
@@ -60,6 +60,8 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | policy-routing | policy | `core/policy/routing.yaml` | 12.13, 12.12 |
 | policy-tiers | policy | `core/policy/tiers.yaml` | 1.10, 2.14, 4.7, 5.9, 6.17, 7.14, 8.15, 9.13, 11.13, 14.18 |
 | policy-tool-register | policy | `core/policy/tool-register.yaml` | 13.4, 16.4 |
+| aidlc-intent | skill | `core/skills/aidlc-intent/SKILL.md` | 5.4, 1.3, 1.10, 12.7, 12.8 |
+| aidlc-specify | skill | `core/skills/aidlc-specify/SKILL.md` | 5.2, 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.11 |
 | adr | template | `core/templates/adr.md` | 6.10, 6.12 |
 | agents-md | template | `core/templates/agents-md.md` | 2.6, 2.8 A3 |
 | change-record | template | `core/templates/change-record.md` | 11.9 |
