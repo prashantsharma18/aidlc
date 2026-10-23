@@ -9,21 +9,39 @@ The core (`core/`) is tool-neutral. An adapter renders it, plus each repository'
 
 ## Functions
 
-| Function | Input (core or repository) | Claude Code output | Copilot output (extension point) | Status |
+| Function | Input (core or repository) | Claude Code output | Copilot output (planned) | Status |
 |---|---|---|---|---|
 | `render_rules` | `AGENTS.md`, `.aidlc/claude.md` | `CLAUDE.md` = `@AGENTS.md` + Claude-only lines | `.github/copilot-instructions.md` pointer (Copilot also reads `AGENTS.md`) | built |
 | `render_folder_rules` | `.aidlc/rules/*.md` (`paths:`) | `.claude/rules/*.md` (`paths:`) | `.github/instructions/*.instructions.md` (`applyTo:`) | built |
-| `render_skills` | `core/skills/*/SKILL.md` | plugin skills | `.claude/skills/` (read by Copilot too) | Plan 5 |
-| `render_agents` | `core/agents/*.md` | plugin `agents/*.md` | `.github/agents/*.md` | Plan 5 |
+| `render_skills` | `core/skills/*/SKILL.md` | none in the repository: the aidlc plugin carries them | `.agents/skills/` | in the contract; skills arrive in Plan 5a |
+| `render_agents` | `core/agents/*.md` | none in the repository: the aidlc plugin carries them | `.github/agents/*.agent.md` | in the contract; agents arrive in Plan 5a |
 | `render_permissions` | `core/policy/permissions.yaml` (+ repository narrowing) | `.claude/settings.json` `permissions` and `sandbox` | custom-agent tool limits; CI as backstop | built |
-| `render_hooks` | `core/hooks/*`, effective permissions | `.aidlc/hooks/` (`guard.py`, `post_check.py`, `claude_shim.py`, `harness.json`); the hook entries live in `.claude/settings.json` | `.github/hooks/*.json` (`preToolUse`) → shim | Claude Code built; Copilot Plan 5 |
-| runtime shim | tool hook payload ↔ generic contract | `core/hooks/claude_shim.py`, rendered to `.aidlc/hooks/claude_shim.py` | to be written | Claude Code built |
+| `render_hooks` | `core/hooks/*`, effective permissions | `.aidlc/hooks/` (`guard.py`, `post_check.py`, `claude_shim.py`, `harness.json`); the hook entries live in `.claude/settings.json` | `.github/hooks/*.json` (`preToolUse`) → a Copilot dialect | Claude Code built |
+| runtime shim | tool hook payload ↔ generic contract | `core/hooks/claude_shim.py`: the shared flow `run` and the `CLAUDE` dialect | a second dialect reusing `run` | Claude Code built |
+
+`render_outputs(adapter, repo)` returns all six functions' files in that order. `aidlc render`,
+doctor D1 and the trusted CI judge all call it (and add the CI workflow), so a new render function
+reaches all three at once.
 
 `write_rendered` writes the files, or with `--check` reports any that are missing or stale. The
-manifest `.aidlc/generated.json` records the hash of every file it wrote. A recorded file whose
+manifest `.aidlc/generated.json` records the hash of every file it wrote (`files`) and which tool
+owns it (`owners`: an adapter name, or `shared` for the CI workflow). A render only claims, checks
+and cleans up its own and shared files, so rendering one tool never removes another tool's files.
+Two tools cannot render the same path. A manifest without `owners` predates them and is read as
+Claude Code's. A recorded file whose
 content no longer matches its hash was edited by a person and is never overwritten, marker or
 not. The marker only classifies files the manifest does not know: an unknown file without the
 marker is never overwritten either.
+
+## Capabilities and dialects (ADR 0006)
+
+- **Descriptors.** `core/adapters/<tool>.yaml` records what each tool reads and enforces, with its
+  sources and the date they were verified. `bin/aidlc trace` renders the comparison in
+  [capabilities.md](capabilities.md). The trusted CI judge treats every descriptor's
+  `agent_config` paths as agent configuration, so a hand-written file for any known tool FAILs.
+- **Dialects.** The shim's `run(argv, dialect)` is the shared flow. A dialect supplies `phases`,
+  `to_generic`, `encode_pre`, `encode_post` and `error_exit`. Adding a tool means a new dialect,
+  not a new shim.
 
 ## Generic hook contract (guide 3, step 5)
 

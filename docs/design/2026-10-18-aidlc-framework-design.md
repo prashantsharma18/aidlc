@@ -142,6 +142,8 @@ aidlc/
 
 ### 4.3 Adapter interface (Copilot extension point)
 
+> **Amended 2026-10-23 by [ADR 0006](../adr/0006-multi-tool-foundation.md).** The manifest records an owner per file; `render_outputs` lists all six functions; tool capabilities are data in `core/adapters/`; the runtime shim is one shared flow with a dialect per tool. The current mapping is in [interface.md](../adapters/interface.md).
+
 An adapter is a module with six render functions and one runtime shim. The core never imports tool-specific code.
 
 | Function | Input (core) | Claude Code output | Copilot output (later) |
