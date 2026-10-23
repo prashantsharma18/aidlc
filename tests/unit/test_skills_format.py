@@ -123,3 +123,9 @@ class SkillFormatTest(unittest.TestCase):
         for name in ("aidlc-plan", "aidlc-build-slice"):
             with self.subTest(skill=name):
                 self.assertIn(rule, (SKILLS / name / "SKILL.md").read_text(encoding="utf-8"))
+
+    def test_intent_interviews_one_question_at_a_time(self):
+        body = (SKILLS / "aidlc-intent" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("Ask one question at a time", body)
+        self.assertIn("Restate what you heard and ask the person to confirm it", body)
+        self.assertIn("interview-me and idea-refine techniques of addyosmani/agent-skills (MIT)", body)
