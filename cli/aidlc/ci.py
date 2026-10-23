@@ -25,13 +25,14 @@ import subprocess
 import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Callable, Iterator
 
 from . import __version__
 from .checks.findings import Finding
 from .checks.conftest_check import judge_generated, run_conftest
+from .baseline import BASELINE, BaselineError, parse as parse_baseline
 from .checks.onecheck import (DIFF_FLAGS, FAIL, OK, STEERING, report_only, CheckContext, CheckError, CheckResult, StepResult,
                               _excepted, prepare_check_dir,
                               begin_command_steps, git, print_result, run_command, step_context_drift,
@@ -251,12 +252,44 @@ def step_config_policy(ctx: CheckContext) -> StepResult:
     return StepResult("config-policy", OK, f"{warns} warning(s)" if warns else "")
 
 
+def step_baseline(ctx: CheckContext) -> StepResult:
+    """The ratchet (ADR 0007): the change's .aidlc/baseline.yaml may only shrink. It is compared with the
+    base's copy, read before any of the change's code runs. A skip, or a report-only step the base
+    already runs, that the base does not list FAILs; so does any entry past its review date. A step new
+    in this change may start report-only. Moving an owner, reason or date is a decision the code owners
+    review, not growth."""
+    try:
+        base = parse_baseline((ctx.steering or {}).get(BASELINE, ""), f"base {BASELINE}")
+        path = ctx.repo / BASELINE
+        if path.is_symlink():
+            return StepResult("baseline", FAIL, f"{BASELINE} is a symlink; the judge does not follow it")
+        head = parse_baseline(path.read_text(encoding="utf-8") if path.is_file() else "")
+    except (BaselineError, OSError, UnicodeDecodeError) as exc:
+        return StepResult("baseline", FAIL, str(exc))
+    known = {(e.kind, e.key) for e in base}
+    runs = set(ctx.config.check_steps)                # the base's configuration judges the change
+    today = date.today()
+    problems = []
+    for e in head:
+        new_step = e.kind == "report_only" and e.key not in runs
+        if (e.kind, e.key) not in known and not new_step:
+            problems.append(f"{e.kind} '{e.key}' is new: the baseline may only shrink")
+        if e.review_by < today:
+            problems.append(f"{e.kind} '{e.key}' passed its review date {e.review_by}: fix it, or its owner "
+                            "moves the date in a reviewed change")
+    if problems:
+        return StepResult("baseline", FAIL, "; ".join(problems[:5]))
+    paid = len(known - {(e.kind, e.key) for e in head})
+    return StepResult("baseline", OK, f"{len(head)} entries" + (f", {paid} paid off" if paid else ""))
+
+
 # Judges: run before any of the change's code, from git objects (ctx.head) or the untouched checkout.
 JUDGE_STEPS: list[tuple[str, Callable[[CheckContext], StepResult]]] = [
     ("scope", step_scope),
     ("protected-tests", step_protected_tests),
     ("secrets", step_secrets),
     ("context-drift", step_context_drift),
+    ("baseline", step_baseline),
     ("config-policy", step_config_policy),
 ]
 # After the change's commands: checks that read their output, then the re-run in its own checkout.
