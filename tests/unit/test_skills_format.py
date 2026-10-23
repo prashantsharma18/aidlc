@@ -138,7 +138,6 @@ class StageSkills5bTest(unittest.TestCase):
     def body(self, name):
         return (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
 
-    @unittest.expectedFailure  # removed in Task 3, when all six exist
     def test_the_5b_skills_exist(self):
         self.assertLessEqual(EXPECTED_5B, {p.parent.name for p, _, _ in skills()})
 
