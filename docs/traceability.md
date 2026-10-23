@@ -18,9 +18,9 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | 8 | Building with an agent | aidlc-build-slice, aidlc-verify, debugging-and-error-recovery, evidence-table, implementer, policy-tiers, pr-description, progress-note |
 | 9 | Testing AI-written code | aidlc-verify, ci-github, debugging-and-error-recovery, evidence-table, frontend-ui-engineering, performance-optimization, policy-branch-protection, policy-tiers |
 | 10 | Evaluating agents and AI workflows | (none yet) |
-| 11 | Review, approval and release | change-record, ci-github, code-review-and-quality, policy-branch-protection, policy-tiers, pr-description, readiness, release-runbook, review-record, reviewer-bug, reviewer-compliance, reviewer-security |
+| 11 | Review, approval and release | aidlc-release, aidlc-review, change-record, ci-github, code-review-and-quality, policy-branch-protection, policy-tiers, pr-description, readiness, release-runbook, review-record, reviewer-bug, reviewer-compliance, reviewer-security |
 | 12 | Operate, measure and improve | aidlc-intent, debugging-and-error-recovery, incident, observability-and-instrumentation, observability-metrics, ops-diagnoser, performance-optimization, policy-model-routes, policy-routing, runbook |
-| 13 | Security and guardrails | ci-github, ctx-openwiki-governance, policy-data-classes, policy-dependency-policy, policy-model-routes, policy-permissions, policy-risk-inventory, policy-tool-register, reviewer-security, security-and-hardening, security-review |
+| 13 | Security and guardrails | aidlc-review, ci-github, ctx-openwiki-governance, policy-data-classes, policy-dependency-policy, policy-model-routes, policy-permissions, policy-risk-inventory, policy-tool-register, reviewer-security, security-and-hardening, security-review |
 | 14 | Changes that span repositories | api-and-interface-design, compat-matrix, coordination-plan, explorer-brief, policy-branch-protection, policy-tiers, release-runbook, workspace |
 | 15 | Modernising legacy systems | aidlc-adopt, deprecation-and-migration |
 | 16 | Your workflow: individual, team and organisation | aidlc-adopt, policy-plugins, policy-tool-register, working-agreement |
@@ -76,6 +76,8 @@ the primary source (`~/demos/guide`); sections are written as chapter.section.
 | aidlc-discover | skill | `core/skills/aidlc-discover/SKILL.md` | 4.6, 4.7, 4.8, 4.9, 4.10, 4.12, 4.13 |
 | aidlc-intent | skill | `core/skills/aidlc-intent/SKILL.md` | 5.4, 1.3, 1.10, 12.7, 12.8 |
 | aidlc-plan | skill | `core/skills/aidlc-plan/SKILL.md` | 7.2, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 7.10, 7.11, 2.9 B3 |
+| aidlc-release | skill | `core/skills/aidlc-release/SKILL.md` | 11.9, 11.10, 11.11, 11.12, 11.13 |
+| aidlc-review | skill | `core/skills/aidlc-review/SKILL.md` | 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.12, 13.11 |
 | aidlc-specify | skill | `core/skills/aidlc-specify/SKILL.md` | 5.2, 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.11 |
 | aidlc-verify | skill | `core/skills/aidlc-verify/SKILL.md` | 9.6, 9.9, 9.10, 9.11, 8.10, 1.4 |
 | adr | template | `core/templates/adr.md` | 6.10, 6.12 |

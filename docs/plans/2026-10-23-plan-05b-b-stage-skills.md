@@ -215,7 +215,7 @@ The tech lead, with the affected owners, decides to proceed, escalate or raise t
 ```markdown
 ---
 name: aidlc-design
-description: Decides whether a change needs a design decision, and if so drafts the decision frame, the options with their impact, the ADR and the contract change with its failing tests, contract first. It stops for the tech lead or architect, and for consumers when a contract changes. Use after the spec is approved, before planning.
+description: Decides whether a change needs a design decision, and if so drafts the decision frame, the options with their impact, the ADR and the contract change with its failing tests, contract first. It stops for the tech lead or architect, and for consumers when a contract changes. Use when the spec is approved, before planning.
 metadata:
   stage: design
   invocation: manual
@@ -347,7 +347,7 @@ A code owner who is neither the author nor the pusher approves, and a required s
 ```markdown
 ---
 name: aidlc-release
-description: Prepares a merged change for release. It checks the five readiness confirmations, chooses the safest strategy, writes the stop criteria before release, records the artefact digest, and drafts the readiness checklist, change record and follow-ups. It recommends ship, limit or hold, and stops for the release approver. Use after the pull request merges.
+description: Prepares a merged change for release. It checks the five readiness confirmations, chooses the safest strategy, writes the stop criteria before release, records the artefact digest, and drafts the readiness checklist, change record and follow-ups. It recommends ship, limit or hold, and stops for the release approver. Use when the pull request has merged.
 metadata:
   stage: release
   invocation: manual
@@ -480,7 +480,7 @@ On-call owns the incident and its record; the product owner accepts the new work
 ```markdown
 ---
 name: aidlc-feedback
-description: Routes each lesson from an incident, review or retrospective to the layer that would have caught it (a test, an eval case, the context, a guardrail or the review checklist), drafts that change for the owner of the source, and records each as merged or declined. Use after an incident review, or when a review keeps finding the same problem.
+description: Routes each lesson from an incident, review or retrospective to the layer that would have caught it (a test, an eval case, the context, a guardrail or the review checklist), drafts that change for the owner of the source, and records each as merged or declined. Use when an incident review is done, or when a review keeps finding the same problem.
 metadata:
   stage: operate
   invocation: manual
