@@ -83,8 +83,11 @@ try {
   await cdp.send("Page.navigate", { url });
   await loaded;
   await sleep(500);
-  const { result } = await cdp.send("Runtime.evaluate", { expression: TRACK(id), awaitPromise: true, returnByValue: true });
+  const { result, exceptionDetails } = await cdp.send("Runtime.evaluate",
+    { expression: TRACK(id), awaitPromise: true, returnByValue: true });
+  if (exceptionDetails) throw new Error(`the page threw: ${exceptionDetails.exception?.description ?? exceptionDetails.text}`);
   const text = String(result.value ?? "");
+  if (!text.trim()) throw new Error("the page showed no text");   // a broken page must never read as "no window"
   const line = text.split("\n").find((l) => l.startsWith("Estimated delivery:")) ?? null;
   if (shot) {
     const { data } = await cdp.send("Page.captureScreenshot", { format: "png" });

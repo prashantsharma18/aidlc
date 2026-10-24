@@ -6,7 +6,7 @@ loaded: a plugin other than aidlc, aidlc-practice or Claude Code's own built-ins
 from elsewhere that the folder's settings do not deny; an MCP server other than lab-jira.
 
   claude -p "Reply OK." --plugin-dir … --output-format stream-json --verbose --max-turns 1 \\
-    | head -1 | python3 docs/demo/probe.py .claude/settings.json
+    | python3 docs/demo/probe.py .claude/settings.json
 """
 from __future__ import annotations
 
@@ -40,8 +40,24 @@ def foreign(init: dict, deny: list[str]) -> list[str]:
     return out
 
 
+def read_init(lines) -> dict:
+    """The stream's init message. Anything else first (hooks, retries) is skipped; no init is an error."""
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        message = json.loads(line)
+        if message.get("type") == "system" and message.get("subtype") == "init":
+            return message
+    raise ValueError("no init message in the stream: cannot tell what loaded")
+
+
 def main(argv: list[str]) -> int:
-    init = json.loads(sys.stdin.readline())
+    try:
+        init = read_init(sys.stdin)
+    except ValueError as exc:
+        print(f"NOT CLEAN: {exc}")
+        return 1
     deny = []
     if len(argv) > 1:
         deny = json.loads(Path(argv[1]).read_text(encoding="utf-8"))["permissions"]["deny"]

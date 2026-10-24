@@ -53,7 +53,7 @@ Open `claude` once in each of the three folders and accept the trust prompt.
 ```bash
 for d in ~/work/shipment-tracking ~/work/shipment-tracking/shipments-api ~/work/shipment-tracking/customer-portal; do
   (cd "$d" && claude -p "Reply OK." --plugin-dir ~/demos/aidlc/plugins/aidlc --plugin-dir ~/demos/aidlc/plugins/aidlc-practice \
-     --output-format stream-json --verbose --max-turns 1 | head -1 | python3 ~/demos/aidlc/docs/demo/probe.py .claude/settings.json)
+     --output-format stream-json --verbose --max-turns 1 | python3 ~/demos/aidlc/docs/demo/probe.py .claude/settings.json)
 done
 ```
 

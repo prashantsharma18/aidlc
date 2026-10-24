@@ -84,3 +84,53 @@ class SkillTextFindingsTest(unittest.TestCase):
     def test_build_slice_rescopes_after_merging_the_base(self):
         # F17: the scope records its base; after the base branch is merged in, the scope must be regenerated.
         self.assertIn("after the base branch is merged into this branch", self.skill("aidlc-build-slice"))
+
+
+class FinalReviewFixesTest(unittest.TestCase):
+    def test_a_masked_secret_file_is_still_a_change(self):
+        # I1: inside the sandbox an existing *.pem is masked as a character device too; only Claude Code's
+        # fixed placeholder names (and protected roots) may be skipped.
+        with TempRepo({"a.txt": "a\n"}) as root:
+            base = onecheck.git(root, "rev-parse", "HEAD").strip()
+            (root / "deploy").mkdir()
+            (root / "deploy/x.pem").write_text("")
+            (root / ".bashrc").write_text("")
+            with mock.patch.object(onecheck, "sandbox_placeholder", return_value=True):
+                self.assertEqual(onecheck.changed_paths(root, base), ["deploy/x.pem"])
+
+    def test_workspace_init_fails_when_the_harness_is_not_read_only(self):
+        # I2: an existing permissive settings file is kept, but the command must not report success.
+        import subprocess as sp
+        from tests.helpers import run_cli
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sp.run(["git", "init", "-q", str(root / "svc")], check=True)
+            (root / ".claude").mkdir()
+            (root / ".claude/settings.json").write_text('{"permissions": {"allow": ["Edit"]}}')
+            code, _, err = run_cli("workspace", "init", str(root), "--key", "K-1", "--title", "t", "--repo", "svc=team")
+            self.assertEqual(code, 2)
+            self.assertIn("not the read-only harness", err)
+            self.assertEqual((root / ".claude/settings.json").read_text(), '{"permissions": {"allow": ["Edit"]}}')
+
+    def test_the_probe_fails_without_an_init_message(self):
+        # I3: anything but Claude Code's init message is an error, never "clean".
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("probe", framework_root() / "docs/demo/probe.py")
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        with self.assertRaises(ValueError):
+            probe.read_init(['{"type": "system", "subtype": "hook_started"}', '{"type": "result"}'])
+        init = probe.read_init(['{"type": "system", "subtype": "hook_started"}',
+                                '{"type": "system", "subtype": "init", "plugins": []}'])
+        self.assertEqual(init["subtype"], "init")
+
+    def test_page_check_fails_on_a_broken_page(self):
+        # I4: an exception in the page, or no text, must exit non-zero, not read as "no window".
+        text = (framework_root() / "docs/demo/page-check.mjs").read_text(encoding="utf-8")
+        self.assertIn("exceptionDetails", text)
+        self.assertIn("the page showed no text", text)
+
+    def test_the_dotnet_profile_comment_is_accurate(self):
+        # I5: IDE code-style rules are not enforced by the build unless EnforceCodeStyleInBuild is set.
+        text = (framework_root() / "core/context/profiles.yaml").read_text(encoding="utf-8")
+        self.assertIn("EnforceCodeStyleInBuild", text)

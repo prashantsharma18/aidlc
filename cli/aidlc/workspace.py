@@ -54,6 +54,20 @@ def _settings(plugins: list[str]) -> dict:
     return settings
 
 
+def harness_is_read_only(root: Path) -> bool:
+    """True when the workspace's .claude/settings.json denies every write this command would deny."""
+    path = root / ".claude" / "settings.json"
+    try:
+        if path.is_symlink() or path.parent.is_symlink():
+            return False
+        data = json.loads(path.read_text(encoding="utf-8"))
+        deny = data["permissions"]["deny"]
+        return all(rule in deny for rule in DENY_TOOLS) and "./" in data["sandbox"]["filesystem"]["denyWrite"] \
+            and data["sandbox"]["enabled"] is True
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def init_workspace(root: Path, key: str, title: str, repos: list[tuple[str, str]],
                    disable_plugins: list[str]) -> list[tuple[str, str]]:
     _check(root, repos, disable_plugins)

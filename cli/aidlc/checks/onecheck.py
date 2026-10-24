@@ -122,6 +122,15 @@ def git(repo: Path, *args: str) -> str:
     return out.stdout.decode("utf-8", "replace")      # bytes decoded here: \r and \f must survive
 
 
+# Names Claude Code's sandbox masks or creates at the repository root (its fixed dotfile list and the
+# framework's protected roots). Inside the sandbox an existing secret file (*.pem, *.key, .env.*) is masked
+# as a character device too, so the device test alone would hide a real file (Plan 6 final review, I1).
+PLACEHOLDER_NAMES = frozenset({
+    ".bashrc", ".bash_profile", ".bash_login", ".bash_logout", ".profile", ".zshrc", ".zprofile", ".zshenv",
+    ".zlogin", ".gitconfig", ".gitmodules", ".ripgreprc", ".mcp.json", ".vscode", ".idea", ".github", ".claude",
+    ".aidlc", ".openwikiignore", "api", "ci", "architecture", "plans"})
+
+
 def sandbox_placeholder(path: Path) -> bool:
     """Claude Code's sandbox mounts a character device over each protected path that does not exist
     (.bashrc, .gitconfig, .mcp.json, ...). A file the agent writes is never one (Plan 6, F10)."""
@@ -139,7 +148,7 @@ def changed_paths(repo: Path, base: str, head: str | None = None) -> list[str]:
         return sorted(p for p in git(repo, "diff", *DIFF_FLAGS, "--name-only", "-z", base, head).split("\0") if p)
     tracked = git(repo, "diff", *DIFF_FLAGS, "--name-only", "-z", base).split("\0")
     untracked = [p for p in git(repo, "ls-files", "--others", "--exclude-standard", "-z").split("\0")
-                 if p and not sandbox_placeholder(repo / p)]
+                 if p and not (p in PLACEHOLDER_NAMES and sandbox_placeholder(repo / p))]
     return sorted({p for p in (*tracked, *untracked) if p})
 
 

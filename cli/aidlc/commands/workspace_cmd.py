@@ -7,7 +7,7 @@ from pathlib import Path
 
 from ..cli import command
 from ..policy import PolicyError
-from ..workspace import init_workspace
+from ..workspace import harness_is_read_only, init_workspace
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -25,6 +25,12 @@ def _run(args: argparse.Namespace) -> int:
         return 2
     for rel, status in report:
         print(f"{status:18} {rel}")
+    root = Path(args.path).resolve()
+    if not harness_is_read_only(root):
+        print(f"aidlc workspace init: {root / '.claude/settings.json'} is not the read-only harness (it was kept, "
+              "never overwritten); a session at this root could write. Review it, or delete it and run again.",
+              file=sys.stderr)
+        return 2
     print("next: fill in WORKSPACE.md (each repository's slice and role) and commit it")
     return 0
 
