@@ -13,7 +13,7 @@ metadata:
 One slice at a time, in a new session, on the story's branch, after the slice's task bundle is approved. After repeated slips, or any slip after the conversation was compacted, start a new session from the bundle and the branch's commits instead of continuing.
 
 ## Inputs
-The approved task bundle `plans/<KEY>/bundle-<slice>.md`, the spec and plan versions it pins, and the branch's earlier commits (`git log`) if this slice was started before. Before your first edit, the person must have run `aidlc scope --branch <branch>`; you cannot, because it writes outside the repository. Without that scope the harness refuses every edit.
+The approved task bundle `plans/<KEY>/bundle-<slice>.md`, the spec and plan versions it pins, and the branch's earlier commits (`git log`) if this slice was started before. Before your first edit, the person must have run `aidlc scope --branch <branch>`; you cannot, because it writes outside the repository. Without that scope the harness refuses every edit. The scope records the base it was made from: after the base branch is merged into this branch, the person runs `aidlc scope` again.
 
 ## Steps
 1. Run the repository's one-command check, named in `AGENTS.md` (in an aidlc repository, `aidlc check`), before any change. If it is red or skips tests, stop: the environment is fixed first.

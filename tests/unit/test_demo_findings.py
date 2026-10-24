@@ -67,3 +67,20 @@ class SandboxPlaceholdersTest(unittest.TestCase):
             with mock.patch.object(onecheck, "sandbox_placeholder",
                                    side_effect=lambda p: p.name == ".bashrc" or real(p)):
                 self.assertEqual(onecheck.changed_paths(root, base), ["new.txt"])
+
+
+class SkillTextFindingsTest(unittest.TestCase):
+    def skill(self, name):
+        return (framework_root() / f"core/skills/{name}/SKILL.md").read_text(encoding="utf-8")
+
+    def test_design_says_where_seen_to_fail_comes_from_in_a_workspace(self):
+        # F6: a workspace-root session is read-only and cannot run tests.
+        self.assertIn("shown red at the first step of its slice", self.skill("aidlc-design"))
+
+    def test_plan_marks_protected_paths_as_person_applied(self):
+        # F11: api/** and other protected paths are never edited by the agent, even when MAY CHANGE lists them.
+        self.assertIn("a person applies", self.skill("aidlc-plan"))
+
+    def test_build_slice_rescopes_after_merging_the_base(self):
+        # F17: the scope records its base; after the base branch is merged in, the scope must be regenerated.
+        self.assertIn("after the base branch is merged into this branch", self.skill("aidlc-build-slice"))
