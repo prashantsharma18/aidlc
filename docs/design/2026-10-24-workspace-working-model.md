@@ -53,6 +53,20 @@ A new requirement (no story yet)          An existing user story (SHIP-1 in Jira
 - **Routing:** an explorer per repository answers "would this story change you?". One repository: route there.
   Several, or unsure: route to the workspace flow. It drafts the story's index, `stories/<KEY>/README.md`.
 
+### Every kind of work, routed
+
+`aidlc-start` first decides the kind of work, because each kind starts differently. These are the kinds aidlc already
+recognises (intent's Kind field, and the specify skill's amendment mode).
+
+| Kind | Arrives as | What `aidlc-start` checks | Route, one repository | Route, several repositories |
+|---|---|---|---|---|
+| New feature | a new requirement, or a story | No story: interview and draft it. Story: problem, outcome, acceptance criteria | In the repository: intent (if needed), specify, design if the tier asks, plan, build, verify, review, release | Root: specify, discover, design and job sheet. Each repository: plan, build, verify, review. Root: release |
+| Defect | a bug in the tracker, or a report | How to reproduce it, the expected and actual behaviour, the evidence; missing pieces become questions. Explorers find where it fails | In the repository: intent in defect mode ("done when a test that reproduces it fails before the fix and passes after"), a short plan, build with the reproducing test first, verify, review, release | Only when the fix must change several repositories (for example both sides of a contract): root: intent, discover, design if a contract changes, job sheet; then each part as above |
+| Change request | a change to a story still in progress, or to a feature already released | Finds the original story and its documents. In progress: an amendment. Released: new work with its own key that points to the original | In progress: specify in amendment mode (spec v2), then the affected slices are re-planned and re-approved. Released: route as a new feature, and its criteria include "the original's criteria still hold" | In progress: the amendment is made at the root (`stories/<KEY>/spec.md` v2); the job sheet marks the affected parts "re-plan"; only those repositories re-plan. Released: as a new feature, reading the original's `stories/<ORIG>/` as context |
+| Incident follow-up | an incident record | Links the incident and its evidence; the failure becomes the reproduction | As a defect, with the incident as evidence | As a defect |
+
+In every row the story stays one story: parts, slices and steps are never extra tracker issues.
+
 ### The two levels
 
 | Level | Runs in | Skills | Documents |
@@ -92,7 +106,7 @@ PARTS      #  Repository       Owner      Change                        Flag    
 TRACKING   branch feat/<KEY>-<part> in each repository; pull request title "[<KEY>] part n of m: …"
 ```
 
-Status values: waiting, planned, building, in review, merged, released.
+Status values: waiting, planned, building, in review, merged, released, and re-plan (set by an amendment).
 
 ### Skills know where they belong
 
