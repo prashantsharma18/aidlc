@@ -16,9 +16,13 @@ node:
 dotnet:
   commands:
     restore: dotnet restore --locked-mode
-    build: dotnet build --nologo --no-restore -warnaserror
-    format: dotnet format --verify-no-changes --no-restore
-    test: dotnet test --nologo --no-build --logger "trx;LogFilePrefix=results" --results-directory .check/trx
+    # In-process MSBuild, no git queries, whitespace-only format: Claude Code's sandbox refuses MSBuild's
+    # node pipes and replaces .gitmodules with an unreadable placeholder (Plan 6 demo, finding F9).
+    # Style and analyzer checks in dotnet format need that host, so format checks whitespace only;
+    # analyzer warnings still fail the build (-warnaserror).
+    build: dotnet build --nologo --no-restore -warnaserror -m:1 -nodeReuse:false --disable-build-servers -p:EnableSourceControlManagerQueries=false
+    format: dotnet format whitespace --folder --verify-no-changes
+    test: dotnet test --nologo --no-build -m:1 --disable-build-servers --logger "trx;LogFilePrefix=results" --results-directory .check/trx
   check_steps: [build, format, test]
   test_reports: [".check/trx/*.trx"]
   network_allow: [api.nuget.org, globalcdn.nuget.org]

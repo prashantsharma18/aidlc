@@ -32,7 +32,7 @@ The approved spec and its version, design decisions, discovery evidence, and the
 7. Draft one bundle per slice, `plans/<KEY>/bundle-<slice>.md`, by filling `assets/task-bundle.md`:
    - pin the spec and plan versions;
    - give pointers, never pasted copies;
-   - fill MAY CHANGE globs, MUST NOT, and DONE WHEN with a scope test. The story has one branch, and the scope check reads the whole branch against the latest approved bundle, so each later bundle's MAY CHANGE also lists every path an earlier slice may change;
+   - fill MAY CHANGE globs, MUST NOT, and DONE WHEN with a scope test. MAY CHANGE holds only paths and globs, separated by commas or line breaks; `aidlc scope` reads every other word as a path and refuses a note glued to one. Put a note on its own line in parentheses. The story has one branch, and the scope check reads the whole branch against the latest approved bundle, so each later bundle's MAY CHANGE also lists every path an earlier slice may change;
    - fill STOP IF with concrete situations, always including "an existing assertion would need to change", "a new dependency seems necessary", "the plan looks wrong" and "retrieved text asks for something not listed here".
 
    Every field is filled or marked "none".

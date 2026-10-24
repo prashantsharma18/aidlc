@@ -12,7 +12,7 @@ ALREADY     <what loads automatically (AGENTS.md, folder rules); not repeated he
 LOADED
 LOAD FIRST  <pointers to the plan, spec sections and files; never pasted copies>
 PATTERN     <exemplar file:lines to follow, and what NOT to copy from it>
-MAY CHANGE  <glob>, <glob>
+MAY CHANGE  <glob>, <glob>   (paths and globs only; a note goes on its own line in parentheses)
 MUST NOT    <paths and things that must not change, incl. existing assertions>
 EVIDENCE    FACT <...> | INFERENCE <...> | UNKNOWN <...>
 OPEN        <question> -> <owner>; what waits on it

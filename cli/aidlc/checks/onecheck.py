@@ -12,6 +12,7 @@ import json
 import os
 import re
 import signal
+import stat
 import subprocess
 import time
 import uuid
@@ -121,13 +122,24 @@ def git(repo: Path, *args: str) -> str:
     return out.stdout.decode("utf-8", "replace")      # bytes decoded here: \r and \f must survive
 
 
+def sandbox_placeholder(path: Path) -> bool:
+    """Claude Code's sandbox mounts a character device over each protected path that does not exist
+    (.bashrc, .gitconfig, .mcp.json, ...). A file the agent writes is never one (Plan 6, F10)."""
+    try:
+        return stat.S_ISCHR(os.lstat(path).st_mode)
+    except OSError:
+        return False
+
+
 def changed_paths(repo: Path, base: str, head: str | None = None) -> list[str]:
     """Files changed since `base`. With `head` (CI): between the two commits, from git objects only.
-    Without: in the working copy, plus untracked files that are not ignored."""
+    Without: in the working copy, plus untracked files that are not ignored and are not sandbox
+    placeholders."""
     if head is not None:
         return sorted(p for p in git(repo, "diff", *DIFF_FLAGS, "--name-only", "-z", base, head).split("\0") if p)
     tracked = git(repo, "diff", *DIFF_FLAGS, "--name-only", "-z", base).split("\0")
-    untracked = git(repo, "ls-files", "--others", "--exclude-standard", "-z").split("\0")
+    untracked = [p for p in git(repo, "ls-files", "--others", "--exclude-standard", "-z").split("\0")
+                 if p and not sandbox_placeholder(repo / p)]
     return sorted({p for p in (*tracked, *untracked) if p})
 
 

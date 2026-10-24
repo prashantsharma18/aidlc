@@ -53,7 +53,7 @@ you change the command (the profile in `core/context/profiles.yaml` is the sourc
 ```yaml
 # .aidlc/config.yaml
 commands:
-  test: dotnet test --nologo --no-build --logger "trx;LogFilePrefix=results" --results-directory .check/trx
+  test: dotnet test --nologo --no-build -m:1 --disable-build-servers --logger "trx;LogFilePrefix=results" --results-directory .check/trx
 test_reports: [".check/trx/*.trx"]
 ```
 
