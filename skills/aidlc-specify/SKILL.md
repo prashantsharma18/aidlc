@@ -26,7 +26,7 @@ disable-model-invocation: true
 - **Amendment mode.** An approved criterion looks wrong or incomplete. It was raised at planning, by an unwritable test, by a stop condition, a review comment or a production signal.
 
 ## Inputs
-Where this runs: at the workspace root for a story with a `stories/<KEY>/` folder (several repositories); your draft goes to `stories/<KEY>/`. Started inside a repository for such a story: say so, name the workspace root, and stop. A one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`.
+Where this runs: read the story's index first (`stories/<KEY>/README.md` at the workspace root, or `plans/<KEY>/README.md`). When it routes the story to several repositories, run at the workspace root and write to `stories/<KEY>/`; started inside a repository for such a story, say so, name the workspace root, and stop. When it names one repository, run inside that repository: a one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`.
 
 - The accepted intent (`plans/<KEY>/intent.md` or the work item) and the acceptance criteria already written in the story.
 - For an amendment: the approved spec and the criterion ID in question.

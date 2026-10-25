@@ -18,7 +18,7 @@ disable-model-invocation: true
 Once an incident is contained, before its blameless review closes it, or when the same finding appears in several reviews.
 
 ## Inputs
-Where this runs: at the workspace root for a story with a `stories/<KEY>/` folder (several repositories); your draft goes to `stories/<KEY>/`. Started inside a repository for such a story: say so, name the workspace root, and stop. A one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`.
+Where this runs: read the story's index first (`stories/<KEY>/README.md` at the workspace root, or `plans/<KEY>/README.md`). When it routes the story to several repositories, run at the workspace root and write to `stories/<KEY>/`; started inside a repository for such a story, say so, name the workspace root, and stop. When it names one repository, run inside that repository: a one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`.
 
 The incident record (its Prevention line) or the repeated findings, and the owners of each source: tests, eval cases, rules files, tool permissions and CI checks, review checklists.
 
