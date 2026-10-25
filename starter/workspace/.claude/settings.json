@@ -5,7 +5,8 @@
       "Read",
       "Grep",
       "Glob",
-      "Edit(/stories/**)"
+      "Edit(/stories/**)",
+      "Read(~/.claude/plugins/**)"
     ],
     "deny": [
       "Read(.env)",
