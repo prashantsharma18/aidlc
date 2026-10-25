@@ -66,6 +66,26 @@ What is lost: enforcement by code. A careless or manipulated agent is now stoppe
 not by a hook. That is the same trade agent-skills makes. The harness stays under `harness-v1` and can return as an
 optional "enterprise guardrails" add-on for teams that need enforcement.
 
+## Routing: how the agent knows which skill to use
+
+agent-skills uses a meta-skill (`using-agent-skills`), loaded by a session-start hook in Claude Code, that maps requests
+to skills before the agent acts. aidlc does the same in a tool-neutral way:
+
+- **AGENTS.md** (from `starter/repo/AGENTS.md` and `starter/workspace/WORKSPACE.md`) carries a short "How work runs here"
+  block: start any new work with `aidlc-start`; which skill handles which request; tests first; where each stage runs.
+  Claude Code, Copilot, Codex and Cursor all read AGENTS.md, so routing works without a hook.
+- **`aidlc-start`** is the explicit router a person runs: by kind of work and by scope.
+- No separate auto-loading meta-skill: it would repeat AGENTS.md and cost context in every session (user decision, 2026-10-25).
+
+## The feedback loops without the harness
+
+| Loop | Speed | Where it is written | What stops a runaway |
+|---|---|---|---|
+| 1 Build | minutes | `aidlc-build`: failing test, code, run the repository's tests; on a failure name the cause and make one targeted fix (the debugging practice skill helps) | The skill's rule: the same failure three times, or a newly broken test, means stop and report. The engineer watching is the backstop |
+| 2 Pull request | hours | `aidlc-verify` reads CI; a red run goes back to `aidlc-build` as a fix round with the CI log as input | CI stays red; the PR cannot merge |
+| 3 Review | hours to days | `aidlc-review` with the three reviewer agents; the code owner decides each finding; fixes go back through `aidlc-build` | The code owner's approval and branch protection |
+| 4 Production | days | `aidlc-operate`, then `aidlc-feedback` turns each lesson into a test, an AGENTS.md rule, a skill change or an eval case | People decide containment and which lesson goes where |
+
 ## Simpler documents
 
 - Agents may write their drafts to files (`plans/<KEY>/…`, `stories/<KEY>/…`) on the story branch; the person reviews

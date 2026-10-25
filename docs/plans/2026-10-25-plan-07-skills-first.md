@@ -8,7 +8,9 @@
 
 **Tech Stack:** Markdown (Agent Skills format), one Python standard-library validation script, a GitHub Actions workflow.
 
-**Spec:** `docs/design/2026-10-25-skills-first.md` (and `docs/design/2026-10-24-workspace-working-model.md` for the workspace model)
+**Spec:** `docs/design/2026-10-25-skills-first.md`
+
+**Decisions (user, 2026-10-25):** plan approved, Native execution; agents write drafts to files on the story branch, reviewed in the pull request; routing lives in AGENTS.md plus `aidlc-start` (no auto-loading meta-skill); Copilot is checked by the user in VS Code agent mode (no installs); Codex and Cursor get a format check only; the end-to-end check uses a defect in customer-portal ("when the carrier's estimate is unusable, the tracking page should say 'No delivery estimate yet' instead of nothing"). (and `docs/design/2026-10-24-workspace-working-model.md` for the workspace model)
 
 ## Global Constraints
 
@@ -62,7 +64,7 @@
 
 ### Task 6: Starter files and quickstarts
 
-- [ ] `starter/repo/`: `AGENTS.md` (template with the "How to work" behaviours), `.claude/settings.json` (deny reading `.env*`, `*.pem`, `*.key`, `secrets/**`; sandbox on; ask before `git push`), `.github/workflows/ci.yml` (runs the repository's commands from AGENTS.md), `CODEOWNERS` example, and an optional `.github/workflows/ai-review.yml` (Claude code review, needs an API key).
+- [ ] `starter/repo/`: `AGENTS.md` (template with the "How to work" behaviours and the "How work runs here" routing block: start new work with `aidlc-start`, which skill handles which request, tests first, where each stage runs), `.claude/settings.json` (deny reading `.env*`, `*.pem`, `*.key`, `secrets/**`; sandbox on; ask before `git push`), `.github/workflows/ci.yml` (runs the repository's commands from AGENTS.md), `CODEOWNERS` example, and an optional `.github/workflows/ai-review.yml` (Claude code review, needs an API key).
 - [ ] `starter/workspace/`: `WORKSPACE.md` (repositories, owners, how work runs: start with `/aidlc-start`), `stories/README.md`, a read-only `.claude/settings.json` for the root.
 - [ ] `docs/quickstart/claude-code.md` (marketplace add, plugin install, copy the starter files), `copilot.md` (copy `skills/` to `.github/skills` or `~/.copilot/skills`, agents to `.github/agents/*.agent.md`; works in VS Code agent mode, the CLI, the coding agent), `codex-cursor.md` (`.agents/skills`, `.cursor/skills`).
 - [ ] `README.md` rewritten: what aidlc is, the flow in one diagram, install per tool, the skills list. `docs/operating-model.md`: the two levels, the routing table, the job sheet, the four review layers without the harness. ADR 0010 (skills-first) and ADR 0009 (the workspace model). Commit.
