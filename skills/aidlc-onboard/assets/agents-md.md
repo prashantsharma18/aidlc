@@ -13,13 +13,25 @@
 - Done means evidence: tests run, counts read, behaviour checked; never "looks right".
 (Adapted from the core operating behaviours of using-agent-skills of addyosmani/agent-skills (MIT).)
 
+## How work runs here
+- Start any new piece of work with the `aidlc-start` skill: a new requirement, a story, a defect, a change request or
+  an incident follow-up. It says which stage comes next and where it runs.
+- The stages, in order: `aidlc-intent`, `aidlc-specify`, `aidlc-discover` and `aidlc-design` (when the tier or a
+  contract asks for them), `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`; after an
+  incident, `aidlc-operate` and `aidlc-feedback`.
+- Tests first: a failing test before any code; for a defect, a test that reproduces it.
+- Every change is reviewed in a pull request by a code owner who did not write it.
+
 ## Map
 Full map: `docs/codebase-map.md`. Read it before planning a change.
 - <area path>  <one-line responsibility>
 
 ## Commands
-- One-command check, must pass before you report done: `{{CHECK_COMMAND}}`
+- Tests and lint, must pass before you report done: `{{CHECK_COMMAND}}`
 - <run one test file>: <exact command>
+
+## Legacy
+- <paths with no tests that pin their behaviour: change only after a characterisation test>
 
 ## Standards
 - <specific, testable standard, with its reason>. Pattern to follow: <exemplar path>

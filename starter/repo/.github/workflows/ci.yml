@@ -1,0 +1,18 @@
+# The repository's checks on every pull request. Replace the two commands with the ones AGENTS.md names.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # Set up your language here, for example actions/setup-node or actions/setup-dotnet.
+      - name: Lint
+        run: echo "replace with your lint command" && exit 1
+      - name: Tests
+        run: echo "replace with your test command" && exit 1

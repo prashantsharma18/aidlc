@@ -1,0 +1,20 @@
+# Optional: an AI review on every pull request, with its own identity, as evidence for the human reviewer (never the
+# approval). Needs the ANTHROPIC_API_KEY secret. GitHub Copilot code review is an alternative that needs no workflow.
+name: ai-review
+on:
+  pull_request:
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  review:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review this pull request for bugs, security issues and compliance with AGENTS.md and the task bundle
+            under plans/ that it implements. Comment inline. Do not approve.
