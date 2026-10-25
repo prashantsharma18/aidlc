@@ -48,7 +48,8 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
    - Several repositories, or unsure (unsure counts as several repositories): the workspace flow. The story's
      documents live in the workspace repository's `stories/<KEY>/`.
 7. **Write the story's index.** Started at a workspace root, always write `stories/<KEY>/README.md`, whatever the route:
-   for one repository it names that repository and says its documents live in `<repository>/plans/<KEY>/`. Started in
+   for one repository it is only a pointer: it names that repository, and every stage, from `aidlc-specify` on, runs
+   inside it, with its documents in `<repository>/plans/<KEY>/`, never in `stories/<KEY>/`. Started in
    a lone repository, write `plans/<KEY>/README.md`. It holds: the source (the work item link), the kind, the route, and the stage checklist
    with where each stage runs and its status ("to do"):
    - story level, at the workspace root: `aidlc-intent` (only if the story needs it), `aidlc-specify`,
