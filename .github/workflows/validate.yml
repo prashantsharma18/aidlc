@@ -1,0 +1,19 @@
+# Checks the skills package on every pull request: the validator and its tests, and the Claude Code plugin manifest.
+name: validate
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  skills:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: The validator's tests
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+      - name: Every skill, agent and the plugin manifest
+        run: python3 scripts/validate.py
