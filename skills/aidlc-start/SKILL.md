@@ -47,8 +47,9 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
      repository, with its documents in `plans/<KEY>/`.
    - Several repositories, or unsure (unsure counts as several repositories): the workspace flow. The story's
      documents live in the workspace repository's `stories/<KEY>/`.
-7. **Write the story's index.** For the workspace flow, write `stories/<KEY>/README.md`; for one repository,
-   `plans/<KEY>/README.md`. It holds: the source (the work item link), the kind, the route, and the stage checklist
+7. **Write the story's index.** Started at a workspace root, always write `stories/<KEY>/README.md`, whatever the route:
+   for one repository it names that repository and says its documents live in `<repository>/plans/<KEY>/`. Started in
+   a lone repository, write `plans/<KEY>/README.md`. It holds: the source (the work item link), the kind, the route, and the stage checklist
    with where each stage runs and its status ("to do"):
    - story level, at the workspace root: `aidlc-intent` (only if the story needs it), `aidlc-specify`,
      `aidlc-discover`, `aidlc-design` (with the coordination plan, one row per repository part);
@@ -60,8 +61,8 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
 8. Tell the person the next stage, the exact folder to run it in, and the command.
 
 ## Produces
-The story's index, `stories/<KEY>/README.md` (several repositories) or `plans/<KEY>/README.md` (one repository), on
-the story branch, plus the questions for the product owner or the reporter. It is reviewed with the rest of the
+The story's index, `stories/<KEY>/README.md` (started at a workspace root) or `plans/<KEY>/README.md` (started in a
+lone repository), plus the questions for the product owner or the reporter. It is reviewed with the rest of the
 story's documents in the pull request.
 
 ## Gate
