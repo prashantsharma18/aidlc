@@ -22,6 +22,9 @@ fields: [NAME, PURPOSE]
 - Part level runs inside each repository: plan, build, verify, review, on branch `feat/<KEY>-<part>`.
 - A story is never split into more tracker issues: its parts are rows of `stories/<KEY>/coordination-plan.md`.
 
+## Tools
+- Tracker: <site, project>; read issues with <tool>; never transition an issue; creating or commenting asks first.
+
 ## Rules
 - A repository's own rules apply to its code. Read its AGENTS.md before reasoning about it, and say when two
   repositories' rules conflict.

@@ -14,5 +14,9 @@
 4. **Work:** start every piece of work with `/aidlc:aidlc-start <KEY>` (or describe a new requirement). It tells you the
    next skill and where to run it.
 
+**Let the agent read your tracker:** add your tracker's read-only tools to `permissions.allow` in `.claude/settings.json`
+(for example `mcp__<server>__getjiraissue` and its search tool), deny its transition tool, and name the site and project in
+`AGENTS.md` or `WORKSPACE.md` ("Tools"). Without the allow rule, a headless session cannot read the work item.
+
 Start Claude Code at a repository root or the workspace root, never in a subfolder: settings load from the folder you start in.
 Stage skills run only when you ask for them by name; practice skills load on their own when relevant.
