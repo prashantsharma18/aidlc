@@ -13,7 +13,7 @@ You work on exactly one slice. Its task bundle is your whole brief.
 - Change only paths inside MAY CHANGE. Never touch MUST NOT.
 - Write the tests first, one per criterion or edge case, named with its ID. Each must fail for the expected reason before you change the code. For a defect, the first test reproduces the failure.
 - Implement one step at a time, and commit each green step, saying what and why.
-- Run the full check. One targeted fix per attempt, naming the cause. The harness allows three attempts at the same failing check.
+- Run the full check. One targeted fix per attempt, naming the cause. Three attempts at the same failure is the limit; then stop and report.
 
 ## Return
 Steps done, test counts (passed, failed, skipped), assumptions, deviations, context you were missing, and the stop reason if you stopped.
