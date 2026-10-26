@@ -32,8 +32,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with: {fetch-depth: 0, persist-credentials: false}
       # Claude Code's sandbox (CLAUDE_CODE_SUBPROCESS_ENV_SCRUB isolation) needs bubblewrap and socat,
-      # and bubblewrap needs unprivileged user namespaces. The only shell steps the policy allows in
-      # this job (workflows.rego, ADR 0004).
+      # and bubblewrap needs unprivileged user namespaces. Keep these the only shell steps in
+      # this job (ADR 0004).
       - name: bubblewrap and socat, for the sandbox that scrubs the key
         run: sudo apt-get update -q && sudo apt-get install -y -q bubblewrap socat
       - name: Allow unprivileged user namespaces for bubblewrap (ephemeral runner)

@@ -4,7 +4,7 @@
 QUESTION  <who reads or writes X, by what path, and what must stay true when Y?>
 LEVEL     <L0-L3 and the trigger that forced it>
 
-Tier 2 requires items 1-5; Tier 3 requires all eight (core/policy/tiers.yaml).
+Tier 2 requires items 1-5; Tier 3 requires all eight (`assets/tiers.md`).
 
 1 ENTRY POINTS   <every way the behaviour or data is triggered, each with file:line and method>
 2 OWNERS         <owner per component, or "unknown" with an escalation; confirmed by whom, when>

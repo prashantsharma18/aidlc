@@ -1,4 +1,4 @@
-# Risk tiers (generated)
+# Risk tiers
 
 Rate each dial. The tier is the highest any dial reaches. When uncertain, go up a tier: unknown owners, unknown consumers or untested behaviour count as the next tier until someone resolves them. Scope alone never makes Tier 3; it raises coordination. A higher tier adds enforcement, checkpoints and approvers, never extra stages.
 

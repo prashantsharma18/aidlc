@@ -2,11 +2,9 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
-      "Read",
-      "Grep",
-      "Glob",
       "Edit(/stories/**)",
-      "Read(~/.claude/plugins/**)"
+      "Read(~/.claude/plugins/cache/aidlc/**)",
+      "Read(~/.claude/plugins/marketplaces/aidlc/**)"
     ],
     "deny": [
       "Read(.env)",
@@ -15,12 +13,23 @@
       "Read(**/.env.*)",
       "Read(**/*.pem)",
       "Read(**/*.key)",
+      "Read(secrets/**)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
       "Bash(git push*)"
     ],
     "disableBypassPermissionsMode": "disable"
   },
   "sandbox": {
-    "enabled": true
+    "enabled": true,
+    "filesystem": {
+      "denyRead": [
+        ".env",
+        ".env.*",
+        "~/.ssh",
+        "~/.aws"
+      ]
+    }
   },
   "enabledPlugins": {
     "aidlc@aidlc": true

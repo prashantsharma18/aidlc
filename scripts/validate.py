@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Checks the aidlc skills package: every skill and agent in the open Agent Skills format, the house sections of the
-stage skills, no command of the parked harness, every named asset present, and the Claude Code plugin manifest.
+stage skills, no command of the parked harness and no tool-specific syntax (in a skill or its assets), every named
+asset present, the Claude Code plugin manifest, and the starter settings' secret denies.
 
     python3 scripts/validate.py [root]
 
@@ -17,8 +18,13 @@ SECTIONS = ("## When to use", "## Inputs", "## Steps", "## Produces", "## Gate",
             "## Common excuses", "## Red flags", "## Rules")
 GATE_LINE = "You draft; you never approve."
 # Commands and files of the harness parked under the tag harness-v1 (docs/archive/harness-v1.md).
-REMOVED = re.compile(r"aidlc (check|scope|ci|new|attempts|render|init-repo|doctor|trace|adopt|plugin build)\b"
-                     r"|approved-bundles\.txt|\.aidlc/(config|hooks|baseline)")
+REMOVED = re.compile(r"aidlc\s+(check|scope|ci|new|attempts|render|init-repo|doctor|trace|adopt|plugin\s+build)\b"
+                     r"|approved-bundles\.txt|\.aidlc/(config|hooks|baseline)|core/(policy|schemas|hooks)\b"
+                     r"|hook decision log|bin/aidlc\b")
+# Syntax one tool understands and the others do not: skills must run unchanged in every tool.
+TOOL_SPECIFIC = re.compile(r"/aidlc:[a-z]|\$ARGUMENTS\b|\$\{CLAUDE_[A-Z_]+\}")
+# Allowing a whole tool at the workspace root opens every path it can reach, home folder included.
+WHOLE_TOOLS = {"Read", "Edit", "Write", "Bash", "Grep", "Glob"}
 ASSET = re.compile(r"`assets/([A-Za-z0-9._-]+)`")
 
 
@@ -35,6 +41,12 @@ def front_matter(text: str) -> dict[str, str] | None:
         if m:
             fields[m.group(1)] = m.group(2).strip().strip("'\"")
     return fields
+
+
+def portability(rel: str, text: str) -> list[str]:
+    problems = [f"{rel}: names a removed harness command or file: '{' '.join(m.group(0).split())}'"
+                for m in REMOVED.finditer(text)]
+    return problems + [f"{rel}: uses tool-specific syntax: '{m.group(0)}'" for m in TOOL_SPECIFIC.finditer(text)]
 
 
 def check_skill(path: Path) -> list[str]:
@@ -64,8 +76,10 @@ def check_skill(path: Path) -> list[str]:
             problems.append(f"{rel}: sections are out of order (expected {', '.join(SECTIONS)})")
         if GATE_LINE not in text:
             problems.append(f"{rel}: the gate must end with '{GATE_LINE}'")
-    for m in REMOVED.finditer(text):
-        problems.append(f"{rel}: names a removed harness command or file: '{m.group(0)}'")
+    problems += portability(rel, text)
+    for extra in sorted((path.parent / "assets").glob("*")):
+        if extra.is_file():
+            problems += portability(f"{rel.rsplit('/', 1)[0]}/assets/{extra.name}", extra.read_text(encoding="utf-8"))
     for asset in sorted(set(ASSET.findall(text))):
         if not (path.parent / "assets" / asset).is_file():
             problems.append(f"{rel}: names `assets/{asset}`, which does not exist")
@@ -82,8 +96,7 @@ def check_agent(path: Path) -> list[str]:
     if fm.get("name") and fm["name"] != path.stem:
         problems.append(f"{rel}: name '{fm['name']}' does not match the file name")
     text = path.read_text(encoding="utf-8")
-    problems += [f"{rel}: names a removed harness command or file: '{m.group(0)}'" for m in REMOVED.finditer(text)]
-    return problems
+    return problems + portability(rel, text)
 
 
 def check_plugin(root: Path) -> list[str]:
@@ -101,14 +114,35 @@ def check_plugin(root: Path) -> list[str]:
     return problems
 
 
+def check_starters(root: Path) -> list[str]:
+    """The workspace root reads with the same secret denies as a repository, and never allows a whole tool."""
+    settings = {}
+    for kind in ("repo", "workspace"):
+        rel = f"starter/{kind}/.claude/settings.json"
+        try:
+            settings[kind] = json.loads((root / rel).read_text(encoding="utf-8")).get("permissions", {})
+        except (OSError, ValueError) as exc:
+            return [f"{rel}: unreadable ({exc})"]
+    rel = "starter/workspace/.claude/settings.json"
+    ws = settings["workspace"]
+    problems = [f"{rel}: allows the whole '{rule}' tool; allow paths, never a tool"
+                for rule in ws.get("allow", []) if rule in WHOLE_TOOLS]
+    secrets = [r for r in settings["repo"].get("deny", []) if r.startswith("Read(")]
+    problems += [f"{rel}: misses the repository starter's deny '{r}'" for r in secrets if r not in ws.get("deny", [])]
+    return problems
+
+
 def validate(root: Path) -> list[str]:
     skills = sorted((root / "skills").glob("*/SKILL.md"))
     problems = [] if skills else ["skills/: no skills found"]
     for path in skills:
         problems += check_skill(path)
-    for path in sorted((root / "agents").glob("*.md")):
+    agents = sorted((root / "agents").glob("*.md"))
+    if not agents:
+        problems.append("agents/: no agents found")
+    for path in agents:
         problems += check_agent(path)
-    return problems + check_plugin(root)
+    return problems + check_plugin(root) + check_starters(root)
 
 
 def main(argv: list[str]) -> int:

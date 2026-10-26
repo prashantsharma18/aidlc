@@ -4,7 +4,7 @@ Both read the same `SKILL.md` folders and `AGENTS.md`.
 
 | Tool | Skills folder | Rules |
 |---|---|---|
-| Codex | `.agents/skills/` in the repository (check your Codex version's docs for the user-level folder) | `AGENTS.md` |
+| Codex | `.agents/skills/` in the repository; `~/.agents/skills/` for yourself | `AGENTS.md` |
 | Cursor | `.cursor/skills/` or `.agents/skills/` | `AGENTS.md`, or a short `.cursor/rules/` file pointing to it |
 
 1. Copy `skills/` into the folder above, and the starter's `AGENTS.md`, CI workflow and CODEOWNERS.

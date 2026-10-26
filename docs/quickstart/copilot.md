@@ -9,9 +9,11 @@ your own in `~/.copilot/skills/` (see GitHub's "Adding agent skills for GitHub C
    mkdir -p .github/skills && cp -r /path/to/aidlc/skills/* .github/skills/
    ```
    or for yourself only: `cp -r /path/to/aidlc/skills/* ~/.copilot/skills/`.
-2. **Add the agents** as Copilot custom agents: copy each `agents/<name>.md` to `.github/agents/<name>.agent.md`. Remove
-   the `tools:` line (it uses Claude Code's tool names), or replace it with Copilot's tool names for read-only agents.
-3. **Copy the starter files**: `AGENTS.md` (Copilot reads it), `.github/workflows/ci.yml`, `.github/CODEOWNERS`. Copilot
+2. **Add the agents** as Copilot custom agents: copy each `agents/<name>.md` to `.github/agents/<name>.agent.md`. Keep
+   the `tools:` line: Copilot reads Claude's names as aliases (`Read` is `read`, `Grep` and `Glob` are `search`, `Edit`
+   and `Write` are `edit`, `Bash` is `execute`). Without it, a custom agent gets every tool, and the read-only
+   explorer, planner and reviewers could edit files and run commands.
+3. **Copy the starter files**: `AGENTS.md` (Copilot reads it), `.github/workflows/ci.yml`, `CODEOWNERS`. Copilot
    does not use `.claude/settings.json`; use your organisation's Copilot content exclusion for secrets.
 4. **Onboard and work** in agent mode: ask "use the aidlc-onboard skill", then "use aidlc-start for SHIP-12". Copilot
    loads a skill when the request matches its description, or when you name it.

@@ -34,7 +34,8 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
      own key that points to the original, and its criteria include "the original's criteria still hold".
    - **Incident follow-up:** link the incident record; route it as a defect, with the incident as the evidence.
 3. **No story yet (a new feature):** interview one question at a time, about the outcome and who has the problem,
-   until you can state it without naming a solution. Draft the story: title, problem, outcome, acceptance criteria.
+   until you can state it without naming a solution. Draft the story from `assets/intent.md`: title, problem, outcome,
+   acceptance criteria, and its tier from `assets/tiers.md`.
    The product owner creates it in the tracker; creating it yourself asks the person first. Stop until it has a key.
 4. **The story exists:** read it. Check that it states a problem, an observable outcome and testable acceptance
    criteria. List questions for the product owner. Never redraft a story that is already clear, and never split the
@@ -48,17 +49,24 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
    - Several repositories, or unsure (unsure counts as several repositories): the workspace flow. The story's
      documents live in the workspace repository's `stories/<KEY>/`.
 7. **Write the story's index.** Started at a workspace root, always write `stories/<KEY>/README.md`, whatever the route:
-   for one repository it is only a pointer: it names that repository, and every stage, from `aidlc-specify` on, runs
+   for one repository it is only a pointer: it names that repository, and every stage, `aidlc-intent` included, runs
    inside it, with its documents in `<repository>/plans/<KEY>/`, never in `stories/<KEY>/`. Started in
    a lone repository, write `plans/<KEY>/README.md`. It holds: the source (the work item link), the kind, the route, and the stage checklist
-   with where each stage runs and its status ("to do"):
+   with where each stage runs and its status ("to do").
+
+   **One repository:** every stage runs inside that repository: `aidlc-intent` (only if the story needs it),
+   `aidlc-specify`, `aidlc-discover` and `aidlc-design` (only when the tier or a contract asks), `aidlc-plan`,
+   `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`; on events, `aidlc-operate`, `aidlc-feedback`.
+
+   **Several repositories:**
    - story level, at the workspace root: `aidlc-intent` (only if the story needs it), `aidlc-specify`,
      `aidlc-discover`, `aidlc-design` (with the coordination plan, one row per repository part);
    - part level, inside each repository: `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`;
    - back at the root: `aidlc-release`; on events: `aidlc-operate`, `aidlc-feedback`.
 
-   For a defect, the checklist is shorter: `aidlc-intent` (defect mode), `aidlc-plan` (short), `aidlc-build`
-   (reproducing test first), `aidlc-verify`, `aidlc-review`, `aidlc-release`.
+   **A defect** has a shorter checklist: `aidlc-intent` (defect mode), `aidlc-plan` (short), `aidlc-build` (reproducing
+   test first), `aidlc-verify`, `aidlc-review`, `aidlc-release`. When it spans several repositories, it also needs
+   `aidlc-discover` and `aidlc-design` at the root before any part is planned: the parts need the coordination plan.
 8. Tell the person the next stage, the exact folder to run it in, and the command.
 
 ## Produces

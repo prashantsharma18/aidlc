@@ -33,14 +33,22 @@ Final state: `feat/SHIP-2-portal`, 11 commits; lint, typecheck and 125 tests pas
 | P7-F3 | It then put the one-repository story's documents at the root | For one repository, the root index is only a pointer; every stage runs in the repository |
 | P7-F4 | Story-level skills treated "a `stories/<KEY>/` folder exists" as "several repositories" | They follow the route written in the story's index |
 | P7-F5 | A repository session could not read the workspace's `stories/` | Repository starter settings: `additionalDirectories: ["../stories"]` |
-| P7-F6 | A skill could not read its own templates (the plugin lives outside the project) | Starter settings allow `Read(~/.claude/plugins/**)` |
+| P7-F6 | A skill could not read its own templates (the plugin lives outside the project) | Starter settings allow reading aidlc's own plugin folders (`~/.claude/plugins/cache/aidlc/**`, `marketplaces/aidlc/**`) |
 
 The harness-era finding F13 (agents could not write `.git`) is gone: the build agent committed its own steps.
 
+## After the final review
+
+A fresh review of the branch found the workspace root could still edit the repositories and read `~/.ssh` and `~/.aws`
+(the starter allowed the whole Read tool). The starter now has the repository's secret denies, and onboarding adds one
+`Edit(/<repository>/**)` deny per repository. A headless probe at the demo's root (acceptEdits) then had the Edit tool
+refused ("denied by your permission settings") and `echo >> customer-portal/README.md` refused by the sandbox
+("Read-only file system"), while `stories/` stayed writable.
+
 ## Copilot, Codex, Cursor
 
-- `customer-portal/.github/skills/` (21 skills) and `.github/agents/*.agent.md` (7 agents, without Claude's `tools:` line)
-  are committed on `main` and the story branch. **To check in VS Code:** open `~/work/shipment-tracking/customer-portal`,
+- `customer-portal/.github/skills/` (21 skills) and `.github/agents/*.agent.md` (7 agents, keeping the `tools:` line,
+  which Copilot reads as aliases; the first copy dropped it and so gave every agent every tool) are committed on `main`. **To check in VS Code:** open `~/work/shipment-tracking/customer-portal`,
   switch Copilot Chat to agent mode, and ask "which skills do you have?" and "use the aidlc-start skill for SHIP-3". Not yet
   checked by the user.
 - Codex and Cursor are not installed; the copied skills pass `scripts/validate.py`'s open-format checks (folder name

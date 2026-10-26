@@ -23,7 +23,8 @@
       "../stories"
     ],
     "allow": [
-      "Read(~/.claude/plugins/**)"
+      "Read(~/.claude/plugins/cache/aidlc/**)",
+      "Read(~/.claude/plugins/marketplaces/aidlc/**)"
     ]
   },
   "sandbox": {

@@ -5,7 +5,7 @@ REVIEWER   <security champion>. Code owner approves (branch protection).
 
 1 INTENT   <brief matches the approved plan; decisions recorded in the PR>
 2 DIFF     <files, all inside MAY CHANGE?; side effects>
-3 TOOLS    <from the session and hook decision logs: reads, edits, commands; denials, asks, installs, network attempts>
+3 TOOLS    <from the session transcript and the tool's permission prompts: reads, edits, commands; denials, asks, installs, network attempts>
 4 TESTS    <CI counts; skips; no existing assertion changed; diff inside MAY CHANGE>
   SCANS    <secret, dependency, SAST results>
 

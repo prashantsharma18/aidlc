@@ -18,17 +18,17 @@ and gate the framework provides at each stage.
 | Intent | Product owner | `intent` | Jira issue | Owner, priority, provisional tier | `aidlc-intent` |
 | Specify | Spec owner (+ specialists) | `spec` | Jira (approved version) | Criteria testable; approval recorded | `aidlc-specify` |
 | Design | Tech lead / architect; consumers | `design-note`, `adr`, contract | Jira note; `docs/adr/`; contract file | Decisions approved, or "none needed" recorded | `aidlc-design` |
-| Plan | Engineer drafts, tech lead approves | `plan`, `task-bundle`, `coordination-plan` | `plans/<KEY>/` + approval on Jira | Approval line in `plans/approved-bundles.txt` | `aidlc-plan` |
-| Build | Engineer | commits, `progress-note` | Feature branch `<type>/<KEY>-<slug>` | Local check green; diff in scope | `aidlc-build-slice` |
+| Plan | Engineer drafts, tech lead approves | `plan`, `task-bundle`, `coordination-plan` | `plans/<KEY>/` (or `stories/<KEY>/coordination-plan.md`) | Approval in the pull request or the work item | `aidlc-plan` |
+| Build | Engineer | commits, `progress-note` | Feature branch `<type>/<KEY>-<slug>` (`feat/<KEY>-<part>` for a part) | Local check green; diff inside MAY CHANGE | `aidlc-build` |
 | Verify | Automated gates | `evidence-table` | CI record | Required checks green | `aidlc-verify` |
 | Review & release | Code owners, specialists, release approver | `review-record`, `readiness`, `change-record` | Git host; change management | Code-owner approval; release approval | `aidlc-review`, `aidlc-release` |
 | Operate & learn | On-call, owning team | `runbook`, `incident` | Monitoring; Jira | Healthy or rolled back; lessons routed | `aidlc-operate` |
 
 Discovery (`evidence-pack`, `explorer-brief`) runs before Design whenever the tier asks for it.
 
-The skills for Intent, Specify, Plan, Build and Verify, and `aidlc-context-setup`, are in the
-[aidlc plugin](../skills/README.md), and since Plan 5b-B so are discover, design, review, release, operate and
-feedback. The security procedures (guide 13A–13D) and cross-repository work follow in Plan 5b-C.
+Every stage has a skill in [skills/](../../skills/), and `aidlc-onboard` sets up a repository or a workspace.
+Start every piece of work with `aidlc-start`: it decides the kind of work and the repositories it changes, and
+says where each stage runs ([workspace-and-repositories.md](workspace-and-repositories.md)).
 
 **Three kinds of work** use the same stages: new work takes the full path by tier; a defect starts
 with a failing test that reproduces it; a change request amends the spec through its owner (spec

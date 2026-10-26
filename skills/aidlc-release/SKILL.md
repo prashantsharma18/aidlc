@@ -23,13 +23,13 @@ disable-model-invocation: true
 After the pull request merges, before the change reaches users.
 
 ## Inputs
-Where this runs: read the story's index first (`stories/<KEY>/README.md` at the workspace root, or `plans/<KEY>/README.md`). When it routes the story to several repositories, run at the workspace root and write to `stories/<KEY>/`; started inside a repository for such a story, say so, name the workspace root, and stop. When it names one repository, run inside that repository: a one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`.
+Where this runs: read the story's index first: `stories/<KEY>/README.md` at the workspace root, `../stories/<KEY>/README.md` from inside one of its repositories, or `plans/<KEY>/README.md` in a lone repository. No index: ask the person to run `aidlc-start` first, and stop. When it routes the story to several repositories, run at the workspace root and write to `stories/<KEY>/`; started inside a repository for such a story, say so, name the workspace root, and stop. When it names one repository, run inside that repository: a one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`; started at the workspace root for such a story, name the repository to open, and stop.
 
 The merged pull request and its evidence, the feature flag (if any), the monitoring plan and the rollback.
 
 ## Steps
 1. Check the five confirmations: scope known, evidence passing, access limited, monitoring in place, recovery defined. Place each in a column of `assets/readiness.md`; the worst column decides.
-2. Choose the strategy (flag, canary or staged), preferring the fastest rehearsed rollback. Data changes use expand and contract.
+2. Choose the strategy (flag, canary or staged), preferring the fastest rehearsed rollback. Data changes use expand and contract. When the story spans several repositories, fill `assets/compat-matrix.md`: every combination of versions and flags that can be live during the rollout, and what each one shows.
 3. Write the stop criteria before release: for each, the signal, threshold, duration, who decides and what they do, plus a caution level before the stop. The rollback is pre-approved for on-call. At Tier 1, a rehearsed revert of the merge counts as the rollback.
 4. Check that the release pipeline built the artefact once and recorded its digest; cite it.
 5. Draft the readiness checklist, the change record from `assets/change-record.md`, the release runbook from `assets/release-runbook.md`, and the follow-ups (for example flag removal, with an owner and a date).

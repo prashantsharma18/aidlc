@@ -28,7 +28,7 @@ disable-model-invocation: true
 After the spec is approved and any discovery is decided, before `aidlc-plan`. Every change gets the design note; most end at "none needed".
 
 ## Inputs
-Where this runs: read the story's index first (`stories/<KEY>/README.md` at the workspace root, or `plans/<KEY>/README.md`). When it routes the story to several repositories, run at the workspace root and write to `stories/<KEY>/`; started inside a repository for such a story, say so, name the workspace root, and stop. When it names one repository, run inside that repository: a one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`.
+Where this runs: read the story's index first: `stories/<KEY>/README.md` at the workspace root, `../stories/<KEY>/README.md` from inside one of its repositories, or `plans/<KEY>/README.md` in a lone repository. No index: ask the person to run `aidlc-start` first, and stop. When it routes the story to several repositories, run at the workspace root and write to `stories/<KEY>/`; started inside a repository for such a story, say so, name the workspace root, and stop. When it names one repository, run inside that repository: a one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`; started at the workspace root for such a story, name the repository to open, and stop.
 
 The approved spec, the evidence pack (if any), the architecture contract (codebase map, ADRs, contract files), and the approved UI design with its version, if there is a UI.
 

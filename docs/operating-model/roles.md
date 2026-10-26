@@ -7,11 +7,10 @@ Who decides, who owns which shared artefact, and who may approve.
 | Artefact | Owner | Changes by |
 |---|---|---|
 | `AGENTS.md`, codebase map, folder rules, shared skills | Repository code owners | Reviewed PR |
-| Harness: permissions, hooks, sandbox profile, check scripts | Harness code owner; platform team for the organisation layer | Reviewed PR, attack tests and evals |
+| Skills, agents and starter settings | Framework owners; platform team for the organisation layer (managed settings) | Reviewed PR; `scripts/validate.py` green |
 | Eval set and baseline | Eval owner; baseline changes approved by a code owner, never the author | Reviewed PR |
 | Acceptance criteria | Spec owner | Spec review loop (amendment with date, reason, decider) |
 | Plans and briefs | Tech lead | Re-approval when scope, approach, risk or criteria change |
-| Policies in `core/policy/` | The owner named in each policy's `meta` | Framework PR |
 
 ## The six judgement dimensions (people decide; automation informs)
 

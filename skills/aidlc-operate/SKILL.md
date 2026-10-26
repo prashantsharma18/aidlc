@@ -23,7 +23,7 @@ disable-model-invocation: true
 When an alert fires, an incident is open, or a person asks what a production signal means.
 
 ## Inputs
-Where this runs: read the story's index first (`stories/<KEY>/README.md` at the workspace root, or `plans/<KEY>/README.md`). When it routes the story to several repositories, run at the workspace root and write to `stories/<KEY>/`; started inside a repository for such a story, say so, name the workspace root, and stop. When it names one repository, run inside that repository: a one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`.
+Where this runs: read the story's index first: `stories/<KEY>/README.md` at the workspace root, `../stories/<KEY>/README.md` from inside one of its repositories, or `plans/<KEY>/README.md` in a lone repository. No index: ask the person to run `aidlc-start` first, and stop. When it routes the story to several repositories, run at the workspace root and write to `stories/<KEY>/`; started inside a repository for such a story, say so, name the workspace root, and stop. When it names one repository, run inside that repository: a one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`; started at the workspace root for such a story, name the repository to open, and stop.
 
 The alert and its evidence, the runbook, masked logs and metrics the person shares, the release record, and the work item.
 

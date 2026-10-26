@@ -30,6 +30,10 @@ x
 x
 """
 
+SECRET_DENIES = ["Read(**/.env)", "Read(~/.ssh/**)"]
+REPO_SETTINGS = {"permissions": {"deny": SECRET_DENIES}}
+WORKSPACE_SETTINGS = {"permissions": {"allow": ["Edit(/stories/**)"], "deny": SECRET_DENIES}}
+
 
 def package(root: Path, skills: dict[str, str], agents: dict[str, str] | None = None, assets=("plan.md",)):
     for name, text in skills.items():
@@ -45,6 +49,9 @@ def package(root: Path, skills: dict[str, str], agents: dict[str, str] | None = 
     (root / ".claude-plugin" / "plugin.json").write_text(json.dumps({"name": "aidlc"}), encoding="utf-8")
     (root / ".claude-plugin" / "marketplace.json").write_text(
         json.dumps({"name": "aidlc", "plugins": [{"name": "aidlc", "source": "./"}]}), encoding="utf-8")
+    for kind, settings in (("repo", REPO_SETTINGS), ("workspace", WORKSPACE_SETTINGS)):
+        (root / "starter" / kind / ".claude").mkdir(parents=True)
+        (root / "starter" / kind / ".claude" / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
 
 
 def skill(name, description="Does things. Use when needed.", body=STAGE_BODY):
@@ -98,6 +105,53 @@ class ValidateTest(unittest.TestCase):
             (root / ".claude-plugin" / "marketplace.json").write_text(
                 json.dumps({"name": "aidlc", "plugins": [{"name": "aidlc", "source": "./plugins/aidlc"}]}))
             self.assertTrue(any("marketplace" in p for p in validate.validate(root)))
+
+    def test_harness_references_in_assets_are_problems(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package(root, {"aidlc-plan": skill("aidlc-plan")})
+            (root / "skills" / "aidlc-plan" / "assets" / "plan.md").write_text("See core/policy/tiers.yaml.")
+            problems = validate.validate(root)
+        self.assertTrue(any("assets/plan.md" in p and "core/policy" in p for p in problems), problems)
+
+    def test_removed_commands_are_found_across_spaces_and_line_breaks(self):
+        for wrapped in ("Run `aidlc  check`.", "Run aidlc\ncheck first."):
+            body = STAGE_BODY.replace("## Produces", wrapped + "\n## Produces")
+            problems = self.check({"aidlc-plan": skill("aidlc-plan", body=body)})
+            self.assertTrue(any("removed harness command" in p for p in problems), (wrapped, problems))
+
+    def test_tool_specific_syntax_is_a_problem(self):
+        for text in ("Run `/aidlc:plan` next.", "Plan $ARGUMENTS."):
+            body = STAGE_BODY.replace("## Produces", text + "\n## Produces")
+            problems = self.check({"aidlc-plan": skill("aidlc-plan", body=body)})
+            self.assertTrue(any("tool-specific" in p for p in problems), (text, problems))
+
+    def test_a_missing_agents_folder_is_a_problem(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package(root, {"aidlc-plan": skill("aidlc-plan")})
+            for f in (root / "agents").iterdir():
+                f.unlink()
+            (root / "agents").rmdir()
+            self.assertTrue(any("agents/" in p for p in validate.validate(root)))
+
+    def test_the_workspace_starter_never_allows_a_whole_tool(self):
+        bad = {"permissions": {"allow": ["Read", "Edit(/stories/**)"], "deny": SECRET_DENIES}}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package(root, {"aidlc-plan": skill("aidlc-plan")})
+            (root / "starter" / "workspace" / ".claude" / "settings.json").write_text(json.dumps(bad))
+            problems = validate.validate(root)
+        self.assertTrue(any("starter/workspace" in p and "'Read'" in p for p in problems), problems)
+
+    def test_the_workspace_starter_denies_every_secret_the_repo_starter_denies(self):
+        thin = {"permissions": {"allow": ["Edit(/stories/**)"], "deny": ["Read(**/.env)"]}}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package(root, {"aidlc-plan": skill("aidlc-plan")})
+            (root / "starter" / "workspace" / ".claude" / "settings.json").write_text(json.dumps(thin))
+            problems = validate.validate(root)
+        self.assertTrue(any("starter/workspace" in p and "Read(~/.ssh/**)" in p for p in problems), problems)
 
 
 if __name__ == "__main__":

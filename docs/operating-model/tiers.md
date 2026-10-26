@@ -1,7 +1,7 @@
 # Choosing a tier
 
-The eight stages always apply; the tier decides how much of each you do. The policy is
-`core/policy/tiers.yaml`; the table generated from it is [tiers-table.md](tiers-table.md).
+The eight stages always apply; the tier decides how much of each you do. The table is
+[tiers-table.md](tiers-table.md); the skills carry the same table in their `assets/tiers.md`.
 
 ## How to rate a change
 
