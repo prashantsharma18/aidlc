@@ -26,5 +26,8 @@ starter) checks the two agree, at the start of work and in CI. Installing `aidlc
 Cloud sessions and headless (`-p`) runs do not add a repository's marketplace, because that needs the folder-trust
 dialog: in CI, install the plugins explicitly (`claude plugin marketplace add`, then `claude plugin install`).
 
+Open a new repository or workspace in Claude Code interactively once and accept the folder-trust dialog: until then its
+`.claude/settings.json` allow rules and `additionalDirectories` are ignored, and headless runs never show the dialog.
+
 Start Claude Code at a repository root or the workspace root, never in a subfolder: settings load from the folder you start in.
 Stage skills run only when you ask for them by name; practice skills load on their own when relevant.

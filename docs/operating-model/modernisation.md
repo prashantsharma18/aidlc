@@ -15,6 +15,19 @@ repositories being modernised. The method follows the guide's chapter 15.
 
 3. Run `python3 scripts/check_packs.py`; CI runs it too.
 
+## Running a legacy build next to the sandbox
+- **New repository, new folder:** Claude Code ignores a repository's allow rules until someone accepts the folder-trust
+  dialog once (open `claude` in it interactively). Headless (`-p`) and cloud sessions never show that dialog.
+- **.NET Framework on WSL:** the Linux .NET SDK builds `net48` with the reference-assemblies package, and WSL interop
+  runs the result on Windows' .NET Framework. The sandbox blocks the interop socket, so the few commands that launch the
+  old build (run, test, parity scripts) are listed in `sandbox.excludedCommands` with matching allow rules, written by a
+  person and denied to agents for editing. Code those commands start runs on Windows outside any sandbox: keep the list
+  short and review the diffs. A person runs the recipe check's "before" count and parity when the agent cannot.
+- **Inside the sandbox**, `dotnet build` needs `-p:EnableSourceControlManagerQueries=false` (git's configuration files
+  are hidden) and NuGet needs `api.nuget.org` in `sandbox.network.allowedDomains` once packages are approved.
+- **Program output is not always UTF-8:** a .NET Framework console program prints its OEM code page; the parity script
+  compares bytes.
+
 ## The three lanes
 `modernize-assess` proposes the lane from evidence; the tech lead approves it. When unsure, the heavier lane.
 

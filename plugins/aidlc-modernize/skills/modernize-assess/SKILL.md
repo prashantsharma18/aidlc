@@ -32,7 +32,8 @@ Where this runs: read the story's index first: `stories/<KEY>/README.md` at the 
    `file:line`: projects and their target frameworks; packages and their versions; every entry point, including the
    ones no request starts (schedulers, jobs, anything wired by name in configuration); tests and what they assert;
    stored data and its formats; consumers and contracts. Treat "unused" as a claim: reflection and configuration
-   reach code that static analysis calls dead.
+   reach code that static analysis calls dead. Spot-check two or three citations of each answer yourself by opening the
+   file at that line; a wrong one means the answer is asked again before anything is built on it.
 2. **Baselines**, with the repository's commands from AGENTS.md, each recorded or marked "not available, because …":
    the test count and coverage; an SBOM with its known vulnerabilities and licences; a performance baseline (start-up,
    one representative run, memory) when the system can run. A missing baseline is a decision for a person, never a
