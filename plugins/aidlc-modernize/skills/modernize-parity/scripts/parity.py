@@ -5,9 +5,10 @@
 
 Each command contains {input}, replaced by the input file's path. The old version runs twice per input: a difference
 between its own two runs is noise, reported as NOISY until an --ignore pattern removes it, so noise is never mistaken
-for parity. Output is compared after line endings are normalised (a Windows program prints CRLF) and every --ignore
-match is replaced. Exit 0 only when every input gives the same exit code and output; 1 otherwise; 2 when there is no
-input. Standard library only; part of aidlc-modernize."""
+for parity. Output is compared as bytes, whatever its encoding (a Windows program may print an OEM code page), after
+line endings are normalised (a Windows program prints CRLF) and every --ignore match is replaced. Exit 0 only when
+every input gives the same exit code and output; 1 otherwise; 2 when there is no input. Standard library only; part of
+aidlc-modernize."""
 from __future__ import annotations
 
 import argparse
@@ -18,14 +19,15 @@ import sys
 from pathlib import Path
 
 
-def run(template: str, path: Path) -> tuple[int, str]:
+def run(template: str, path: Path) -> tuple[int, bytes]:
     command = template.replace("{input}", shlex.quote(str(path)))
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    result = subprocess.run(command, shell=True, capture_output=True)
     return result.returncode, result.stdout
 
 
-def normalise(text: str, ignore: list[re.Pattern]) -> str:
-    text = text.replace("\r\n", "\n")
+def normalise(raw: bytes, ignore: list[re.Pattern]) -> str:
+    # Latin-1 maps every byte to one character and back, so equal strings mean equal bytes in any encoding.
+    text = raw.replace(b"\r\n", b"\n").decode("latin-1")
     for pattern in ignore:
         text = pattern.sub("<ignored>", text)
     return text

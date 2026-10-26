@@ -58,6 +58,13 @@ class ParityTest(unittest.TestCase):
         old = self.program("old", "import time\nprint(data, time.time_ns())\n")
         self.assertEqual(set(self.verdicts(old, old, ignore=[r"\d{10,}"]).values()), {"SAME"})
 
+    def test_output_that_is_not_utf8_is_compared_as_bytes(self):
+        cp437 = self.program("cp437", "sys.stdout.buffer.write(b'Zo\\x89-1,3.52\\r\\n')\n")
+        same = self.program("same", "sys.stdout.buffer.write(b'Zo\\x89-1,3.52\\n')\n")
+        other = self.program("other", "sys.stdout.buffer.write(b'Zo\\x8a-1,3.52\\n')\n")
+        self.assertEqual(set(self.verdicts(cp437, same).values()), {"SAME"})
+        self.assertEqual(set(self.verdicts(cp437, other).values()), {"DIFFERENT"})
+
     def test_no_input_files_exit_2(self):
         empty = self.root / "empty"
         empty.mkdir()
