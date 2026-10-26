@@ -2,7 +2,7 @@
 name: modernize-assess
 description: Assesses a system for modernisation and proposes how far to go (retire, retain, rehost, replatform or refactor) and the lane (simple, standard or programme), from evidence a person approves. Use when aidlc-start routes modernisation work here, before any spec or plan.
 metadata:
-  stage: discover
+  stage: assess
   invocation: manual
   guide:
   - '15.1'

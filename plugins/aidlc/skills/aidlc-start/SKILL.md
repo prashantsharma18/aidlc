@@ -25,7 +25,8 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
    Neither: ask the person where the work belongs, and stop.
 2. **Packs.** Read AGENTS.md's `Packs used here`. If it lists packs, run the pack check named in AGENTS.md's
    Commands; if it fails, report its lines and stop. When the work is the kind a pack line covers, the route's next
-   stage after this one is that line's first skill, written in full (`<plugin>:<skill>`).
+   stage after this one is that line's first skill, written in full (`<plugin>:<skill>`), before intent, specify
+   or any other stage: it decides what the rest of the route needs. Write it first in the index's stage checklist.
 3. **What kind of work is it?** New feature, Defect, Change request or Incident follow-up, from the work item. If it
    does not say, ask.
    - **Defect:** it needs how to reproduce it, the expected and the actual behaviour, and the evidence. Anything
