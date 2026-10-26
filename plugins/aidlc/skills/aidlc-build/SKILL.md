@@ -34,11 +34,12 @@ The approved task bundle `plans/<KEY>/bundle-<slice>.md`, the spec and plan vers
 2. Restate the goal, the criteria covered, MAY CHANGE and STOP IF, with file references, and make no edits. Wait for the person to confirm.
 3. Load every skill the bundle's USE SKILLS names, by its full name, before any edit. A skill that cannot be loaded, or a name that matches more than one skill, is a stop: report it; never continue without it and never pick one yourself. Record each skill loaded, with its plugin's version, in the progress note.
 4. Propose numbered steps, tests first, each naming its files and its check. Every file must be inside MAY CHANGE; if a step needs anything the bundle forbids, stop. Keep the steps as a checklist in your reply, in the shape of `assets/progress-note.md`.
-5. Write the tests first: one per criterion or edge case, named with its ID. Run them and read the counts: each new test must fail for the expected reason. A test that passes before the code exists must prove it can fail; a skipped test proves nothing. For a defect, the first test reproduces the reported failure, and no fix is written until it fails for that reason.
-6. Implement one step at a time. Commit each green step; the message gives the step number, what and why, and any decision you made with who must confirm it. The commits are the progress record: a new session rebuilds it from the bundle and `git log`.
-7. Run the full test and lint commands, not only the slice's tests. For a failure, name the cause and make one targeted fix per attempt (the `debugging-and-error-recovery` skill helps). Three attempts at the same failure is the limit. The same failure after a different fix, or a newly broken test, means stop and report.
-8. Check the boundary: list the changed files (`git diff --name-only` against the branch's base) and compare them with MAY CHANGE; any file outside it is a stop. Then read your own diff hunk by hunk: only MAY CHANGE paths; no stray reformatting; no new dependency; no changed assertion; no secret or personal data in logs or messages.
-9. Report: the steps done, test counts (passed, failed, skipped), assumptions, deviations, and what you did not know. The person pushes and opens the pull request; you hold no push credential.
+5. **When the bundle has a RECIPE, the recipe commit comes first.** On a clean tree, run exactly the approved command and change nothing by hand. Commit only its output, with the trailer `Recipe: <tool>@<version>`. Run the recipe check named in AGENTS.md (`scripts/check_recipe_commit.py <commit> --recipe … --count …`) and stop for the person's review of that commit. Fixes come after it, as ordinary steps under every gate.
+6. Write the tests first: one per criterion or edge case, named with its ID. Run them and read the counts: each new test must fail for the expected reason. A test that passes before the code exists must prove it can fail; a skipped test proves nothing. For a defect, the first test reproduces the reported failure, and no fix is written until it fails for that reason.
+7. Implement one step at a time. Commit each green step; the message gives the step number, what and why, and any decision you made with who must confirm it. The commits are the progress record: a new session rebuilds it from the bundle and `git log`.
+8. Run the full test and lint commands, not only the slice's tests. For a failure, name the cause and make one targeted fix per attempt (the `debugging-and-error-recovery` skill helps). Three attempts at the same failure is the limit. The same failure after a different fix, or a newly broken test, means stop and report.
+9. Check the boundary: list the changed files (`git diff --name-only` against the branch's base) and compare them with MAY CHANGE; any file outside it is a stop. Then read your own diff hunk by hunk: only MAY CHANGE paths; no stray reformatting; no new dependency; no changed assertion; no secret or personal data in logs or messages.
+10. Report: the steps done, test counts (passed, failed, skipped), assumptions, deviations, and what you did not know. The person pushes and opens the pull request; you hold no push credential.
 
 ## Produces
 Commits on `<type>/<KEY>-<slug>`, tests named after the criteria, and a hand-off in the shape of `assets/progress-note.md`. This is local evidence only: the pull request's CI decides.
@@ -48,7 +49,7 @@ The local check is green with no unexplained skips, the diff stays inside MAY CH
 
 ## Stop if
 - Code that AGENTS.md lists as legacy has no tests that pin its behaviour: change one only after a characterisation test records what it does today. If none exists yet, write it first, or stop.
-- A test can only pass by changing an existing assertion. Never change it: the criterion's owner decides.
+- A test can only pass by changing an existing assertion. Never change it: the criterion's owner decides. The one exception is an approved recipe commit, which may change test syntax but never what an assertion checks (ADR 0012).
 - A new dependency seems necessary.
 - The plan looks wrong, or the code differs from what the plan assumed. Never improvise a new approach: it goes back to `aidlc-plan`.
 - The spec does not say how something should behave.
@@ -63,6 +64,7 @@ The local check is green with no unexplained skips, the diff stays inside MAY CH
 | "This old assertion is wrong, so I will update it." | Never change an existing assertion. Stop: the criterion's owner decides. |
 | "The file I need is just outside MAY CHANGE." | The bundle is the boundary. Stop and report. |
 | "The check is flaky, so I will skip that test." | A skipped test proves nothing. Report it. |
+| "The recipe left one small error; I will fix it in the same commit." | The recipe commit holds only the tool's output. Fix it in the next commit, under every gate. |
 | "One more attempt will fix it." | After three attempts at the same failure, or the same failure after a different fix, stop and report. |
 
 ## Red flags

@@ -7,6 +7,7 @@ BRIEF        <bundle path> at its approval commit
 WHAT         <what changed, by criterion>
 NOT CHANGED  <what deliberately did not change>
 DECISIONS    1 <decision made while building> -> <who confirms>
+RECIPE       <sha — tool@version — recipe check output> | none
 EVIDENCE     <link the evidence table from the trusted run; say what was proved only in CI>
 ASSUMPTION   <...>
 QUESTIONS    <one concrete question per reviewer or specialist>

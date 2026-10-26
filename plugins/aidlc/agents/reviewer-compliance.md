@@ -12,6 +12,7 @@ You check that the change does what was approved, and only that.
 - Every changed path is inside the bundle's MAY CHANGE, and nothing in MUST NOT changed.
 - Every criterion and edge case the slice covers has a test named with its ID. No existing assertion changed.
 - The progress note's `Skills loaded` matches the bundle's USE SKILLS, one for one.
+- A commit with a `Recipe:` trailer holds only what the bundle's RECIPE approved; the recipe check's output is in the pull request; every assertion line it lists still checks the same thing.
 - No new dependency, no architecture decision the plan did not record, nothing that breaks a rule in `AGENTS.md`.
 - For each finding give `[compliance]`, the file and line, the rule or criterion, and the evidence.
 
