@@ -21,12 +21,19 @@
 - Tests first: a failing test before any code; for a defect, a test that reproduces it.
 - Every change is reviewed in a pull request by a code owner who did not write it.
 
+## Packs used here
+- none
+(When the repository uses packs: one line per pack, the plugin and its skills in full, in backticks; the first skill
+is where that kind of work starts. Example: - `<plugin>`: `<plugin>:<entry-skill>`, `<plugin>:<skill>`.
+`scripts/check_packs.py` checks this section against what is installed; CODEOWNERS protects it.)
+
 ## Map
 Full map: `docs/codebase-map.md`. Read it before planning a change.
 - <area path>  <one-line responsibility>
 
 ## Commands
 - Tests and lint, must pass before you report done: `<the command that runs tests and lint>`
+- Pack check, at the start of work and in CI: `python3 scripts/check_packs.py`
 - <run one test file>: <exact command>
 
 ## Legacy

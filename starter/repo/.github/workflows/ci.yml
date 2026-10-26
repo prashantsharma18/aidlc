@@ -12,6 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # Set up your language here, for example actions/setup-node or actions/setup-dotnet.
+      - name: Packs declared in AGENTS.md are installed
+        run: python3 scripts/check_packs.py
       - name: Lint
         run: echo "replace with your lint command" && exit 1
       - name: Tests

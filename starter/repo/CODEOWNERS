@@ -5,3 +5,6 @@ docs/codebase-map.md @your-org/your-team-leads
 plans/            @your-org/your-team-leads
 # Tests: owners must approve any change to an existing test.
 tests/            @your-org/your-team-leads
+# Scripts and settings that enforce the rules.
+scripts/check_*.py   @your-org/your-team-leads
+.claude/             @your-org/your-team-leads

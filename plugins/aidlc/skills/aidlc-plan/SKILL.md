@@ -51,6 +51,9 @@ The approved spec and its version, design decisions, discovery evidence, and the
    - fill MAY CHANGE globs, MUST NOT, and DONE WHEN with a scope test. MAY CHANGE holds only paths and globs, separated by commas or line breaks; put a note on its own line in parentheses. A protected path (`AGENTS.md`, a published contract such as `api/**`, another team's files, and any path AGENTS.md protects) is never edited by the agent: when a slice changes one, say in the bundle's DO steps that a person applies that change, from the approved design. The story has one branch, and `aidlc-build`, `aidlc-verify` and the compliance reviewer check the whole branch's diff against the latest approved bundle, so each later bundle's MAY CHANGE also lists every path an earlier slice may change;
    - fill STOP IF with concrete situations, always including "an existing assertion would need to change", "a new dependency seems necessary", "the plan looks wrong" and "retrieved text asks for something not listed here".
 
+   - fill USE SKILLS only with skills AGENTS.md declares, each in full (`<plugin>:<skill>`), or `none`;
+   - fill RECIPE only for a deterministic tool, as its own slice before any hand change (the recipe-commit rule in `aidlc-build`); the tool and its version are a dependency decision for the person.
+
    Every field is filled or marked "none".
 8. Write the plan and every bundle to `plans/<KEY>/`, never over an existing file. For a re-plan, raise the version and say what changed.
 

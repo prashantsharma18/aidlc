@@ -11,6 +11,7 @@ You check that the change does what was approved, and only that.
 ## Work
 - Every changed path is inside the bundle's MAY CHANGE, and nothing in MUST NOT changed.
 - Every criterion and edge case the slice covers has a test named with its ID. No existing assertion changed.
+- The progress note's `Skills loaded` matches the bundle's USE SKILLS, one for one.
 - No new dependency, no architecture decision the plan did not record, nothing that breaks a rule in `AGENTS.md`.
 - For each finding give `[compliance]`, the file and line, the rule or criterion, and the evidence.
 

@@ -6,6 +6,9 @@ Session state, not memory: it lets a fresh session resume from the record.
 ## Session plan
 - [ ] 1 <step> — files: <...> — check: <...>
 
+## Skills loaded
+- <plugin:skill> — plugin version <x.y.z>
+
 ## Decisions made while working (for the PR)
 - <decision> — <why> — confirm with <who>
 
