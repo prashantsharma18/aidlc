@@ -43,7 +43,7 @@ The approved spec and its version, design decisions, discovery evidence, and the
    - rejected options and a concrete rollback are written.
 
    Flag any hidden architecture decision for its owner: new infrastructure, a new dependency, a change to a shared module's behaviour, or a new integration pattern.
-5. Slice the work so each slice is testable, reviewable and reversible. The usual slices are: map (read-only); core change (tests first, behind a flag if needed); edge cases and hardening; refactor and evidence. When in doubt, split along the acceptance criteria. Isolate open questions so they block as few slices as possible.
+5. Slice the work so each slice is testable, reviewable and reversible. The usual slices are: map (read-only); core change (tests first, behind a flag if needed); edge cases and hardening; refactor and evidence. When in doubt, split along the acceptance criteria. Isolate open questions so they block as few slices as possible. Every slice starts and ends with the repository's tests green, because `aidlc-build` stops when a slice starts red: tests written first for a change go in the slice that makes them pass, and a recipe commit goes in the same slice as the fixes its build errors force.
 6. Propose a mode per slice (hands-on, delegate with checkpoints, or delegate) with `assets/tiers.md`; the person decides. If unsure, choose the more hands-on mode.
 7. Draft one bundle per slice, `plans/<KEY>/bundle-<slice>.md`, by filling `assets/task-bundle.md`:
    - pin the spec and plan versions;
