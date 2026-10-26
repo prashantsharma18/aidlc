@@ -34,7 +34,7 @@ repositories being modernised. The method follows the guide's chapter 15.
 | Lane | When | The flow |
 |---|---|---|
 | Simple | one repository, a recipe covers it, good tests | `aidlc-start` → `modernize-assess` (short) → `aidlc-plan` → `aidlc-build` with the factory (recipe commit, then fixes) → `aidlc-verify` with the dependency and vulnerability diff → `aidlc-review` → `aidlc-release` (canary) |
-| Standard | one service, a major framework hop | `aidlc-start` → `modernize-assess` → `aidlc-specify` → `aidlc-plan` (slices: tools, characterise, recipe, fixes) → `aidlc-build` per slice → `modernize-parity` → `aidlc-verify` → `aidlc-review` → `aidlc-release` (flag or canary) → `modernize-cutover` |
+| Standard | one service, a major framework hop | `aidlc-start` → `modernize-assess` → `aidlc-specify` → `aidlc-plan` (slices, each green at both ends: characterise; retarget and port, where the recipe commit is reviewed on its own and its fixes follow in the same slice; hardening) → `aidlc-build` per slice → `modernize-parity` → `aidlc-verify` → `aidlc-review` → `aidlc-release` (flag or canary) → `modernize-cutover` |
 | Programme | several services or a monolith | at the workspace root: `aidlc-start` → `modernize-assess` → `aidlc-design` → `modernize-wave-plan` (each wave a story the product owner creates); then each wave runs the standard lane in its repositories, ending with `modernize-cutover` and decommissioning |
 
 ## Gates the plugin adds
