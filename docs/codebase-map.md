@@ -1,23 +1,32 @@
 # aidlc: codebase map
-Owner: framework owners · Last verified: 2026-10-25
+Owner: framework owners · Last verified: 2026-10-26
 
 ## What this repository is
-A skills package. Engineers install it in Claude Code (the repository root is the plugin), or copy `skills/` into
-Copilot, Codex or Cursor.
+A marketplace of skills plugins. Engineers install `aidlc` (and, where needed, `aidlc-modernize`) in Claude Code, or
+copy the plugins' `skills/` folders into Copilot, Codex or Cursor.
 
 ## Areas
-`skills/aidlc-*/`   stage skills; each `SKILL.md` names its templates in `assets/`
-`skills/<practice>/`   engineering-practice skills adapted from addyosmani/agent-skills (MIT, `skills/NOTICE`)
-`agents/`   agent roles the skills call (Claude Code subagent format)
-`starter/repo/`, `starter/workspace/`   files a team copies once
-`.claude-plugin/`   marketplace and plugin manifest
-`scripts/validate.py`   the package check, with `scripts/test_validate.py`
+`plugins/aidlc/skills/aidlc-*/`   core stage skills; each `SKILL.md` names its templates in `assets/`
+`plugins/aidlc/skills/<practice>/`   engineering-practice skills adapted from addyosmani/agent-skills (MIT, `skills/NOTICE`)
+`plugins/aidlc/agents/`   agent roles the core skills call (Claude Code subagent format)
+`plugins/aidlc-modernize/`   the modernisation pack: method skills, factories (`dotnet-modernize` with `scripts/retarget.py`,
+`java-modernize`), `modernize-parity/scripts/parity.py`, the `parity-checker` agent
+`starter/repo/`, `starter/workspace/`   files a team copies once; `starter/repo/scripts/` holds `check_packs.py` and
+`check_recipe_commit.py`
+`.claude-plugin/marketplace.json`   the marketplace listing both plugins
+`scripts/validate.py`   the marketplace check; `scripts/test_*.py` test it and every script above
 `docs/`   quickstarts, operating model, ADRs, designs, plans, verification records
 
 ## Where common changes go
-- A new stage skill: `skills/aidlc-<name>/SKILL.md` with the house sections; its templates in its `assets/`.
+- A new core stage skill: `plugins/aidlc/skills/aidlc-<name>/SKILL.md` with the house sections; templates in its `assets/`.
+- A new pack: a folder under `plugins/` with `.claude-plugin/plugin.json` (a version, and `dependencies` on `aidlc` with a
+  range), an entry in `.claude-plugin/marketplace.json`, skill names with the pack's own prefix, and a line in the README.
+- A new factory inside `aidlc-modernize`: `plugins/aidlc-modernize/skills/<tech>-modernize/` with `references/` and,
+  when it has a deterministic recipe, `scripts/` plus its tests in `scripts/test_*.py`.
 - A template change: the `assets/` file of every skill that uses it (search for its file name).
 
 ## Traps
 - A skill names only "the repository's commands from AGENTS.md", never a tool-specific command.
-- `CLAUDE.md` at the root is for contributors; `claude plugin validate` warns that a plugin does not ship it, which is expected.
+- Core never names a pack; the validator fails if it does.
+- In a `SKILL.md`, a backticked `assets/…`, `references/…` or `scripts/…` path must be a file inside that skill.
+- Raise a plugin's version on every release: a pinned version that never changes stops installed copies from updating.

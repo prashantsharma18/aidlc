@@ -20,5 +20,11 @@
 (for example `mcp__<server>__getjiraissue` and its search tool), deny its transition tool, and name the site and project in
 `AGENTS.md` or `WORKSPACE.md` ("Tools"). Without the allow rule, a headless session cannot read the work item.
 
+**Packs.** A repository being modernised also switches on `aidlc-modernize@aidlc` in `.claude/settings.json`
+(`enabledPlugins`) and declares it in AGENTS.md's `Packs used here`; `python3 scripts/check_packs.py` (from the
+starter) checks the two agree, at the start of work and in CI. Installing `aidlc-modernize` installs `aidlc` with it.
+Cloud sessions and headless (`-p`) runs do not add a repository's marketplace, because that needs the folder-trust
+dialog: in CI, install the plugins explicitly (`claude plugin marketplace add`, then `claude plugin install`).
+
 Start Claude Code at a repository root or the workspace root, never in a subfolder: settings load from the folder you start in.
 Stage skills run only when you ask for them by name; practice skills load on their own when relevant.

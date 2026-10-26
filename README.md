@@ -3,16 +3,17 @@
 A skills package for AI-assisted software delivery: from a requirement to a verified, reviewed change, with a person
 deciding at every gate. It implements the guide "From Intent to Verified Change".
 
-The same `skills/` folder works in **Claude Code, GitHub Copilot, Codex and Cursor**: skills are plain `SKILL.md` folders
-in the open Agent Skills format.
+One marketplace, two plugins: **`aidlc`** (the core every repository uses) and **`aidlc-modernize`** (switched on only
+in repositories being modernised). The skills work in **Claude Code, GitHub Copilot, Codex and Cursor**: they are plain
+`SKILL.md` folders in the open Agent Skills format.
 
 ## Install
 
 | Tool | How |
 |---|---|
 | Claude Code | `/plugin marketplace add prashantsharma18/aidlc`, then `/plugin install aidlc@aidlc` ([quickstart](docs/quickstart/claude-code.md)) |
-| GitHub Copilot | Copy `skills/` into your repository's `.github/skills/` (or `~/.copilot/skills/` for yourself) ([quickstart](docs/quickstart/copilot.md)) |
-| Codex, Cursor | Copy `skills/` into `.agents/skills/` (or `.cursor/skills/` for Cursor) ([quickstart](docs/quickstart/codex-cursor.md)) |
+| GitHub Copilot | Copy `plugins/aidlc/skills/*` into your repository's `.github/skills/`, or install the plugins with Copilot CLI ([quickstart](docs/quickstart/copilot.md)) |
+| Codex, Cursor | Copy `plugins/aidlc/skills/*` into `.agents/skills/` (or `.cursor/skills/` for Cursor) ([quickstart](docs/quickstart/codex-cursor.md)) |
 
 Then copy the starter files that fit (`starter/repo/` into a repository, `starter/workspace/` into a workspace) and run
 the `aidlc-onboard` skill once.
@@ -37,17 +38,33 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
 
 The operating model: [docs/operating-model/workspace-and-repositories.md](docs/operating-model/workspace-and-repositories.md).
 
+## Packs
+
+A pack is a plugin a repository switches on for one kind of work. Core never names a pack: the repository declares
+its packs in AGENTS.md (`Packs used here`), `scripts/check_packs.py` checks the declaration against what is installed,
+and the task bundle names the pack skills a slice uses ([ADR 0011](docs/adr/0011-plugins-and-packs.md)).
+
+- **`aidlc-modernize`**: assess, characterise, wave plans, parity and cutover, with a .NET factory (proven end to end)
+  and a Java factory (written, not yet proven). See [docs/operating-model/modernisation.md](docs/operating-model/modernisation.md).
+
 ## Skills
+
+Core (`plugins/aidlc/`):
 
 | Stage skills | Practice skills (adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills), MIT) |
 |---|---|
 | `aidlc-start`, `aidlc-onboard`, `aidlc-intent`, `aidlc-specify`, `aidlc-discover`, `aidlc-design`, `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`, `aidlc-operate`, `aidlc-feedback` | `api-and-interface-design`, `code-review-and-quality`, `debugging-and-error-recovery`, `deprecation-and-migration`, `frontend-ui-engineering`, `observability-and-instrumentation`, `performance-optimization`, `security-and-hardening` |
 
 Agents the skills call: `explorer`, `planner`, `implementer`, `reviewer-bug`, `reviewer-security`, `reviewer-compliance`,
-`ops-diagnoser` (in `agents/`).
+`ops-diagnoser` (in `plugins/aidlc/agents/`).
+
+`aidlc-modernize` (`plugins/aidlc-modernize/`): `modernize-assess`, `modernize-characterize`, `modernize-wave-plan`,
+`modernize-parity`, `modernize-cutover`, the factories `dotnet-modernize` and `java-modernize`, and the agent
+`parity-checker`.
 
 ## Contributing
 
-Check your change with `python3 scripts/validate.py` and `python3 -m unittest discover -s scripts -p 'test_*.py'`.
+Check your change with `python3 scripts/validate.py`, `python3 -m unittest discover -s scripts -p 'test_*.py'` and
+`claude plugin validate .`. Raise a plugin's version on every release.
 Decisions are in [docs/adr/](docs/adr/). The earlier Python harness is parked under the tag `harness-v1`
 ([what it held](docs/archive/harness-v1.md)).

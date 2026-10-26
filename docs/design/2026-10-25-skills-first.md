@@ -68,8 +68,9 @@ optional "enterprise guardrails" add-on for teams that need enforcement.
 
 ## Routing: how the agent knows which skill to use
 
-agent-skills uses a meta-skill (`using-agent-skills`), loaded by a session-start hook in Claude Code, that maps requests
-to skills before the agent acts. aidlc does the same in a tool-neutral way:
+agent-skills ships a meta-skill (`using-agent-skills`) that maps requests to skills. In Claude Code it is an ordinary
+skill chosen by its description: its session-start hook is deliberately not wired, because hosts that route skills
+natively would run two routers (its `hooks/session-start.sh` and `docs/getting-started.md`). aidlc does the same in a tool-neutral way:
 
 - **AGENTS.md** (from `starter/repo/AGENTS.md` and `starter/workspace/WORKSPACE.md`) carries a short "How work runs here"
   block: start any new work with `aidlc-start`; which skill handles which request; tests first; where each stage runs.
