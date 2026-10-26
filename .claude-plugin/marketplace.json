@@ -1,12 +1,12 @@
 {
   "name": "aidlc",
   "owner": {"name": "prashantsharma18"},
-  "description": "aidlc: a skills package for AI-assisted software delivery, from a requirement to a verified, reviewed change.",
+  "description": "aidlc: skills for AI-assisted software delivery, from a requirement to a verified, reviewed change, and packs that extend it.",
   "plugins": [
     {
       "name": "aidlc",
-      "source": "./",
-      "description": "Stage skills (start, intent, specify, discover, design, plan, build, verify, review, release, operate, feedback, onboard), engineering-practice skills and agent roles. Each stage stops at its human gate."
+      "source": "./plugins/aidlc",
+      "description": "Core: stage skills (start to feedback, onboard), engineering-practice skills and agent roles. Each stage stops at its human gate."
     }
   ]
 }

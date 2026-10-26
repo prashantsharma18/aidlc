@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Checks the aidlc skills package: every skill and agent in the open Agent Skills format, the house sections of the
-stage skills, no command of the parked harness and no tool-specific syntax (in a skill or its assets), every named
-asset present, the Claude Code plugin manifest, and the starter settings' secret denies.
+"""Checks the aidlc marketplace and every plugin it lists: each skill and agent in the open Agent Skills format, the
+house sections of the stage and recipe skills, no command of the parked harness and no tool-specific syntax (in a
+skill or its files), every named file present, skill names unique across plugins, core never naming a pack, plugin
+versions and dependencies, and the starter settings' secret denies.
 
     python3 scripts/validate.py [root]
 
@@ -14,9 +15,13 @@ import sys
 from pathlib import Path
 
 NAME = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
+CORE = "aidlc"
 SECTIONS = ("## When to use", "## Inputs", "## Steps", "## Produces", "## Gate", "## Stop if",
             "## Common excuses", "## Red flags", "## Rules")
 GATE_LINE = "You draft; you never approve."
+# Stage, method and recipe skills keep the house sections; the adapted practice skills keep only the open format.
+HOUSE_PREFIXES = ("aidlc-", "modernize-", "dotnet-", "java-")
 # Commands and files of the harness parked under the tag harness-v1 (docs/archive/harness-v1.md).
 REMOVED = re.compile(r"aidlc\s+(check|scope|ci|new|attempts|render|init-repo|doctor|trace|adopt|plugin\s+build)\b"
                      r"|approved-bundles\.txt|\.aidlc/(config|hooks|baseline)|core/(policy|schemas|hooks)\b"
@@ -25,7 +30,10 @@ REMOVED = re.compile(r"aidlc\s+(check|scope|ci|new|attempts|render|init-repo|doc
 TOOL_SPECIFIC = re.compile(r"/aidlc:[a-z]|\$ARGUMENTS\b|\$\{CLAUDE_[A-Z_]+\}")
 # Allowing a whole tool at the workspace root opens every path it can reach, home folder included.
 WHOLE_TOOLS = {"Read", "Edit", "Write", "Bash", "Grep", "Glob"}
-ASSET = re.compile(r"`assets/([A-Za-z0-9._-]+)`")
+# Files a skill names, relative to its folder: templates, reference pages and scripts.
+SKILL_DIRS = ("assets", "references", "scripts")
+NAMED_FILE = re.compile(r"`((?:assets|references|scripts)/[A-Za-z0-9._-]+)`")
+TEXT_SUFFIXES = {".md", ".py", ".sh", ".txt", ".json", ".yml", ".yaml"}
 
 
 def front_matter(text: str) -> dict[str, str] | None:
@@ -49,8 +57,9 @@ def portability(rel: str, text: str) -> list[str]:
     return problems + [f"{rel}: uses tool-specific syntax: '{m.group(0)}'" for m in TOOL_SPECIFIC.finditer(text)]
 
 
-def check_skill(path: Path) -> list[str]:
-    rel = path.relative_to(path.parents[2]).as_posix()
+def check_skill(path: Path, root: Path) -> list[str]:
+    rel = path.relative_to(root).as_posix()
+    folder_rel = path.parent.relative_to(root).as_posix()
     text = path.read_text(encoding="utf-8")
     fm = front_matter(text)
     if fm is None:
@@ -66,7 +75,7 @@ def check_skill(path: Path) -> list[str]:
         problems.append(f"{rel}: description is missing or longer than 1024 characters")
     elif "Use when" not in description:
         problems.append(f"{rel}: description must say when to use the skill ('Use when ...')")
-    if folder.startswith("aidlc-"):
+    if folder.startswith(HOUSE_PREFIXES):
         positions = [text.find(s) for s in SECTIONS]
         for section, pos in zip(SECTIONS, positions):
             if pos < 0:
@@ -77,40 +86,81 @@ def check_skill(path: Path) -> list[str]:
         if GATE_LINE not in text:
             problems.append(f"{rel}: the gate must end with '{GATE_LINE}'")
     problems += portability(rel, text)
-    for extra in sorted((path.parent / "assets").glob("*")):
-        if extra.is_file():
-            problems += portability(f"{rel.rsplit('/', 1)[0]}/assets/{extra.name}", extra.read_text(encoding="utf-8"))
-    for asset in sorted(set(ASSET.findall(text))):
-        if not (path.parent / "assets" / asset).is_file():
-            problems.append(f"{rel}: names `assets/{asset}`, which does not exist")
+    for sub in SKILL_DIRS:
+        for extra in sorted((path.parent / sub).glob("*")):
+            if extra.is_file() and extra.suffix in TEXT_SUFFIXES:
+                problems += portability(f"{folder_rel}/{sub}/{extra.name}", extra.read_text(encoding="utf-8"))
+    for named in sorted(set(NAMED_FILE.findall(text))):
+        if not (path.parent / named).is_file():
+            problems.append(f"{rel}: names `{named}`, which does not exist")
     return problems
 
 
-def check_agent(path: Path) -> list[str]:
-    rel = f"agents/{path.name}"
-    fm = front_matter(path.read_text(encoding="utf-8"))
+def check_agent(path: Path, root: Path) -> list[str]:
+    rel = path.relative_to(root).as_posix()
+    text = path.read_text(encoding="utf-8")
+    fm = front_matter(text)
     if fm is None:
         return [f"{rel}: no front matter"]
     problems = [f"{rel}: front matter needs '{k}'" if k == "name" else f"{rel}: front matter needs a description"
                 for k in ("name", "description") if not fm.get(k)]
     if fm.get("name") and fm["name"] != path.stem:
         problems.append(f"{rel}: name '{fm['name']}' does not match the file name")
-    text = path.read_text(encoding="utf-8")
     return problems + portability(rel, text)
 
 
-def check_plugin(root: Path) -> list[str]:
-    problems = []
+def load_plugins(root: Path) -> tuple[list[str], list[tuple[str, Path, dict]]]:
+    """The marketplace's plugins as (name, folder, manifest), and every problem found in the manifests."""
+    rel = ".claude-plugin/marketplace.json"
     try:
-        plugin = json.loads((root / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-        market = json.loads((root / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+        market = json.loads((root / rel).read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
-        return [f".claude-plugin: unreadable manifest ({exc})"]
-    if plugin.get("name") != "aidlc":
-        problems.append(".claude-plugin/plugin.json: the plugin must be named 'aidlc'")
-    sources = [p.get("source") for p in market.get("plugins", []) if p.get("name") == "aidlc"]
-    if sources != ["./"]:
-        problems.append(".claude-plugin/marketplace.json: the 'aidlc' plugin's source must be './' (the repository root)")
+        return [f"{rel}: unreadable ({exc})"], []
+    problems, plugins = [], []
+    for entry in market.get("plugins", []):
+        name, source = entry.get("name", ""), entry.get("source")
+        if not isinstance(source, str) or not source.startswith("./plugins/") or ".." in source:
+            problems.append(f"{rel}: plugin '{name}' must have a source under './plugins/' (got {source!r})")
+            continue
+        folder = root / source[2:].rstrip("/")
+        mrel = f"{folder.relative_to(root).as_posix()}/.claude-plugin/plugin.json"
+        try:
+            manifest = json.loads((root / mrel).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            problems.append(f"{mrel}: unreadable ({exc})")
+            continue
+        if manifest.get("name") != name:
+            problems.append(f"{mrel}: name '{manifest.get('name')}' does not match the marketplace entry '{name}'")
+        if not SEMVER.fullmatch(str(manifest.get("version", ""))):
+            problems.append(f"{mrel}: needs a semantic version such as 1.0.0")
+        plugins.append((name, folder, manifest))
+    names = {n for n, _, _ in plugins}
+    if CORE not in names:
+        problems.append(f"{rel}: the core plugin '{CORE}' is missing")
+    for name, folder, manifest in plugins:
+        mrel = f"{folder.relative_to(root).as_posix()}/.claude-plugin/plugin.json"
+        deps = manifest.get("dependencies", [])
+        if name == CORE and deps:
+            problems.append(f"{mrel}: core requires nothing; it never depends on a pack")
+        for dep in deps:
+            dep_name = dep if isinstance(dep, str) else dep.get("name", "")
+            if dep_name.split("@")[0] not in names:
+                problems.append(f"{mrel}: requires '{dep_name}', which the marketplace does not list")
+    return problems, plugins
+
+
+def check_core_names_no_pack(root: Path, core: Path, pack_names: set[str]) -> list[str]:
+    """Core is written like a CI runner: it runs what approved files name, so its own text names no pack."""
+    if not pack_names:
+        return []
+    alternatives = "|".join(sorted(map(re.escape, pack_names), key=len, reverse=True))
+    pattern = re.compile(rf"(?<![A-Za-z0-9_-])({alternatives})(?![A-Za-z0-9_-])")
+    problems = []
+    for f in sorted(core.rglob("*")):
+        if f.is_file() and f.suffix in TEXT_SUFFIXES:
+            for m in pattern.finditer(f.read_text(encoding="utf-8")):
+                problems.append(f"{f.relative_to(root).as_posix()}: names the pack '{m.group(1)}'; "
+                                f"core never names a pack")
     return problems
 
 
@@ -133,16 +183,39 @@ def check_starters(root: Path) -> list[str]:
 
 
 def validate(root: Path) -> list[str]:
-    skills = sorted((root / "skills").glob("*/SKILL.md"))
-    problems = [] if skills else ["skills/: no skills found"]
-    for path in skills:
-        problems += check_skill(path)
-    agents = sorted((root / "agents").glob("*.md"))
-    if not agents:
-        problems.append("agents/: no agents found")
-    for path in agents:
-        problems += check_agent(path)
-    return problems + check_plugin(root) + check_starters(root)
+    problems, plugins = load_plugins(root)
+    owner_of: dict[str, str] = {}
+    pack_names: set[str] = set()
+    core_folder = None
+    for name, folder, _ in plugins:
+        frel = folder.relative_to(root).as_posix()
+        skills = sorted((folder / "skills").glob("*/SKILL.md"))
+        agents = sorted((folder / "agents").glob("*.md"))
+        if not skills:
+            problems.append(f"{frel}/skills/: no skills found")
+        if name == CORE:
+            core_folder = folder
+            if not agents:
+                problems.append(f"{frel}/agents/: no agents found")
+        else:
+            pack_names.add(name)
+        for path in skills:
+            problems += check_skill(path, root)
+            skill = path.parent.name
+            if skill in owner_of:
+                problems.append(f"{frel}/skills/{skill}: the name '{skill}' is also used by plugin "
+                                f"'{owner_of[skill]}'; skill names must be unique across the marketplace")
+            else:
+                owner_of[skill] = name
+            if name != CORE:
+                pack_names.add(skill)
+        for path in agents:
+            problems += check_agent(path, root)
+            if name != CORE:
+                pack_names.add(path.stem)
+    if core_folder is not None:
+        problems += check_core_names_no_pack(root, core_folder, pack_names)
+    return problems + check_starters(root)
 
 
 def main(argv: list[str]) -> int:
@@ -150,8 +223,9 @@ def main(argv: list[str]) -> int:
     problems = validate(root)
     for p in problems:
         print(p)
-    count = len(list((root / "skills").glob("*/SKILL.md")))
-    print(f"validate: {count} skill(s), {len(problems)} problem(s)")
+    plugins = load_plugins(root)[1]
+    count = sum(len(list((folder / "skills").glob("*/SKILL.md"))) for _, folder, _ in plugins)
+    print(f"validate: {len(plugins)} plugin(s), {count} skill(s), {len(problems)} problem(s)")
     return 1 if problems else 0
 
 
