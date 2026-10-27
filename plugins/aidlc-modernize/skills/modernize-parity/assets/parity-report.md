@@ -3,6 +3,8 @@
 
 SUMMARY    <n> inputs: <same> same, <different> different, <noisy> noisy · old <base commit> · new <head commit>
 RUN        old: `<command>` · new: `<command>` · inputs: parity/inputs/ · script report: <path, attached below>
+COVERS     exit code and standard output (bytes, line endings normalised); NOT standard error, crash paths or inputs
+           outside parity/inputs/: <where those are proved>
 
 ## Noise
 | Pattern ignored | Why it hides no behaviour | Accepted by |

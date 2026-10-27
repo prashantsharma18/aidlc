@@ -28,7 +28,9 @@ skill's `scripts/parity.py` that the plan's tools slice put in the repository; t
    commit there with git, then run the repository's build command inside it). Never build it over your checkout.
 2. **Run the parity script** from the repository's scripts folder, with the old and new run commands from AGENTS.md,
    each in its own working folder under `parity/out/` so caches and files do not leak between them. The script runs
-   the old version twice per input: a difference between its own runs is noise.
+   the old version twice per input: a difference between its own runs is noise. It compares the exit code and
+   standard output as bytes; standard error is not compared, so error text that matters is pinned by tests and the
+   report says so.
 3. **Noise is never hidden.** A NOISY input gets an ignore pattern only when you can say why it hides no behaviour
    (a timestamp, a generated identifier), and a person accepts that reason in the report.
 4. **Triage every DIFFERENT input** with the `parity-checker` agent into one of: new bug (the new version is wrong:

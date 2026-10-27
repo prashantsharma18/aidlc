@@ -72,6 +72,49 @@ class CheckRecipeCommitTest(unittest.TestCase):
         _, notes = self.check(to_assert)
         self.assertTrue(any("tests.txt" in n and "Assert.Equal" in n for n in notes), notes)
 
+    def test_an_export_ignore_attribute_cannot_hide_a_hand_change(self):
+        def hide(root):
+            (root / "Evil.cs").write_text("class Evil {}\n")
+            (root / ".gitattributes").write_text("Evil.cs export-ignore\n.gitattributes export-ignore\n")
+            git(root, "add", "Evil.cs", ".gitattributes")
+        problems, _ = self.check(DETERMINISTIC, extra_change=hide)
+        self.assertTrue(any("Evil.cs" in p and "does not reproduce" in p for p in problems), problems)
+
+    def test_a_recipe_cannot_rewrite_what_it_is_compared_with(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            def hand(r):
+                (r / "a.txt").write_text((r / "a.txt").read_text() + "tweak\n")
+            commit = make_repo(root, DETERMINISTIC, extra_change=hand)
+            sneaky = f"{RECIPE} && cp -r . ../after/ 2>/dev/null; true"
+            problems, _ = check_recipe_commit.check(root, commit, sneaky, COUNT)
+        self.assertTrue(any("does not reproduce" in p for p in problems), problems)
+
+    def test_ignored_build_output_from_the_recipe_is_not_a_difference(self):
+        builds = DETERMINISTIC + "pathlib.Path('obj').mkdir(exist_ok=True)\npathlib.Path('obj/x').write_text('build')\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            git(root, "init", "-q")
+            (root / ".gitignore").write_text("obj/\n")
+            (root / "a.txt").write_text("old value\n")
+            (root / "tests.txt").write_text("t1 t2 t3\n")
+            (root / "recipe.py").write_text(builds)
+            git(root, "add", ".gitignore", "a.txt", "tests.txt", "recipe.py")
+            git(root, "commit", "-q", "-m", "base")
+            subprocess.run(RECIPE, shell=True, cwd=root, check=True)
+            git(root, "add", "a.txt")
+            git(root, "commit", "-q", "-m", "mechanical\n\nRecipe: demo@1.0.0")
+            problems, _ = check_recipe_commit.check(root, git(root, "rev-parse", "HEAD"), RECIPE, COUNT)
+        self.assertEqual(problems, [])
+
+    def test_the_count_command_must_print_one_number(self):
+        chatty = f"{PY} -c \"print('Ran', len(open('tests.txt').read().split()), 'tests in 0.3s')\""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            commit = make_repo(root, DETERMINISTIC)
+            problems, _ = check_recipe_commit.check(root, commit, RECIPE, chatty)
+        self.assertTrue(any("one number" in p for p in problems), problems)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -28,11 +28,22 @@ The approved parity report, the assessment's one-way doors and decommission crit
 ## Steps
 1. **Check the preconditions**: the parity report approved; the rollback rehearsed, including data; the stop
    criteria from `aidlc-release` written (signal, threshold, duration, who decides).
-2. **Cut over one segment at a time**, smallest risk first, each with a one-flag way back while the old path still
-   runs. A person switches every flag; you draft the steps and watch the stop criteria.
-3. **Migrate data with one writer**: during the move only one side writes each record; reconcile old and new to zero
-   differences before the next segment; decide each one-way door as the assessment recorded it.
-4. **Keep old readers fed** until runtime evidence shows each has moved.
+2. **Cut over one segment at a time**: lowest volume and fewest special rules first, the most unusual last; each
+   with an approved change record and a one-flag way back while the old path still runs. A person switches every flag.
+3. **Compare in reverse**: once a segment is switched, the new result is served and the old one shadowed; any
+   mismatch outside the accepted differences is a stop signal. Watch an outcome measure as well as the comparison
+   (for example the share of shipments priced or delivered as promised, against the segment's baseline). Hold for the
+   agreed period, then continue or roll back.
+4. **Migrate data by expand, migrate, contract** (guide 15.11):
+   - expand: add the new store and keep **one writer**: the code that stores the served result writes both the old
+     and the new store in one transaction, so they cannot drift;
+   - back-fill the history readers need, in batches, idempotently (safe to re-run);
+   - reconcile with queries that must return zero (missing on either side, values that disagree), after the
+     back-fill and on a schedule while both stores are written;
+   - move readers one at a time, your own first; other teams' readers move on their owners' schedule;
+   - keep old readers fed: the old store keeps its shape and meaning until runtime evidence shows the last reader
+     has moved;
+   - contract at decommission: stop writing the old store, and drop it in a later, separate change.
 5. **Decommission** only when the criteria hold: the quiet period has passed with zero traffic to the old path,
    every reader has moved, data retention and archival are decided. Draft the deletion as an ordinary change.
 6. Fill `assets/cutover-checklist.md` for each segment and `assets/decommission.md` once, in the story's documents.
@@ -54,10 +65,12 @@ approves decommissioning. You draft; you never approve.
 | Excuse | Reality |
 |---|---|
 | "Everything matched in parity; switch all segments at once." | One segment at a time keeps a one-flag way back. |
+| "Parity was clean, so we can stop comparing after the switch." | A clean shadow run is evidence about the past. Compare in reverse and watch the outcome measure. |
 | "The old code is unused now; delete it today." | Delete after the quiet period and runtime evidence, not after a feeling. |
 
 ## Red flags
-- Two writers for the same records during migration.
+- Two code paths writing the old and the new store separately (not one writer, one transaction).
+- Dropping the old store in the same change that stops writing it.
 - A decommission with no data retention decision.
 
 ## Rules

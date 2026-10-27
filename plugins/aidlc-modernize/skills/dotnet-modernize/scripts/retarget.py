@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """A deterministic recipe: changes the target framework of SDK-style .NET projects and removes the .NET Framework
-reference-assemblies package, which a modern target does not need. Same input, same output; a second run changes
-nothing. Line endings and a byte-order mark are kept.
+reference-assemblies package once no .NET Framework target is left; a target listed twice is merged. Same input,
+same output; a second run changes nothing. Line endings and a byte-order mark are kept.
 
     python3 retarget.py --from net48 --to net10.0 <project.csproj>...
 
 Fails with exit 1, writing no file, when any project is not SDK-style or targets neither framework.
-Standard library only; part of aidlc-modernize (dotnet-modernize). Commit trailer: Recipe: aidlc-retarget@1.0.0"""
+Standard library only; part of aidlc-modernize (dotnet-modernize). Commit trailer: Recipe: aidlc-retarget@<the version --version prints>"""
 from __future__ import annotations
 
 import argparse
@@ -14,27 +14,33 @@ import re
 import sys
 from pathlib import Path
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 BOM = b"\xef\xbb\xbf"
 TFM = re.compile(r"(<TargetFrameworks?>)([^<]*)(</TargetFrameworks?>)")
 REF_ASSEMBLIES = re.compile(r'[ \t]*<PackageReference Include="Microsoft\.NETFramework\.ReferenceAssemblies"'
                             r'[^>]*?(?:/>|>.*?</PackageReference>)[ \t]*\r?\n', re.DOTALL)
 EMPTY_ITEM_GROUP = re.compile(r"[ \t]*<ItemGroup>\s*</ItemGroup>[ \t]*\r?\n")
+NET_FRAMEWORK = re.compile(r"net[1-4]\d*")  # net48, net472, net35; not net5.0 and later
 
 
 def retarget(text: str, old: str, new: str) -> str:
     if "<Project Sdk=" not in text:
         raise ValueError("not an SDK-style project; convert it first (this recipe does not)")
     targets: list[str] = []
+    after: list[str] = []
 
     def swap(m: re.Match) -> str:
         frameworks = [f.strip() for f in m.group(2).split(";") if f.strip()]
         targets.extend(frameworks)
-        return m.group(1) + ";".join(new if f == old else f for f in frameworks) + m.group(3)
+        swapped = list(dict.fromkeys(new if f == old else f for f in frameworks))  # keeps order, drops a repeat
+        after.extend(swapped)
+        return m.group(1) + ";".join(swapped) + m.group(3)
 
     text = TFM.sub(swap, text)
     if old not in targets and new not in targets:
         raise ValueError(f"targets neither {old} nor {new}")
+    if any(NET_FRAMEWORK.fullmatch(f) for f in after):
+        return text  # a .NET Framework target remains, and it still needs the reference assemblies
     return EMPTY_ITEM_GROUP.sub("", REF_ASSEMBLIES.sub("", text))
 
 

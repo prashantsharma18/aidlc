@@ -5,7 +5,9 @@ PRECONDITIONS  parity report approved <date, by> · rollback rehearsed incl. dat
 SEGMENT        <which traffic, users or records> · flag <name> · switched by <person>
 STOP CRITERIA  | Signal | Threshold | Duration | Who decides | Action |
                |---|---|---|---|---|
-DATA           one writer: <side> · reconciliation: <query or job> → <differences, must be 0>
+REVERSE        new served, old shadowed: <mismatches outside accepted differences, must be 0> · outcome measure <name, baseline, now>
+DATA           one writer writes both stores in one transaction: <where> · back-fill <idempotent, ranges done> ·
+               reconciliation <queries, schedule> → <every query 0>
 READERS        <reader — still fed? — evidence>
 RESULT         <switched at, observed, rolled back? why>
 NEXT SEGMENT   opened by <release approver> on <date>

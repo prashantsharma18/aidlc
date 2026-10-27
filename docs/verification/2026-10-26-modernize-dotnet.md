@@ -40,7 +40,9 @@ and `RateTable.cs` unchanged. Release and cutover were not run (the demo has no 
   the pack's entry skill; bundles named `aidlc-modernize:modernize-characterize` and `aidlc-modernize:dotnet-modernize`
   in full; build sessions loaded them and recorded the plugin version.
 - **The mechanical recipe commit** held only the tool's output, was re-run and reproduced by `check_recipe_commit.py`,
-  kept the test count, and was reviewed on its own before any fix.
+  and was reviewed on its own before any fix. Its count was static (17 declared test methods before and after, while
+  the build was red), which proves no test method was added or removed, not that every data row survived; the full
+  run after the port (64, then 70 executed tests) is what proves the cases.
 - **Characterisation earned its keep:** the golden master found three behaviours that differ between .NET Framework on
   Windows and .NET on Linux (console code page, culture-dependent header detection, a Windows path in a test), none of
   which a reading of the code had flagged.

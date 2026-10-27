@@ -36,6 +36,18 @@ class RetargetTest(unittest.TestCase):
                               "<TargetFrameworks>net48;net8.0</TargetFrameworks>")
         self.assertIn("<TargetFrameworks>net10.0;net8.0</TargetFrameworks>", retarget.retarget(text, "net48", "net10.0"))
 
+    def test_a_target_already_listed_is_not_repeated(self):
+        text = LEGACY.replace("<TargetFramework>net48</TargetFramework>",
+                              "<TargetFrameworks>net48;net10.0</TargetFrameworks>")
+        self.assertIn("<TargetFrameworks>net10.0</TargetFrameworks>", retarget.retarget(text, "net48", "net10.0"))
+
+    def test_the_reference_assemblies_stay_while_a_framework_target_remains(self):
+        text = LEGACY.replace("<TargetFramework>net48</TargetFramework>",
+                              "<TargetFrameworks>net472;net48</TargetFrameworks>")
+        out = retarget.retarget(text, "net48", "net10.0")
+        self.assertIn("<TargetFrameworks>net472;net10.0</TargetFrameworks>", out)
+        self.assertIn("Microsoft.NETFramework.ReferenceAssemblies", out)
+
     def test_a_second_run_changes_nothing(self):
         once = retarget.retarget(LEGACY, "net48", "net10.0")
         self.assertEqual(retarget.retarget(once, "net48", "net10.0"), once)

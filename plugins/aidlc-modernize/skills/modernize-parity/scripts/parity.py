@@ -7,7 +7,8 @@ Each command contains {input}, replaced by the input file's path. The old versio
 between its own two runs is noise, reported as NOISY until an --ignore pattern removes it, so noise is never mistaken
 for parity. Output is compared as bytes, whatever its encoding (a Windows program may print an OEM code page), after
 line endings are normalised (a Windows program prints CRLF) and every --ignore match is replaced. Exit 0 only when
-every input gives the same exit code and output; 1 otherwise; 2 when there is no input. Standard library only; part of
+every input gives the same exit code and standard output; 1 otherwise; standard error is not compared, so
+compare error text with tests where it matters; 2 when there is no input. Standard library only; part of
 aidlc-modernize."""
 from __future__ import annotations
 

@@ -42,7 +42,9 @@ repositories being modernised. The method follows the guide's chapter 15.
 - No new vulnerability or licence issue against the assessment's baseline.
 - A parity report approved before release or cutover: every difference explained and decided by its owner, never a
   match percentage.
-- Data migration with one writer, reconciliation to zero and a tested rollback.
+- Data migration by expand, migrate and contract: one writer writing both stores in one transaction, an idempotent
+  back-fill, reconciliation to zero on a schedule, and the old store dropped in a later, separate change.
+- After each cutover segment, a reverse comparison (new served, old shadowed) and an outcome measure.
 - Decommission only after a quiet period with zero traffic, with data retention decided.
 
 ## The one exception to core's gates

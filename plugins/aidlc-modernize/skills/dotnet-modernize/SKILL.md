@@ -27,7 +27,7 @@ assessment (its one-way doors and dependency decisions), the characterisation te
    `modernize-parity`) into the repository's scripts folder, so the recipe is a repository command anyone can re-run.
 4. **The recipe commit**, when the bundle's RECIPE names it: run exactly
    `python3 scripts/aidlc/retarget.py --from net48 --to net10.0 <projects>` on a clean tree, commit only its output
-   with the trailer `Recipe: aidlc-retarget@1.0.0`, run the repository's recipe check, and stop for review (core's
+   with the trailer `Recipe: aidlc-retarget@<version>`, the version `retarget.py --version` prints, run the repository's recipe check, and stop for review (core's
    recipe-commit rule).
 5. **Build and list every error and warning.** Map each to a row of `references/framework-to-net10.md`. Read the
    errors; never silence them with suppressions, `#if` blocks or a compatibility package nobody approved.
