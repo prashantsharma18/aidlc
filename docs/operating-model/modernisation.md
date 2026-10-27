@@ -51,5 +51,7 @@ checked by `scripts/check_recipe_commit.py`, the same test count before and afte
 ([ADR 0012](../adr/0012-mechanical-recipe-commit.md)). AI-agent output never qualifies.
 
 ## Worked example
-SHIP-3 moves `carrier-rates` (a .NET Framework 4.8 pricing tool) to .NET 10 through the standard lane. The record is
-in `docs/verification/` once the run is done.
+SHIP-3 moved `carrier-rates` (a .NET Framework 4.8 pricing tool) to .NET 10 through the standard lane: characterisation
+on .NET Framework (47 tests, a golden master over 14 inputs), one reviewed recipe commit, the port tests-first, parity
+14 of 14 the same, 70 tests green on .NET 10. The golden master found three Windows-versus-Linux differences that
+reading the code had not. Record: [2026-10-26-modernize-dotnet.md](../verification/2026-10-26-modernize-dotnet.md).
