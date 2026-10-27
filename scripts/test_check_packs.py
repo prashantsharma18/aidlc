@@ -79,6 +79,30 @@ class CheckPacksTest(unittest.TestCase):
         problems = self.run_check(ONE)
         self.assertTrue(any("no aidlc install" in p for p in problems), problems)
 
+    def test_an_undeclared_pack_is_found_when_core_is_enabled_elsewhere(self):
+        problems = self.run_check(NONE, {"aidlc-modernize@aidlc": True})
+        self.assertTrue(any("does not declare" in p for p in problems), problems)
+
+    def test_local_settings_are_read_too(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo(root, NONE, {"aidlc@aidlc": True})
+            (root / ".claude" / "settings.local.json").write_text(json.dumps({"enabledPlugins": {"aidlc-modernize@aidlc": True}}))
+            problems = check_packs.check(root)
+        self.assertTrue(any("settings.local.json" in p and "does not declare" in p for p in problems), problems)
+
+    def test_copilot_settings_count_as_an_install(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo(root, ONE)
+            (root / ".github" / "copilot").mkdir(parents=True)
+            (root / ".github" / "copilot" / "settings.json").write_text(
+                json.dumps({"enabledPlugins": {"aidlc@aidlc": True, "aidlc-modernize@aidlc": True}}))
+            self.assertEqual(check_packs.check(root), [])
+            (root / ".github" / "copilot" / "settings.json").write_text(json.dumps({"enabledPlugins": {"aidlc@aidlc": True}}))
+            problems = check_packs.check(root)
+        self.assertTrue(any(".github/copilot/settings.json" in p and "does not switch it on" in p for p in problems), problems)
+
 
 if __name__ == "__main__":
     unittest.main()

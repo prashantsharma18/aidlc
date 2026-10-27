@@ -32,7 +32,8 @@ skill's `scripts/parity.py` that the plan's tools slice put in the repository; t
    standard output as bytes; standard error is not compared, so error text that matters is pinned by tests and the
    report says so.
 3. **Noise is never hidden.** A NOISY input gets an ignore pattern only when you can say why it hides no behaviour
-   (a timestamp, a generated identifier), and a person accepts that reason in the report.
+   (a timestamp, a generated identifier), and a person accepts that reason in the report. A BROKEN input means a side
+   could not run at all: fix the run (or ask the person to run that side) and run parity again; never triage it.
 4. **Triage every DIFFERENT input** with the `parity-checker` agent into one of: new bug (the new version is wrong:
    back to `aidlc-build`, then parity again), legacy bug (the old version was wrong, often a pinned oddity: its owner
    decides to accept the new behaviour or keep the old for now), accepted difference (an intended change, recorded

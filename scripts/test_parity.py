@@ -65,6 +65,17 @@ class ParityTest(unittest.TestCase):
         self.assertEqual(set(self.verdicts(cp437, same).values()), {"SAME"})
         self.assertEqual(set(self.verdicts(cp437, other).values()), {"DIFFERENT"})
 
+    def test_two_broken_commands_are_not_parity(self):
+        broken = "/nonexistent/program {input}"
+        self.assertEqual(set(self.verdicts(broken, broken).values()), {"BROKEN"})
+        code = parity.main(["parity.py", "--old", broken, "--new", broken, "--inputs", str(self.inputs),
+                            "--out", str(self.root / "r.md")])
+        self.assertEqual(code, 1)
+
+    def test_a_failure_with_output_is_still_compared(self):
+        prog = self.program("p", "print(data)\nsys.exit(4)\n")
+        self.assertEqual(set(self.verdicts(prog, prog).values()), {"SAME"})
+
     def test_no_input_files_exit_2(self):
         empty = self.root / "empty"
         empty.mkdir()

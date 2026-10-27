@@ -8,8 +8,9 @@ between its own two runs is noise, reported as NOISY until an --ignore pattern r
 for parity. Output is compared as bytes, whatever its encoding (a Windows program may print an OEM code page), after
 line endings are normalised (a Windows program prints CRLF) and every --ignore match is replaced. Exit 0 only when
 every input gives the same exit code and standard output; 1 otherwise; standard error is not compared, so
-compare error text with tests where it matters; 2 when there is no input. Standard library only; part of
-aidlc-modernize."""
+compare error text with tests where it matters; 2 when there is no input. An input where a side could not run (the
+command was not found, or the old version failed with no output at all) is BROKEN, never SAME: two identical
+failures prove nothing. Standard library only; part of aidlc-modernize."""
 from __future__ import annotations
 
 import argparse
@@ -41,13 +42,20 @@ def first_difference(a: str, b: str) -> str:
     return "the outputs have a different number of lines"
 
 
+NOT_RUN = (126, 127)  # the shell could not execute the command, or did not find it
+
+
 def compare(old: str, new: str, inputs: Path, ignore: list[str]) -> list[tuple[str, str, str]]:
-    """(input, verdict, detail) for each input file, sorted by name; verdict SAME, DIFFERENT or NOISY."""
+    """(input, verdict, detail) for each input file, sorted by name; verdict SAME, DIFFERENT, NOISY or BROKEN."""
     patterns = [re.compile(p) for p in ignore]
     rows = []
     for path in sorted(p for p in inputs.iterdir() if p.is_file()):
-        (c1, o1), (c2, o2), (c3, o3) = run(old, path), run(old, path), run(new, path)
-        o1, o2, o3 = (normalise(t, patterns) for t in (o1, o2, o3))
+        (c1, r1), (c2, r2), (c3, r3) = run(old, path), run(old, path), run(new, path)
+        if c1 in NOT_RUN or c3 in NOT_RUN or (c1 != 0 and not r1):
+            rows.append((path.name, "BROKEN", f"a side could not run: old exit {c1} with {len(r1)} bytes, "
+                                              f"new exit {c3} with {len(r3)} bytes"))
+            continue
+        o1, o2, o3 = (normalise(r, patterns) for r in (r1, r2, r3))
         if (c1, o1) != (c2, o2):
             rows.append((path.name, "NOISY", first_difference(o1, o2) if o1 != o2 else f"exit {c1} vs {c2}"))
         elif (c1, o1) != (c3, o3):

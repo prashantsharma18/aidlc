@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Checks that the packs AGENTS.md declares under "## Packs used here" are really installed, and that the settings
-switch on no pack from aidlc's marketplace that AGENTS.md leaves out. Run it in CI and at the start of work.
+switch on no pack from aidlc's marketplace that AGENTS.md leaves out. It reads Claude Code's shared and local
+settings and Copilot's `.github/copilot/settings.json`. Run it in CI and at the start of work.
 
     python3 scripts/check_packs.py [repository]
 
@@ -17,6 +18,9 @@ from pathlib import Path
 
 HEADING = "## Packs used here"
 CORE = "aidlc"
+MARKETPLACE = "aidlc"
+# Where each tool switches plugins on, lowest precedence first: Claude Code's shared and local settings; Copilot's.
+TOOL_SETTINGS = ((".claude/settings.json", ".claude/settings.local.json"), (".github/copilot/settings.json",))
 # Folders where Copilot, Codex, Claude Code and Cursor read copied skills.
 COPY_DIRS = (".github/skills", ".agents/skills", ".claude/skills", ".cursor/skills")
 TOKEN = re.compile(r"`([^`]+)`")
@@ -52,33 +56,59 @@ def parse(agents_md: str) -> tuple[dict[str, list[str]], list[str]]:
     return packs, problems
 
 
+def enabled_in(repo: Path, rel: str) -> tuple[dict | None, str | None]:
+    """The file's enabledPlugins, None when the file does not exist, or a problem when it cannot be read."""
+    path = repo / rel
+    if not path.exists():
+        return None, None
+    try:
+        return json.loads(path.read_text(encoding="utf-8")).get("enabledPlugins", {}), None
+    except (OSError, ValueError) as exc:
+        return None, f"{rel}: unreadable ({exc})"
+
+
+def check_config(packs: dict[str, list[str]], layers: list[tuple[str, dict]]) -> list[str]:
+    """One tool's settings, lowest precedence first: every declared pack on, and no undeclared aidlc pack on."""
+    merged: dict[str, object] = {}
+    source: dict[str, str] = {}
+    for rel, enabled in layers:
+        for key, value in enabled.items():
+            merged[key], source[key] = value, rel
+    # aidlc's own marketplace, plus any other marketplace core is installed from.
+    markets = {MARKETPLACE} | {k.partition("@")[2] for k in merged if k.partition("@")[0] == CORE}
+    problems = []
+    for plugin in packs:
+        if not any(k.partition("@")[0] == plugin and v is True for k, v in merged.items()):
+            problems.append(f"{layers[0][0]}: AGENTS.md declares `{plugin}`, but enabledPlugins does not switch it on")
+    for key, value in merged.items():
+        name, _, market = key.partition("@")
+        if value is True and market in markets and name != CORE and name not in packs:
+            problems.append(f"{source[key]}: switches on `{name}`, which AGENTS.md does not declare under '{HEADING}'")
+    return problems
+
+
 def check(repo: Path) -> list[str]:
     try:
         text = (repo / "AGENTS.md").read_text(encoding="utf-8")
     except OSError as exc:
         return [f"AGENTS.md: unreadable ({exc})"]
     packs, problems = parse(text)
-    settings_path = repo / ".claude" / "settings.json"
-    enabled = None
-    if settings_path.exists():
-        try:
-            enabled = json.loads(settings_path.read_text(encoding="utf-8")).get("enabledPlugins", {})
-        except (OSError, ValueError) as exc:
-            return problems + [f".claude/settings.json: unreadable ({exc})"]
+    configs = []
+    for tool in TOOL_SETTINGS:
+        layers = []
+        for rel in tool:
+            enabled, problem = enabled_in(repo, rel)
+            if problem:
+                return problems + [problem]
+            if enabled is not None:
+                layers.append((rel, enabled))
+        if layers:
+            configs.append(layers)
     copies = [repo / d for d in COPY_DIRS if (repo / d / "aidlc-start" / "SKILL.md").is_file()]
-    if packs and enabled is None and not copies:
-        problems.append("no aidlc install found: neither .claude/settings.json nor a copied skills folder")
-    if enabled is not None:
-        core_markets = [k.partition("@")[2] for k in enabled if k.partition("@")[0] == CORE]
-        for plugin in packs:
-            if not any(k.partition("@")[0] == plugin and v is True for k, v in enabled.items()):
-                problems.append(f".claude/settings.json: AGENTS.md declares `{plugin}`, "
-                                f"but enabledPlugins does not switch it on")
-        for key, value in enabled.items():
-            name, _, market = key.partition("@")
-            if value is True and market in core_markets and name != CORE and name not in packs:
-                problems.append(f".claude/settings.json: switches on `{name}`, which AGENTS.md does not declare "
-                                f"under '{HEADING}'")
+    if packs and not configs and not copies:
+        problems.append("no aidlc install found: no settings that switch plugins on and no copied skills folder")
+    for layers in configs:
+        problems += check_config(packs, layers)
     for copy in copies:
         for plugin, skills in packs.items():
             for s in skills:
