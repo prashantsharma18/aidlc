@@ -37,6 +37,10 @@ function or diff pasted after each prompt. Routing varies between runs, so these
 | "Write a commit message for this diff." | `committing-changes` | 3 of 3 |
 | "Simplify this function; it works but it is hard to read." | `simplifying-code` | 3 of 3 |
 | "Make this function faster." | none of the new practices | 0 of 3 (no skill fired) |
+| "This test fails, why?" (added after the final review) | not `writing-tests` | 0 of 3; another installed plugin's debugging skill fired in all three, aidlc's `debugging-failures` in none |
+
+Finding: where another plugin carries a debugging skill, it outcompetes `debugging-failures` on this phrasing. Its
+description is one of the eight earlier practices, to be rewritten with their content.
 
 Not covered here: `building-ci-pipelines`, `stress-testing-decisions`, `checking-official-docs` and
 `testing-in-browser` had no live prompt; behaviour and pressure evals for all seven belong to the evals work.
