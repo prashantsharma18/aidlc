@@ -76,5 +76,32 @@ class GatesTest(unittest.TestCase):
     def test_debugging_in_production_only_proposes(self):
         self.assertIn("In production you propose only", read("plugins/aidlc/skills/debugging-failures/SKILL.md"))
 
+    def test_reviewing_code_can_be_loaded_by_a_stage(self):
+        text = (ROOT / "plugins/aidlc/skills/reviewing-code/SKILL.md").read_text(encoding="utf-8")
+        self.assertNotIn("disable-model-invocation", text)
+        self.assertIn("invocation: auto", text)
+        self.assertNotIn("constraint-driven-development", text)
+
+    def test_one_severity_scheme_everywhere(self):
+        rubric = read("plugins/aidlc/skills/reviewing-code/SKILL.md")
+        self.assertNotIn("**Critical:**", rubric)
+        for label in ("**high**", "**medium**", "**low**", "**question**"):
+            self.assertIn(label, rubric)
+        record = read("plugins/aidlc/skills/aidlc-review/assets/review-record.md")
+        self.assertNotIn("[blocking]", record)
+        for label in ("[high]", "[medium]", "[low]", "[question]"):
+            self.assertIn(label, record)
+        for agent in ("reviewer-bug", "reviewer-security", "reviewer-tests", "reviewer-compliance"):
+            text = read(f"plugins/aidlc/agents/{agent}.md")
+            self.assertIn("high, medium or low", text, agent)
+            self.assertIn("`question`", text, agent)
+
+    def test_review_blocks_on_high_and_medium(self):
+        self.assertIn("High and medium findings block the merge", read("plugins/aidlc/skills/aidlc-review/SKILL.md"))
+
+    def test_the_rubric_reviews_in_the_stage_order(self):
+        text = read("plugins/aidlc/skills/reviewing-code/SKILL.md")
+        self.assertLess(text.index("### Step 2: Verify the Verification"), text.index("### Step 3: Review the Tests First"))
+
 if __name__ == "__main__":
     unittest.main()

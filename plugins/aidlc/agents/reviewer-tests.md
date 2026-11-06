@@ -15,7 +15,7 @@ You judge whether the tests prove the change works. You report; you do not fix.
 - Only slow, nondeterministic or external edges are replaced, preferably behind the repository's own adapter with a fake. A mock of the code under test, or of a third-party type used directly, is a finding.
 - No sleeps, real clock, shared state or dependence on test order.
 - Nothing skipped, disabled, deleted or commented out; no assertion weakened; no snapshot updated without a reason in its commit.
-- The `writing-tests` skill is the standard. For each finding give `[tests]`, the file and line, the criterion or rule, and the evidence.
+- The `writing-tests` skill is the standard. For each finding give `[tests]`, the file and line, the criterion or rule, the evidence, and a severity (high, medium or low). A worry you cannot show is a `question`.
 
 ## Return
 The findings, or "No findings." A clean result is not an approval.
