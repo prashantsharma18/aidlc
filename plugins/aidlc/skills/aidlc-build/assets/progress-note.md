@@ -9,6 +9,9 @@ Session state, not memory: it lets a fresh session resume from the record.
 ## Skills loaded
 - <plugin:skill> — plugin version <x.y.z>
 
+## Deviations
+- <a practice loaded that the bundle does not name, or another departure from the bundle> — <why>
+
 ## Decisions made while working (for the PR)
 - <decision> — <why> — confirm with <who>
 

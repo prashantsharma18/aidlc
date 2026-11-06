@@ -17,7 +17,7 @@ Multi-dimensional code review with quality gates. Every change is reviewed befor
 
 **The recommendation standard:** recommend a change to the human reviewer when it clearly improves overall code health, even if it isn't perfect. Perfect code doesn't exist. The goal is steady improvement. Don't block a change because you would have written it differently. If it improves the codebase and follows the project's conventions, recommend it.
 
-> **In this framework:** `aidlc-build` loads this at step 9 for your own review of the diff, and `aidlc-review` loads it before the reviewer agents. In CI, review is Anthropic's code-review plugin plus the security pass, and only a code owner who did not write the change approves it. Nothing here is approval.
+> **In this framework:** `aidlc-build` loads this at step 9 for your own review of the diff, and `aidlc-review` loads it before the reviewer agents. Run the mutation experiment in Step 3 only in a build session, on a copy you restore; a review session only reads. In CI, review is Anthropic's code-review plugin plus the security pass, and only a code owner who did not write the change approves it. Nothing here is approval.
 
 ## When to Use
 
@@ -198,7 +198,7 @@ For each file changed:
 
 ### Step 5: Categorize Findings
 
-Label every comment with its severity so the author knows what is required and what is optional:
+Label every comment with its severity so the author knows what blocks the merge and what does not:
 
 | Severity | Meaning | Author action |
 |--------|---------|---------------|
@@ -356,7 +356,7 @@ For triaging `npm audit` findings and supply-chain risk (typosquatting, compromi
 - Security-sensitive changes without security-focused review
 - Large PRs that are "too big to review properly" (split them)
 - Bug fix PRs with no regression test
-- Review comments without severity labels — makes it unclear what's required vs optional
+- Review comments without a severity — makes it unclear what blocks the merge
 - Accepting "I'll fix it later" — it never happens
 - A refactor that moves code around without reducing the number of concepts a reader must hold
 - A change that grows an already-large file instead of breaking it up

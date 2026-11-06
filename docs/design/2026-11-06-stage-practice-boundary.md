@@ -1,6 +1,6 @@
 # The stage and practice boundary: stages load practices, one map (Plan 11)
 
-Status: draft for review (2026-11-06) · Owner: Prashant Sharma (framework owner)
+Status: approved by the owner (2026-11-06) · Owner: Prashant Sharma (framework owner)
 Builds on: branch `docs/plan-10-practice-reword` (01eff4c). Evidence: a read-only audit of all 13 stage skills, their
 templates and the 8 agents against the 15 practices (2026-11-06; findings C1–C17, D1–D7, M1–M14, S1–S4, G1–G19 below).
 

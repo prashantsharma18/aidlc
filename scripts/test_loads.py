@@ -91,5 +91,20 @@ class LoadsTest(unittest.TestCase):
     def test_writing_tests_covers_characterisation_tests(self):
         self.assertIn("A characterisation test is the exception", text("writing-tests"))
 
+    def test_the_bundle_template_takes_core_practices(self):
+        template = (SKILLS / "aidlc-plan" / "assets" / "task-bundle.md").read_text(encoding="utf-8")
+        self.assertNotIn("only skills AGENTS.md declares", template)
+        self.assertIn("core practices from the `using-aidlc` practice map", template)
+
+    def test_a_practice_the_bundle_missed_is_a_recorded_deviation(self):
+        self.assertIn("load it and record it as a deviation", text("aidlc-build"))
+        note = (SKILLS / "aidlc-build" / "assets" / "progress-note.md").read_text(encoding="utf-8")
+        self.assertIn("## Deviations", note)
+
+    def test_compliance_knows_which_loads_the_build_commands(self):
+        agent = (SKILLS.parents[0] / "agents" / "reviewer-compliance.md").read_text(encoding="utf-8")
+        self.assertIn("Always: `writing-tests`, `committing-changes`, `reviewing-code`", agent)
+        self.assertIn("`debugging-failures` when the note records a failing check", agent)
+
 if __name__ == "__main__":
     unittest.main()

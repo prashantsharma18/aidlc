@@ -28,8 +28,8 @@ Not for: architecture decisions (`aidlc-design` drafts the ADR) or changelog ent
    - **Setup and operations guides:** the exact commands, the output to expect, and what to do when the output differs.
 4. Comment the reason, not the action: a constraint, a workaround with its cause and a link, an invariant that is not obvious. Delete comments that repeat the code; they are the first to go stale.
 5. Keep the documents agents read accurate. When a command, path or boundary in `AGENTS.md` or the codebase map stops being true, propose the fix in the same pull request for its owner.
-6. Run every command and example you wrote, and open every link, before you hand off.
-7. Ship the documentation change in the same pull request as the code it describes.
+6. Run every command and example you wrote, and open every link, before you hand off. Where the session cannot run them (a read-only workspace root), say which are unchecked.
+7. Ship the documentation change in the same pull request as the code it describes. Release notes written after the merge go in their own pull request.
 
 ## Checks
 - Each document names its reader, and a reader of that kind could follow it without asking anyone.

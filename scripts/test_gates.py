@@ -139,5 +139,21 @@ class GatesTest(unittest.TestCase):
             self.assertIn(f"Your standard is the `{practice}` skill", read(f"plugins/aidlc/agents/{agent}.md"), agent)
         self.assertIn("covers the bundle's USE SKILLS and every skill `aidlc-build` commands", read(COMPLIANCE))
 
+    def test_the_tests_reviewer_keeps_its_checks_without_preloading(self):
+        text = read("plugins/aidlc/agents/reviewer-tests.md")
+        self.assertIn("what a caller sees", text)
+        self.assertIn("no sleeps", text)
+
+    def test_debugging_never_strips_an_existing_test(self):
+        text = read("plugins/aidlc/skills/debugging-failures/SKILL.md")
+        self.assertNotIn("Strip the test", text)
+        self.assertIn("never edit the existing one", text)
+
+    def test_observability_shows_runbooks_in_the_template_shape(self):
+        text = read("plugins/aidlc/skills/adding-observability/SKILL.md")
+        self.assertNotIn("Minimum viable runbook (three lines)", text)
+        self.assertNotIn("**Means:**", text)
+        self.assertIn("on-call closes the incident", text)
+
 if __name__ == "__main__":
     unittest.main()

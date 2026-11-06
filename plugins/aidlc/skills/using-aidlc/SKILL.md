@@ -9,7 +9,7 @@ metadata:
 
 aidlc has two kinds of skill.
 
-- **Stage skills** (`aidlc-*`) say which step you are in, what it produces and who approves it. A person starts each one by name, and each stops for its approver.
+- **Stage skills** (`aidlc-*`) say which step you are in, what it produces and who approves it. A person starts each one by name (`aidlc-onboard` and `aidlc-verify` may also start on their own), and each stops for its approver.
 - **Practice skills** say how to do a kind of work well. They load inside a stage: a stage step commands them, the slice's task bundle names them in USE SKILLS, or, outside the stages, Claude picks them by their description.
 
 "Story level" means the workspace root for a story that spans several repositories, and the repository itself for a story that changes one.
@@ -61,7 +61,8 @@ Some practices load every time at a given stage step, without being chosen:
 |---|---|
 | `aidlc-build` | `writing-tests` (step 6), `committing-changes` (step 7), `debugging-failures` (on a failing check, step 8), `reviewing-code` (step 9) |
 | `aidlc-review` | `reviewing-code` (step 3) |
-| `aidlc-plan` | `using-aidlc` (step 7, to choose USE SKILLS) |
+| `aidlc-plan` | `writing-tests` (step 4, test level), `using-aidlc` (step 7, to choose USE SKILLS) |
+| `aidlc-start` | `using-aidlc` (step 7, the route) |
 
 ## How a slice gets its practices
 

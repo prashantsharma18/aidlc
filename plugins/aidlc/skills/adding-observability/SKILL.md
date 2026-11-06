@@ -29,7 +29,7 @@ Code you can't observe is code you can't operate. Observability means you can an
 **NOT for:**
 - Diagnosing a failure that is happening right now. Use the `debugging-failures` skill (observability is what makes that skill fast next time)
 - Profiling and optimizing slowness you have measured. Use the `tuning-performance` skill
-- Launch-day monitoring checklists and rollback triggers. See the release stage; this skill covers the instrumentation that feeds them
+- Launch-day rollback triggers and stop criteria. See the release stage, which checks its monitoring against this skill's pre-launch list
 
 ## Process
 
@@ -182,19 +182,18 @@ Apply these rules to every alert you create:
 
 Rule 2 above requires every alert to link to a runbook. A runbook's job is to answer three questions so the reader doesn't have to think: what is happening, what to check first, and who to call if that doesn't resolve it. Write it from the runbook template `aidlc-operate` uses, named after the alert; a person runs every step.
 
-**Minimum viable runbook (three lines):**
+**A minimal runbook, in the template's shape:**
 
-```markdown
-# Runbook: High Error Rate on /api/tasks
-**Means:** DB connection pool likely exhausted, or a bad deploy.
-**First check:** `SELECT count(*) FROM pg_stat_activity WHERE backend_type = 'client backend';`
-  — if count > pool limit, see Step 2. (Swap in the equivalent for your database.)
-**Escalate to:** #db-oncall or engineering on-call rotation.
+```text
+ALERT  error rate on /api/tasks above 5% over 5 minutes. Owner: tasks team. Routed to: tasks on-call.
+R1  SELECT count(*) FROM pg_stat_activity WHERE backend_type = 'client backend';   read-only
+    (above the pool limit means the pool is exhausted; swap in your database's equivalent)
+C1  roll back the last deploy if it started the errors                              changes state
 ```
 
-**When to expand beyond three lines:** add steps only when the first check alone isn't enough to decide. A five-step runbook covering the three most common causes beats a twenty-step document that covers every edge case and gets skimmed.
+**When to add steps:** add steps only when the first check alone isn't enough to decide. A five-step runbook covering the three most common causes beats a twenty-step document that covers every edge case and gets skimmed.
 
-**Keep runbooks current.** Update the runbook when you close every incident it was used in, because a stale runbook builds false confidence. If a step was wrong or missing, fix it before you mark the incident resolved.
+**Keep runbooks current.** Update the runbook when you close every incident it was used in, because a stale runbook builds false confidence. If a step was wrong or missing, fix it before on-call closes the incident.
 
 ### 7. Verify the telemetry itself
 

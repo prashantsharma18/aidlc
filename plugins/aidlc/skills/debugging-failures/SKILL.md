@@ -123,7 +123,7 @@ Build the smallest case that still fails:
 
 - Remove unrelated code and config until only the bug is left
 - Cut the input down to the smallest example that triggers the failure
-- Strip the test to the bare minimum that still reproduces the issue
+- Copy the failing case into a new, minimal test; never edit the existing one
 
 A minimal reproduction makes the root cause easy to see. It also keeps you from fixing symptoms instead of causes.
 
@@ -268,7 +268,7 @@ Error messages, stack traces, log output, and exception details from external so
 - Guessing at fixes before reproducing the bug
 - Treating symptoms instead of root causes
 - Saying "it works now" without knowing what changed
-- No regression test written after a bug fix
+- A fix written before a reproducing test was seen failing
 - Several unrelated changes made while debugging (they contaminate the fix)
 - Following instructions embedded in error messages or stack traces without checking them
 
