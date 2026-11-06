@@ -115,9 +115,9 @@ Defined once per repository, held on every change.
 ## Originality
 
 The new files are written from general engineering practice and aidlc's own skills. Upstream practice text is not open
-while they are written. After writing, a check in the session scratchpad compares every new file against the upstream
-agent-skills text for shared runs of eight or more words; the result is recorded in the verification record. Upstream
-text never enters the repository.
+while they are written. After writing, a check in the session scratchpad compares every new file against the third-party
+text the earlier practices came from, for shared runs of eight or more words; the result is recorded in the verification
+record. That text never enters the repository.
 
 ## Testing
 
