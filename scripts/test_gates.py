@@ -133,5 +133,11 @@ class GatesTest(unittest.TestCase):
     def test_monitoring_is_checked_against_the_practice_list(self):
         self.assertIn("pre-launch list", read("plugins/aidlc/skills/aidlc-release/assets/readiness.md"))
 
+    def test_reviewer_agents_name_their_practice_standard(self):
+        for agent, practice in (("reviewer-bug", "reviewing-code"), ("reviewer-security", "securing-code"),
+                                ("reviewer-tests", "writing-tests")):
+            self.assertIn(f"Your standard is the `{practice}` skill", read(f"plugins/aidlc/agents/{agent}.md"), agent)
+        self.assertIn("covers the bundle's USE SKILLS and every skill `aidlc-build` commands", read(COMPLIANCE))
+
 if __name__ == "__main__":
     unittest.main()
