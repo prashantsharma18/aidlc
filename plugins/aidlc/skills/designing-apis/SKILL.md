@@ -16,7 +16,7 @@ metadata:
 
 Design stable, well-documented interfaces that are hard to misuse. Good interfaces make the right thing easy and the wrong thing hard. This applies to REST APIs, GraphQL schemas, module boundaries, component props, and any surface where one piece of code talks to another.
 
-> **In this framework:** contract first. The contract and its failing provider and consumer tests come before any code. A contract that another team relies on raises the tier and goes to design, with its owner named in the plan (`aidlc-plan`). The design is written to its file and reviewed in a pull request.
+> **In this framework:** contract first. The contract and its failing provider and consumer tests come before any code. A contract that another team relies on raises the tier and goes to design, with its owner named in the plan (`aidlc-plan`). The design is written to its file and reviewed in a pull request. When the interface follows a framework's or protocol's conventions, cite the official documentation for the version in use (`checking-official-docs`).
 
 ## When to Use
 
