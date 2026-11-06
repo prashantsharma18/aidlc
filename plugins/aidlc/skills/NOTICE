@@ -1,8 +1,4 @@
-The skills in this folder are adapted from https://github.com/addyosmani/agent-skills at commit
-aeac41d4d005999432bb7312f7ff06383a91d59d.
-Created by Addy Osmani, with Federico Bartoli and Joan Leon.
-Changes: our Rules block, no package installs, no approval verdicts, checklists inlined, links to
-skills we do not ship removed. The original licence follows.
+Third-party licence for portions of the practice skills in this folder.
 
 MIT License
 

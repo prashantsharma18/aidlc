@@ -51,9 +51,9 @@ and the task bundle names the pack skills a slice uses ([ADR 0011](docs/adr/0011
 
 Core (`plugins/aidlc/`):
 
-| Stage skills | Practice skills (adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills), MIT) |
+| Stage skills | Practice skills |
 |---|---|
-| `aidlc-start`, `aidlc-onboard`, `aidlc-intent`, `aidlc-specify`, `aidlc-discover`, `aidlc-design`, `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`, `aidlc-operate`, `aidlc-feedback` | `api-and-interface-design`, `code-review-and-quality`, `debugging-and-error-recovery`, `deprecation-and-migration`, `frontend-ui-engineering`, `observability-and-instrumentation`, `performance-optimization`, `security-and-hardening` |
+| `aidlc-start`, `aidlc-onboard`, `aidlc-intent`, `aidlc-specify`, `aidlc-discover`, `aidlc-design`, `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`, `aidlc-operate`, `aidlc-feedback` | `designing-apis`, `reviewing-code`, `debugging-failures`, `migrating-safely`, `building-user-interfaces`, `adding-observability`, `tuning-performance`, `securing-code` |
 
 Agents the skills call: `explorer`, `planner`, `implementer`, `reviewer-bug`, `reviewer-security`, `reviewer-compliance`,
 `ops-diagnoser` (in `plugins/aidlc/agents/`).

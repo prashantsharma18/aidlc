@@ -68,5 +68,3 @@ The product owner edits the statement, sets the priority, agrees the provisional
 - Write your drafts to their files on the story branch (`plans/<KEY>/` in a repository, `stories/<KEY>/` at a workspace root); people review and approve them in the pull request. Never edit `AGENTS.md`, a published contract or another team's files: propose the change for its owner.
 - The statement names no implementation: no store, library, status code or endpoint.
 - Record gaps as open questions with an owner instead of guessing.
-
-The interviewing step follows the interview-me and idea-refine techniques of addyosmani/agent-skills (MIT).

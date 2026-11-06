@@ -28,7 +28,7 @@ The approved assessment and design note, the coordination plan, and each reposit
 1. **Find the seams**: places where you can change which implementation runs without editing the callers. At the
    edge, a routing layer (strangler fig); inside the code, an interface (branch by abstraction); for data, the
    expand, migrate and contract steps of parallel change. A rewrite has no seam: say so if one is proposed. Core's
-   `deprecation-and-migration` skill has the patterns.
+   `migrating-safely` skill has the patterns.
 2. **Order the waves** by value and risk, the first one where mistakes are survivable. Each wave: its scope, the
    repositories it touches, its data plan, its rollback, and its exit criteria (written now, before anyone is
    attached to the new code).

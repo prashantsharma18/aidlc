@@ -1,5 +1,5 @@
 ---
-name: frontend-ui-engineering
+name: building-user-interfaces
 description: Builds production-quality, accessible, responsive user-facing UIs. Use when building or modifying interfaces and pages, creating components, implementing layouts, meeting WCAG accessibility requirements, managing state, or when the output needs to look and feel production-quality rather than AI-generated.
 metadata:
   kind: practice
@@ -7,10 +7,9 @@ metadata:
   guide:
   - '6.4'
   - '9.5'
-  source: addyosmani/agent-skills@aeac41d skills/frontend-ui-engineering
 ---
 
-# Frontend UI Engineering
+# Building User Interfaces
 
 ## Overview
 
@@ -351,5 +350,3 @@ After building UI:
 - Write your drafts to their files on the story branch (`plans/<KEY>/` in a repository, `stories/<KEY>/` at a workspace root); people review and approve them in the pull request. Never edit `AGENTS.md`, a published contract or another team's files: propose the change for its owner.
 - Use the repository's pinned tools named in `AGENTS.md`; never install a package or tool yourself: if one is missing, say so and stop.
 - You draft; you never approve.
-
-Adapted from addyosmani/agent-skills (MIT, Copyright (c) 2025 Addy Osmani), commit aeac41d. See NOTICE.

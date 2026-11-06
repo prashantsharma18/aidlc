@@ -1,5 +1,5 @@
 ---
-name: performance-optimization
+name: tuning-performance
 description: Optimizes application performance across frontend, backend, queries, and databases. Use when performance requirements exist, when you suspect performance regressions, when Core Web Vitals or load times need improvement, when N+1 query patterns need fixing, or when profiling reveals bottlenecks.
 metadata:
   kind: practice
@@ -7,10 +7,9 @@ metadata:
   guide:
   - '9.5'
   - '12.11'
-  source: addyosmani/agent-skills@aeac41d skills/performance-optimization
 ---
 
-# Performance Optimization
+# Tuning Performance
 
 ## Overview
 
@@ -275,5 +274,3 @@ After any performance-related change:
 - Write your drafts to their files on the story branch (`plans/<KEY>/` in a repository, `stories/<KEY>/` at a workspace root); people review and approve them in the pull request. Never edit `AGENTS.md`, a published contract or another team's files: propose the change for its owner.
 - Use the repository's pinned tools named in `AGENTS.md`; never install a package or tool yourself: if one is missing, say so and stop.
 - You draft; you never approve.
-
-Adapted from addyosmani/agent-skills (MIT, Copyright (c) 2025 Addy Osmani), commit aeac41d. See NOTICE.

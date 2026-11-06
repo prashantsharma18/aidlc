@@ -4,8 +4,8 @@ aidlc is a skills package for AI-assisted software delivery, from a requirement 
 It implements the guide "From Intent to Verified Change". Owner: framework owners (Prashant Sharma).
 
 ## Map
-- `plugins/aidlc/` the core plugin: `skills/` (the `aidlc-*` stage skills and the engineering-practice skills adapted
-  from addyosmani/agent-skills, MIT: `skills/NOTICE`) and `agents/`.
+- `plugins/aidlc/` the core plugin: `skills/` (the `aidlc-*` stage skills and the engineering-practice skills, with their
+  third-party licence in `skills/NOTICE`) and `agents/`.
 - `plugins/aidlc-modernize/` the modernisation pack: method skills, the .NET and Java factories, the parity-checker.
 - `starter/` files a team copies once into a repository or a workspace, including `starter/repo/scripts/`.
 - `.claude-plugin/marketplace.json` the marketplace that lists both plugins.

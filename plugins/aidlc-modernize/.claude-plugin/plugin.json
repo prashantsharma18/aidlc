@@ -1,8 +1,8 @@
 {
   "name": "aidlc-modernize",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Modernisation for aidlc: assess, characterise, wave plans, parity and cutover, with factories for .NET and Java. Switch it on only in repositories being modernised.",
   "author": {"name": "Prashant Sharma"},
   "license": "MIT",
-  "dependencies": [{"name": "aidlc", "version": "^2.0"}]
+  "dependencies": [{"name": "aidlc", "version": "^3.0"}]
 }

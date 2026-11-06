@@ -7,7 +7,7 @@ copy the plugins' `skills/` folders into Copilot, Codex or Cursor.
 
 ## Areas
 `plugins/aidlc/skills/aidlc-*/`   core stage skills; each `SKILL.md` names its templates in `assets/`
-`plugins/aidlc/skills/<practice>/`   engineering-practice skills adapted from addyosmani/agent-skills (MIT, `skills/NOTICE`)
+`plugins/aidlc/skills/<practice>/`   engineering-practice skills (third-party licence: `skills/NOTICE`)
 `plugins/aidlc/agents/`   agent roles the core skills call (Claude Code subagent format)
 `plugins/aidlc-modernize/`   the modernisation pack: method skills, factories (`dotnet-modernize` with `scripts/retarget.py`,
 `java-modernize`), `modernize-parity/scripts/parity.py`, the `parity-checker` agent

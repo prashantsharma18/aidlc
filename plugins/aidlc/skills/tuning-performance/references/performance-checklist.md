@@ -1,6 +1,6 @@
 # Performance Checklist
 
-Quick reference checklist for web application performance. Use alongside the `performance-optimization` skill.
+Quick reference checklist for web application performance. Use alongside the `tuning-performance` skill.
 
 ## Table of Contents
 
@@ -132,7 +132,7 @@ When TTFB is slow (> 800ms), check each component in DevTools Network waterfall:
 
 ## Caching Strategies
 
-The decision material (which layer, which invalidation strategy, what never to cache) lives in the `performance-optimization` skill. This section covers the read/write patterns and the checklist.
+The decision material (which layer, which invalidation strategy, what never to cache) lives in the `tuning-performance` skill. This section covers the read/write patterns and the checklist.
 
 ### Read and write patterns
 

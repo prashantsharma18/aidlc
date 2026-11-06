@@ -1,5 +1,5 @@
 ---
-name: api-and-interface-design
+name: designing-apis
 description: Guides stable API and interface design. Use when designing APIs, module boundaries, or any public interface. Use when creating REST or GraphQL endpoints, defining type contracts between modules, or establishing boundaries between frontend and backend.
 metadata:
   kind: practice
@@ -8,10 +8,9 @@ metadata:
   - '6.11'
   - '6.12'
   - '14.8'
-  source: addyosmani/agent-skills@aeac41d skills/api-and-interface-design
 ---
 
-# API and Interface Design
+# Designing APIs
 
 ## Overview
 
@@ -37,7 +36,7 @@ This means: every public behavior — including undocumented quirks, error messa
 
 - **Be intentional about what you expose.** Every observable behavior is a potential commitment.
 - **Don't leak implementation details.** If users can observe it, they will depend on it.
-- **Plan for deprecation at design time.** See `deprecation-and-migration` for how to safely remove things users depend on.
+- **Plan for deprecation at design time.** See `migrating-safely` for how to safely remove things users depend on.
 - **Tests are not enough.** Even with perfect contract tests, Hyrum's Law means "safe" changes can break real users who depend on undocumented behavior.
 
 ### The One-Version Rule
@@ -381,5 +380,3 @@ After designing an API:
 - Write your drafts to their files on the story branch (`plans/<KEY>/` in a repository, `stories/<KEY>/` at a workspace root); people review and approve them in the pull request. Never edit `AGENTS.md`, a published contract or another team's files: propose the change for its owner.
 - Use the repository's pinned tools named in `AGENTS.md`; never install a package or tool yourself: if one is missing, say so and stop.
 - You draft; you never approve.
-
-Adapted from addyosmani/agent-skills (MIT, Copyright (c) 2025 Addy Osmani), commit aeac41d. See NOTICE.

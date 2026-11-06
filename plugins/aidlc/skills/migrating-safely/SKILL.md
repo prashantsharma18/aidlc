@@ -1,5 +1,5 @@
 ---
-name: deprecation-and-migration
+name: migrating-safely
 description: Manages deprecation and migration. Use when removing old systems, APIs, or features. Use when migrating users from one implementation to another. Use when migrating a database schema in production, such as renaming or dropping a column without downtime (expand/contract). Use when deciding whether to maintain or sunset existing code.
 metadata:
   kind: practice
@@ -8,10 +8,9 @@ metadata:
   - '15.10'
   - '15.11'
   - '6.11'
-  source: addyosmani/agent-skills@aeac41d skills/deprecation-and-migration
 ---
 
-# Deprecation and Migration
+# Migrating Safely
 
 ## Overview
 
@@ -261,5 +260,3 @@ After a database schema migration:
 - Write your drafts to their files on the story branch (`plans/<KEY>/` in a repository, `stories/<KEY>/` at a workspace root); people review and approve them in the pull request. Never edit `AGENTS.md`, a published contract or another team's files: propose the change for its owner.
 - Use the repository's pinned tools named in `AGENTS.md`; never install a package or tool yourself: if one is missing, say so and stop.
 - You draft; you never approve.
-
-Adapted from addyosmani/agent-skills (MIT, Copyright (c) 2025 Addy Osmani), commit aeac41d. See NOTICE.

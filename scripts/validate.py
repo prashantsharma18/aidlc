@@ -20,7 +20,7 @@ CORE = "aidlc"
 SECTIONS = ("## When to use", "## Inputs", "## Steps", "## Produces", "## Gate", "## Stop if",
             "## Common excuses", "## Red flags", "## Rules")
 GATE_LINE = "You draft; you never approve."
-# Stage, method and recipe skills keep the house sections; the adapted practice skills keep only the open format.
+# Stage, method and recipe skills keep the house sections; the practice skills keep only the open format.
 HOUSE_PREFIXES = ("aidlc-", "modernize-", "dotnet-", "java-")
 # Commands and files of the harness parked under the tag harness-v1 (docs/archive/harness-v1.md).
 REMOVED = re.compile(r"aidlc\s+(check|scope|ci|new|attempts|render|init-repo|doctor|trace|adopt|plugin\s+build)\b"

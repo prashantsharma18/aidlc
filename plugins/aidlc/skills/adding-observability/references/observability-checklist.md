@@ -1,6 +1,6 @@
 # Observability Checklist
 
-Quick reference for instrumenting production code. Use alongside the `observability-and-instrumentation` skill.
+Quick reference for instrumenting production code. Use alongside the `adding-observability` skill.
 
 ## Table of Contents
 
@@ -28,7 +28,7 @@ Telemetry without a question is noise. Before instrumenting anything:
 - [ ] Correlation ID is propagated on every outbound call and async boundary (HTTP headers, queue metadata)
 - [ ] Any log stream written by more than one entry point (scheduler, replay endpoint, manual run) carries an entry-point field, set where the run starts and propagated alongside the correlation ID
 - [ ] Log levels are consistent: `error` = invariant broken, someone may act; `warn` = degraded but handled; `info` = significant business event; `debug` = off in production
-- [ ] No secrets, tokens, passwords, or unredacted PII in any log line (hard rule from `security-and-hardening`)
+- [ ] No secrets, tokens, passwords, or unredacted PII in any log line (hard rule from `securing-code`)
 - [ ] Fields are allowlisted — no whole request/response bodies, no auth headers
 - [ ] External service calls logged with metadata only: endpoint, status, latency, attempt count, sanitized identifiers
 - [ ] Actual log output spot-checked: structured fields, not `[object Object]`

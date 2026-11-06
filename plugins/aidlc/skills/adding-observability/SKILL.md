@@ -1,5 +1,5 @@
 ---
-name: observability-and-instrumentation
+name: adding-observability
 description: Instruments code so production behavior is visible and diagnosable. Use when adding logging, metrics, tracing, or alerting. Use when shipping any feature that runs in production and you need evidence it works. Use when production issues are reported but you can't tell what happened from the available data.
 metadata:
   kind: practice
@@ -8,10 +8,9 @@ metadata:
   - '12.3'
   - '12.4'
   - '12.11'
-  source: addyosmani/agent-skills@aeac41d skills/observability-and-instrumentation
 ---
 
-# Observability and Instrumentation
+# Adding Observability
 
 ## Overview
 
@@ -28,8 +27,8 @@ Code you can't observe is code you can't operate. Observability is the ability t
 - Reviewing a PR that adds I/O, retries, queues, or cross-service calls
 
 **NOT for:**
-- Diagnosing a failure happening right now — use the `debugging-and-error-recovery` skill (observability is what makes that skill fast next time)
-- Profiling and optimizing measured slowness — use the `performance-optimization` skill
+- Diagnosing a failure happening right now — use the `debugging-failures` skill (observability is what makes that skill fast next time)
+- Profiling and optimizing measured slowness — use the `tuning-performance` skill
 - Launch-day monitoring checklists and rollback triggers — see the release stage; this skill covers the instrumentation that feeds them
 
 ## Process
@@ -113,7 +112,7 @@ export const runLog = (entryPoint: 'scheduler' | 'replay_endpoint' | 'cli', runI
 
 Both fields have to cross the same boundaries as the correlation ID — queue metadata, HTTP headers — or a worker re-derives the entry point and guesses. A field that merely correlates with an entry point is a hint, not an attribution: anything that can invoke the job can reproduce it.
 
-**Never log secrets, tokens, passwords, or full PII.** This is a hard rule from the `security-and-hardening` skill — telemetry pipelines are a classic data-leak path. Allowlist fields; don't log whole request bodies.
+**Never log secrets, tokens, passwords, or full PII.** This is a hard rule from the `securing-code` skill — telemetry pipelines are a classic data-leak path. Allowlist fields; don't log whole request bodies.
 
 ### 4. Metrics
 
@@ -252,5 +251,3 @@ For the at-a-glance version of this list, including the pre-launch instrumentati
 - Write your drafts to their files on the story branch (`plans/<KEY>/` in a repository, `stories/<KEY>/` at a workspace root); people review and approve them in the pull request. Never edit `AGENTS.md`, a published contract or another team's files: propose the change for its owner.
 - Use the repository's pinned tools named in `AGENTS.md`; never install a package or tool yourself: if one is missing, say so and stop.
 - You draft; you never approve.
-
-Adapted from addyosmani/agent-skills (MIT, Copyright (c) 2025 Addy Osmani), commit aeac41d. See NOTICE.

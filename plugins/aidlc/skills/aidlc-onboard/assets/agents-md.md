@@ -11,7 +11,6 @@
 - Prefer the simplest change that meets the criteria.
 - Touch only what the task needs: no drive-by refactors, no removing what you do not understand.
 - Done means evidence: tests run, counts read, behaviour checked; never "looks right".
-(Adapted from the core operating behaviours of using-agent-skills of addyosmani/agent-skills (MIT).)
 
 ## How work runs here
 - Start any new piece of work with the `aidlc-start` skill: a new requirement, a story, a defect, a change request or

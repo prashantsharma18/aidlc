@@ -1,5 +1,5 @@
 ---
-name: debugging-and-error-recovery
+name: debugging-failures
 description: Guides systematic root-cause debugging. Use when tests fail, builds break, something that worked yesterday broke, behavior doesn't match expectations, or you encounter any unexpected error. Use when you need to figure out what broke and why — a systematic approach to finding and fixing the root cause rather than guessing.
 metadata:
   kind: practice
@@ -8,10 +8,9 @@ metadata:
   - '8.8'
   - '9.2'
   - '12.6'
-  source: addyosmani/agent-skills@aeac41d skills/debugging-and-error-recovery
 ---
 
-# Debugging and Error Recovery
+# Debugging Failures
 
 ## Overview
 
@@ -314,5 +313,3 @@ After fixing a bug:
 - Write your drafts to their files on the story branch (`plans/<KEY>/` in a repository, `stories/<KEY>/` at a workspace root); people review and approve them in the pull request. Never edit `AGENTS.md`, a published contract or another team's files: propose the change for its owner.
 - Use the repository's pinned tools named in `AGENTS.md`; never install a package or tool yourself: if one is missing, say so and stop.
 - You draft; you never approve.
-
-Adapted from addyosmani/agent-skills (MIT, Copyright (c) 2025 Addy Osmani), commit aeac41d. See NOTICE.
