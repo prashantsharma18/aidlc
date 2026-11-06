@@ -107,7 +107,7 @@ When you flag a structural problem, propose the move — not just the problem. A
 - **Delete a pass-through wrapper** that adds indirection without clarifying the API.
 - **Extract a helper, or split a large file** into focused modules.
 
-Prefer the remedy that removes moving pieces over one that spreads the same complexity around.
+Prefer the remedy that removes moving pieces over one that spreads the same complexity around. To carry out a simplification without changing behaviour, use the `simplifying-code` skill.
 
 ## Change Sizing
 
