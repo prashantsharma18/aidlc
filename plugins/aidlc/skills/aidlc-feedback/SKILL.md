@@ -25,7 +25,7 @@ The incident record (its Prevention line) or the repeated findings, and the owne
 ## Steps
 1. List the lessons, one per line, each with its evidence.
 2. Choose each lesson's layer by its kind: behaviour that can regress goes to a test; an agent mistake that could recur goes to an eval case; missing knowledge goes to the context (rules file or map); something that must never happen, or an unsafe action, goes to a guardrail (permission, hook, CI check); something only a person can judge goes to the review checklist; a signal nobody saw goes to a measure (an alert or dashboard). Always add a regression test for every fix, and an eval case wherever an agent mistake could recur. When two layers fit, prefer the enforced one.
-3. Draft the change for that layer, for the owner of that source to review.
+3. Draft the change for that layer, for the owner of that source to review: load the `writing-tests` skill for a test, load the `building-ci-pipelines` skill for a CI guardrail, load the `adding-observability` skill for a signal or alert, and load the `writing-documentation` skill for the context.
 4. Fill the incident record's Prevention line from `assets/incident.md`: the lesson, the layer and where it went. Lessons from repeated review findings have no incident: list them in your reply instead.
 5. Record each change as merged or declined, with who declined it and why.
 

@@ -37,5 +37,59 @@ class MapTest(unittest.TestCase):
         self.assertIn("writing-documentation", PRACTICES)
 
 
+LOADS = {
+    "aidlc-start": {"using-aidlc"},
+    "aidlc-onboard": {"building-ci-pipelines"},
+    "aidlc-intent": set(),
+    "aidlc-specify": set(),
+    "aidlc-discover": {"designing-apis", "writing-tests"},
+    "aidlc-design": {"securing-code", "migrating-safely", "stress-testing-decisions", "checking-official-docs",
+                     "designing-apis", "writing-tests", "building-ci-pipelines", "tuning-performance",
+                     "adding-observability", "writing-documentation"},
+    "aidlc-plan": {"stress-testing-decisions", "checking-official-docs", "writing-tests", "testing-in-browser",
+                   "using-aidlc"},
+    "aidlc-build": {"checking-official-docs", "writing-tests", "testing-in-browser", "committing-changes",
+                    "debugging-failures", "reviewing-code"},
+    "aidlc-verify": set(),
+    "aidlc-review": {"reviewing-code", "securing-code"},
+    "aidlc-release": {"adding-observability", "migrating-safely", "committing-changes", "writing-documentation"},
+    "aidlc-operate": {"adding-observability"},
+    "aidlc-feedback": {"writing-tests", "building-ci-pipelines", "adding-observability", "writing-documentation"},
+}
+OLD_PHRASES = ("says how to write each test well", "skill helps", "shapes each commit",
+               "adds a browser test per criterion", "challenge the draft with `stress-testing-decisions`",
+               "check it with `checking-official-docs`", "challenge the recommended option with",
+               "check it first (`checking-official-docs`)", "changelog entry too (`committing-changes`)",
+               "design it with the `building-ci-pipelines` skill")
+
+
+class LoadsTest(unittest.TestCase):
+    def test_every_stage_is_in_the_table(self):
+        self.assertEqual(sorted(LOADS), STAGES)
+
+    def test_each_stage_loads_exactly_its_practices(self):
+        for stage, expected in LOADS.items():
+            self.assertEqual(set(LOAD.findall(text(stage))), expected, stage)
+
+    def test_every_loaded_skill_exists_and_the_model_can_load_it(self):
+        for stage in LOADS:
+            for name in LOAD.findall(text(stage)):
+                self.assertTrue((SKILLS / name / "SKILL.md").is_file(), (stage, name))
+                self.assertNotIn("disable-model-invocation: true", text(name), (stage, name))
+
+    def test_no_passing_mention_is_left(self):
+        for stage in LOADS:
+            for phrase in OLD_PHRASES:
+                self.assertNotIn(phrase, text(stage), (stage, phrase))
+
+    def test_the_plan_chooses_core_practices_from_the_map(self):
+        self.assertIn("the core practices the slice needs", text("aidlc-plan"))
+
+    def test_a_commanded_load_that_fails_is_a_stop(self):
+        self.assertIn("Every skill a step below tells you to load is loaded the same way", text("aidlc-build"))
+
+    def test_writing_tests_covers_characterisation_tests(self):
+        self.assertIn("A characterisation test is the exception", text("writing-tests"))
+
 if __name__ == "__main__":
     unittest.main()

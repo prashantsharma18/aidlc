@@ -27,7 +27,7 @@ Not for: finding why a test fails (`debugging-failures`), or browser tests of a 
    - an end-to-end test only for a user journey nothing smaller can prove.
 
    Most tests are unit tests, some are integration tests, few are end-to-end.
-3. Write the test and run it. It must fail, and fail on its assertion, not on an import error or a typo. A test that passes before the code exists has not shown it can fail: break the code on purpose once and watch it go red.
+3. Write the test and run it. It must fail, and fail on its assertion, not on an import error or a typo. A test that passes before the code exists has not shown it can fail: break the code on purpose once and watch it go red. A characterisation test is the exception: it records what existing code does today, quirks included, and passes from the start; prove it can fail by changing a recorded value once.
 4. For a bug, reproduce it first. The test feeds the reported input and asserts the correct result. It must fail with the reported symptom before you touch the fix.
 5. Write the least code that turns it green. Run the whole suite, not only the new test.
 6. With the suite green, tidy up: remove duplication in the code, then in the tests you wrote; never touch an existing assertion. Run the suite again.
@@ -37,7 +37,7 @@ Not for: finding why a test fails (`debugging-failures`), or browser tests of a 
 - **Wrong code makes it fail.** Would the test still pass if the function returned a constant, skipped a branch or flipped a condition? Then the assertion is too weak.
 - **It checks behaviour a caller sees:** outputs, stored state, calls that matter outside. Not private methods, call order or internal variables.
 - **One behaviour per test,** so a red test names one broken rule.
-- **Boundaries are covered:** empty, one, many; zero and negative; the limit and one past it; missing and malformed input; time zones and clock changes where dates matter.
+- **Boundaries are covered:** the spec's edge cases first, by their IDs; then empty, one, many; zero and negative; the limit and one past it; missing and malformed input; time zones and clock changes where dates matter.
 - **Replace only the slow, nondeterministic or external edges:** the network, the clock, randomness, third-party services, preferably behind your own adapter with a fake of it. Never mock the code under test, and never mock a third-party type directly.
 - **Same result every run:** no sleeps, no real clock, no shared state between tests, no dependence on test order, a fixed seed for anything random.
 - **A failure explains itself:** the test name and message say what was expected and what happened. Setup sits in the test, even if a few lines repeat.

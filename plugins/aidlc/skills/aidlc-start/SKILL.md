@@ -47,7 +47,7 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
 6. **Which repositories change?** At a workspace root, send one `explorer` agent into each repository listed in
    `WORKSPACE.md` with one question: "would this work change you, and how?" Spot-check two or three of each answer's
    citations; a false one means that answer is discarded and asked again.
-7. **Route.**
+7. **Route.** Load the `using-aidlc` skill for the lifecycle map.
    - One repository: "open `<repository>` and run the stages there". A one-repository story runs entirely in that
      repository, with its documents in `plans/<KEY>/`.
    - Several repositories, or unsure (unsure counts as several repositories): the workspace flow. The story's
