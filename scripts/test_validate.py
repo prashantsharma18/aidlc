@@ -170,6 +170,13 @@ class ValidateTest(unittest.TestCase):
         for name in sorted(validate.EARLIER_PRACTICES):
             self.assertTrue((core / name / "SKILL.md").is_file(), name)
 
+    def test_the_quality_bar_exception_reads_the_same_everywhere(self):
+        root = Path(__file__).resolve().parents[1]
+        files = ("plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md", "starter/repo/AGENTS.md",
+                 "plugins/aidlc/skills/aidlc-build/SKILL.md", "plugins/aidlc/agents/reviewer-compliance.md")
+        for rel in files:
+            self.assertIn("a reason, an owner and an expiry date", (root / rel).read_text(encoding="utf-8"), rel)
+
     def test_a_plugin_source_outside_plugins_is_a_problem(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

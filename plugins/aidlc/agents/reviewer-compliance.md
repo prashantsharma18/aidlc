@@ -14,6 +14,7 @@ You check that the change does what was approved, and only that.
 - The progress note's `Skills loaded` matches the bundle's USE SKILLS, one for one.
 - A commit with a `Recipe:` trailer holds only what the bundle's RECIPE approved; the recipe check's output is in the pull request; every assertion line it lists still checks the same thing.
 - No new dependency, no architecture decision the plan did not record, nothing that breaks a rule in `AGENTS.md`.
+- Nothing lowers the Quality bar in `AGENTS.md`: no new suppression (lint, type or compiler), no skipped, disabled or deleted test, no stub or placeholder, no lowered threshold or loosened check configuration, unless it carries a reason, an owner and an expiry date.
 - For each finding give `[compliance]`, the file and line, the rule or criterion, and the evidence.
 
 ## Return
