@@ -33,14 +33,14 @@ When anything unexpected happens, do this:
 1. STOP adding features or making changes
 2. PRESERVE evidence (error output, logs, repro steps)
 3. DIAGNOSE using the triage checklist
-4. FIX the root cause
-5. GUARD against recurrence
+4. GUARD: write the reproducing test and watch it fail
+5. FIX the root cause
 6. RESUME only after verification passes
 ```
 
 **Don't push past a failing test or broken build to start the next feature.** Errors compound. A bug left unfixed in Step 3 makes Steps 4-6 wrong.
 
-> **In this framework:** make one targeted fix per attempt, and name its cause. Three attempts at the same failing check is the limit. If the same failure persists after a different fix, stop and report. Run `git bisect` only on a clean working tree, and return to your branch when it ends.
+> **In this framework:** make one targeted fix per attempt, and name its cause. Three attempts at the same failing check is the limit. If the same failure comes back after a different fix, or a test that passed before now fails, stop and report. In production you propose only: `aidlc-operate` leads, and a person acts. Run `git bisect` only on a clean working tree, and return to your branch when it ends.
 
 ## The Triage Checklist
 
@@ -127,7 +127,23 @@ Build the smallest case that still fails:
 
 A minimal reproduction makes the root cause easy to see. It also keeps you from fixing symptoms instead of causes.
 
-### Step 4: Fix the Root Cause
+### Step 4: Guard First: a Failing Test
+
+Before any fix, write the test that reproduces this failure, using the minimal case from Step 3. Run it and watch it fail for the reported reason.
+
+```typescript
+// The bug: task titles with special characters broke the search
+it('finds tasks with special characters in title', async () => {
+  await createTask({ title: 'Fix "quotes" & <brackets>' });
+  const results = await searchTasks('quotes');
+  expect(results).toHaveLength(1);
+  expect(results[0].title).toBe('Fix "quotes" & <brackets>');
+});
+```
+
+This test stops the same bug from coming back. It must fail before the fix and pass after it.
+
+### Step 5: Fix the Root Cause
 
 Fix the underlying issue, not the symptom.
 
@@ -142,23 +158,7 @@ Root cause fix (good):
   → Fix the query, add a DISTINCT, or fix the data model
 ```
 
-Keep asking "Why does this happen?" until you reach the actual cause. Stopping at the place where it shows up is not enough.
-
-### Step 5: Guard Against Recurrence
-
-Write a test that catches this exact failure.
-
-```typescript
-// The bug: task titles with special characters broke the search
-it('finds tasks with special characters in title', async () => {
-  await createTask({ title: 'Fix "quotes" & <brackets>' });
-  const results = await searchTasks('quotes');
-  expect(results).toHaveLength(1);
-  expect(results[0].title).toBe('Fix "quotes" & <brackets>');
-});
-```
-
-This test stops the same bug from coming back. It must fail without the fix. It must pass with it.
+Keep asking "Why does this happen?" until you reach the actual cause. Stopping at the place where it shows up is not enough. Then run the Step 4 test: it must pass now.
 
 ### Step 6: Verify End-to-End
 
@@ -186,7 +186,7 @@ npm run dev  # Verify in browser
 Test fails after code change:
 ├── Did you change code the test covers?
 │   └── YES → Check if the test or the code is wrong
-│       ├── Test is outdated → Update the test
+│       ├── Test looks outdated → Stop and report: never change an existing assertion; its owner decides
 │       └── Code has a bug → Fix the code
 ├── Did you change unrelated code?
 │   └── YES → Likely a side effect → Check shared state, imports, globals
@@ -220,34 +220,9 @@ Runtime error:
     └── Add logging at key points, verify data at each step
 ```
 
-## Safe Fallback Patterns
+## Fallbacks Are Behaviour
 
-When time is short, use safe fallbacks:
-
-```typescript
-// Safe default + warning (instead of crashing)
-function getConfig(key: string): string {
-  const value = process.env[key];
-  if (!value) {
-    console.warn(`Missing config: ${key}, using default`);
-    return DEFAULTS[key] ?? '';
-  }
-  return value;
-}
-
-// Graceful degradation (instead of broken feature)
-function renderChart(data: ChartData[]) {
-  if (data.length === 0) {
-    return <EmptyState message="No data available for this period" />;
-  }
-  try {
-    return <Chart data={data} />;
-  } catch (error) {
-    console.error('Chart render failed:', error);
-    return <ErrorState message="Unable to display chart" />;
-  }
-}
-```
+A fallback (a default value, an empty state, a swallowed error) changes what users see. The spec or the design decides it, with a test that names it. Never add one to make a failing check pass: it hides the bug and lowers the Quality bar in `AGENTS.md`.
 
 ## Instrumentation Guidelines
 
@@ -273,7 +248,7 @@ Add logging only when it helps, and remove it when you are done.
 | Rationalization | Reality |
 |---|---|
 | "I know what the bug is, I'll just fix it" | You may be right 70% of the time. The other 30% costs hours. Reproduce first. |
-| "The failing test is probably wrong" | Check that assumption. If the test is wrong, fix the test. Don't skip it. |
+| "The failing test is probably wrong" | Check that assumption. If it still looks wrong, stop and report: never change an existing assertion; the criterion's owner decides. Don't skip it. |
 | "It works on my machine" | Environments differ. Check CI, config, and dependencies. |
 | "I'll fix it in the next commit" | Fix it now. The next commit will add new bugs on top of this one. |
 | "This is a flaky test, ignore it" | Flaky tests hide real bugs. Fix the flakiness, or find out why it's intermittent. |

@@ -52,5 +52,29 @@ class GatesTest(unittest.TestCase):
             self.assertIn("own adapter", text, rel)
 
 
+    def test_debugging_never_changes_an_existing_test(self):
+        text = read("plugins/aidlc/skills/debugging-failures/SKILL.md")
+        self.assertNotIn("Update the test", text)
+        self.assertNotIn("fix the test", text)
+        self.assertIn("never change an existing assertion", text)
+
+    def test_debugging_writes_the_failing_test_before_the_fix(self):
+        text = read("plugins/aidlc/skills/debugging-failures/SKILL.md")
+        self.assertLess(text.index("4. GUARD"), text.index("5. FIX the root cause"))
+        self.assertLess(text.index("### Step 4: Guard First"), text.index("### Step 5: Fix the Root Cause"))
+
+    def test_debugging_adds_no_fallback_to_get_green(self):
+        text = read("plugins/aidlc/skills/debugging-failures/SKILL.md")
+        self.assertNotIn("Safe Fallback Patterns", text)
+        self.assertIn("Never add one to make a failing check pass", text)
+
+    def test_the_stop_wording_matches_in_build_and_debugging(self):
+        for rel in (BUILD, "plugins/aidlc/skills/debugging-failures/SKILL.md"):
+            self.assertIn("a test that passed before now fails", read(rel), rel)
+        self.assertEqual(read(BUILD).count("a test that passed before now fails"), 2)
+
+    def test_debugging_in_production_only_proposes(self):
+        self.assertIn("In production you propose only", read("plugins/aidlc/skills/debugging-failures/SKILL.md"))
+
 if __name__ == "__main__":
     unittest.main()
