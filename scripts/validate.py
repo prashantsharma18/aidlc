@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Checks the aidlc marketplace and every plugin it lists: each skill and agent in the open Agent Skills format, the
-house sections of the stage and recipe skills, no command of the parked harness and no tool-specific syntax (in a
+house sections of the stage and recipe skills, the practice sections of the practice skills,
+no command of the parked harness and no tool-specific syntax (in a
 skill or its files), every named file present, skill names unique across plugins, core never naming a pack, plugin
 versions and dependencies, and the starter settings' secret denies.
 
@@ -20,8 +21,18 @@ CORE = "aidlc"
 SECTIONS = ("## When to use", "## Inputs", "## Steps", "## Produces", "## Gate", "## Stop if",
             "## Common excuses", "## Red flags", "## Rules")
 GATE_LINE = "You draft; you never approve."
-# Stage, method and recipe skills keep the house sections; the practice skills keep only the open format.
+# Stage, method and recipe skills keep the house sections.
 HOUSE_PREFIXES = ("aidlc-", "modernize-", "dotnet-", "java-")
+# A skill whose metadata says `kind: practice` keeps the practice sections. A skill without that kind keeps only the
+# open format.
+PRACTICE_SECTIONS = ("## When to use", "## Steps", "## Checks", "## Stop if", "## Common excuses", "## Red flags",
+                     "## Rules")
+KIND_PRACTICE = re.compile(r"^\s+kind:\s*['\"]?practice['\"]?\s*$", re.M)
+# Practices still in their earlier shape, exempt from PRACTICE_SECTIONS until their content is rewritten.
+# This list only shrinks.
+EARLIER_PRACTICES = frozenset({"adding-observability", "building-user-interfaces", "debugging-failures",
+                               "designing-apis", "migrating-safely", "reviewing-code", "securing-code",
+                               "tuning-performance"})
 # Commands and files of the harness parked under the tag harness-v1 (docs/archive/harness-v1.md).
 REMOVED = re.compile(r"aidlc\s+(check|scope|ci|new|attempts|render|init-repo|doctor|trace|adopt|plugin\s+build)\b"
                      r"|approved-bundles\.txt|\.aidlc/(config|hooks|baseline)|core/(policy|schemas|hooks)\b"
@@ -57,6 +68,18 @@ def portability(rel: str, text: str) -> list[str]:
     return problems + [f"{rel}: uses tool-specific syntax: '{m.group(0)}'" for m in TOOL_SPECIFIC.finditer(text)]
 
 
+def check_sections(rel: str, text: str, sections: tuple[str, ...], gate_where: str) -> list[str]:
+    """Every section present, in order, and the gate line somewhere in the skill."""
+    positions = [text.find(s) for s in sections]
+    problems = [f"{rel}: missing section '{s}'" for s, pos in zip(sections, positions) if pos < 0]
+    found = [p for p in positions if p >= 0]
+    if found != sorted(found):
+        problems.append(f"{rel}: sections are out of order (expected {', '.join(sections)})")
+    if GATE_LINE not in text:
+        problems.append(f"{rel}: {gate_where} must end with '{GATE_LINE}'")
+    return problems
+
+
 def check_skill(path: Path, root: Path) -> list[str]:
     rel = path.relative_to(root).as_posix()
     folder_rel = path.parent.relative_to(root).as_posix()
@@ -76,15 +99,9 @@ def check_skill(path: Path, root: Path) -> list[str]:
     elif "Use when" not in description:
         problems.append(f"{rel}: description must say when to use the skill ('Use when ...')")
     if folder.startswith(HOUSE_PREFIXES):
-        positions = [text.find(s) for s in SECTIONS]
-        for section, pos in zip(SECTIONS, positions):
-            if pos < 0:
-                problems.append(f"{rel}: missing section '{section}'")
-        found = [p for p in positions if p >= 0]
-        if found != sorted(found):
-            problems.append(f"{rel}: sections are out of order (expected {', '.join(SECTIONS)})")
-        if GATE_LINE not in text:
-            problems.append(f"{rel}: the gate must end with '{GATE_LINE}'")
+        problems += check_sections(rel, text, SECTIONS, "the gate")
+    elif KIND_PRACTICE.search(text[: text.find("\n---", 4)]) and folder not in EARLIER_PRACTICES:
+        problems += check_sections(rel, text, PRACTICE_SECTIONS, "the Rules")
     problems += portability(rel, text)
     for sub in SKILL_DIRS:
         for extra in sorted((path.parent / sub).glob("*")):

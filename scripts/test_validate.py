@@ -75,6 +75,30 @@ def skill(name, description="Does things. Use when needed.", body=STAGE_BODY):
     return f"---\nname: {name}\ndescription: {description}\n---\n{body}"
 
 
+PRACTICE_BODY = """# Title
+
+## When to use
+x
+## Steps
+1. x
+## Checks
+x
+## Stop if
+x
+## Common excuses
+x
+## Red flags
+x
+## Rules
+- You draft; you never approve.
+"""
+
+
+def practice(name, body=PRACTICE_BODY, kind="practice"):
+    return (f"---\nname: {name}\ndescription: Does things. Use when needed.\nmetadata:\n  kind: {kind}\n"
+            f"  invocation: auto\n---\n{body}")
+
+
 class ValidateTest(unittest.TestCase):
     def check(self, skills, **kw):
         with tempfile.TemporaryDirectory() as tmp:
@@ -114,6 +138,37 @@ class ValidateTest(unittest.TestCase):
     def test_practice_skills_need_only_the_open_format(self):
         practice = "---\nname: debugging\ndescription: Debugs. Use when a test fails.\n---\n# Debugging\n"
         self.assertEqual(self.check({"debugging": practice}, assets=()), [])
+
+    def test_a_practice_in_the_practice_format_has_no_problems(self):
+        self.assertEqual(self.check({"writing-tests": practice("writing-tests")}), [])
+
+    def test_a_practice_needs_every_practice_section(self):
+        body = PRACTICE_BODY.replace("## Checks\nx\n", "")
+        problems = self.check({"writing-tests": practice("writing-tests", body=body)})
+        self.assertTrue(any("missing section '## Checks'" in p for p in problems), problems)
+
+    def test_a_practice_keeps_the_sections_in_order(self):
+        body = PRACTICE_BODY.replace("## Steps\n1. x\n## Checks\nx\n", "## Checks\nx\n## Steps\n1. x\n")
+        problems = self.check({"writing-tests": practice("writing-tests", body=body)})
+        self.assertTrue(any("out of order" in p for p in problems), problems)
+
+    def test_a_practice_ends_its_rules_with_the_gate_line(self):
+        body = PRACTICE_BODY.replace("- You draft; you never approve.", "- ok")
+        problems = self.check({"writing-tests": practice("writing-tests", body=body)})
+        self.assertTrue(any("You draft; you never approve." in p for p in problems), problems)
+
+    def test_a_quoted_practice_kind_is_still_a_practice(self):
+        problems = self.check({"writing-tests": practice("writing-tests", body="# Essay\n", kind="'practice'")})
+        self.assertTrue(any("missing section '## Steps'" in p for p in problems), problems)
+
+    def test_an_earlier_practice_keeps_its_shape_until_rewritten(self):
+        essay = practice("reviewing-code", body="# Reviewing Code\n\nAn essay.\n")
+        self.assertEqual(self.check({"reviewing-code": essay}), [])
+
+    def test_the_earlier_practices_are_real_core_skills(self):
+        core = Path(__file__).resolve().parents[1] / "plugins" / "aidlc" / "skills"
+        for name in sorted(validate.EARLIER_PRACTICES):
+            self.assertTrue((core / name / "SKILL.md").is_file(), name)
 
     def test_a_plugin_source_outside_plugins_is_a_problem(self):
         with tempfile.TemporaryDirectory() as tmp:
