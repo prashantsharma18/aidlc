@@ -53,9 +53,9 @@ Core (`plugins/aidlc/`):
 
 | Stage skills | Practice skills |
 |---|---|
-| `aidlc-start`, `aidlc-onboard`, `aidlc-intent`, `aidlc-specify`, `aidlc-discover`, `aidlc-design`, `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`, `aidlc-operate`, `aidlc-feedback` | `designing-apis`, `reviewing-code`, `debugging-failures`, `migrating-safely`, `building-user-interfaces`, `adding-observability`, `tuning-performance`, `securing-code` |
+| `aidlc-start`, `aidlc-onboard`, `aidlc-intent`, `aidlc-specify`, `aidlc-discover`, `aidlc-design`, `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`, `aidlc-operate`, `aidlc-feedback` | `designing-apis`, `reviewing-code`, `debugging-failures`, `migrating-safely`, `building-user-interfaces`, `adding-observability`, `tuning-performance`, `securing-code`, `writing-tests`, `committing-changes`, `building-ci-pipelines`, `simplifying-code`, `stress-testing-decisions`, `checking-official-docs`, `testing-in-browser` |
 
-Agents the skills call: `explorer`, `planner`, `implementer`, `reviewer-bug`, `reviewer-security`, `reviewer-compliance`,
+Agents the skills call: `explorer`, `planner`, `implementer`, `reviewer-bug`, `reviewer-security`, `reviewer-compliance`, `reviewer-tests`,
 `ops-diagnoser` (in `plugins/aidlc/agents/`).
 
 `aidlc-modernize` (`plugins/aidlc-modernize/`): `modernize-assess`, `modernize-characterize`, `modernize-wave-plan`,

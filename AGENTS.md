@@ -19,7 +19,8 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
 
 ## Standards
 - Skills follow the open Agent Skills format: the folder name equals `name:`; the description says what the skill does
-  and "Use when …". Keep the sections: When to use, Inputs, Steps, Produces, Gate, Stop if, Common excuses, Red flags, Rules.
+  and "Use when …". Stage skills keep the sections: When to use, Inputs, Steps, Produces, Gate, Stop if, Common excuses, Red flags,
+  Rules. Practice skills keep: When to use, Steps, Checks, Stop if, Common excuses, Red flags, Rules.
 - A skill never names a tool-specific command or a parked harness command; it names "the repository's commands from AGENTS.md".
 - Core never names a pack, a pack skill or a pack agent; skill names are unique across the marketplace; every
   release raises the plugin's version (`plugins/<name>/.claude-plugin/plugin.json`).

@@ -1,5 +1,5 @@
 # aidlc: codebase map
-Owner: framework owners · Last verified: 2026-10-26
+Owner: framework owners · Last verified: 2026-11-06
 
 ## What this repository is
 A marketplace of skills plugins. Engineers install `aidlc` (and, where needed, `aidlc-modernize`) in Claude Code, or
@@ -19,6 +19,8 @@ copy the plugins' `skills/` folders into Copilot, Codex or Cursor.
 
 ## Where common changes go
 - A new core stage skill: `plugins/aidlc/skills/aidlc-<name>/SKILL.md` with the house sections; templates in its `assets/`.
+- A new practice skill: `plugins/aidlc/skills/<gerund-name>/SKILL.md` with `metadata.kind: practice` and the practice
+  sections (When to use, Steps, Checks, Stop if, Common excuses, Red flags, Rules); long checklists in its `references/`.
 - A new pack: a folder under `plugins/` with `.claude-plugin/plugin.json` (a version, and `dependencies` on `aidlc` with a
   range), an entry in `.claude-plugin/marketplace.json`, skill names with the pack's own prefix, and a line in the README.
 - A new factory inside `aidlc-modernize`: `plugins/aidlc-modernize/skills/<tech>-modernize/` with `references/` and,
