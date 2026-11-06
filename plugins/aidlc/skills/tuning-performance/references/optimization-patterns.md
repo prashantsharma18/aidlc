@@ -1,8 +1,8 @@
 # Optimization Patterns
 
-Worked fixes for the anti-patterns named in Step 3 of the `tuning-performance` skill. The skill states the rule and the signature to look for; this file shows one concrete implementation. Open the section you need after Step 2 has identified the bottleneck — it is not meant to be read top to bottom.
+Worked fixes for the anti-patterns named in Step 3 of the `tuning-performance` skill. The skill states the rule and the signature to look for. This file shows one concrete implementation. Open the section you need after Step 2 has identified the bottleneck. You are not meant to read it top to bottom.
 
-Checklists, measurement commands, TTFB diagnosis, and caching read/write strategies live in `performance-checklist.md`.
+Checklists, measurement commands, TTFB diagnosis, and caching read/write strategies are in `performance-checklist.md`.
 
 ## N+1 Queries (Backend)
 
@@ -35,7 +35,7 @@ const tasks = await db.tasks.findMany({
 
 ## Queries That Ignore Their Index
 
-"Add an index" is the guess. The query plan is the measurement:
+"Add an index" is a guess. The query plan is the measurement:
 
 ```sql
 EXPLAIN ANALYZE
@@ -45,32 +45,32 @@ WHERE owner_id = 42 ORDER BY created_at DESC LIMIT 20;
 
 Three things in the output decide the fix:
 
-| What you see | What it means |
+| What the output shows | What it means |
 |---|---|
-| `Seq Scan` on a large table where you expected an index | No usable index for this predicate |
-| Estimated `rows=` off from actual by an order of magnitude | Stale statistics; the planner is choosing on bad information |
-| A `Sort` node above the scan | The index covers the filter but not the `ORDER BY` |
+| `Seq Scan` on a large table where you expected an index | There is no usable index for this predicate |
+| Estimated `rows=` differs from actual by an order of magnitude | Stale statistics, so the planner is choosing on bad information |
+| A `Sort` node above the scan | The index covers the filter, but not the `ORDER BY` |
 
-Index for the **shape of the query**, not the column in isolation. In a composite index, equality columns come first, then the range or sort column:
+Index for the **shape of the query**, not for a column in isolation. In a composite index, equality columns come first, then the range or sort column:
 
 ```sql
 CREATE INDEX idx_tasks_owner_created ON tasks (owner_id, created_at DESC);
 ```
 
-**When an index will not help:**
+**When an index does not help:**
 
-| Situation | Why |
+| Case | Why |
 |---|---|
-| Low selectivity, querying the dominant value (a `status` column that is 95% `active`, filtered on `active`) | A sequential scan is genuinely cheaper; the planner will ignore the index. Filtering on the rare value is the opposite case, and a partial index serves it well |
-| Leading wildcard (`LIKE '%term'`) | A B-tree cannot seek without a prefix; needs trigram or full-text |
-| Function on the column (`WHERE lower(email) = ?`) | The plain column index is unusable; index the expression instead |
-| Write-heavy table | Every index is a tax on every `INSERT`/`UPDATE`; measure the write cost, not just the read gain |
+| Low selectivity, querying the dominant value (a `status` column that is 95% `active`, filtered on `active`) | A sequential scan really is cheaper, so the planner will ignore the index. Filtering on the rare value is the opposite case, and a partial index serves it well |
+| A leading wildcard (`LIKE '%term'`) | A B-tree cannot seek without a prefix, so use trigram or full-text |
+| A function applied to the column (`WHERE lower(email) = ?`) | The plain column index cannot be used, so index the expression instead |
+| Table with heavy writes | Every index is a tax on every `INSERT`/`UPDATE`, so measure the write cost, not only the read gain |
 
-Re-run `EXPLAIN ANALYZE` after. An index that did not change the plan is a revert (Step 4), and it is not free: it still costs on every write.
+Run `EXPLAIN ANALYZE` again afterwards. An index that did not change the plan is a revert (Step 4), and it is not free: it still costs you on every write.
 
 ## Connection Pool Exhaustion
 
-The signature is distinctive: **every** endpoint slows at once, the slow time is spent waiting for a connection rather than executing, and the database reports mostly idle sessions.
+The signature is distinctive: **every** endpoint slows at once, the slow time goes to waiting for a connection rather than executing, and the database reports mostly idle sessions.
 
 ```typescript
 // BAD: a pool per request or per module — under serverless this multiplies
@@ -83,7 +83,7 @@ const pool = new Pool({
 });
 ```
 
-**Bigger is not faster.** A pool larger than what the database can execute concurrently just relocates the queue from your app to the database, where it is harder to see. When instance count is unbounded (serverless, autoscaling), a proxy that multiplexes connections (pgbouncer, RDS Proxy) is the fix, not a higher `max`.
+**Bigger is not faster.** A pool larger than the database can execute concurrently only moves the queue from your app to the database, where it is harder to see. When the instance count is unbounded (serverless, autoscaling), the fix is a proxy that multiplexes connections (pgbouncer, RDS Proxy), not a higher `max`.
 
 ## Missing Image Optimization (Frontend)
 
@@ -200,15 +200,15 @@ function App() {
 
 ## Missing Caching (Backend)
 
-Cache what is expensive to produce and read far more often than it changes. Caching a query that was already fast adds a network hop, a staleness bug, and an eviction policy to maintain, in exchange for nothing.
+Cache what is expensive to produce and read far more often than it changes. Caching a query that was already fast adds a network hop, a staleness bug, and an eviction policy to maintain, and gives nothing back.
 
-**Pick the layer deliberately:**
+**Choose the layer deliberately:**
 
 | Layer | Visible to | Use when | Cost |
 |---|---|---|---|
-| In-process (`Map`, LRU) | One instance | Small, hot, per-instance staleness is acceptable | Each instance drifts independently; invalidation reaches only one |
-| Shared (Redis, Memcached) | All instances | Instances must agree, or the value is expensive to recompute | A network hop, and another service to run and monitor |
-| CDN / edge | Everyone, per URL | Responses are public and identical for a given key | Invalidation is the hard part; assume you cannot recall a bad response quickly |
+| In-process (`Map`, LRU) | A single instance | The data is small and hot, and per-instance staleness is acceptable | Each instance drifts on its own, and invalidation reaches only one |
+| Shared (Redis, Memcached) | Every instance | Instances must agree, or the value is costly to recompute | A network hop, plus another service to run and monitor |
+| CDN / edge | Everyone, per URL | Responses are public and identical for a given key | Invalidation is the hard part. Assume you cannot recall a bad response quickly |
 
 ```typescript
 // Cache frequently-read, rarely-changed data
@@ -235,16 +235,16 @@ app.use('/static', express.static('public', {
 res.set('Cache-Control', 'public, max-age=300'); // 5 minutes
 ```
 
-**Key design decides correctness.** Every input that changes the response belongs in the key: tenant, locale, permissions, feature flags. A key that omits the viewer is how one user's data gets served to another, and that ships as a performance win.
+**Key design decides correctness.** Every input that changes the response belongs in the key: tenant, locale, permissions, feature flags. A key that leaves out the viewer is how one user's data gets served to another, and it ships as a performance win.
 
-**Choose one invalidation strategy, not three:**
+**Pick one invalidation strategy, not three:**
 
 | Strategy | Trade-off |
 |---|---|
-| TTL | Simplest. You accept staleness up to the TTL, so state the acceptable window explicitly |
-| Event or tag based | Fresh on write, but writers now have to know the cache topology |
-| Versioned keys (`user:42:profile:v7`) | Never invalidate, just stop reading old keys. Costs memory until eviction |
+| TTL | The simplest option. You accept staleness up to the TTL, so state the acceptable window explicitly |
+| Event or tag based | Fresh on write, but writers must now know the cache topology |
+| Versioned keys (`user:42:profile:v7`) | You never invalidate; you just stop reading old keys. Uses memory until eviction |
 
-**Guard against the stampede.** A hot key expires, every concurrent request misses together, and the origin takes the full load at once, which is how a cache turns into an outage instead of preventing one. Serve stale while a single request recomputes (`stale-while-revalidate`), or coalesce concurrent misses behind one in-flight promise so N waiters cause one recompute.
+**Guard against the stampede.** A hot key expires, every concurrent request misses together, and the origin takes the full load at once. That is how a cache causes an outage instead of preventing one. Serve stale while a single request recomputes (`stale-while-revalidate`), or coalesce concurrent misses behind one in-flight promise, so N waiters cause one recompute.
 
-**Do not cache:** anything whose staleness is a correctness bug (balances, permissions, inventory at checkout), or per-user data under a key that does not identify the user. See `performance-checklist.md#caching-strategies` for request coalescing, write strategies, negative caching, and the cache checklist.
+**Do not cache:** anything whose staleness is a correctness bug (balances, permissions, inventory at checkout), or per-user data under a key that does not identify the user. For `performance-checklist.md#caching-strategies` see request coalescing, write strategies, negative caching, and the cache checklist.

@@ -1,6 +1,6 @@
 # Security Checklist
 
-Quick reference for web application security. Use alongside the `securing-code` skill.
+A quick reference for web application security. Use it together with the `securing-code` skill.
 
 ## Table of Contents
 
@@ -20,54 +20,54 @@ Quick reference for web application security. Use alongside the `securing-code` 
 
 ## Threat Modeling (Start Here)
 
-Before reaching for controls, spend five minutes thinking like an attacker:
+Before you reach for controls, spend five minutes thinking like an attacker:
 
-- [ ] Trust boundaries mapped (requests, uploads, webhooks, third-party APIs, LLM output, and local values written by processes you don't control)
-- [ ] Assets named (credentials, PII, payment data, admin actions, money movement)
-- [ ] STRIDE run per boundary (Spoofing, Tampering, Repudiation, Info disclosure, DoS, Elevation)
-- [ ] Abuse cases written next to use cases ("how would I misuse this?")
+- [ ] Trust boundaries are mapped (requests, uploads, webhooks, third-party APIs, LLM output, and local values written by processes you don't control)
+- [ ] Assets are named (credentials, PII, payment data, admin actions, money movement)
+- [ ] STRIDE is run for each boundary (Spoofing, Tampering, Repudiation, Info disclosure, DoS, Elevation)
+- [ ] Abuse cases are written beside the use cases ("how would I misuse this?")
 
 ## Pre-Commit Checks
 
 - [ ] No secrets in code (`git diff --cached | grep -i "password\|secret\|api_key\|token"`)
 - [ ] `.gitignore` covers: `.env`, `.env.local`, `*.pem`, `*.key`
-- [ ] `.env.example` uses placeholder values (not real secrets)
+- [ ] `.env.example` holds placeholder values, not real secrets
 
 ## Authentication
 
-- [ ] Passwords hashed with bcrypt (≥12 rounds), scrypt, or argon2
+- [ ] Passwords are hashed with bcrypt (≥12 rounds), scrypt, or argon2
 - [ ] Session cookies: `httpOnly`, `secure`, `sameSite: 'lax'`
-- [ ] Session expiration configured (reasonable max-age)
-- [ ] Rate limiting on login endpoint (≤10 attempts per 15 minutes)
-- [ ] Password reset tokens: time-limited (≤1 hour), single-use
-- [ ] Account lockout after repeated failures (optional, with notification)
-- [ ] MFA supported for sensitive operations (optional but recommended)
+- [ ] Session expiration is configured (reasonable max-age)
+- [ ] The login endpoint is rate limited (≤10 attempts per 15 minutes)
+- [ ] Password reset tokens are time-limited (≤1 hour) and single-use
+- [ ] Accounts lock after repeated failures (optional, with notification)
+- [ ] MFA is supported for sensitive operations (optional but recommended)
 
 ## Authorization
 
-- [ ] Every protected endpoint checks authentication
-- [ ] Every resource access checks ownership/role (prevents IDOR)
-- [ ] Admin endpoints require admin role verification
-- [ ] API keys scoped to minimum necessary permissions
-- [ ] JWT tokens validated (signature, expiration, issuer)
+- [ ] Each protected endpoint checks authentication
+- [ ] Each resource access checks ownership/role (prevents IDOR)
+- [ ] Admin endpoints verify the admin role
+- [ ] API keys are scoped to the minimum permissions needed
+- [ ] JWT tokens are validated (signature, expiration, issuer)
 
 ## Input Validation
 
-- [ ] All user input validated at system boundaries (API routes, form handlers)
-- [ ] Validation uses allowlists (not denylists)
-- [ ] String lengths constrained (min/max)
-- [ ] Numeric ranges validated
-- [ ] Email, URL, and date formats validated with proper libraries
-- [ ] File uploads: type restricted, size limited, content verified
-- [ ] SQL queries parameterized (no string concatenation)
-- [ ] HTML output encoded (use framework auto-escaping)
-- [ ] URLs validated before redirect (prevent open redirect)
-- [ ] Server-side URL fetches allowlisted; private/reserved IPs blocked (prevent SSRF)
+- [ ] All user input is validated at system boundaries (API routes, form handlers)
+- [ ] Validation uses allowlists, not denylists
+- [ ] String lengths are constrained (min/max)
+- [ ] Numeric ranges are validated
+- [ ] Email, URL, and date formats are validated with proper libraries
+- [ ] File uploads have a restricted type, a size limit, and verified content
+- [ ] SQL queries are parameterized (no string concatenation)
+- [ ] HTML output is encoded (use framework auto-escaping)
+- [ ] URLs are validated before a redirect (prevents open redirect)
+- [ ] Server-side URL fetches are allowlisted and private/reserved IPs are blocked (prevents SSRF)
 - [ ] Destructive path operations (delete/move/overwrite): symlinks resolved, allowlisted root, minimum depth, ownership evidence read before the call
 
 ### Destructive Path Operations
 
-Containment for a target named by data. Resolve first, then decide — and treat the
+Containment for a target that data names. Resolve first, then decide. Treat the
 result as a candidate, not as authorization:
 
 ```typescript
@@ -94,15 +94,15 @@ async function resolveDeletable(candidate: string, expectedOwner: string) {
 }
 ```
 
-What this does not do, and must be said where the snippet is copied from:
+What this does not do. Say it wherever the snippet is copied:
 
-- **The marker is self-attestation.** Anything that can write inside the root can write
+- **The marker is self-attestation.** Anything that can write inside the root can also write
   `.owner`. `expectedOwner` has to come from authenticated state, and the marker needs
   integrity protection (restrictive ownership, or a MAC) before it is authorization
   rather than a consistency check against a misderived target.
-- **Returning a path leaves a check/use race.** Where an untrusted process can swap an
+- **Returning a path leaves a check/use race.** If an untrusted process can swap an
   ancestor between the check and the call, operate on a descriptor with no-follow,
-  beneath-the-root semantics, or guarantee the hierarchy is immutable for the duration.
+  beneath-the-root semantics. Or guarantee that the hierarchy is immutable for the duration.
 
 ## Security Headers
 
@@ -133,36 +133,36 @@ cors({ origin: '*' })  // Allows any origin
 
 ## Data Protection
 
-- [ ] Sensitive fields excluded from API responses (`passwordHash`, `resetToken`, etc.)
-- [ ] Sensitive data not logged (passwords, tokens, full CC numbers)
-- [ ] PII encrypted at rest (if required by regulation)
+- [ ] Sensitive fields are excluded from API responses (`passwordHash`, `resetToken`, etc.)
+- [ ] Sensitive data is not logged (passwords, tokens, full CC numbers)
+- [ ] PII is encrypted at rest (if regulation requires it)
 - [ ] HTTPS for all external communication
-- [ ] Database backups encrypted
-- [ ] Personal data is classified, collected against a stated purpose, and minimized
+- [ ] Database backups are encrypted
+- [ ] Personal data is classified, collected for a stated purpose, and minimized
 - [ ] Personal data has a retention limit and a working deletion path (incl. backups, caches, indexes)
-- [ ] Export/delete (data-subject) requests are supported where required; third-party sharing has consent and a data-processing agreement
+- [ ] Export/delete (data-subject) requests are supported where required, and third-party sharing has consent and a data-processing agreement
 
 ## Dependency Security
 
-Dependency changes follow the guide's Procedure 13C: a person approves every new or upgraded package, installs run with dependency scripts disabled, and the repository's dependency policy sets the allowed managers, minimum release age and licences. The checklist below is what that review looks for.
+Dependency changes follow the guide's Procedure 13C: a person approves every new or upgraded package, installs run with dependency scripts disabled, and the repository's dependency policy sets the allowed managers, minimum release age and licences. The checklist below lists what that review looks for.
 
 **Supply-chain hygiene** (advisory audits do not catch newly malicious packages):
-- [ ] Exactly one authoritative lockfile per project/workspace root is committed and CI never rewrites it
-- [ ] Critical/high findings are triaged for reachability; deferrals have a reason and review date
+- [ ] Exactly one authoritative lockfile per project/workspace root is committed, and CI never rewrites it
+- [ ] Critical/high findings are triaged for reachability, and deferrals have a reason and a review date
 - [ ] Forced audit remediation (an audit fix with a force flag, or equivalent) is never automatic; remediation diffs and changelogs are reviewed
-- [ ] Registry signatures/provenance are verified where the manager supports it
+- [ ] Registry signatures/provenance are verified when the manager supports it
 - [ ] Dependency lifecycle scripts are blocked before first execution and approved only through the pinned manager's native policy
 - [ ] New dependencies are reviewed for ownership, maintenance, release age, provenance, transitive graph, and typosquatting
 
 ## AI / LLM Security
 
-For any feature that calls an LLM (chatbots, summarizers, agents, RAG):
+Use this for any feature that calls an LLM (chatbots, summarizers, agents, RAG):
 
 - [ ] Model output treated as untrusted — never into `eval`/SQL/shell/`innerHTML`/file paths
 - [ ] Prompt injection assumed; permissions enforced in code, not in the system prompt
 - [ ] Secrets, cross-tenant data, and full system prompts kept out of the context window
-- [ ] Tool/agent permissions scoped; destructive or irreversible actions require confirmation
-- [ ] Token, rate, and recursion/loop limits set (bound consumption)
+- [ ] Tool/agent permissions are scoped, and destructive or irreversible actions require confirmation
+- [ ] Token, rate, and recursion/loop limits are set (bound consumption)
 
 ## Error Handling
 
@@ -197,7 +197,7 @@ res.status(500).json({
 
 ## OWASP Top 10 for LLMs Quick Reference
 
-For apps with LLM features. See the [OWASP GenAI Security Project](https://genai.owasp.org/llm-top-10/).
+Use this for apps with LLM features. See the [OWASP GenAI Security Project](https://genai.owasp.org/llm-top-10/).
 
 | ID | Risk | Prevention |
 |---|---|---|

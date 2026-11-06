@@ -1,6 +1,6 @@
 # Accessibility Checklist
 
-Quick reference for WCAG 2.1 AA compliance. Use alongside the `building-user-interfaces` skill.
+A quick reference for WCAG 2.1 AA compliance. Use it together with the `building-user-interfaces` skill.
 
 ## Table of Contents
 
@@ -13,44 +13,44 @@ Quick reference for WCAG 2.1 AA compliance. Use alongside the `building-user-int
 ## Essential Checks
 
 ### Keyboard Navigation
-- [ ] All interactive elements focusable via Tab key
-- [ ] Focus order follows visual/logical order
-- [ ] Focus is visible (outline/ring on focused elements)
-- [ ] Custom widgets have keyboard support (Enter to activate, Escape to close)
-- [ ] No keyboard traps (user can always Tab away from a component)
+- [ ] Every interactive element can be focused with the Tab key
+- [ ] Focus order matches the visual and logical order
+- [ ] Focus is visible (an outline or ring on focused elements)
+- [ ] Custom widgets support the keyboard (Enter to activate, Escape to close)
+- [ ] No keyboard traps (the user can always Tab away from a component)
 - [ ] Skip-to-content link at top of page - visible (at least) on keyboard focus
-- [ ] Modals trap focus while open, return focus on close
+- [ ] Modals keep focus inside while open and return focus on close
 
 ### Screen Readers
-- [ ] All images have `alt` text (or `alt=""` for decorative images)
-- [ ] All form inputs have associated labels (`<label>` or `aria-label`)
-- [ ] Buttons and links have descriptive text (not "Click here")
+- [ ] Every image has `alt` text (or `alt=""` for decorative images)
+- [ ] Every form input has an associated label (`<label>` or `aria-label`)
+- [ ] Buttons and links have descriptive text, not "Click here"
 - [ ] Icon-only buttons have `aria-label`
 - [ ] Page has one `<h1>` and headings don't skip levels
-- [ ] Dynamic content changes announced (`aria-live` regions)
+- [ ] Changes to dynamic content are announced (`aria-live` regions)
 - [ ] Tables have `<th>` headers with scope
 
 ### Visual
 - [ ] Text contrast ≥ 4.5:1 (normal text) or ≥ 3:1 (large text, 18px+)
 - [ ] UI components contrast ≥ 3:1 against background
 - [ ] Color is not the only way to convey information
-- [ ] Text resizable to 200% without breaking layout
-- [ ] No content that flashes more than 3 times per second
+- [ ] Text can be resized to 200% without breaking the layout
+- [ ] Nothing flashes more than 3 times per second
 
 ### Forms
 - [ ] Every input has a visible label
-- [ ] Required fields indicated (not by color alone)
-- [ ] Error messages specific and associated with the field
-- [ ] Error state visible by more than color (icon, text, border)
-- [ ] Form submission errors summarized and focusable
-- [ ] Known fields use autocomplete (for example `type="email" autocomplete="email"`)
+- [ ] Required fields are marked (not by color alone)
+- [ ] Error messages are specific and tied to the field
+- [ ] The error state shows more than color (icon, text, border)
+- [ ] Form submission errors are summarized and can take focus
+- [ ] Known fields use autocomplete (for example, `type="email" autocomplete="email"`)
 
 ### Content
-- [ ] Language declared (`<html lang="en">`)
+- [ ] The language is declared (`<html lang="en">`)
 - [ ] Page has a descriptive `<title>`
-- [ ] Links distinguish from surrounding text (not by color alone)
+- [ ] Links stand out from surrounding text (not by color alone)
 - [ ] Touch targets ≥ 44x44px on mobile
-- [ ] Meaningful empty states (not blank screens)
+- [ ] Empty states carry meaning (no blank screens)
 
 ## Common HTML Patterns
 
@@ -141,20 +141,20 @@ Quick reference for WCAG 2.1 AA compliance. Use alongside the `building-user-int
 
 | Value | Behavior | Use For |
 |-------|----------|---------|
-| `aria-live="polite"` | Announced at next pause | Status updates, saved confirmations |
+| `aria-live="polite"` | Announced at the next pause | Status updates, saved confirmations |
 | `aria-live="assertive"` | Announced immediately | Errors, time-sensitive alerts |
-| `role="status"` | Same as `polite` | Status messages |
-| `role="alert"` | Same as `assertive` | Error messages |
+| `role="status"` | Works like `polite` | Status messages |
+| `role="alert"` | Works like `assertive` | Error messages |
 
 ## Common Anti-Patterns
 
 | Anti-Pattern | Problem | Fix |
 |---|---|---|
-| `div` as button | Not focusable, no keyboard support | Use `<button>` |
-| Missing `alt` text | Images invisible to screen readers | Add descriptive `alt` |
-| Color-only states | Invisible to color-blind users | Add icons, text, or patterns |
-| Autoplaying media | Disorienting, can't be stopped | Add controls, don't autoplay |
-| Custom dropdown with no ARIA | Unusable by keyboard/screen reader | Use native `<select>` or proper ARIA listbox |
-| Removing focus outlines | Users can't see where they are | Style outlines, don't remove them |
-| Empty links/buttons | "Link" announced with no description | Add text or `aria-label` |
-| `tabindex > 0` | Breaks natural tab order | Use `tabindex="0"` or `-1` only |
+| `div` as button | Not focusable, and no keyboard support | Use `<button>` |
+| Missing `alt` text | Screen readers cannot see the images | Add descriptive `alt` |
+| Color-only states | Color-blind users cannot see them | Add icons, text, or patterns |
+| Autoplaying media | Disorienting, and it can't be stopped | Add controls, don't autoplay |
+| Custom dropdown with no ARIA | Keyboard and screen reader users cannot use it | Use native `<select>` or proper ARIA listbox |
+| Removing focus outlines | Users can't see where focus is | Style outlines, don't remove them |
+| Empty links/buttons | "Link" is announced with no description | Add text or `aria-label` |
+| `tabindex > 0` | Breaks the natural tab order | Use `tabindex="0"` or `-1` only |
