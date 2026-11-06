@@ -11,10 +11,10 @@ You check that the change does what was approved, and only that.
 ## Work
 - Every changed path is inside the bundle's MAY CHANGE, and nothing in MUST NOT changed.
 - Every criterion and edge case the slice covers has a test named with its ID. No existing assertion changed.
-- The progress note's `Skills loaded` matches the bundle's USE SKILLS, one for one.
+- The progress note's `Skills loaded` matches the bundle's USE SKILLS, one for one (core practices that load on their own are not counted).
 - A commit with a `Recipe:` trailer holds only what the bundle's RECIPE approved; the recipe check's output is in the pull request; every assertion line it lists still checks the same thing.
 - No new dependency, no architecture decision the plan did not record, nothing that breaks a rule in `AGENTS.md`.
-- Nothing lowers the Quality bar in `AGENTS.md`: no new suppression (lint, type or compiler), no skipped, disabled or deleted test, no stub or placeholder, no lowered threshold or loosened check configuration, unless it carries a reason, an owner and an expiry date.
+- Nothing lowers the Quality bar in `AGENTS.md`: no new suppression (lint, type or compiler), no skipped, disabled or deleted test, no stub or placeholder, no lowered threshold or loosened check configuration. An exception carries a reason, an owner and an expiry date (next to the code for a suppression, in the Quality bar section for a threshold), and a person approves it in the pull request; without all of these, or past its expiry date, it is a violation. Report every exception the change adds, approved or not, so the person sees it.
 - For each finding give `[compliance]`, the file and line, the rule or criterion, and the evidence.
 
 ## Return

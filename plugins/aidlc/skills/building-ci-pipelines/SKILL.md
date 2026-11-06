@@ -38,7 +38,7 @@ A pipeline decides what may merge, so changing it changes the repository's gates
 5. Give each job the least it needs: read-only repository access by default, write access only in the job that needs it, secrets only in protected environments, and none for runs from forks.
 6. Cache only what is keyed by its inputs, such as the lock file's hash and the tool version. Never carry build output between branches in a cache.
 7. Keep the required checks under about ten minutes. Run independent jobs in parallel, split slow suites, and run only affected tests when the tool can prove what is affected.
-8. Treat flaky tests openly. A test that fails and passes on the same commit goes on a quarantine list with an owner and a date; it still runs and reports. Never re-run a whole job until it turns green.
+8. Treat flaky tests openly. Report a test that fails and passes on the same commit, with how often it fails and an owner. Taking it out of the required run (quarantine) is an exception under the Quality bar in `AGENTS.md`: propose it; a person approves it, with a reason and an expiry date. Never re-run a whole job until it turns green.
 9. Make failures easy to act on. The log shows the command that failed, the test name and the first error. For an agent, the input to the next fix is that excerpt and the commit, never a guess.
 10. Prove every new required check: make it fail once on purpose in a draft pull request, then make it pass.
 
@@ -49,7 +49,7 @@ A pipeline decides what may merge, so changing it changes the repository's gates
 - Actions and tools are pinned; access is read-only unless a job needs more.
 - The artefact is built once and its digest recorded; later stages test that artefact.
 - Each new required check was seen red once.
-- Flaky tests are listed, owned and dated, never silently retried.
+- Flaky tests are reported and owned; a quarantine is an approved exception; nothing is silently retried.
 
 ## Stop if
 - The change would weaken a gate: remove a required check, lower a threshold, let a step fail without failing the job, skip a test, or widen access. The code owner decides, on the record, in the pull request.
@@ -60,7 +60,7 @@ A pipeline decides what may merge, so changing it changes the repository's gates
 | Excuse | Reality |
 |---|---|
 | "Pinning to a version tag is enough." | Tags can be moved. Pin the commit SHA. |
-| "Retrying failed jobs keeps us green." | It hides flaky tests and real races. Quarantine with an owner instead. |
+| "Retrying failed jobs keeps us green." | It hides flaky tests and real races. Report them with an owner; quarantine only as an approved exception. |
 | "Give the workflow full write access; it's simpler." | Then one compromised step owns the repository. Grant per job. |
 | "We'll make it required later." | An advisory check is ignored the day it goes red. Decide now. |
 | "It's slow, so skip it on pull requests." | Then it finds problems after merge, when they cost most. Make it faster or run it in parallel. |

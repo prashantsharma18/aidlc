@@ -50,7 +50,7 @@ The local check is green with no unexplained skips, the diff stays inside MAY CH
 ## Stop if
 - Code that AGENTS.md lists as legacy has no tests that pin its behaviour: change one only after a characterisation test records what it does today. If none exists yet, write it first, or stop.
 - A test can only pass by changing an existing assertion. Never change it: the criterion's owner decides. The one exception is an approved recipe commit, which may change test syntax but never what an assertion checks (ADR 0012).
-- A check can pass only by lowering the Quality bar in `AGENTS.md`: a new suppression, a skipped or deleted test, a stub, or a lowered threshold. Stop and report. An exception needs a reason, an owner and an expiry date, and a person approves it.
+- A check can pass only by lowering the Quality bar in `AGENTS.md`: a new suppression, a skipped or deleted test, a stub, or a lowered threshold. Stop and report. An exception carries a reason, an owner and an expiry date (next to the code for a suppression, in the Quality bar section for a threshold), and a person approves it in the pull request; without all of these, or past its expiry date, it is a violation.
 - A new dependency seems necessary.
 - The plan looks wrong, or the code differs from what the plan assumed. Never improvise a new approach: it goes back to `aidlc-plan`.
 - The spec does not say how something should behave.

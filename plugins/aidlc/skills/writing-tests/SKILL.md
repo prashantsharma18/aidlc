@@ -30,7 +30,7 @@ Not for: finding why a test fails (`debugging-failures`), or browser tests of a 
 3. Write the test and run it. It must fail, and fail on its assertion, not on an import error or a typo. A test that passes before the code exists has not shown it can fail: break the code on purpose once and watch it go red.
 4. For a bug, reproduce it first. The test feeds the reported input and asserts the correct result. It must fail with the reported symptom before you touch the fix.
 5. Write the least code that turns it green. Run the whole suite, not only the new test.
-6. With the suite green, tidy up: remove duplication in the code, then in the tests. Run the suite again.
+6. With the suite green, tidy up: remove duplication in the code, then in the tests you wrote; never touch an existing assertion. Run the suite again.
 7. Go through the Checks for every test you wrote before you hand off.
 
 ## Checks
@@ -38,7 +38,7 @@ Not for: finding why a test fails (`debugging-failures`), or browser tests of a 
 - **It checks behaviour a caller sees:** outputs, stored state, calls that matter outside. Not private methods, call order or internal variables.
 - **One behaviour per test,** so a red test names one broken rule.
 - **Boundaries are covered:** empty, one, many; zero and negative; the limit and one past it; missing and malformed input; time zones and clock changes where dates matter.
-- **Mocks only at edges you do not own:** the network, the clock, randomness, third-party services. The code under test is never mocked.
+- **Replace only the slow, nondeterministic or external edges:** the network, the clock, randomness, third-party services, preferably behind your own adapter with a fake of it. Never mock the code under test, and never mock a third-party type directly.
 - **Same result every run:** no sleeps, no real clock, no shared state between tests, no dependence on test order, a fixed seed for anything random.
 - **A failure explains itself:** the test name and message say what was expected and what happened. Setup sits in the test, even if a few lines repeat.
 - **Fast:** unit tests take milliseconds; slow ones are marked so the quick suite stays quick.
@@ -54,7 +54,7 @@ Not for: finding why a test fails (`debugging-failures`), or browser tests of a 
 |---|---|
 | "It's a one-line fix; the test can follow." | Without a test that failed first, nothing shows the fix fixed anything. |
 | "It passed first time, so it works." | A test that never failed may check nothing. Break the code once and watch it fail. |
-| "Mocking the service is quicker." | Mock the thing under test and you test the mock. Mock only what you do not own. |
+| "Mocking the service is quicker." | Mock the thing under test and you test the mock. Replace only the external edges, behind your own adapter. |
 | "This old assertion is wrong; I'll update it." | Never change an existing assertion. Stop and report. |
 | "Coverage is high, so we're safe." | Coverage counts lines that ran, not results that were checked. |
 | "A short sleep fixes the flaky test." | A sleep hides a race. Wait for the condition, or control the clock. |

@@ -22,7 +22,7 @@ Not for: the team's branching and release strategy, which AGENTS.md and `aidlc-r
 ## Steps
 1. Read before you write: `git status`, then the staged and unstaged diff. Know what every hunk is for.
 2. Group the hunks by reason. One commit holds one reason: a step of a feature, a fix, a refactor, a formatting pass, a dependency change. A refactor and a behaviour change never share a commit.
-3. Stage each group by path, or by hunk when one file holds two reasons. Never stage everything without reading the status first. Each commit must build and pass its tests on its own.
+3. Stage each group by path, or by hunk when one file holds two reasons. Never stage everything without reading the status first. Each commit must build and pass its tests on its own, except an approved recipe commit, which holds only the tool's output (`aidlc-build`).
 4. Write the message:
    - **Subject:** `<type>(<scope>): <what changed>`, in the imperative, about 50 characters, no full stop. Types: `feat`, `fix`, `refactor`, `test`, `docs`, `build`, `ci`, `perf`, `chore`. A `!` after the type marks a breaking change.
    - **Body,** after a blank line, wrapped at 72: why the change was needed, what you decided and why, and what it deliberately does not do. Never retell the diff.
@@ -36,7 +36,7 @@ Not for: the team's branching and release strategy, which AGENTS.md and `aidlc-r
 - The body answers why, which the diff cannot.
 - No commit mixes formatting or renames with logic.
 - No generated output, secret, key, `.env` file or personal editor setting is committed.
-- Every commit on the branch builds and passes its tests, so bisecting works.
+- Every commit on the branch builds and passes its tests, so bisecting works, except an approved recipe commit, which holds only the tool's output (`aidlc-build`).
 - A breaking change is marked in the subject and the footer, and the version reflects it.
 - In a slice, the pull request description maps each change to its criterion (`aidlc-review` drafts it).
 

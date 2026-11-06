@@ -27,7 +27,7 @@ HOUSE_PREFIXES = ("aidlc-", "modernize-", "dotnet-", "java-")
 # open format.
 PRACTICE_SECTIONS = ("## When to use", "## Steps", "## Checks", "## Stop if", "## Common excuses", "## Red flags",
                      "## Rules")
-KIND_PRACTICE = re.compile(r"^\s+kind:\s*['\"]?practice['\"]?\s*$", re.M)
+KIND_PRACTICE = re.compile(r"^[ \t]+kind:[ \t]*['\"]?practice['\"]?[ \t]*(#.*)?$", re.M)
 # Practices still in their earlier shape, exempt from PRACTICE_SECTIONS until their content is rewritten.
 # This list only shrinks.
 EARLIER_PRACTICES = frozenset({"adding-observability", "building-user-interfaces", "debugging-failures",

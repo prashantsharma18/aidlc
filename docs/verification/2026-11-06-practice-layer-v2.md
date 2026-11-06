@@ -28,7 +28,7 @@ shares 2,375 runs).
 
 ## Live routing check
 Headless sessions in a new scratch repository, core plugin loaded with `--plugin-dir`, the user's other plugins
-(Superpowers among them) also loaded, so the new practices competed with their skills. Three runs per prompt, a short
+also loaded, so the new practices competed with their skills. Three runs per prompt, a short
 function or diff pasted after each prompt. Routing varies between runs, so these are counts, not a pass mark.
 
 | Prompt | Expected | Fired |

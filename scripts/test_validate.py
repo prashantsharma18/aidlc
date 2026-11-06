@@ -161,6 +161,16 @@ class ValidateTest(unittest.TestCase):
         problems = self.check({"writing-tests": practice("writing-tests", body="# Essay\n", kind="'practice'")})
         self.assertTrue(any("missing section '## Steps'" in p for p in problems), problems)
 
+    def test_a_practice_kind_with_a_comment_is_still_a_practice(self):
+        problems = self.check({"writing-tests": practice("writing-tests", body="# Essay\n",
+                                                         kind="practice  # see ADR 0013")})
+        self.assertTrue(any("missing section '## Steps'" in p for p in problems), problems)
+
+    def test_the_earlier_practice_list_only_shrinks(self):
+        eight = {"adding-observability", "building-user-interfaces", "debugging-failures", "designing-apis",
+                 "migrating-safely", "reviewing-code", "securing-code", "tuning-performance"}
+        self.assertLessEqual(set(validate.EARLIER_PRACTICES), eight)
+
     def test_an_earlier_practice_keeps_its_shape_until_rewritten(self):
         essay = practice("reviewing-code", body="# Reviewing Code\n\nAn essay.\n")
         self.assertEqual(self.check({"reviewing-code": essay}), [])

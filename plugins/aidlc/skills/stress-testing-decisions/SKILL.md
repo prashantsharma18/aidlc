@@ -21,7 +21,7 @@ Not for: Tier 1 changes with a rehearsed rollback, where the pass costs more tha
 ## Steps
 1. Write the decision in one paragraph: what will be done, why, and what it relies on. If it does not fit in a paragraph, it is not ready to test.
 2. List what it relies on, each item labelled FACT (with a file or link), INFERENCE or UNKNOWN.
-3. Give the paragraph, the list and pointers to the code to a reviewer with a fresh context: the `explorer` agent, briefed to argue against the decision, not to improve it. Give it nothing else of your reasoning, so it does not inherit your blind spots. Ask it:
+3. Challenge it from a fresh context, so the challenge does not inherit your blind spots. Send each question about the code to the `explorer` agent, one question per brief, with the paragraph and pointers to the code. Put the rest to a fresh session given only the paragraph and the list, briefed to argue against the decision, not to improve it. Between them, answer:
    - Which assumption, if false, breaks this, and how would we notice?
    - What happens on partial failure, a retry, two requests at once, a timeout, a duplicate message, an empty or a huge input?
    - How do we roll back, has anyone rehearsed it, and what cannot be rolled back?
