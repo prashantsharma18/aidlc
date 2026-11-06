@@ -194,7 +194,7 @@ Use two complementary layers when the surface faces users:
 When either guard fires, go back to Step 1 and set a fresh baseline before
 proposing another fix.
 
-**Set budgets, then enforce them:**
+**Set budgets, then enforce them.** The budgets come from the Quality bar in `AGENTS.md`; the numbers below are examples:
 
 ```
 JavaScript bundle: < 200KB gzipped (initial load)

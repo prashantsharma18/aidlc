@@ -10,7 +10,7 @@ Readiness · {{KEY}}
 3 ACCESS LIMITED
   [ ] Who may change the flag or configuration in production; no agent or pipeline identity can
 4 MONITORING IN PLACE
-  [ ] Alerts with thresholds, routed to <on-call>, each pointing to a runbook
+  [ ] Monitoring checked against the `adding-observability` pre-launch list: alerts with thresholds, routed to <on-call>, each pointing to a runbook
   [ ] Dashboard: <...>
 5 RECOVERY DEFINED
   [ ] Rollback: <fastest route>, pre-approved for on-call, rehearsed in staging on <date>

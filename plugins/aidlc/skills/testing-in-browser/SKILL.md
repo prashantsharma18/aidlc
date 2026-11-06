@@ -31,7 +31,7 @@ This skill uses the browser test runner the repository already has, named in AGE
 5. While the tests run, collect:
    - console errors and warnings;
    - failed or unexpected requests: 4xx and 5xx responses, and calls that should not happen;
-   - screenshots of every changed screen at a desktop width (about 1280 pixels) and a mobile width (about 375 pixels).
+   - screenshots of every changed screen at the smallest and largest breakpoints `building-user-interfaces` uses (320 and 1440 pixels).
 6. Look at every screenshot. Check the layout, overflow, cut-off text, overlapping elements and a visible focus, and that the empty, loading and error states look intended.
 7. Run the repository's accessibility scan on each changed page, and check the keyboard: every action reachable with Tab and Enter, a sensible focus order, nothing that traps focus.
 8. Run the browser tests headless with the command from AGENTS.md, as CI will. Put the screenshots and the scan result in the hand-off.

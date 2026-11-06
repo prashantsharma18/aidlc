@@ -30,7 +30,7 @@ The merged pull request and its evidence, the feature flag (if any), the monitor
 ## Steps
 1. Check the five confirmations: scope known, evidence passing, access limited, monitoring in place, recovery defined. Place each in a column of `assets/readiness.md`; the worst column decides.
 2. Choose the strategy (flag, canary or staged), preferring the fastest rehearsed rollback. Data changes use expand and contract. When the story spans several repositories, fill `assets/compat-matrix.md`: every combination of versions and flags that can be live during the rollout, and what each one shows.
-3. Write the stop criteria before release: for each, the signal, threshold, duration, who decides and what they do, plus a caution level before the stop. The rollback is pre-approved for on-call. At Tier 1, a rehearsed revert of the merge counts as the rollback.
+3. Write the stop criteria before release: for each, the signal, threshold, duration, who decides and what they do, plus a caution level before the stop. The rollback is pre-approved for on-call. At Tier 1, a rehearsed revert of the merge counts as the rollback, unless the change alters data or a schema: then the rollback is the migration's own.
 4. Check that the release pipeline built the artefact once and recorded its digest; cite it.
 5. Draft the readiness checklist, the change record from `assets/change-record.md`, the release runbook from `assets/release-runbook.md`, and the follow-ups (for example flag removal, with an owner and a date). When the repository versions its releases, draft the version number and the changelog entry too (`committing-changes`).
 6. Say what an operations agent may do during the release. Production credentials and approvals are never an agent's.

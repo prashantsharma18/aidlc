@@ -180,7 +180,7 @@ Apply these rules to every alert you create:
 
 #### Writing Runbooks
 
-Rule 2 above requires every alert to link to a runbook. A runbook's job is to answer three questions so the reader doesn't have to think: what is happening, what to check first, and who to call if that doesn't resolve it. Store it in `docs/runbooks/`, named after the alert.
+Rule 2 above requires every alert to link to a runbook. A runbook's job is to answer three questions so the reader doesn't have to think: what is happening, what to check first, and who to call if that doesn't resolve it. Write it from the runbook template `aidlc-operate` uses, named after the alert; a person runs every step.
 
 **Minimum viable runbook (three lines):**
 

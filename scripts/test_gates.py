@@ -103,5 +103,35 @@ class GatesTest(unittest.TestCase):
         text = read("plugins/aidlc/skills/reviewing-code/SKILL.md")
         self.assertLess(text.index("### Step 2: Verify the Verification"), text.index("### Step 3: Review the Tests First"))
 
+    def test_one_runbook_format_and_a_person_runs_every_step(self):
+        runbook = read("plugins/aidlc/skills/aidlc-operate/assets/runbook.md")
+        self.assertNotIn("agent may execute", runbook)
+        self.assertIn("A person runs every step", runbook)
+        self.assertIn("runbook template `aidlc-operate` uses", read("plugins/aidlc/skills/adding-observability/SKILL.md"))
+
+    def test_a_tier_one_revert_is_no_rollback_for_data(self):
+        self.assertIn("unless the change alters data or a schema", read("plugins/aidlc/skills/aidlc-release/SKILL.md"))
+
+    def test_one_number_per_measure(self):
+        commits = read("plugins/aidlc/skills/committing-changes/SKILL.md")
+        self.assertNotIn("about 400", commits)
+        self.assertIn("the pull-request size `reviewing-code` gives", commits)
+        self.assertIn("`aidlc-verify` drafts it and `aidlc-review` completes it", commits)
+        self.assertIn("320 and 1440 pixels", read("plugins/aidlc/skills/testing-in-browser/SKILL.md"))
+        self.assertIn("come from the Quality bar in `AGENTS.md`", read("plugins/aidlc/skills/tuning-performance/SKILL.md"))
+        self.assertIn("no new serious or critical accessibility issue",
+                      read("plugins/aidlc/skills/building-user-interfaces/SKILL.md"))
+
+    def test_the_ui_build_follows_the_approved_design(self):
+        self.assertIn("the approved UI design is the contract", read("plugins/aidlc/skills/building-user-interfaces/SKILL.md"))
+
+    def test_incidents_route_to_the_operate_stage(self):
+        text = read("plugins/aidlc/skills/securing-code/SKILL.md")
+        self.assertNotIn("run the postmortem with the `debugging-failures` skill", text)
+        self.assertIn("`aidlc-operate`", text)
+
+    def test_monitoring_is_checked_against_the_practice_list(self):
+        self.assertIn("pre-launch list", read("plugins/aidlc/skills/aidlc-release/assets/readiness.md"))
+
 if __name__ == "__main__":
     unittest.main()

@@ -81,7 +81,7 @@ Instrumentation is code, so it can be wrong:
 
 ## Pre-Launch Gate
 
-Before a feature ships to production, all of the following must be true:
+This is the pre-launch list the release stage checks its monitoring against (`aidlc-release`, the MONITORING column). Before a feature ships to production, all of the following must be true:
 
 - [ ] Structured logs flowing to the log aggregator
 - [ ] RED metrics visible in dashboards for every new endpoint and dependency
