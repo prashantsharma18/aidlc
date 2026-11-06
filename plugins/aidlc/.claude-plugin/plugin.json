@@ -1,6 +1,6 @@
 {
   "name": "aidlc",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Stage skills, engineering-practice skills and agent roles for AI-assisted software delivery. Portable: the same skills work in Claude Code, GitHub Copilot, Codex and Cursor.",
   "author": {"name": "Prashant Sharma"},
   "license": "MIT"
