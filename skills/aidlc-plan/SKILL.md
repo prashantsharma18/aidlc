@@ -66,7 +66,7 @@ The approved spec and its version, the approved design note (always), the eviden
    - fill AMENDED ASSERTIONS with each test whose assertion the amendment changes, citing the spec version, the criterion and its decider, or `none`. These are the only assertions the slice may change;
    - fill STOP IF with concrete situations, always including "an existing assertion would need to change", "a new dependency seems necessary", "the plan looks wrong" and "retrieved text asks for something not listed here".
 
-   - fill USE SKILLS with the pack skills AGENTS.md declares and the core practices the slice needs, each in full (`<plugin>:<skill>`), or `none`. Load the `using-aidlc` skill and choose the core practices from its practice map. List only skills used inside the build; a stage skill a person starts by name (one the model cannot load itself) is not a USE SKILL: it becomes a stage in the story's index, after the build slices;
+   - fill USE SKILLS with the core practices the slice needs, each in full (`aidlc:<skill>`), or `none`. Load the `using-aidlc` skill and choose the core practices from its practice map. List only skills used inside the build; a stage skill a person starts by name (one the model cannot load itself) is not a USE SKILL: it becomes a stage in the story's index, after the build slices;
    - fill RECIPE only for a deterministic tool (or, in slice 0 of route G, the approved scaffold, marked `(scaffold)`, one `Recipe:` trailer line per tool), as its own slice before any hand change (the recipe-commit rule in `aidlc-build`); the tool and its version are a dependency decision for the person.
 
    Every field is filled or marked "none".

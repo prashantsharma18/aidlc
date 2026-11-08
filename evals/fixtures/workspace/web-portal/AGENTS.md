@@ -11,9 +11,6 @@ Node.js 22, no build step.
 - Start any new piece of work with the `aidlc-start` skill.
 - Tests first: a failing test before any code; for a defect, a test that reproduces it.
 
-## Packs used here
-- none
-
 ## Map
 Full map: `docs/codebase-map.md`.
 - src/  the tracking page

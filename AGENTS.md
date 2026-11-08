@@ -25,7 +25,7 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
   keep their own structure. `using-aidlc` keeps the open format. A stage step commands a practice with "Load the
   `<name>` skill"; `scripts/test_loads.py` holds the table.
 - A skill never names a tool-specific command or a parked harness command; it names "the repository's commands from AGENTS.md".
-- Core never names a pack, a pack skill or a pack agent; skill names are unique across the marketplace; every
+- Every
   release raises the plugin's version (`.claude-plugin/plugin.json`).
 - Every stage skill says where it runs (story level at the workspace root, part level inside a repository) and ends
   with "You draft; you never approve."

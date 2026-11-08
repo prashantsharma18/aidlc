@@ -23,19 +23,12 @@
 - Tests first: a failing test before any code; for a defect, a test that reproduces it.
 - Every change is reviewed in a pull request by a code owner who did not write it.
 
-## Packs used here
-- none
-(When the repository uses packs: one line per pack, the plugin and its skills in full, in backticks; the first skill
-is where that kind of work starts. Example: - `<plugin>`: `<plugin>:<entry-skill>`, `<plugin>:<skill>`.
-`scripts/check_packs.py` checks this section against what is installed; CODEOWNERS protects it.)
-
 ## Map
 Full map: `docs/codebase-map.md`. Read it before planning a change.
 - <area path>  <one-line responsibility>
 
 ## Commands
 - Tests and lint, must pass before you report done: `<the command that runs tests and lint>`
-- Pack check, at the start of work and in CI: `python3 scripts/check_packs.py`
 - Recipe check, after a recipe commit: `python3 scripts/check_recipe_commit.py <commit> --recipe "<approved command>" --count "<test count command>"`
 - Slice runner, for approved delegate slices only, one fresh session each: `python3 scripts/run_slices.py <KEY> <slice> [<slice> ...] [--part <n>]`;
   it stops at the first slice that does not end done, and never pushes

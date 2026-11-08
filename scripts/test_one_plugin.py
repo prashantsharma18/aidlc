@@ -75,5 +75,28 @@ class OnePluginTest(unittest.TestCase):
         self.assertEqual(hits, [])
 
 
+    def test_no_live_code_names_the_pack(self):
+        code = [p for p in live(tracked()) if p.endswith(".py")]
+        hits = [p for p in code if re.search(r"aidlc-modernize|modernize-|dotnet-modernize|java-modernize", read(p))]
+        self.assertEqual(hits, [])
+
+    def test_no_live_file_keeps_the_pack_contract(self):
+        pattern = re.compile(r"Packs used here|check_packs|pack skill|pack check|names a pack|core never names", re.I)
+        hits = [p for p in live(tracked()) if pattern.search(read(p))]
+        self.assertEqual(hits, [])
+        self.assertFalse((ROOT / "starter/repo/scripts/check_packs.py").exists())
+
+    def test_start_steps_are_numbered_in_order(self):
+        steps = read("skills/aidlc-start/SKILL.md").split("## Steps", 1)[1].split("\n## ", 1)[0]
+        numbers = [int(n) for n in re.findall(r"(?m)^(\d+)\. ", steps)]
+        self.assertEqual(numbers, list(range(1, len(numbers) + 1)))
+        self.assertNotIn("**Packs.**", steps)
+
+    def test_the_starter_ci_runs_no_pack_check(self):
+        self.assertNotIn("check_packs", read("starter/repo/.github/workflows/ci.yml"))
+
+    def test_adr_0011_is_superseded(self):
+        self.assertIn("Superseded by ADR 0018", read("docs/adr/0011-plugins-and-packs.md"))
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,6 @@
 # 0011 · One marketplace, a core plugin and packs that core never names
 
-Status: Accepted (2026-10-26). · Decider: Prashant Sharma (framework owner)
+Status: Superseded by ADR 0018 (2026-11-08): one plugin at the repository root; no packs. (Was: Accepted (2026-10-26). · Decider: Prashant Sharma (framework owner))
 
 ## Context
 aidlc will grow: modernisation factories for .NET and Java first, more later. With one plugin, every factory would be

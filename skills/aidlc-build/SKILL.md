@@ -83,7 +83,7 @@ The local check is green with no unexplained skips, the diff stays inside MAY CH
 - A diff touches a path outside MAY CHANGE, or changes an assertion outside AMENDED ASSERTIONS.
 - You are adding a dependency or reformatting unrelated code.
 - You are about to push, or to present local results as the verdict.
-- You are working from a pack skill the bundle does not name, or without one it does.
+- You are working from a practice the bundle does not name, without recording it as a deviation, or without one it names.
 - A new suppression, a skipped test, a stub or a lowered threshold appears in your diff.
 
 ## Rules

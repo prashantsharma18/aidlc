@@ -38,13 +38,6 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
 
 The operating model: [docs/operating-model/workspace-and-repositories.md](docs/operating-model/workspace-and-repositories.md).
 
-## Packs
-
-A pack is a plugin a repository switches on for one kind of work. Core never names a pack: the repository declares
-its packs in AGENTS.md (`Packs used here`), `scripts/check_packs.py` checks the declaration against what is installed,
-and the task bundle names the pack skills a slice uses ([ADR 0011](docs/adr/0011-plugins-and-packs.md)).
-
-
 ## Skills
 
 The skills (`skills/`):

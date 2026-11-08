@@ -26,7 +26,6 @@ class GreenfieldTest(unittest.TestCase):
         start = skill("aidlc-start")
         self.assertIn("the kind is New system (route G)", start)
         self.assertIn("the agent never creates a repository", start)
-        self.assertIn("On route G there is no `AGENTS.md` yet: skip this step.", start)
         self.assertIn("G (a new system)", start)
         self.assertIn("**New system (G):**", start)
 

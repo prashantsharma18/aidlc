@@ -48,7 +48,7 @@ If you started this skill on your own (the person did not ask for it by name), d
    Propose; the person decides, above all what is enforced.
 3. Structure the rules file (A3): write `AGENTS.md` by filling `assets/agents-md.md`, with a compact map pointer, concrete standards with a named example, the exact test and lint commands, the "How work runs here" block (start with `aidlc-start`; which skill for what; tests first), tool usage, boundaries, the Quality bar, and a Legacy line naming code that has no tests pinning its behaviour. For the Quality bar, ask which dimensions the team holds: coverage, size, accessibility, latency. Where the team has no number, propose a ratchet from today's measured value and let the team decide: coverage no lower than today; no new serious or critical accessibility issue; artefact or bundle size at most 5% above today; p95 latency of the main endpoints at most 10% above today. A dimension without a check command goes under Measured, not Enforced. Apply the removal test to every line: would removing it make the agent make a mistake on a real task? If not, cut it or move it behind a pointer.
 4. Build the map (A4): write `docs/codebase-map.md`, by filling `assets/codebase-map.md`, read-only, labelled FACT or INFERENCE. The person supplies responsibilities, owners, why boundaries exist, and the traps. Keep it to one or two screens.
-5. Inject (A5): propose the layout (shared rules in `AGENTS.md`, thin tool files, folder rules for one area) and say which rules need a control: a tool permission (the starter's `.claude/settings.json`), a CI check (the starter's workflow) or code-owner review (`CODEOWNERS`). Propose copying the starter files that fit; the person decides. Write the `Packs used here` section: `- none`, or one line per pack the team switches on; copy check_packs.py from aidlc's starter into the repository's scripts folder and add it to CI. When the repository has no CI, or only the starter's placeholder steps, load the `building-ci-pipelines` skill and design it.
+5. Inject (A5): propose the layout (shared rules in `AGENTS.md`, thin tool files, folder rules for one area) and say which rules need a control: a tool permission (the starter's `.claude/settings.json`), a CI check (the starter's workflow) or code-owner review (`CODEOWNERS`). Propose copying the starter files that fit; the person decides. When the repository has no CI, or only the starter's placeholder steps, load the `building-ci-pipelines` skill and design it.
 6. Validate (A6): in a fresh session with only the rules and the map, answer five probe questions, and record each wrong answer as a gap:
    - what the service does and talks to;
    - how to check a change;
@@ -59,11 +59,10 @@ If you started this skill on your own (the person did not ask for it by name), d
 
 New mode (route G), instead of steps 1 to 6:
 - Prepare, before slice 0, on its own branch: copy the starter files that fit from aidlc's `starter/repo/`
-  (`.claude/settings.json`, `CODEOWNERS`, `ai-review.yml`, and `check_packs.py`, `check_recipe_commit.py` and `run_slices.py` into the
+  (`.claude/settings.json`, `CODEOWNERS`, `ai-review.yml`, and `check_recipe_commit.py` and `run_slices.py` into the
   repository's scripts folder); slice 0 writes the CI workflow. Ask the person to turn on branch protection that
   requires a code owner's review. Write `AGENTS.md` from `assets/agents-md.md` with the COMMANDS of the approved
-  `new-system.md`, each marked `(not yet run)`; the Quality bar's Enforced lines from its targets; `Packs used here` as
-  `- none`; and Legacy as `- none: a new system`. No map yet: there is no code to map. In a workspace, also write the
+  `new-system.md`, each marked `(not yet run)`; the Quality bar's Enforced lines from its targets; and Legacy as `- none: a new system`. No map yet: there is no code to map. In a workspace, also write the
   part index `plans/<KEY>/README.md` with the rows `aidlc-onboard (prepare)`, `slice 0` and `aidlc-onboard (confirm)`
   before the part's rows.
 - Confirm, after slice 0 merges: run every command; remove `(not yet run)` from each that works, and stop on any that

@@ -59,11 +59,6 @@ workspace root ── release (flags on in the plan's order) ─► the story is
 | Review | hours to days | `aidlc-review` sends the change to four reviewer agents; the code owner decides each finding; fixes go back through `aidlc-build` | The code owner's approval; branch protection |
 | Production | days | `aidlc-operate`, then `aidlc-feedback` turns each lesson into a test, a rule, a skill change or an eval case | People decide containment and where each lesson goes |
 
-## Packs
-
-A repository switches on the packs it needs and declares them in AGENTS.md's `Packs used here`; core never names a
-pack. See [ADR 0011](../adr/0011-plugins-and-packs.md).
-
 ## Who decides
 
 Agents draft; people decide. The product owner owns the story and its criteria; the tech lead approves designs and

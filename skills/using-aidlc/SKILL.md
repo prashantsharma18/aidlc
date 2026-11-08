@@ -78,7 +78,7 @@ Some practices load every time at a given stage step, without being chosen:
 | `aidlc-build` | `writing-tests` (step 6), `committing-changes` (step 7), `debugging-failures` (on a failing check, step 8), `reviewing-code` (step 9) |
 | `aidlc-review` | `reviewing-code` (step 3) |
 | `aidlc-plan` | `writing-tests` (step 4, test level), `using-aidlc` (step 7, to choose USE SKILLS) |
-| `aidlc-start` | `using-aidlc` (step 7, the route) |
+| `aidlc-start` | `using-aidlc` (step 6, the route) |
 
 ## How a slice gets its practices
 
