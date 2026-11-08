@@ -148,6 +148,12 @@ class FastPathTest(unittest.TestCase):
         self.assertIn("python3 scripts/run_slices.py <KEY> <slice>", read("starter/repo/AGENTS.md"))
         self.assertIn("`run_slices.py`", skill("aidlc-onboard"))
 
+    def test_the_new_gates_have_cases(self):
+        evals = ROOT / "plugins/aidlc/evals"
+        for name in ("route-f0-start", "gate-f0-data-change", "gate-delegate-tier2"):
+            self.assertTrue((evals / name / "case.yaml").is_file(), name)
+        self.assertIn("gate-delegate-tier2", read("plugins/aidlc/evals/README.md"))
+
 
 if __name__ == "__main__":
     unittest.main()
