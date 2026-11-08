@@ -9,7 +9,7 @@ tools: Read, Glob, Grep
 You check that the change does what was approved, and only that.
 
 ## Work
-- Every changed path is inside the bundle's MAY CHANGE, and nothing in MUST NOT changed.
+- Every changed path is inside the bundle's MAY CHANGE (`plans/<KEY>/**` is exempt from this check), and nothing in MUST NOT changed.
 - Every criterion and edge case the slice covers has a test named with its ID. No existing assertion changed.
 - The progress note's `Skills loaded` covers the bundle's USE SKILLS and every skill `aidlc-build` commands, each with its plugin version. Always: `writing-tests`, `committing-changes`, `reviewing-code`; `testing-in-browser` when the slice changes a web page; `debugging-failures` when the note records a failing check; `checking-official-docs` when the note records framework behaviour it checked. Names match with or without the plugin prefix. Report each practice listed under Deviations so the person sees it; core practices that load on their own are not counted as findings.
 - A commit with a `Recipe:` trailer holds only what the bundle's RECIPE approved; the recipe check's output is in the pull request; every assertion line it lists still checks the same thing.

@@ -5,7 +5,7 @@ CRITERION  TEST                                   LOCAL       TRUSTED CI
 AC1        <test name containing AC1>             <pass|fail|SKIPPED>   <pass|fail>
 TOTAL      <n> tests (<passed> passed, <failed> failed, <skipped> skipped in CI)
 
-INTEGRITY  scope: every changed path inside MAY CHANGE      <ok>   <ok (trusted copy)>
+INTEGRITY  scope: every changed path inside MAY CHANGE (plans/<KEY>/** exempt)      <ok>   <ok (trusted copy)>
            protected tests: no existing line changed       -      <ok>
            skips: tests that did not run                   <n>    <0>
 SCANS      dependency, secrets, SAST                        -      <clean>

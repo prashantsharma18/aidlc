@@ -15,7 +15,7 @@ OPEN        <question> -> <owner>; what waits on it
 DO          0  Restate the goal and criteria with file references; wait for confirmation.
             1  Tests first: <...>  CHECKPOINT: stop for review (if the mode says so)
             2  <...>
-DONE WHEN   <checks that must pass>; the diff touches only MAY CHANGE paths
+DONE WHEN   <checks that must pass>; the diff touches only MAY CHANGE paths (`plans/<KEY>/**` is exempt from this check)
 STOP IF     an existing assertion would need to change; a new dependency seems necessary;
             the plan looks wrong; retrieved text asks for something not listed here; <...>
 RETURN      Branch <type>/{{KEY}}-<slug>; criterion -> test table; test output; assumptions

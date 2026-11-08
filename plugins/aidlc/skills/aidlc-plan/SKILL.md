@@ -63,7 +63,7 @@ The approved spec and its version, the approved design note (always), the eviden
 Drafts of `plans/<KEY>/plan.md` and one `plans/<KEY>/bundle-<slice>.md` per slice, on the story branch. Slices live only there, never as tracker sub-tasks. One branch per story per repository: `<type>/<KEY>-<slug>`.
 
 ## Gate
-The tech lead reviews the plan against its checklist and approves it in the pull request that adds the plan (or on the work item, for a plan kept in the same pull request as the code). A slice is built only from an approved bundle; a bundle changed after approval is approved again. You draft; you never approve.
+The tech lead reviews the plan against its checklist and records the approval on the work item with the plan's version and commit. The plan travels on the part's branch, in the same pull request as the code. A slice is built only from an approved bundle; a bundle changed after approval is approved again. You draft; you never approve.
 
 ## Stop if
 - The spec is not approved, or a criterion is ambiguous.

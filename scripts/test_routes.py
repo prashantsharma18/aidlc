@@ -122,6 +122,18 @@ class RoutesTest(unittest.TestCase):
         self.assertIn("plans/<KEY>/evidence.md", skill("aidlc-verify"))
         self.assertIn("{{PART}}", read("plugins/aidlc/skills/aidlc-verify/assets/evidence-table.md"))
 
+    def test_story_documents_are_exempt_from_the_scope_check(self):
+        phrase = "`plans/<KEY>/**` is exempt from this check"
+        for rel in ("plugins/aidlc/skills/aidlc-build/SKILL.md", "plugins/aidlc/agents/reviewer-compliance.md",
+                    "plugins/aidlc/skills/aidlc-plan/assets/task-bundle.md"):
+            self.assertIn(phrase, read(rel), rel)
+        self.assertIn("plans/<KEY>/** exempt", read("plugins/aidlc/skills/aidlc-verify/assets/evidence-table.md"))
+
+    def test_the_plan_approval_is_recorded_on_the_work_item(self):
+        gate = section(skill("aidlc-plan"), "## Gate")
+        self.assertIn("records the approval on the work item with the plan's version and commit", gate)
+        self.assertNotIn("in the pull request that adds the plan", gate)
+
 
 if __name__ == "__main__":
     unittest.main()
