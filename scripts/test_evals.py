@@ -61,6 +61,12 @@ class EvalsTest(unittest.TestCase):
         names = {c.name for c in cases()}
         self.assertEqual(GATES - names, set())
 
+    def test_build_cases_confirm_in_advance(self):
+        for case in cases():
+            body = (case / "prompt.md").read_text(encoding="utf-8")
+            if "/aidlc:aidlc-build" in body:
+                self.assertIn("I confirm your restatement and the steps in advance", body, case.name)
+
 
 if __name__ == "__main__":
     unittest.main()

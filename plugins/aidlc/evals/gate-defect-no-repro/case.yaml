@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: gate-defect-no-repro
+context:
+  scaffold_script: setup.sh
