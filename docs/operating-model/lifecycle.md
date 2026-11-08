@@ -26,7 +26,7 @@ and gate the framework provides at each stage.
 
 Discovery (`evidence-pack`, `explorer-brief`) runs before Design whenever the tier asks for it.
 
-Every stage has a skill in [plugins/aidlc/skills/](../../plugins/aidlc/skills/), and `aidlc-onboard` sets up a repository or a workspace.
+Every stage has a skill in [skills/](../../skills/), and `aidlc-onboard` sets up a repository or a workspace.
 Start every piece of work with `aidlc-start`: it decides the kind of work and the repositories it changes, and
 says where each stage runs ([workspace-and-repositories.md](workspace-and-repositories.md)).
 

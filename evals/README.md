@@ -21,16 +21,16 @@ From the repository root:
 
 ```bash
 # Smoke: every case once, no baseline arm
-claude plugin eval plugins/aidlc --trust-plugin --scaffold --allow-tools Write Edit "Bash(python3 *)" "Bash(git *)" \
+claude plugin eval . --trust-plugin --scaffold --allow-tools Write Edit "Bash(python3 *)" "Bash(git *)" \
   --no-publish --runs 1 --ablation none --max-cost-usd 10
 
 # Release baseline: three runs, with and without the plugin
-claude plugin eval plugins/aidlc --trust-plugin --scaffold --allow-tools Write Edit "Bash(python3 *)" "Bash(git *)" \
+claude plugin eval . --trust-plugin --scaffold --allow-tools Write Edit "Bash(python3 *)" "Bash(git *)" \
   --no-publish --runs 3 --threshold 0.67 --max-cost-usd 60 --model claude-sonnet-5-5 \
-  --json plugins/aidlc/evals/results/release.json
+  --json evals/results/release.json
 
 # Release routing pass: under the baseline arm, "skill fired" graders are indicators only, so score them on their own
-claude plugin eval plugins/aidlc --trust-plugin --no-publish --tag routing language --runs 3 --ablation none \
+claude plugin eval . --trust-plugin --no-publish --tag routing language --runs 3 --ablation none \
   --model claude-sonnet-5-5 --max-cost-usd 15
 ```
 

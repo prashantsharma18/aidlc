@@ -2,23 +2,24 @@
 Owner: framework owners · Last verified: 2026-11-06
 
 ## What this repository is
-A marketplace of skills plugins. Engineers install `aidlc` in Claude Code, or
-copy the plugins' `skills/` folders into Copilot, Codex or Cursor.
+One skills plugin, `aidlc`, at the repository root. Engineers install it in Claude Code, or copy its `skills/`
+folders into Copilot, Codex or Cursor.
 
 ## Areas
-`plugins/aidlc/skills/aidlc-*/`   core stage skills; each `SKILL.md` names its templates in `assets/`
-`plugins/aidlc/skills/<practice>/`   engineering-practice skills (`skills/NOTICE` covers parts of the eight earlier ones)
-`plugins/aidlc/skills/using-aidlc/`   the map: stages in order and the practice for each kind of work
-`plugins/aidlc/agents/`   agent roles the core skills call (Claude Code subagent format)
+`skills/aidlc-*/`   core stage skills; each `SKILL.md` names its templates in `assets/`
+`skills/<practice>/`   engineering-practice skills (`skills/NOTICE` covers parts of the eight earlier ones)
+`skills/using-aidlc/`   the map: stages in order and the practice for each kind of work
+`agents/`   agent roles the core skills call (Claude Code subagent format)
+`evals/`   behaviour eval cases, run with `claude plugin eval .`
 `starter/repo/`, `starter/workspace/`   files a team copies once; `starter/repo/scripts/` holds `check_packs.py`,
 `check_recipe_commit.py` and `run_slices.py`
-`.claude-plugin/marketplace.json`   the marketplace listing both plugins
+`.claude-plugin/`   `plugin.json`, and `marketplace.json` whose one entry has the source `./`
 `scripts/validate.py`   the marketplace check; `scripts/test_*.py` test it and every script above
 `docs/`   quickstarts, operating model, ADRs, designs, plans, verification records
 
 ## Where common changes go
-- A new core stage skill: `plugins/aidlc/skills/aidlc-<name>/SKILL.md` with the house sections; templates in its `assets/`.
-- A new practice skill: `plugins/aidlc/skills/<gerund-name>/SKILL.md` with `metadata.kind: practice` and the practice
+- A new core stage skill: `skills/aidlc-<name>/SKILL.md` with the house sections; templates in its `assets/`.
+- A new practice skill: `skills/<gerund-name>/SKILL.md` with `metadata.kind: practice` and the practice
   sections (When to use, Steps, Checks, Stop if, Common excuses, Red flags, Rules); long checklists in its `references/`.
 - A new pack: a folder under `plugins/` with `.claude-plugin/plugin.json` (a version, and `dependencies` on `aidlc` with a
   range), an entry in `.claude-plugin/marketplace.json`, skill names with the pack's own prefix, and a line in the README.

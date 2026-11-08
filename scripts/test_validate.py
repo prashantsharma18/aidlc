@@ -38,7 +38,7 @@ EXPLORER = "---\nname: explorer\ndescription: Reads.\n---\nbody\n"
 
 def write_plugin(root: Path, name: str, skills: dict[str, str], agents: dict[str, str] | None = None,
                  assets=("plan.md",), version="2.0.0", deps=None):
-    base = root / "plugins" / name
+    base = root
     for skill_name, text in skills.items():
         d = base / "skills" / skill_name
         (d / "assets").mkdir(parents=True)
@@ -57,13 +57,10 @@ def write_plugin(root: Path, name: str, skills: dict[str, str], agents: dict[str
 
 
 def package(root: Path, skills: dict[str, str], agents: dict[str, str] | None = None, assets=("plan.md",),
-            packs=()):
-    write_plugin(root, "aidlc", skills, agents or {"explorer": EXPLORER}, assets)
-    for pack in packs:
-        write_plugin(root, **pack)
-    entries = [{"name": "aidlc", "source": "./plugins/aidlc"}]
-    entries += [{"name": p["name"], "source": f"./plugins/{p['name']}"} for p in packs]
-    (root / ".claude-plugin").mkdir()
+            version="2.0.0"):
+    write_plugin(root, "aidlc", skills, agents or {"explorer": EXPLORER}, assets, version=version)
+    entries = [{"name": "aidlc", "source": "./"}]
+    (root / ".claude-plugin").mkdir(exist_ok=True)
     (root / ".claude-plugin" / "marketplace.json").write_text(
         json.dumps({"name": "aidlc", "plugins": entries}), encoding="utf-8")
     for kind, settings in (("repo", REPO_SETTINGS), ("workspace", WORKSPACE_SETTINGS)):
@@ -187,13 +184,13 @@ class ValidateTest(unittest.TestCase):
         for rel in files:
             self.assertIn("a reason, an owner and an expiry date", (root / rel).read_text(encoding="utf-8"), rel)
 
-    def test_a_plugin_source_outside_plugins_is_a_problem(self):
+    def test_the_plugin_source_must_be_the_root(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             package(root, {"aidlc-plan": skill("aidlc-plan")})
             (root / ".claude-plugin" / "marketplace.json").write_text(
-                json.dumps({"name": "aidlc", "plugins": [{"name": "aidlc", "source": "./"}]}))
-            self.assertTrue(any("marketplace" in p for p in validate.validate(root)))
+                json.dumps({"name": "aidlc", "plugins": [{"name": "aidlc", "source": "./plugins/aidlc"}]}))
+            self.assertTrue(any("source" in p and "'./'" in p for p in validate.validate(root)))
 
     def test_harness_references_in_assets_are_problems(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -243,41 +240,16 @@ class ValidateTest(unittest.TestCase):
         self.assertTrue(any("starter/workspace" in p and "Read(~/.ssh/**)" in p for p in problems), problems)
 
 
-    PACK = {"name": "aidlc-modernize", "skills": {"modernize-assess": None}, "version": "0.1.0",
-            "deps": [{"name": "aidlc", "version": "^2.0"}]}
-
-    def pack(self, **changes):
-        p = dict(self.PACK, **changes)
-        p["skills"] = {k: v or skill(k) for k, v in p["skills"].items()}
-        return p
-
-    def test_a_core_and_pack_marketplace_has_no_problems(self):
-        self.assertEqual(self.check({"aidlc-plan": skill("aidlc-plan")}, packs=[self.pack()]), [])
-
-    def test_skill_names_are_unique_across_plugins(self):
-        problems = self.check({"aidlc-plan": skill("aidlc-plan")},
-                              packs=[self.pack(skills={"aidlc-plan": None})])
-        self.assertTrue(any("unique" in p and "aidlc-plan" in p for p in problems), problems)
-
-    def test_core_never_names_a_pack(self):
-        body = STAGE_BODY.replace("## Produces", "Then run modernize-assess.\n## Produces")
-        problems = self.check({"aidlc-plan": skill("aidlc-plan", body=body)}, packs=[self.pack()])
-        self.assertTrue(any("never names a pack" in p and "modernize-assess" in p for p in problems), problems)
-
-    def test_core_requires_nothing(self):
+    def test_the_plugin_requires_nothing(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            package(root, {"aidlc-plan": skill("aidlc-plan")}, packs=[self.pack()])
-            core = root / ".claude-plugin" / "plugin.json"
-            core.write_text(json.dumps({"name": "aidlc", "version": "2.0.0", "dependencies": ["aidlc-modernize"]}))
-            self.assertTrue(any("core requires nothing" in p for p in validate.validate(root)))
-
-    def test_a_dependency_must_be_in_the_marketplace(self):
-        problems = self.check({"aidlc-plan": skill("aidlc-plan")}, packs=[self.pack(deps=["aidlc-elsewhere"])])
-        self.assertTrue(any("aidlc-elsewhere" in p for p in problems), problems)
+            package(root, {"aidlc-plan": skill("aidlc-plan")})
+            manifest = root / ".claude-plugin" / "plugin.json"
+            manifest.write_text(json.dumps({"name": "aidlc", "version": "2.0.0", "dependencies": ["other"]}))
+            self.assertTrue(any("requires nothing" in p for p in validate.validate(root)))
 
     def test_versions_are_semantic(self):
-        problems = self.check({"aidlc-plan": skill("aidlc-plan")}, packs=[self.pack(version="latest")])
+        problems = self.check({"aidlc-plan": skill("aidlc-plan")}, version="latest")
         self.assertTrue(any("semantic version" in p for p in problems), problems)
 
     def test_a_named_reference_or_script_must_exist(self):
@@ -285,12 +257,6 @@ class ValidateTest(unittest.TestCase):
         problems = self.check({"aidlc-plan": skill("aidlc-plan", body=body)})
         self.assertTrue(any("references/hop.md" in p for p in problems), problems)
         self.assertTrue(any("scripts/go.py" in p for p in problems), problems)
-
-    def test_pack_stage_skills_keep_the_house_sections(self):
-        bare = "---\nname: modernize-assess\ndescription: Assesses. Use when asked.\n---\n# Assess\n"
-        problems = self.check({"aidlc-plan": skill("aidlc-plan")},
-                              packs=[self.pack(skills={"modernize-assess": bare})])
-        self.assertTrue(any("modernize-assess" in p and "## Gate" in p for p in problems), problems)
 
 
 if __name__ == "__main__":

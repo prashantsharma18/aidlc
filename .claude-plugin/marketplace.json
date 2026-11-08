@@ -7,8 +7,8 @@
   "plugins": [
     {
       "name": "aidlc",
-      "source": "./plugins/aidlc",
-      "description": "Core: stage skills (start to feedback, onboard), engineering-practice skills and agent roles. Each stage stops at its human gate."
+      "source": "./",
+      "description": "Stage skills (start to feedback, onboard), engineering-practice skills and agent roles. Each stage stops at its human gate."
     }
   ]
 }

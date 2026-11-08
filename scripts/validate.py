@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Checks the aidlc marketplace and every plugin it lists: each skill and agent in the open Agent Skills format, the
+"""Checks the aidlc plugin at the repository root and its marketplace entry: each skill and agent in the open Agent Skills format, the
 house sections of the stage and recipe skills, the practice sections of the practice skills,
 no command of the parked harness and no tool-specific syntax (in a
-skill or its files), every named file present, skill names unique across plugins, core never naming a pack, plugin
-versions and dependencies, and the starter settings' secret denies.
+skill or its files), every named file present, the plugin's version, and the starter settings' secret denies.
 
     python3 scripts/validate.py [root]
 
@@ -21,8 +20,8 @@ CORE = "aidlc"
 SECTIONS = ("## When to use", "## Inputs", "## Steps", "## Produces", "## Gate", "## Stop if",
             "## Common excuses", "## Red flags", "## Rules")
 GATE_LINE = "You draft; you never approve."
-# Stage, method and recipe skills keep the house sections.
-HOUSE_PREFIXES = ("aidlc-", "modernize-", "dotnet-", "java-")
+# Stage skills keep the house sections.
+HOUSE_PREFIXES = ("aidlc-",)
 # A skill whose metadata says `kind: practice` keeps the practice sections. A skill without that kind keeps only the
 # open format.
 PRACTICE_SECTIONS = ("## When to use", "## Steps", "## Checks", "## Stop if", "## Common excuses", "## Red flags",
@@ -126,59 +125,33 @@ def check_agent(path: Path, root: Path) -> list[str]:
     return problems + portability(rel, text)
 
 
-def load_plugins(root: Path) -> tuple[list[str], list[tuple[str, Path, dict]]]:
-    """The marketplace's plugins as (name, folder, manifest), and every problem found in the manifests."""
+def load_plugin(root: Path) -> tuple[list[str], dict | None]:
+    """The one plugin, at the repository root: its manifest, and every problem found in the two manifests."""
     rel = ".claude-plugin/marketplace.json"
     try:
         market = json.loads((root / rel).read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
-        return [f"{rel}: unreadable ({exc})"], []
-    problems, plugins = [], []
-    for entry in market.get("plugins", []):
-        name, source = entry.get("name", ""), entry.get("source")
-        if not isinstance(source, str) or not source.startswith("./plugins/") or ".." in source:
-            problems.append(f"{rel}: plugin '{name}' must have a source under './plugins/' (got {source!r})")
-            continue
-        folder = root / source[2:].rstrip("/")
-        mrel = f"{folder.relative_to(root).as_posix()}/.claude-plugin/plugin.json"
-        try:
-            manifest = json.loads((root / mrel).read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
-            problems.append(f"{mrel}: unreadable ({exc})")
-            continue
-        if manifest.get("name") != name:
-            problems.append(f"{mrel}: name '{manifest.get('name')}' does not match the marketplace entry '{name}'")
-        if not SEMVER.fullmatch(str(manifest.get("version", ""))):
-            problems.append(f"{mrel}: needs a semantic version such as 1.0.0")
-        plugins.append((name, folder, manifest))
-    names = {n for n, _, _ in plugins}
-    if CORE not in names:
-        problems.append(f"{rel}: the core plugin '{CORE}' is missing")
-    for name, folder, manifest in plugins:
-        mrel = f"{folder.relative_to(root).as_posix()}/.claude-plugin/plugin.json"
-        deps = manifest.get("dependencies", [])
-        if name == CORE and deps:
-            problems.append(f"{mrel}: core requires nothing; it never depends on a pack")
-        for dep in deps:
-            dep_name = dep if isinstance(dep, str) else dep.get("name", "")
-            if dep_name.split("@")[0] not in names:
-                problems.append(f"{mrel}: requires '{dep_name}', which the marketplace does not list")
-    return problems, plugins
-
-
-def check_core_names_no_pack(root: Path, core: Path, pack_names: set[str]) -> list[str]:
-    """Core is written like a CI runner: it runs what approved files name, so its own text names no pack."""
-    if not pack_names:
-        return []
-    alternatives = "|".join(sorted(map(re.escape, pack_names), key=len, reverse=True))
-    pattern = re.compile(rf"(?<![A-Za-z0-9_-])({alternatives})(?![A-Za-z0-9_-])")
+        return [f"{rel}: unreadable ({exc})"], None
     problems = []
-    for f in sorted(core.rglob("*")):
-        if f.is_file() and f.suffix in TEXT_SUFFIXES:
-            for m in pattern.finditer(f.read_text(encoding="utf-8")):
-                problems.append(f"{f.relative_to(root).as_posix()}: names the pack '{m.group(1)}'; "
-                                f"core never names a pack")
-    return problems
+    entries = market.get("plugins", [])
+    if [e.get("name") for e in entries] != [CORE]:
+        problems.append(f"{rel}: lists {[e.get('name') for e in entries]}; it lists one plugin, '{CORE}'")
+    for entry in entries:
+        if entry.get("source") != "./":
+            problems.append(f"{rel}: plugin '{entry.get('name')}' must have the source './' "
+                            f"(got {entry.get('source')!r}); the repository root is the plugin")
+    mrel = ".claude-plugin/plugin.json"
+    try:
+        manifest = json.loads((root / mrel).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return problems + [f"{mrel}: unreadable ({exc})"], None
+    if manifest.get("name") != CORE:
+        problems.append(f"{mrel}: name '{manifest.get('name')}' must be '{CORE}'")
+    if not SEMVER.fullmatch(str(manifest.get("version", ""))):
+        problems.append(f"{mrel}: needs a semantic version such as 1.0.0")
+    if manifest.get("dependencies"):
+        problems.append(f"{mrel}: requires nothing")
+    return problems, manifest
 
 
 def check_starters(root: Path) -> list[str]:
@@ -200,38 +173,17 @@ def check_starters(root: Path) -> list[str]:
 
 
 def validate(root: Path) -> list[str]:
-    problems, plugins = load_plugins(root)
-    owner_of: dict[str, str] = {}
-    pack_names: set[str] = set()
-    core_folder = None
-    for name, folder, _ in plugins:
-        frel = folder.relative_to(root).as_posix()
-        skills = sorted((folder / "skills").glob("*/SKILL.md"))
-        agents = sorted((folder / "agents").glob("*.md"))
-        if not skills:
-            problems.append(f"{frel}/skills/: no skills found")
-        if name == CORE:
-            core_folder = folder
-            if not agents:
-                problems.append(f"{frel}/agents/: no agents found")
-        else:
-            pack_names.add(name)
-        for path in skills:
-            problems += check_skill(path, root)
-            skill = path.parent.name
-            if skill in owner_of:
-                problems.append(f"{frel}/skills/{skill}: the name '{skill}' is also used by plugin "
-                                f"'{owner_of[skill]}'; skill names must be unique across the marketplace")
-            else:
-                owner_of[skill] = name
-            if name != CORE:
-                pack_names.add(skill)
-        for path in agents:
-            problems += check_agent(path, root)
-            if name != CORE:
-                pack_names.add(path.stem)
-    if core_folder is not None:
-        problems += check_core_names_no_pack(root, core_folder, pack_names)
+    problems, _ = load_plugin(root)
+    skills = sorted((root / "skills").glob("*/SKILL.md"))
+    agents = sorted((root / "agents").glob("*.md"))
+    if not skills:
+        problems.append("skills/: no skills found")
+    if not agents:
+        problems.append("agents/: no agents found")
+    for path in skills:
+        problems += check_skill(path, root)
+    for path in agents:
+        problems += check_agent(path, root)
     return problems + check_starters(root)
 
 
@@ -240,9 +192,8 @@ def main(argv: list[str]) -> int:
     problems = validate(root)
     for p in problems:
         print(p)
-    plugins = load_plugins(root)[1]
-    count = sum(len(list((folder / "skills").glob("*/SKILL.md"))) for _, folder, _ in plugins)
-    print(f"validate: {len(plugins)} plugin(s), {count} skill(s), {len(problems)} problem(s)")
+    count = len(list((root / "skills").glob("*/SKILL.md")))
+    print(f"validate: 1 plugin, {count} skill(s), {len(problems)} problem(s)")
     return 1 if problems else 0
 
 

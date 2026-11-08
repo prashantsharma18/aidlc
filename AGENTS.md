@@ -4,10 +4,11 @@ aidlc is a skills package for AI-assisted software delivery, from a requirement 
 It implements the guide "From Intent to Verified Change". Owner: framework owners (Prashant Sharma).
 
 ## Map
-- `plugins/aidlc/` the core plugin: `skills/` (the `aidlc-*` stage skills and the engineering-practice skills; `skills/NOTICE`
-  holds the third-party licence for parts of the eight earlier practices) and `agents/`.
+- `skills/` the `aidlc-*` stage skills and the engineering-practice skills (`skills/NOTICE` holds the third-party
+  licence for parts of the eight earlier practices); `agents/` the agent roles; `evals/` the behaviour evals;
+  `.claude-plugin/` the plugin and its marketplace entry. The repository root is the plugin.
 - `starter/` files a team copies once into a repository or a workspace, including `starter/repo/scripts/`.
-- `.claude-plugin/marketplace.json` the marketplace that lists both plugins.
+- `.claude-plugin/marketplace.json` the marketplace entry: one plugin, `aidlc`, whose source is the root (`./`).
 - `docs/` quickstarts, the operating model, ADRs, designs, plans, verification records.
 - The parked Python harness is under the tag `harness-v1` (`docs/archive/harness-v1.md`).
 
@@ -25,7 +26,7 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
   `<name>` skill"; `scripts/test_loads.py` holds the table.
 - A skill never names a tool-specific command or a parked harness command; it names "the repository's commands from AGENTS.md".
 - Core never names a pack, a pack skill or a pack agent; skill names are unique across the marketplace; every
-  release raises the plugin's version (`plugins/<name>/.claude-plugin/plugin.json`).
+  release raises the plugin's version (`.claude-plugin/plugin.json`).
 - Every stage skill says where it runs (story level at the workspace root, part level inside a repository) and ends
   with "You draft; you never approve."
 - Write short sentences. Explain why, not only what.

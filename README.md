@@ -11,8 +11,8 @@ One plugin, **`aidlc`**. The skills work in **Claude Code, GitHub Copilot, Codex
 | Tool | How |
 |---|---|
 | Claude Code | `/plugin marketplace add prashantsharma18/aidlc`, then `/plugin install aidlc@aidlc` ([quickstart](docs/quickstart/claude-code.md)) |
-| GitHub Copilot | Copy `plugins/aidlc/skills/*` into your repository's `.github/skills/`, or install the plugins with Copilot CLI ([quickstart](docs/quickstart/copilot.md)) |
-| Codex, Cursor | Copy `plugins/aidlc/skills/*` into `.agents/skills/` (or `.cursor/skills/` for Cursor) ([quickstart](docs/quickstart/codex-cursor.md)) |
+| GitHub Copilot | Copy `skills/*` into your repository's `.github/skills/`, or install the plugin with Copilot CLI ([quickstart](docs/quickstart/copilot.md)) |
+| Codex, Cursor | Copy `skills/*` into `.agents/skills/` (or `.cursor/skills/` for Cursor) ([quickstart](docs/quickstart/codex-cursor.md)) |
 
 Then copy the starter files that fit (`starter/repo/` into a repository, `starter/workspace/` into a workspace) and run
 the `aidlc-onboard` skill once.
@@ -47,7 +47,7 @@ and the task bundle names the pack skills a slice uses ([ADR 0011](docs/adr/0011
 
 ## Skills
 
-Core (`plugins/aidlc/`):
+The skills (`skills/`):
 
 | Stage skills | Practice skills |
 |---|---|
@@ -56,7 +56,7 @@ Core (`plugins/aidlc/`):
 The map of stages and practices, and the first skill to read: `using-aidlc`.
 
 Agents the skills call: `explorer`, `reviewer-bug`, `reviewer-security`, `reviewer-compliance`, `reviewer-tests`,
-`ops-diagnoser` (in `plugins/aidlc/agents/`).
+`ops-diagnoser` (in `agents/`).
 
 ## Contributing
 

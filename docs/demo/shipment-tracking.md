@@ -52,7 +52,7 @@ Open `claude` once in each of the three folders and accept the trust prompt.
 
 ```bash
 for d in ~/work/shipment-tracking ~/work/shipment-tracking/shipments-api ~/work/shipment-tracking/customer-portal; do
-  (cd "$d" && claude -p "Reply OK." --plugin-dir ~/demos/aidlc/plugins/aidlc --plugin-dir ~/demos/aidlc/plugins/aidlc-practice \
+  (cd "$d" && claude -p "Reply OK." --plugin-dir ~/demos/aidlc \
      --output-format stream-json --verbose --max-turns 1 | python3 ~/demos/aidlc/docs/demo/probe.py .claude/settings.json)
 done
 ```
@@ -64,8 +64,8 @@ Expect `clean` three times.
 Every stage is one session. Start it in the folder named, with these flags:
 
 ```bash
-AIDLC_UNATTENDED=1 claude -p "<prompt>" --plugin-dir ~/demos/aidlc/plugins/aidlc \
-  --plugin-dir ~/demos/aidlc/plugins/aidlc-practice --permission-mode dontAsk --model sonnet --output-format json
+AIDLC_UNATTENDED=1 claude -p "<prompt>" --plugin-dir ~/demos/aidlc \
+  --permission-mode dontAsk --model sonnet --output-format json
 ```
 
 Continue a session that asks questions with `--resume <session_id>`. Agents draft; you approve, save

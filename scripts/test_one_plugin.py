@@ -50,6 +50,30 @@ class OnePluginTest(unittest.TestCase):
         market = json.loads(read(".claude-plugin/marketplace.json"))
         self.assertEqual([p["name"] for p in market["plugins"]], ["aidlc"])
 
+    def test_the_plugin_is_the_repository_root(self):
+        for folder in ("skills", "agents", "evals"):
+            self.assertTrue((ROOT / folder).is_dir(), folder)
+        self.assertFalse((ROOT / "plugins").exists())
+        manifest = json.loads(read(".claude-plugin/plugin.json"))
+        self.assertEqual(manifest["name"], "aidlc")
+        market = json.loads(read(".claude-plugin/marketplace.json"))
+        self.assertEqual(market["plugins"][0]["source"], "./")
+
+    def test_the_install_id_is_unchanged(self):
+        market = json.loads(read(".claude-plugin/marketplace.json"))
+        self.assertEqual((market["name"], market["plugins"][0]["name"]), ("aidlc", "aidlc"))
+        self.assertIn('"aidlc@aidlc": true', read("starter/repo/.claude/settings.json"))
+
+    def test_nothing_else_at_the_root_loads_as_a_component(self):
+        for name in ("settings.json", ".mcp.json", ".lsp.json", "hooks", "bin", "commands", "monitors",
+                     "output-styles", "themes", "workflows"):
+            self.assertFalse((ROOT / name).exists(), name)
+
+    def test_no_live_document_names_the_old_path(self):
+        docs = [p for p in live(tracked()) if not p.endswith(".py")]
+        hits = [p for p in docs if "plugins/aidlc" in read(p)]
+        self.assertEqual(hits, [])
+
 
 if __name__ == "__main__":
     unittest.main()
