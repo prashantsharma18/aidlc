@@ -31,7 +31,7 @@ Start every piece of work with `aidlc-start`: it decides the kind of work and th
 says where each stage runs ([workspace-and-repositories.md](workspace-and-repositories.md)).
 
 **Seven routes** use these stages: features in one repository (F1) or several (F2), change requests (C), defects by the
-fast path (D1) or the full route (D2), incidents (I), and new systems (G, from aidlc 4.1). `aidlc-start` chooses one;
+fast path (D1) or the full route (D2), incidents (I), and new systems (G). `aidlc-start` chooses one;
 the route table is in the `using-aidlc` skill, and the diagrams arrive in `routes.md` with Plan 17.
 
 ## Rules that hold at every stage

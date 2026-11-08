@@ -29,7 +29,7 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
 
 - **Start every piece of work with `aidlc-start`**: a new requirement, a story, a defect, a change request or an
   incident follow-up. It decides the kind of work and which repositories change, chooses the route (the `using-aidlc`
-  skill lists them), and says where the next stage runs.
+  skill lists them), and says where the next stage runs. A new system starts the same way, in an empty repository or a new workspace (route G).
 - **One repository:** every stage runs there; documents in `plans/<KEY>/`.
 - **Several repositories:** story-level stages run at the workspace root and keep their documents in `stories/<KEY>/`;
   each repository's part (plan, build, verify, review) runs inside that repository, on branch `feat/<KEY>-<part>`.

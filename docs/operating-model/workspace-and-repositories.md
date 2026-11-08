@@ -18,6 +18,7 @@ Every piece of work starts with `aidlc-start`, at the workspace root (or in a lo
 | Defect | How to reproduce it, expected and actual behaviour, evidence (missing: ask and stop) | Tier 1, one repository, reproduced, expected behaviour written: the fast path D1 (plan's brief mode, build, verify, review). Otherwise the full route D2 |
 | Change request | The original story and its documents (not found: ask and stop) | In progress: specify in amendment mode; the affected parts are marked "re-plan". Released: new work with its own key, whose criteria include "the original's criteria still hold" |
 | Incident follow-up | The incident record | As a defect, with the incident as the evidence |
+| New system | No code yet; a person creates the home (one repository, or a workspace onboarded at its root) | intent, specify, design (stack, layout, contracts, UI); then in each new repository onboard (new mode, prepare), slice 0, onboard (new mode, confirm); then F1 or F2 |
 
 **The scope.** One explorer per repository answers "would this work change you?". One repository: everything runs and is tracked there, in its `plans/<KEY>/`; nothing is written at the root. Several, or unsure: the workspace flow.
 

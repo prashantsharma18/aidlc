@@ -93,6 +93,12 @@ class GreenfieldTest(unittest.TestCase):
         self.assertIn("is not checked by the recipe check", build)
         self.assertIn("(scaffold)", read("plugins/aidlc/agents/reviewer-compliance.md"))
 
+    def test_the_docs_describe_route_g(self):
+        self.assertNotIn("G, from aidlc 4.1", read("docs/operating-model/lifecycle.md"))
+        self.assertIn("| New system |", read("docs/operating-model/workspace-and-repositories.md"))
+        self.assertIn("route G", read("README.md"))
+        self.assertTrue((ROOT / "docs/adr/0016-greenfield-entry.md").is_file())
+
 
 if __name__ == "__main__":
     unittest.main()
