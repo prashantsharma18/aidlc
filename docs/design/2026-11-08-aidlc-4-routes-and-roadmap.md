@@ -40,7 +40,7 @@ The stages work one at a time, but they do not yet fit together end to end:
 | Greenfield | A person creates the home. Slice 0 builds a skeleton through an approved RECIPE; `aidlc-onboard` runs in a new mode, once before slice 0 (prepare) and once after (confirm). No new stage |
 | UI design | For a new screen or flow: the designer's Figma link and version; with none, `aidlc-design` drafts a wireframe that the product owner approves. A change inside an existing screen follows the design system |
 | One-repository story started at the root | Nothing is written at the root. `aidlc-start` hands over: "open `<repository>` and run `aidlc-start` there" |
-| Workspace status | Derived, never written across repositories: a script at the root reads each part's index and fills the coordination plan's Status column. Sessions write only where they run |
+| Workspace status | Derived, never written across repositories: a script at the root reads each part's index and writes `stories/<KEY>/status.md`, which the coordination plan's Status column points to. Sessions write only where they run |
 | Amended assertions | A second exception to "never change an existing assertion", beside the recipe commit: allowed only when the bundle lists the test under AMENDED ASSERTIONS and cites an approved spec amendment (version, criterion, decider). The test must fail against the old code first. Approved by the owner, 2026-11-08 |
 | Orphan agents | `implementer` and `planner` are deleted: their descriptions let Claude delegate around the stages' gates |
 | Delegate mode | A mode of `aidlc-build`, read from the approved bundle, within the tier's limits. A starter script runs one fresh headless session per bundle and stops at the first stopped slice |
