@@ -20,7 +20,7 @@ Product intent · architecture fit · risk tolerance · security posture · test
 
 | Tier | Plan | Merge | Release |
 |---|---|---|---|
-| 1 | In the PR description | One code owner | Normal pipeline |
+| 1 | Tech lead, on the work item (a short plan) | One code owner | Normal pipeline |
 | 2 | Tech lead | Code owners of every affected area | Normal pipeline; flag where user-visible |
 | 3 | Tech lead, approach approved before slicing | Plus a recorded specialist review | Named release approver; staged; rehearsed rollback |
 

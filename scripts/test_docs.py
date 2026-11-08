@@ -75,6 +75,7 @@ class DocsTest(unittest.TestCase):
         self.assertIn("never the author", sheet)
         for row in rows:
             self.assertNotRegex(row.split("|")[2], r"(?i)\bagent\b|\bAI\b")
+
     def test_the_readme_and_every_quickstart_point_to_both(self):
         self.assertIn("docs/operating-model/routes.md", read("README.md"))
         self.assertIn("docs/operating-model/adoption.md", read("README.md"))
@@ -92,6 +93,72 @@ class DocsTest(unittest.TestCase):
             base = (ROOT / rel).parent
             for target in re.findall(r"\]\(([^)#]+)(?:#[^)]*)?\)", read(rel)):
                 self.assertTrue((base / target).exists(), f"{rel}: {target}")
+
+
+def slug(heading: str) -> str:
+    """The anchor GitHub gives a heading: lower case, punctuation dropped, spaces as hyphens."""
+    return re.sub(r"[^a-z0-9 -]", "", heading.lower()).replace(" ", "-")
+
+
+class ReviewFixesTest(unittest.TestCase):
+    """Plan 18 final review: each test was seen failing before its fix. The skills are the source of truth."""
+
+    def setUp(self):
+        self.routes = " ".join(read(ROUTES).split())
+        self.adoption = " ".join(read(ADOPTION).split())
+        self.sheet = self.adoption.split("## Who approves what", 1)[1]
+
+    def test_i1_unaffected_is_a_line_in_the_story_index(self):
+        self.assertNotIn("The tech lead records why, on the tracker", self.routes)
+        self.assertIn("`UNAFFECTED <repository> spec v<n>: <why>, <who>, <date>` line in the story index", self.routes)
+        self.assertIn("The story index (an `UNAFFECTED` line)", self.sheet)
+
+    def test_i2_the_status_command_writes_with_write(self):
+        self.assertIn("python3 scripts/story_status.py <KEY> --write", self.routes)
+
+    def test_i3_a_defect_without_a_reproduction_stops(self):
+        self.assertIn('ask["Ask the reporter, and stop"]', read(ROUTES))
+
+    def test_i4_route_i_starts_at_aidlc_operate(self):
+        self.assertNotIn('kind -->|"an alert fires"|', read(ROUTES))
+        self.assertIn("one of seven routes", self.routes)
+        self.assertIn("The eighth, I, does not start there", self.routes)
+
+    def test_i5_the_sheet_holds_every_stage_gate(self):
+        for row in ("The provisional tier", "Proceed, escalate or raise the tier after discovery", "A wireframe",
+                    "Each review finding", "A specialist review (Tier 3)", "The incident follow-up item",
+                    "The rules file and the codebase map", "Monitoring and rollback"):
+            self.assertIn(f"| {row} |", self.sheet, row)
+
+    def test_i6_the_tech_lead_approves_the_plan_at_every_tier(self):
+        roles = read("docs/operating-model/roles.md")
+        self.assertNotIn("| 1 | In the PR description |", roles)
+        self.assertIn("| 1 | Tech lead, on the work item (a short plan) |", roles)
+
+    def test_minors_in_routes(self):
+        for phrase in ("Root->>A: status marks part 1 re-plan", "once `aidlc-plan` or `aidlc-build` reads the code",
+                       "for D1, the written expected behaviour and the three design questions",
+                       "Tech lead or architect approves, or records none needed", "revision <r>: <what>",
+                       'start["aidlc-start: which repositories change?"]',
+                       "an `explorer` agent goes into each repository", "each skill's Produces section",
+                       "`stories/<KEY>/contract/`", "or the tier rises"):
+            self.assertIn(phrase, read(ROUTES) + self.routes, phrase)
+
+    def test_minors_in_adoption(self):
+        for phrase in ("`ANTHROPIC_API_KEY`", "writes that test first, or stops", "asks whether this is a new system",
+                       "chooses its MODE", "\"confirmed by\" line", "| Change management |", "RECORDED BY",
+                       "posts only when you ask"):
+            self.assertIn(phrase, self.adoption, phrase)
+        self.assertNotIn("ships with stop criteria", self.adoption)
+        self.assertNotIn("](../quickstart/)", self.adoption)
+
+    def test_anchors_in_the_new_documents_resolve(self):
+        for rel in (ROUTES, ADOPTION):
+            text = read(rel)
+            anchors = {slug(h) for h in re.findall(r"(?m)^#+ (.+)$", text)}
+            for target in re.findall(r"\]\(#([^)]+)\)", text):
+                self.assertIn(target, anchors, f"{rel}: #{target}")
+
 
 if __name__ == "__main__":
     unittest.main()
