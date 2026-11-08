@@ -33,7 +33,7 @@ The pull request, its evidence table, the spec, plan and task bundle it implemen
 
 ## Steps
 1. Check the inputs: every required check green, a code owner who is not the author or pusher, the evidence table filled. If any is missing, go back to the stage that owns it.
-2. Start from `aidlc-verify`'s description draft, and complete it from `assets/pr-description.md`: links, not copies; each change mapped to its criteria; the decisions with who confirmed them; the tier and the rollback; one question for each specialist. Check that the pull request is one slice.
+2. Start from `aidlc-verify`'s description draft, and complete it from `assets/pr-description.md`: links, not copies; each change mapped to its criteria; the decisions with who confirmed them; the tier and the rollback; one question for each specialist. Check that the pull request is one part: one repository's share of the story, within the pull-request size `reviewing-code` gives.
 3. Load the `reviewing-code` skill, then send the change to the `reviewer-bug`, `reviewer-security`, `reviewer-compliance` and `reviewer-tests` agents, one pass each, so the review does not run in the session that wrote the code. They use the rules from the protected branch, never the pull request's own copy. These local passes are advisory; CI's AI review, with its own identity, is the one on record.
 4. Draft a disposition for every finding, yours and CI's AI review: fixed (with the commit) or dismissed (with the reason). The engineer decides each one. High and medium findings block the merge until fixed or dismissed with a reason; a low finding may be dismissed with a reason.
 5. Prepare the code owner's questions in this order: context, evidence, tests, diff, risk.

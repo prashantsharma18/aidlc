@@ -1,5 +1,5 @@
 <!-- aidlc template: evidence-table -->
-{{KEY}} · {{SLICE}} · evidence (from the trusted run, never the agent's summary)
+{{KEY}} · {{PART}} · evidence (from the trusted run, never the agent's summary)
 
 CRITERION  TEST                                   LOCAL       TRUSTED CI
 AC1        <test name containing AC1>             <pass|fail|SKIPPED>   <pass|fail>

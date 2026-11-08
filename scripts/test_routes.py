@@ -108,6 +108,20 @@ class RoutesTest(unittest.TestCase):
         self.assertIn("as a finding for `aidlc-design`", text)
         self.assertIn("as a finding for `aidlc-plan`", text)
 
+    def test_a_pull_request_is_one_part(self):
+        self.assertNotIn("Check that the pull request is one slice", skill("aidlc-review"))
+        self.assertIn("Check that the pull request is one part", skill("aidlc-review"))
+        commits = skill("committing-changes")
+        self.assertNotIn("one slice, one reason", commits)
+        self.assertIn("one part of the story", commits)
+        self.assertIn("the pull-request size `reviewing-code` gives", commits)
+        self.assertIn("split it into two parts", skill("aidlc-plan"))
+
+    def test_verify_writes_one_evidence_file_per_part(self):
+        self.assertNotIn("evidence-<slice>.md", skill("aidlc-verify"))
+        self.assertIn("plans/<KEY>/evidence.md", skill("aidlc-verify"))
+        self.assertIn("{{PART}}", read("plugins/aidlc/skills/aidlc-verify/assets/evidence-table.md"))
+
 
 if __name__ == "__main__":
     unittest.main()
