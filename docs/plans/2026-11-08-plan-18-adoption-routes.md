@@ -1,4 +1,4 @@
-# Adoption guide and routes documents Implementation Plan (Plan 17)
+# Adoption guide and routes documents Implementation Plan (Plan 18)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -8,15 +8,15 @@
 
 **Tech Stack:** Markdown, Mermaid (rendered by the git host), Python 3.12 standard library (`unittest`).
 
-**Spec:** `docs/design/2026-11-08-aidlc-4-routes-and-roadmap.md` (section "Plan 17: adoption guide and routes documents"; the facts come from "The routes", "Linked parts (F2)" and "A criterion changes after code exists (C)", and from Plans 13 and 15). Builds on `main` at f8e093c (aidlc 4.3.0; Plan 16 parked).
+**Spec:** `docs/design/2026-11-08-aidlc-4-routes-and-roadmap.md` (section "Plan 17: adoption guide and routes documents", now Plan 18; the facts come from "The routes", "Linked parts (F2)" and "A criterion changes after code exists (C)", and from Plans 13 and 15). Builds on Plan 17 (aidlc 5.0.0: one plugin at the repository root, the pack contract removed; Plan 16 parked).
 
-Branch: `docs/plan-17-adoption-routes`.
+Branch: `docs/plan-18-adoption-routes`. Renumbered from Plan 17 on 2026-11-08, when the owner put the one-plugin restructure first.
 
 ## Decisions this plan makes where the spec is silent
 
 | Question | Decision | Why |
 |---|---|---|
-| Version | None: the plugin stays at 4.3.0 | The spec's versions row: "Plan 17: documents only" |
+| Version | None: the plugin stays at 5.0.0 | The spec's versions row: "Plan 17: documents only" |
 | Mermaid subset | `flowchart`, `sequenceDiagram` and `stateDiagram-v2` only; every node label and edge label in double quotes | Quoted labels are the one rule that keeps parentheses, colons and slashes from breaking a diagram; a test enforces it, because nothing here renders Mermaid |
 | Rendering check | A stdlib lint in the tests, then the final reviewer reads each diagram. An optional render with the Mermaid CLI runs only if the owner approves fetching it (it is a new tool) | No new dependency without asking |
 | Build modes and the slice runner | Described in `adoption.md` (a later phase), not in `routes.md` | Modes belong to slices, not routes; they are a step in adoption once the autonomy check passes |
@@ -24,11 +24,11 @@ Branch: `docs/plan-17-adoption-routes`.
 
 ## Global Constraints
 
-- Facts match the skills as they are on `main` (aidlc 4.3.0). Where a document and a skill disagree, the skill wins and the document is fixed.
+- Facts match the skills as they are on `main` (aidlc 5.0.0). Where a document and a skill disagree, the skill wins and the document is fixed.
 - Short sentences, British spelling, plain words. No third-party project, author or URL. No marketing.
 - Every Mermaid block uses the subset above; every node and edge label is quoted.
 - Never change an existing test assertion: every `scripts/test_*.py` test keeps passing unchanged; new checks are new tests.
-- No change under `plugins/` or `starter/`. Commits use the noreply identity and end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- No change under `skills/`, `agents/`, `evals/` or `starter/`. Commits use the noreply identity and end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
 ## Review Focus
 
@@ -51,7 +51,7 @@ Branch: `docs/plan-17-adoption-routes`.
 - [ ] **Step 1: Write the failing tests.** Create `scripts/test_docs.py`:
 
 ```python
-"""Plan 17: the routes and adoption documents exist, match the skills, keep Mermaid safe, and are linked."""
+"""Plan 18: the routes and adoption documents exist, match the skills, keep Mermaid safe, and are linked."""
 import re
 import unittest
 from pathlib import Path
@@ -72,7 +72,7 @@ def mermaid_blocks(text: str) -> list[str]:
 
 class DocsTest(unittest.TestCase):
     def test_every_route_in_using_aidlc_has_a_section(self):
-        codes = re.findall(r"^\| (F0|F1|F2|C|D1|D2|I|G) · ", read("plugins/aidlc/skills/using-aidlc/SKILL.md"), re.M)
+        codes = re.findall(r"^\| (F0|F1|F2|C|D1|D2|I|G) · ", read("skills/using-aidlc/SKILL.md"), re.M)
         self.assertEqual(len(codes), 8)
         routes = read(ROUTES)
         for code in codes:
@@ -592,7 +592,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
             self.assertIn("../operating-model/routes.md", text, rel)
             self.assertIn("../operating-model/adoption.md", text, rel)
 
-    def test_no_document_still_waits_for_plan_17(self):
+    def test_no_document_still_waits_for_the_routes_page(self):
         self.assertNotIn("arrive in `routes.md` with Plan 17", read("docs/operating-model/lifecycle.md"))
         self.assertNotIn("Plan 17", read("docs/operating-model/workspace-and-repositories.md"))
 
@@ -634,4 +634,4 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 - [ ] **Step 7: Optional render check, only with the owner's approval** (it fetches the Mermaid CLI, a new tool): render each block and confirm none fails. Without approval, the record says the diagrams were linted and read, not rendered.
 
-- [ ] **Step 8: Write the verification record** `docs/verification/2026-11-08-plan-17-adoption-routes.md` in Plan 15's layout: the checks, the Review Focus cases with their tests, the review's findings and fixes, the render result or its absence, and the decisions. Commit it with the fix pass.
+- [ ] **Step 8: Write the verification record** `docs/verification/2026-11-08-plan-18-adoption-routes.md` in Plan 15's layout: the checks, the Review Focus cases with their tests, the review's findings and fixes, the render result or its absence, and the decisions. Commit it with the fix pass.
