@@ -8,7 +8,7 @@ LOADED
 LOAD FIRST  <pointers to the plan, spec sections and files; never pasted copies>
 PATTERN     <exemplar file:lines to follow, and what NOT to copy from it>
 USE SKILLS  <plugin:skill, … pack skills AGENTS.md declares and core practices from the `using-aidlc` practice map> | none
-RECIPE      <tool@version — the exact command — the files it may change> | none   (a mechanical recipe commit)
+RECIPE      <tool@version — the exact command — the files it may change> | none   (a mechanical recipe commit; `(scaffold)` for slice 0 of a new system)
 MAY CHANGE  <glob>, <glob>   (paths and globs only; a note goes on its own line in parentheses)
 MUST NOT    <paths and things that must not change, incl. existing assertions>
 AMENDED ASSERTIONS  <test: what its assertion checks now> <- spec v<n>, <criterion>, decided by <owner> | none   (the only assertions this slice may change)

@@ -76,6 +76,23 @@ class GreenfieldTest(unittest.TestCase):
     def test_confirm_stops_on_a_command_that_fails(self):
         self.assertIn("stop on any that does not", skill("aidlc-onboard"))
 
+    def test_plan_writes_slice_0(self):
+        plan = skill("aidlc-plan")
+        self.assertIn("**Slice 0** (route G)", section(plan, "## When to use"))
+        self.assertIn("marked `(scaffold)`", plan)
+        self.assertIn("seen red once", plan)
+        self.assertIn("(scaffold)", read("plugins/aidlc/skills/aidlc-plan/assets/task-bundle.md"))
+
+    def test_slice_0_without_a_scaffold_is_written_by_hand(self):
+        self.assertIn("When SCAFFOLD is none, there is no RECIPE", skill("aidlc-plan"))
+
+    def test_build_runs_slice_0_under_the_usual_gates(self):
+        build = skill("aidlc-build")
+        self.assertIn("skip this step; the scaffold recipe commit comes first", build)
+        self.assertIn("`Recipe: <tool>@<version> (scaffold)`", build)
+        self.assertIn("is not checked by the recipe check", build)
+        self.assertIn("(scaffold)", read("plugins/aidlc/agents/reviewer-compliance.md"))
+
 
 if __name__ == "__main__":
     unittest.main()

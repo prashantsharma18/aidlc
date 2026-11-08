@@ -32,6 +32,8 @@ After the spec is approved: above Tier 1, planning starts only from a spec its o
 **Brief mode** (route D1): a defect that passed `aidlc-start`'s fast-path test. It replaces intent, plan and bundle
 with one file, `plans/<KEY>/fix.md`.
 
+**Slice 0** (route G): the first slice of each new repository, the skeleton.
+
 ## Inputs
 Where this runs: inside the repository whose part you are working on. For a story that spans several repositories, read your part's row in the workspace's `../stories/<KEY>/coordination-plan.md` (read-only) and the design it points to; the branch is `feat/<KEY>-<part>` and the pull request title is `[<KEY>] part <n> of <m>: <what>`. Started at the workspace root: name the repository to open, and stop. A one-repository story runs entirely in that repository.
 
@@ -69,6 +71,14 @@ The approved spec and its version, the approved design note (always), the eviden
    `plans/<KEY>/README.md` from `assets/story-index.md`: LEVEL `part <n> of <m> in <repository>`, the PINS line of the
    latest bundle, and the rows `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged`.
 9. Mark this stage's row in the index (`plans/<KEY>/README.md`) as done, or as stopped with the reason.
+
+Slice 0 (route G), the first slice of each new repository:
+1. RECIPE holds the SCAFFOLD commands from the approved `new-system.md`, marked `(scaffold)`. When SCAFFOLD is none,
+   there is no RECIPE: the DO steps write the skeleton by hand, tests first.
+2. DO adds, tests first: one real test of behaviour, a health check that answers (an endpoint or a page), and the CI
+   workflow that runs the COMMANDS, each required check seen red once in a draft pull request.
+3. MAY CHANGE covers the paths the scaffold creates and `.github/workflows/**`. DONE WHEN: every command in `AGENTS.md`
+   runs green locally, and CI runs them on the pull request.
 
 Brief mode:
 1. Restate the defect: the reproduction, the expected behaviour and where it is written, the actual behaviour. When the
