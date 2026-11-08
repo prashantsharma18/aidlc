@@ -1,6 +1,6 @@
 ---
 type: regex
-target: {source: file, path: plans/SHIP-15/review-record.md}
+target: trace
 pattern: 'DECISION\s+approve'
 match: not_contains
 ---
