@@ -27,7 +27,7 @@ The pull request's CI results (the checks and their logs, test reports), or, whe
 
 ## Steps
 1. Read the trusted run's results: the CI run on the pull request. Where the repository has no CI yet, run its test commands once for this table, record the output, and mark every row "local only". Never use your memory of earlier runs.
-2. Fill `assets/evidence-table.md`, replacing each `{{FIELD}}`, written to `plans/<KEY>/evidence.md` (one per part), naming the commit the trusted run tested. Add one row per criterion and edge case, with the test whose name carries its ID, the local result and the CI result.
+2. Fill `assets/evidence-table.md`, replacing each `{{FIELD}}` and leaving every approval slot for the person who approves, written to `plans/<KEY>/evidence.md` (one per part), naming the commit the trusted run tested. Add one row per criterion and edge case, with the test whose name carries its ID, the local result and the CI result.
    For a criterion users see in a web page, its row is the browser test from `testing-in-browser`, with the screenshots and the accessibility result.
 3. Write the total counts from the run, including skipped tests. A skipped or quarantined test is never a pass: its criterion is unproved.
 4. Fill the integrity rows (scope, protected tests, skips), the scans, and the AI review findings, with how each was answered: fixed, with the commit; or dismissed, with the reason.

@@ -7,6 +7,7 @@
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 
+<!-- Paste command output indented by four spaces: a line of three backticks would end the block. -->
 ```text
 FEATURE BRIEF · {{KEY}} · {{TITLE}}      route F0 (feature, fast path)
 OUTCOME     <the observable behaviour the work item asks for, in one or two sentences>

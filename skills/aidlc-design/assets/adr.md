@@ -1,6 +1,12 @@
 <!-- aidlc template: adr -->
 # {{NUMBER}} · {{TITLE}}
 
+## For the reviewer
+- **Asked of:** The tech lead or architect (the decider), to accept the decision with the design; consumers agree a contract change
+- **Record it:** On the Status line (Accepted at design approval), and on the work item with the design's version and commit
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
 Status: Proposed | Accepted at design approval | Superseded by {{n}}
 Decider: {{name/role}} · Agreed: {{owners and consumers}} · Work item: {{key}} · Tier: {{n}}
 

@@ -148,5 +148,40 @@ class HandoffsTest(unittest.TestCase):
         self.assertIn("a block of FIELD lines sits in a ```text fence", text)
         self.assertIn("opens with a `## For the reviewer` section", text)
 
+
+class ReviewFixesTest(unittest.TestCase):
+    """Plan 19 final review: each test was seen failing before its fix."""
+
+    def test_i2_the_review_record_names_who_gives_the_decision(self):
+        block = " ".join(read("skills/aidlc-review/assets/review-record.md").split("## For the reviewer", 1)[1]
+                         .split("Reviewer:", 1)[0].split())
+        self.assertIn("the reviewer named below, to give the DECISION", block)
+
+    def test_m1_every_template_keeps_the_rule(self):
+        for path in sorted((ROOT / "skills").glob("aidlc-*/assets/*.md")):
+            out = outside_code(path.read_text(encoding="utf-8"))
+            self.assertEqual(re.findall(r"<(?!!--)[^<>\n]+>", out), [], path)
+            self.assertNotRegex(out, r"(?m)^[A-Z][A-Z /-]{2,}\s{2,}\S", path)
+        for name in ("aidlc-design/assets/adr.md", "aidlc-design/assets/coordination-plan.md"):
+            self.assertIn("## For the reviewer", read(f"skills/{name}"), name)
+
+    def test_m3_m4_skills_match_the_templates(self):
+        feedback = " ".join(read("skills/aidlc-feedback/SKILL.md").split())
+        self.assertNotIn("Prevention line", feedback)
+        self.assertIn("Prevention section", feedback)
+        for skill in ("aidlc-intent", "aidlc-specify", "aidlc-plan", "aidlc-verify"):
+            self.assertIn("leaving every approval slot for the person who approves",
+                          " ".join(read(f"skills/{skill}/SKILL.md").split()), skill)
+
+    def test_m5_blocks_match_the_gate_and_the_sheet(self):
+        self.assertIn("Tier 3 adds the specialists", read("skills/aidlc-design/assets/design-note.md"))
+        self.assertIn("the owning team's confirmation in this record", read("skills/aidlc-release/assets/readiness.md"))
+
+    def test_m6_m7_fences_cannot_be_broken_by_accident(self):
+        self.assertNotRegex(read("AGENTS.md"), r"(?m)^\s*```text")
+        for name in ("fix-brief", "feature-brief", "task-bundle"):
+            self.assertIn("three backticks would end the block", read(f"skills/aidlc-plan/assets/{name}.md"), name)
+
+
 if __name__ == "__main__":
     unittest.main()

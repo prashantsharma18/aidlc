@@ -86,7 +86,6 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(run_slices.document(plans, "brief"), plans / "brief.md")
         self.assertEqual(run_slices.document(plans, "2"), plans / "bundle-2.md")
 
-
     def test_curly_placeholders_are_no_value(self):
         self.assertIsNone(run_slices.field("MODE        {{hands-on | delegate}}\n", "MODE"))
 
@@ -225,7 +224,6 @@ class MainTest(unittest.TestCase):
             run_slices.main(["SHIP-7"])
 
 
-
 class ReviewFixesTest(unittest.TestCase):
     """Plan 15 final review: each test was seen failing before its fix."""
 
@@ -260,6 +258,15 @@ class ReviewFixesTest(unittest.TestCase):
                      "plans/SHIP-7/progress-1.md": note})
         invoke, calls = repo.agent([("done", 0, False)])
         self.assertEqual(repo.run(["1"], invoke)[0], 0)
+
+    def test_plan19_a_pause_confirmed_by_a_curly_placeholder_is_not_confirmed(self):
+        note = ("STATUS      paused: checkpoint 1\n\n## Pauses confirmed (by the person)\n"
+                "- checkpoint 1 confirmed by {{name}}, {{YYYY-MM-DD}}\n")
+        repo = Repo({"plans/SHIP-7/bundle-1.md": bundle("delegate with checkpoints"),
+                     "plans/SHIP-7/progress-1.md": note})
+        invoke, calls = repo.agent([])
+        code, lines = repo.run(["1"], invoke)
+        self.assertEqual((code, calls), (2, []))
 
     def test_m1_a_branch_without_the_key_is_refused(self):
         repo = Repo({"plans/SHIP-7/bundle-1.md": bundle()}, branch="trunk-work")

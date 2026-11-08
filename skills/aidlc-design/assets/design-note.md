@@ -2,7 +2,7 @@
 # {{KEY}} · design note
 
 ## For the reviewer
-- **Asked of:** The tech lead or architect, to approve the design or record "none needed"; consumers approve a contract change
+- **Asked of:** The tech lead or architect, to approve the design or record "none needed"; consumers approve a contract change; Tier 3 adds the specialists
 - **Record it:** On the APPROVED or RECORDED BY line below, and on the work item with this note's version and commit
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}

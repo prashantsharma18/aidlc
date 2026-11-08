@@ -7,6 +7,12 @@ fields: [KEY, TITLE]
 ---
 # Coordination plan · {{KEY}} · {{TITLE}} · v1
 
+## For the reviewer
+- **Asked of:** The tech lead or architect, to approve the parts, their order and the contract versions with the design; each part's own code owners approve its pull request
+- **Record it:** On the work item with this plan's version and commit; each part in its own pull request
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
 ```text
 OUTCOME    <...>. Tier <n> (<reason; unknown consumers raise it>)
 CONTRACTS  <contract> v<n> <from> -> <to> (<minor, additive | major via expand and contract>)

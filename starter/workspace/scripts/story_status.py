@@ -109,6 +109,7 @@ def read_parts(plan: str) -> tuple[list[tuple[int, str]], list[str]]:
             inside = line.startswith("PARTS")
             continue
         if line.strip().startswith("```"):
+            inside = False
             continue
         if not inside or not line.strip() or "<" in line or "{{" in line or line.strip().startswith("("):
             continue

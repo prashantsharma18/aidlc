@@ -36,7 +36,7 @@ Where this runs: read the story's index first: `stories/<KEY>/README.md` at the 
 5. Write what is deliberately not being done now.
 6. Propose a provisional tier with `assets/tiers.md`. Rate risk, complexity and scope; when the dials disagree, take the highest; when uncertain, go up a tier. Unknown owners, consumers or untested behaviour count as the next tier. Urgency changes the schedule, never the tier.
 7. For a defect or an incident follow-up, add what reproduces it (the failing output, or the steps) and "Done when: a test that reproduces it fails before the fix and passes after".
-8. Fill `assets/intent.md`, replacing each `{{FIELD}}`, and write it to `plans/<KEY>/intent.md` (or `stories/<KEY>/intent.md` for a story that spans several repositories). Never overwrite an existing intent: add a new version.
+8. Fill `assets/intent.md`, replacing each `{{FIELD}}` and leaving every approval slot for the person who approves, and write it to `plans/<KEY>/intent.md` (or `stories/<KEY>/intent.md` for a story that spans several repositories). Never overwrite an existing intent: add a new version.
 9. Offer to post the statement as a comment on the work item. Posting asks the person first.
 10. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
    workspace root) as done, or as stopped with the reason.

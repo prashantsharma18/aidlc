@@ -270,7 +270,6 @@ class StoryStatusTest(unittest.TestCase):
                 self.assertEqual(story_status.main(["SHIP-1", "--root", tmp, "--check-release"]), 1)
             self.assertIn("shipments-api: not a git repository", out.getvalue())
 
-
     # Plan 19: filled documents may fence their FIELD lines and write placeholders as {{...}}
     def test_parts_inside_a_fence_are_read(self):
         plan = ("# Coordination plan · SHIP-1 · x · v1\n\n```text\n"
@@ -283,8 +282,15 @@ class StoryStatusTest(unittest.TestCase):
         self.assertEqual(parts, [(1, "shipments-api"), (2, "web-portal")])
         self.assertEqual(unread, [])
 
+    def test_a_note_after_a_fenced_parts_block_is_not_a_part(self):
+        plan = ("```text\nPARTS      #  Repository     Owner\n           1  shipments-api  core\n```\n\n"
+                "Approved by Bo on the work item.\n")
+        parts, unread = story_status.read_parts(plan)
+        self.assertEqual((parts, unread), ([(1, "shipments-api")], []))
+
     def test_curly_placeholders_are_not_versions(self):
         self.assertEqual(story_status.items("spec v{{n}}"), [])
+
 
 if __name__ == "__main__":
     unittest.main()

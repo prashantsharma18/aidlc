@@ -49,7 +49,7 @@ The approved spec and its version, the approved design note (always), the eviden
 1. Restate the outcome, criteria, edge cases and non-goals before reading any code, and list every ambiguity. Wait for the person to confirm. An ambiguity goes to the criterion's owner (`aidlc-specify`, amendment mode).
 2. Inspect the code read-only. Send heavy reading to the `explorer` agent with one precise question. Label every finding FACT, INFERENCE or UNKNOWN with `file:line`, and give every unknown an owner.
 3. Write the constraints: task boundary; implementation rules; dependency policy (no new dependency: stop and ask); data and security; testing contract (failing tests first; never edit an existing assertion); output evidence. Each must be checkable from the diff or a command. Code that AGENTS.md lists as legacy has no tests that pin its behaviour: change one only after a characterisation test records what it does today. Say so in the plan, and put that test first in its slice.
-4. Draft the plan, `plans/<KEY>/plan.md`, by filling `assets/plan.md` and replacing each `{{FIELD}}`:
+4. Draft the plan, `plans/<KEY>/plan.md`, by filling `assets/plan.md`, replacing each `{{FIELD}}` and leaving every approval slot for the person who approves:
    - every criterion and edge case maps to a named test;
    - every file has a reason;
    - every risk is mitigated, or marked for acceptance by someone with authority;

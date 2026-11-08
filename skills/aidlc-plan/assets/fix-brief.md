@@ -7,6 +7,7 @@
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 
+<!-- Paste command output indented by four spaces: a line of three backticks would end the block. -->
 ```text
 FIX BRIEF · {{KEY}} · {{TITLE}}          route D1 (defect, fast path)
 REPRO       <the steps or the failing output that show the defect>

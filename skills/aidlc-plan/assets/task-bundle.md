@@ -7,6 +7,7 @@
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 
+<!-- Paste command output indented by four spaces: a line of three backticks would end the block. -->
 ```text
 TASK BUNDLE · {{KEY}} · {{SLICE}}
 GOAL        <one or two sentences naming the criteria covered>

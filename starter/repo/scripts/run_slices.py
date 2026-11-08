@@ -59,9 +59,10 @@ def status(note: Path) -> str:
 
 
 def pause_confirmed(note: Path, state: str) -> bool:
-    """A paused note may run again only when the person recorded "- <pause> confirmed by <name>, <date>"."""
+    """A paused note may run again only when the person recorded "- <pause> confirmed by <name>, <date>"; a
+    placeholder (<name> or {{name}}) is not a confirmation."""
     pause = state.split(":", 1)[1].strip()
-    line = rf"^-[ \t]+{re.escape(pause)}[ \t]+confirmed by[ \t]+[^<\s]"
+    line = rf"^-[ \t]+{re.escape(pause)}[ \t]+confirmed by[ \t]+[^<{{\s]"
     return bool(re.search(line, note.read_text(encoding="utf-8"), re.M))
 
 

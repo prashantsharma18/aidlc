@@ -7,7 +7,7 @@ Read this before planning a change. Paths are from the repository root.
 {{purpose, who calls it, what it calls}}
 
 ## Areas
-{{area path}}   {{responsibility}}; may depend on <...>; owner <...>
+{{area path}}   {{responsibility}}; may depend on {{...}}; owner {{...}}
 
 ## Key flows
 {{entry}} -> {{file}} -> {{file}}   {{the invariant that must hold}}

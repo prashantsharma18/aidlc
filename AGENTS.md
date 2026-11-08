@@ -25,8 +25,8 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
   keep their own structure. `using-aidlc` keeps the open format. A stage step commands a practice with "Load the
   `<name>` skill"; `scripts/test_loads.py` holds the table.
 - Templates (`skills/aidlc-*/assets/`) are read rendered by the people who approve them: a placeholder outside a
-  code block is written `{{…}}`, because GitHub drops `<word>` as an HTML tag; a block of FIELD lines sits in a
-  ```text fence; and every document a person approves opens with a `## For the reviewer` section naming who
+  code block is written `{{…}}`, because GitHub drops `<word>` as an HTML tag; a block of FIELD lines
+  sits in a ```text fence; and every document a person approves opens with a `## For the reviewer` section naming who
   decides, where they record it, the tier and main risk, and what changed.
 - A skill never names a tool-specific command or a parked harness command; it names "the repository's commands from AGENTS.md".
 - Every

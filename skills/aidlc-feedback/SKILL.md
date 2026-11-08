@@ -22,18 +22,18 @@ Once an incident is contained, before its blameless review closes it, or when th
 Where this runs: where the lessons came from. No story is needed. After an incident, write to `incidents/<ID>/`; for
 findings that repeat across reviews, write to `feedback/<YYYY-MM-DD>-<topic>/` where this session runs.
 
-The incident record (its Prevention line) or the repeated findings, and the owners of each source: tests, eval cases, rules files, tool permissions and CI checks, review checklists.
+The incident record (its Prevention section) or the repeated findings, and the owners of each source: tests, eval cases, rules files, tool permissions and CI checks, review checklists.
 
 ## Steps
 1. List the lessons, one per line, each with its evidence.
 2. Choose each lesson's layer by its kind: behaviour that can regress goes to a test; an agent mistake that could recur goes to an eval case; missing knowledge goes to the context (rules file or map); something that must never happen, or an unsafe action, goes to a guardrail (permission, hook, CI check); something only a person can judge goes to the review checklist; a signal nobody saw goes to a measure (an alert or dashboard). Always add a regression test for every fix, and an eval case wherever an agent mistake could recur. When two layers fit, prefer the enforced one.
 3. Draft the change for that layer, for the owner of that source to review: load the `writing-tests` skill for a test, load the `building-ci-pipelines` skill for a CI guardrail, load the `adding-observability` skill for a signal or alert, and load the `writing-documentation` skill for the context.
-4. Fill the incident record's Prevention line from `assets/incident.md`: the lesson, the layer and where it went. Lessons from repeated review findings have no incident: write them to `feedback/<YYYY-MM-DD>-<topic>/feedback.md`.
+4. Fill the incident record's Prevention section from `assets/incident.md`: the lesson, the layer and where it went. Lessons from repeated review findings have no incident: write them to `feedback/<YYYY-MM-DD>-<topic>/feedback.md`.
 5. Record each change as merged or declined, with who declined it and why.
 
 ## Produces
 `feedback.md` in `incidents/<ID>/` or `feedback/<YYYY-MM-DD>-<topic>/`: the routing table, one drafted change per lesson,
-and each change's state (merged, or declined with who and why); for an incident, the updated Prevention lines in
+and each change's state (merged, or declined with who and why); for an incident, the updated Prevention section in
 `incident.md`.
 
 ## Gate

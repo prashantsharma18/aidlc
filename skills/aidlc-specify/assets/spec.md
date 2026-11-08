@@ -13,8 +13,8 @@ Spec owner: {{OWNER}} · Tier: {{TIER}} · Version: v1
 {{what changes, for whom, and why}}
 
 ## Scope and non-goals
-In: <...>
-Non-goals: <...>
+In: {{...}}
+Non-goals: {{...}}
 
 ## Rules and constraints
 - {{rule, judgeable true or false}} (set by {{who}})
