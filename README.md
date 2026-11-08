@@ -57,7 +57,7 @@ Core (`plugins/aidlc/`):
 
 The map of stages and practices, and the first skill to read: `using-aidlc`.
 
-Agents the skills call: `explorer`, `planner`, `implementer`, `reviewer-bug`, `reviewer-security`, `reviewer-compliance`, `reviewer-tests`,
+Agents the skills call: `explorer`, `reviewer-bug`, `reviewer-security`, `reviewer-compliance`, `reviewer-tests`,
 `ops-diagnoser` (in `plugins/aidlc/agents/`).
 
 `aidlc-modernize` (`plugins/aidlc-modernize/`): `modernize-assess`, `modernize-characterize`, `modernize-wave-plan`,
