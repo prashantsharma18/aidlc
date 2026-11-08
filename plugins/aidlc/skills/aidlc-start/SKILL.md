@@ -29,9 +29,11 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
    or any other stage: it decides what the rest of the route needs. Write it first in the index's stage checklist.
 3. **What kind of work is it?** New feature, Defect, Change request or Incident follow-up, from the work item. If it
    does not say, ask.
-   - **Defect:** it needs how to reproduce it, the expected and the actual behaviour, and the evidence. Anything
-     missing becomes a question for the reporter; stop until it is answered. Its route ends with "a test that
-     reproduces it fails before the fix and passes after".
+      - **Defect:** it needs how to reproduce it, the expected and the actual behaviour, and the evidence. Anything
+     missing becomes a question for the reporter; stop until it is answered. Then sort it:
+     **Defect fast path (D1)** when all four hold: Tier 1 (`assets/tiers.md`); one repository; a reproduction; and the
+     expected behaviour already written in an approved criterion, a spec, a contract or the documentation (name
+     where). Otherwise the **full defect route (D2)**.
    - **Change request:** find the original story and its documents (`stories/<ORIG>/` at the workspace root, or
      `plans/<ORIG>/` in a repository). Not found: ask, and stop. Still in progress: route it to `aidlc-specify` in
      amendment mode; the parts whose criteria change are marked "re-plan". Already released: it is new work with its
@@ -66,9 +68,12 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
    - part level, inside each repository: `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`;
    - back at the root: `aidlc-release`; on events: `aidlc-operate`, `aidlc-feedback`.
 
-   **A defect** has a shorter checklist: `aidlc-intent` (defect mode), `aidlc-plan` (short), `aidlc-build` (reproducing
-   test first), `aidlc-verify`, `aidlc-review`, `aidlc-release`. When it spans several repositories, it also needs
-   `aidlc-discover` and `aidlc-design` at the root before any part is planned: the parts need the coordination plan.
+      **Defect fast path (D1):** inside the repository, `aidlc-plan` (brief mode), the engineer confirms the brief,
+   `aidlc-build` (the reproducing test first), `aidlc-verify`, `aidlc-review`. No release stage unless the fix changes
+   data or a schema; the normal pipeline ships it.
+
+   **Full defect route (D2):** as a new feature in one repository or several, with `aidlc-intent` first and the
+   reproduction as the spec's first criterion.
 9. Tell the person the next stage, the exact folder to run it in, and the command.
 
 ## Produces

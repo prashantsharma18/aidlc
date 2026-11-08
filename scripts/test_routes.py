@@ -222,6 +222,32 @@ class RoutesTest(unittest.TestCase):
     def test_release_waits_for_every_part_at_the_current_spec(self):
         self.assertIn("or recorded as unaffected", skill("aidlc-release"))
 
+    def test_start_sorts_defects_into_d1_and_d2(self):
+        text = skill("aidlc-start")
+        self.assertNotIn("(defect mode)", text)
+        self.assertNotIn("`aidlc-plan` (short)", text)
+        self.assertIn("Defect fast path (D1)", text)
+        self.assertIn("full defect route (D2)", text)
+
+    def test_plan_has_a_brief_mode_that_writes_the_fix_brief(self):
+        text = skill("aidlc-plan")
+        self.assertIn("**Brief mode**", text)
+        self.assertIn("plans/<KEY>/fix.md", text)
+        brief = read("plugins/aidlc/skills/aidlc-plan/assets/fix-brief.md")
+        for line in ("REPRO", "EXPECTED", "SOURCE", "ACTUAL", "DESIGN", "MAY CHANGE", "STOP IF", "CONFIRMED",
+                     "`plans/<KEY>/**` is exempt from this check"):
+            self.assertIn(line, brief, line)
+
+    def test_build_takes_the_confirmed_brief(self):
+        self.assertIn("the confirmed fix brief `plans/<KEY>/fix.md`", skill("aidlc-build"))
+        self.assertIn("approves `fix.md` with the fix", skill("aidlc-review"))
+
+    def test_build_stops_on_a_brief_with_no_source(self):
+        self.assertIn("The fix brief names no written source for the expected behaviour", skill("aidlc-build"))
+
+    def test_a_d2_defect_starts_its_spec_with_the_reproduction(self):
+        self.assertIn("For a defect (route D2), AC1 is the reproduction", skill("aidlc-specify"))
+
 
 if __name__ == "__main__":
     unittest.main()

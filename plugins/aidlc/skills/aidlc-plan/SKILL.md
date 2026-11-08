@@ -19,6 +19,7 @@ metadata:
   - plan
   - task-bundle
   - story-index
+  - fix-brief
   references:
   - tiers
 disable-model-invocation: true
@@ -27,6 +28,9 @@ disable-model-invocation: true
 
 ## When to use
 After the spec is approved: above Tier 1, planning starts only from a spec its owner approved, recorded with its version. Again, from step 1, whenever scope, approach, risk or criteria change: the plan returns for approval.
+
+**Brief mode** (route D1): a defect that passed `aidlc-start`'s fast-path test. It replaces intent, plan and bundle
+with one file, `plans/<KEY>/fix.md`.
 
 ## Inputs
 Where this runs: inside the repository whose part you are working on. For a story that spans several repositories, read your part's row in the workspace's `../stories/<KEY>/coordination-plan.md` (read-only) and the design it points to; the branch is `feat/<KEY>-<part>` and the pull request title is `[<KEY>] part <n> of <m>: <what>`. Started at the workspace root: name the repository to open, and stop. A one-repository story runs entirely in that repository.
@@ -65,11 +69,22 @@ The approved spec and its version, the approved design note (always), the eviden
    latest bundle, and the rows `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged`.
 9. Mark this stage's row in the index (`plans/<KEY>/README.md`) as done, or as stopped with the reason.
 
+Brief mode:
+1. Restate the defect: the reproduction, the expected behaviour and where it is written, the actual behaviour. When the
+   expected behaviour is written nowhere, stop: it is route D2.
+2. Find the likely area read-only, with the `explorer` agent if the reading is heavy. Label each finding FACT or
+   INFERENCE with `file:line`.
+3. Ask the three design questions; any yes, stop: it is route D2.
+4. Fill `assets/fix-brief.md` and write it to `plans/<KEY>/fix.md`. Choose USE SKILLS from the practice map
+   (`debugging-failures` and `writing-tests` at least).
+5. The engineer confirms the brief and the CONFIRMED line records it. Build starts only from a confirmed brief. Mark
+   this stage's row in the index as done.
+
 ## Produces
 Drafts of `plans/<KEY>/plan.md` and one `plans/<KEY>/bundle-<slice>.md` per slice, on the story branch. Slices live only there, never as tracker sub-tasks. One branch per story per repository: `<type>/<KEY>-<slug>`.
 
 ## Gate
-The tech lead reviews the plan against its checklist and records the approval on the work item with the plan's version and commit. The plan travels on the part's branch, in the same pull request as the code. A slice is built only from an approved bundle; a bundle changed after approval is approved again. You draft; you never approve.
+The tech lead reviews the plan against its checklist and records the approval on the work item with the plan's version and commit. The plan travels on the part's branch, in the same pull request as the code. A slice is built only from an approved bundle; a bundle changed after approval is approved again. In brief mode, the engineer confirms the brief; the code owner approves it with the fix in the pull request. You draft; you never approve.
 
 ## Stop if
 - The spec is not approved, or a criterion is ambiguous.

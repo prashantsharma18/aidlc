@@ -27,7 +27,7 @@ One slice at a time, on the story's branch, after the slice's task bundle is app
 ## Inputs
 Where this runs: inside the repository whose part you are working on. For a story that spans several repositories, read your part's row in the workspace's `../stories/<KEY>/coordination-plan.md` (read-only) and the design it points to; the branch is `feat/<KEY>-<part>` and the pull request title is `[<KEY>] part <n> of <m>: <what>`. Started at the workspace root: name the repository to open, and stop. A one-repository story runs entirely in that repository.
 
-The approved task bundle `plans/<KEY>/bundle-<slice>.md`, the spec and plan versions it pins, and the branch's earlier commits (`git log`) if this slice was started before. The bundle's MAY CHANGE list is the boundary of this slice: every file you change must be on it.
+The approved task bundle `plans/<KEY>/bundle-<slice>.md`, or, on route D1, the confirmed fix brief `plans/<KEY>/fix.md`, which serves as the bundle, the spec and plan versions it pins, and the branch's earlier commits (`git log`) if this slice was started before. The bundle's MAY CHANGE list is the boundary of this slice: every file you change must be on it.
 
 ## Steps
 1. Run the repository's test and lint commands, named in `AGENTS.md`, before any change. If it is red or skips tests, stop: the environment is fixed first.
@@ -52,6 +52,7 @@ The local check is green with no unexplained skips, the diff stays inside MAY CH
 - A test can only pass by changing an existing assertion. Never change it: the criterion's owner decides. There are two exceptions. An approved recipe commit may change test syntax but never what an assertion checks (ADR 0012). An assertion listed under AMENDED ASSERTIONS in the bundle carries its owner's recorded decision: change exactly that one, first, and watch it fail against the old code before changing the code (ADR 0015).
 - A check can pass only by lowering the Quality bar in `AGENTS.md`: a new suppression, a skipped or deleted test, a stub, or a lowered threshold. Stop and report. An exception carries a reason, an owner and an expiry date (next to the code for a suppression, in the Quality bar section for a threshold), and a person approves it in the pull request; without all of these, or past its expiry date, it is a violation.
 - A new dependency seems necessary.
+- The fix brief names no written source for the expected behaviour, or its CONFIRMED line is empty.
 - The plan looks wrong, or the code differs from what the plan assumed. Never improvise a new approach: it goes back to `aidlc-plan`.
 - The spec does not say how something should behave.
 - A failure is about architecture, scope or security, or the fix needs a contract change (it goes to `aidlc-design` in
