@@ -61,7 +61,7 @@ def items(text: str) -> list[str]:
     found = []
     for item in re.split(r"[·,]", text):
         item = " ".join(item.split())
-        if item and item.lower() != "none" and "<" not in item:
+        if item and item.lower() != "none" and "<" not in item and "{{" not in item:
             found.append(item)
     return found
 
@@ -108,7 +108,9 @@ def read_parts(plan: str) -> tuple[list[tuple[int, str]], list[str]]:
         if HEADER.match(line):
             inside = line.startswith("PARTS")
             continue
-        if not inside or not line.strip() or "<" in line or line.strip().startswith("("):
+        if line.strip().startswith("```"):
+            continue
+        if not inside or not line.strip() or "<" in line or "{{" in line or line.strip().startswith("("):
             continue
         m = PART_ROW.match(line)
         if m:

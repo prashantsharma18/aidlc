@@ -39,7 +39,7 @@ def field(text: str, name: str) -> str | None:
     if not match:
         return None
     value = re.split(r"[ \t]{2,}\(", match.group(1), maxsplit=1)[0].strip().strip("`*").strip()
-    return None if not value or value.startswith("<") else value
+    return None if not value or value.startswith(("<", "{{")) else value
 
 
 def tier(text: str) -> int | None:

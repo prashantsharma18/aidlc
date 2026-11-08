@@ -87,6 +87,14 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(run_slices.document(plans, "2"), plans / "bundle-2.md")
 
 
+    def test_curly_placeholders_are_no_value(self):
+        self.assertIsNone(run_slices.field("MODE        {{hands-on | delegate}}\n", "MODE"))
+
+    def test_fields_inside_a_fence_are_read(self):
+        text = "# x\n\n```text\nTIER        1 (why)\nMODE        delegate   (note)\n```\n"
+        self.assertEqual((run_slices.field(text, "MODE"), run_slices.tier(text)), ("delegate", 1))
+
+
 class RunTest(unittest.TestCase):
     def test_every_slice_done_runs_in_order_and_exits_0(self):
         repo = Repo({"plans/SHIP-7/bundle-1.md": bundle(), "plans/SHIP-7/bundle-2.md": bundle()})
