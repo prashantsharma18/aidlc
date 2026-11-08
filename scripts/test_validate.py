@@ -248,6 +248,21 @@ class ValidateTest(unittest.TestCase):
             manifest.write_text(json.dumps({"name": "aidlc", "version": "2.0.0", "dependencies": ["other"]}))
             self.assertTrue(any("requires nothing" in p for p in validate.validate(root)))
 
+    def test_m4_the_marketplace_lists_only_aidlc(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package(root, {"aidlc-plan": skill("aidlc-plan")})
+            (root / ".claude-plugin" / "marketplace.json").write_text(json.dumps(
+                {"name": "aidlc", "plugins": [{"name": "aidlc", "source": "./"}, {"name": "other", "source": "./"}]}))
+            self.assertTrue(any("lists one plugin" in p for p in validate.validate(root)))
+
+    def test_m4_the_plugin_is_named_aidlc(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package(root, {"aidlc-plan": skill("aidlc-plan")})
+            (root / ".claude-plugin" / "plugin.json").write_text(json.dumps({"name": "other", "version": "2.0.0"}))
+            self.assertTrue(any("must be 'aidlc'" in p for p in validate.validate(root)))
+
     def test_versions_are_semantic(self):
         problems = self.check({"aidlc-plan": skill("aidlc-plan")}, version="latest")
         self.assertTrue(any("semantic version" in p for p in problems), problems)

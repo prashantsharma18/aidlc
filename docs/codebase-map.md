@@ -1,5 +1,5 @@
 # aidlc: codebase map
-Owner: framework owners · Last verified: 2026-11-06
+Owner: framework owners · Last verified: 2026-11-08
 
 ## What this repository is
 One skills plugin, `aidlc`, at the repository root. Engineers install it in Claude Code, or copy its `skills/`
@@ -14,7 +14,7 @@ folders into Copilot, Codex or Cursor.
 `starter/repo/`, `starter/workspace/`   files a team copies once; `starter/repo/scripts/` holds `check_recipe_commit.py` and
 `run_slices.py`
 `.claude-plugin/`   `plugin.json`, and `marketplace.json` whose one entry has the source `./`
-`scripts/validate.py`   the marketplace check; `scripts/test_*.py` test it and every script above
+`scripts/validate.py`   the plugin check; `scripts/test_*.py` test it and every script above
 `docs/`   quickstarts, operating model, ADRs, designs, plans, verification records
 
 ## Where common changes go
@@ -26,4 +26,4 @@ folders into Copilot, Codex or Cursor.
 ## Traps
 - A skill names only "the repository's commands from AGENTS.md", never a tool-specific command.
 - In a `SKILL.md`, a backticked `assets/…`, `references/…` or `scripts/…` path must be a file inside that skill.
-- Raise a plugin's version on every release: a pinned version that never changes stops installed copies from updating.
+- Raise the plugin's version on every release: a pinned version that never changes stops installed copies from updating.

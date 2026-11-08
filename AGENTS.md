@@ -5,8 +5,8 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
 
 ## Map
 - `skills/` the `aidlc-*` stage skills and the engineering-practice skills (`skills/NOTICE` holds the third-party
-  licence for parts of the eight earlier practices); `agents/` the agent roles; `evals/` the behaviour evals;
-  `.claude-plugin/` the plugin and its marketplace entry. The repository root is the plugin.
+  licence for parts of the eight earlier practices); `agents/` the agent roles; `evals/` the behaviour evals.
+  The repository root is the plugin.
 - `starter/` files a team copies once into a repository or a workspace, including `starter/repo/scripts/`.
 - `.claude-plugin/marketplace.json` the marketplace entry: one plugin, `aidlc`, whose source is the root (`./`).
 - `docs/` quickstarts, the operating model, ADRs, designs, plans, verification records.

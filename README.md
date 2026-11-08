@@ -54,6 +54,6 @@ Agents the skills call: `explorer`, `reviewer-bug`, `reviewer-security`, `review
 ## Contributing
 
 Check your change with `python3 scripts/validate.py`, `python3 -m unittest discover -s scripts -p 'test_*.py'` and
-`claude plugin validate .`. Raise a plugin's version on every release.
+`claude plugin validate .`. Raise the plugin's version on every release.
 Decisions are in [docs/adr/](docs/adr/). The earlier Python harness is parked under the tag `harness-v1`
 ([what it held](docs/archive/harness-v1.md)).

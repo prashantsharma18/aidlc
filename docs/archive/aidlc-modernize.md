@@ -2,7 +2,8 @@
 
 Archived on 2026-11-08 by the owner, Prashant Sharma, to focus on aidlc. Not deleted: it is in git under the tag
 `aidlc-modernize-archive` (commit f8e093c), and the earlier releases under `aidlc-modernize--v0.1.0` and
-`aidlc-modernize--v0.1.1`.
+`aidlc-modernize--v0.1.1`. The tags live in git only once pushed: the owner runs
+`git push origin aidlc-modernize-archive` (and the two release tags) before others can restore from them.
 
 ## What it held
 - Method skills: `modernize-assess`, `modernize-characterize`, `modernize-wave-plan`, `modernize-parity`,

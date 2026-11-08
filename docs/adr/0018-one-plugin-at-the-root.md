@@ -27,3 +27,8 @@ them. That was more than teammates need. The goal is aidlc itself, installed as 
   `CLAUDE.md` is for contributors, and stays.
 - Bringing the pack back is a design change: as a second plugin with its own folder and marketplace entry, or as
   skills inside aidlc. Either needs a new ADR.
+
+## Upgrading a repository onboarded with aidlc 4
+- Remove `aidlc-modernize@aidlc` from `enabledPlugins` in `.claude/settings.json`: the marketplace no longer lists it.
+- Optionally delete the `## Packs used here` section and the "Pack check" line from `AGENTS.md`, and
+  `scripts/check_packs.py` with its CI step. Nothing in aidlc 5 reads them.

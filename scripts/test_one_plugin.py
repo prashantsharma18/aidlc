@@ -99,5 +99,31 @@ class OnePluginTest(unittest.TestCase):
         self.assertTrue((ROOT / "docs/adr/0018-one-plugin-at-the-root.md").is_file())
         self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "5.0.0")
 
+
+class ReviewFixesTest(unittest.TestCase):
+    """Plan 17 final review: each test was seen failing before its fix."""
+
+    def test_i1_ci_fetches_the_tags_the_archive_test_reads(self):
+        self.assertIn("fetch-depth: 0", read(".github/workflows/validate.yml"))
+        self.assertIn("git push origin aidlc-modernize-archive", read("docs/archive/aidlc-modernize.md"))
+
+    def test_m1_teammates_get_an_upgrade_note(self):
+        adr = read("docs/adr/0018-one-plugin-at-the-root.md")
+        self.assertIn("## Upgrading a repository onboarded with aidlc 4", adr)
+        self.assertIn("`aidlc-modernize@aidlc`", adr)
+
+    def test_m5_both_starters_keep_the_install_and_the_cache_paths(self):
+        for kind in ("repo", "workspace"):
+            settings = json.loads(read(f"starter/{kind}/.claude/settings.json"))
+            self.assertTrue(settings["enabledPlugins"]["aidlc@aidlc"], kind)
+            self.assertIn("aidlc", settings["extraKnownMarketplaces"], kind)
+            self.assertIn("Read(~/.claude/plugins/cache/aidlc/**)", settings["permissions"]["allow"], kind)
+
+    def test_m6_m7_no_stale_wording(self):
+        self.assertNotIn("the marketplace check", read("docs/codebase-map.md"))
+        self.assertNotIn("Raise a plugin's version", read("docs/codebase-map.md") + read("README.md"))
+        agents_map = read("AGENTS.md").split("## Map", 1)[1].split("\n## ", 1)[0]
+        self.assertEqual(agents_map.count(".claude-plugin"), 1)
+
 if __name__ == "__main__":
     unittest.main()
