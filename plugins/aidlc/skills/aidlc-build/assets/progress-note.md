@@ -2,7 +2,14 @@
 # Progress · {{KEY}} · {{SLICE}}
 
 Session state, not memory: it lets a fresh session resume from the record.
-File: `plans/<KEY>/progress-{{SLICE}}.md`, committed with the slice; the compliance reviewer reads it.
+File: `plans/<KEY>/progress-{{SLICE}}.md`, committed on its own as the slice's first commit, then with the slice; the
+compliance reviewer and the slice runner read it.
+
+STATUS      doing   (doing | paused: <checkpoint n | recipe review> | stopped: <reason> | done)
+MODE        <the bundle's MODE; hands-on when the bundle has none>
+
+## Restatement (delegate modes)
+- <goal, criteria covered, MAY CHANGE and STOP IF, with file references>
 
 ## Session plan
 - [ ] 1 <step> — files: <...> — check: <...>

@@ -58,7 +58,7 @@ The approved spec and its version, the approved design note (always), the eviden
 
    At Tier 2 and above, load the `stress-testing-decisions` skill, challenge the draft and record the result in the plan. Where the approach depends on a framework's or library's behaviour, load the `checking-official-docs` skill and cite the source. To choose each criterion's test level, load the `writing-tests` skill; for a criterion users see in a web page, load the `testing-in-browser` skill and map it to a browser test.
 5. Slice the work so each slice is testable, reviewable and reversible. The usual slices are: map (read-only); core change (tests first, behind a flag if needed); edge cases and hardening; refactor and evidence. When in doubt, split along the acceptance criteria. Isolate open questions so they block as few slices as possible. Every slice starts and ends with the repository's tests green, because `aidlc-build` stops when a slice starts red: tests written first for a change go in the slice that makes them pass, and a recipe commit goes in the same slice as the fixes its build errors force. The part's slices share one branch and one pull request, so keep the whole part within the pull-request size `reviewing-code` gives. When it would exceed it, stop and propose the split to `aidlc-design` (in one repository, to the tech lead), which may split it into two parts, each with its own branch and pull request, the second waiting for the first. A second part in the same repository keeps its plan, bundles, progress notes and index in `plans/<KEY>/part-<n>/`. A part already merged when its spec changed gets a revision: branch `<type>/<KEY>-<part>-r<n>`, pull request title `[<KEY>] part <n> of <m>, revision <r>: <what>`, and a bundle pinned to the new spec that covers only the change between the two versions.
-6. Propose a mode per slice (hands-on, delegate with checkpoints, or delegate) with `assets/tiers.md`; the person decides. If unsure, choose the more hands-on mode.
+6. Rate the tier with `assets/tiers.md` and propose a MODE per slice within what the tier allows: hands-on (every tier), delegate with checkpoints (Tiers 1 and 2) or delegate (Tier 1). Write them in each bundle's TIER and MODE lines; the tech lead decides with the bundle. If unsure, choose the more hands-on mode. At Tier 2, delegate with checkpoints puts a CHECKPOINT in DO before each step that touches a contract or another owner's code. A slice with a RECIPE stops for the person's review of the recipe commit in every mode.
 7. Draft one bundle per slice, `plans/<KEY>/bundle-<slice>.md`, by filling `assets/task-bundle.md`:
    - pin the spec, plan and contract versions in PINS, and copy that line into the part index;
    - give pointers, never pasted copies;
@@ -97,7 +97,8 @@ Brief mode:
    INFERENCE with `file:line`.
 3. Ask the three design questions; any yes, stop: it is route D2.
 4. Fill `assets/fix-brief.md` and write it to `plans/<KEY>/fix.md`. Choose USE SKILLS from the practice map
-   (`debugging-failures` and `writing-tests` at least).
+   (`debugging-failures` and `writing-tests` at least). Propose MODE; the engineer chooses it when
+   confirming.
 5. The engineer confirms the brief and the CONFIRMED line records it. Build starts only from a confirmed brief. Mark
    this stage's row in the index as done.
 
@@ -113,7 +114,7 @@ Feature brief mode (route F0):
    - stored data or a schema changes (a migration, a new field, a backfill);
    - the work needs more than one slice, or more than the pull-request size `reviewing-code` gives.
 4. Fill `assets/feature-brief.md` and write it to `plans/<KEY>/brief.md`. Map each criterion to a test named with
-   its ID. Choose USE SKILLS from the practice map (`writing-tests` at least).
+   its ID. Choose USE SKILLS from the practice map (`writing-tests` at least). Propose MODE; the engineer chooses it when confirming.
 5. The engineer confirms the brief and the CONFIRMED line records it. Build starts only from a confirmed brief. Mark
    this stage's row in the index as done, or as stopped with the reason.
 

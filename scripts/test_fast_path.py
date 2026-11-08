@@ -75,6 +75,75 @@ class FastPathTest(unittest.TestCase):
         compliance = read("plugins/aidlc/agents/reviewer-compliance.md")
         self.assertIn("On route D1 or F0 the brief", compliance)
 
+    TIER_TABLES = [f"plugins/aidlc/skills/{s}/assets/tiers.md" for s in
+                   ("aidlc-start", "aidlc-intent", "aidlc-specify", "aidlc-discover", "aidlc-plan", "aidlc-review")]
+
+    def test_the_tier_tables_name_the_modes(self):
+        rows = []
+        for rel in self.TIER_TABLES + ["docs/operating-model/tiers-table.md"]:
+            text = (ROOT / rel).read_text(encoding="utf-8")
+            row = next(line for line in text.splitlines() if line.startswith("| Agent autonomy"))
+            rows.append(row)
+            self.assertIn("delegate with checkpoints", row, rel)
+            self.assertIn("Hands-on only", row, rel)
+            self.assertIn("`brief.md` for a feature", text, rel)
+        self.assertEqual(len(set(rows)), 1)
+        tables = {tuple(line for line in (ROOT / rel).read_text(encoding="utf-8").splitlines()
+                        if line.startswith("|")) for rel in self.TIER_TABLES}
+        self.assertEqual(len(tables), 1)  # the copies' headings differ; their tables do not
+
+    def test_bundle_and_briefs_carry_the_mode(self):
+        bundle = (SKILLS / "aidlc-plan/assets/task-bundle.md").read_text(encoding="utf-8")
+        self.assertRegex(bundle, r"(?m)^TIER\s+<1 \| 2 \| 3>")
+        self.assertRegex(bundle, r"(?m)^MODE\s+<hands-on \| delegate with checkpoints \| delegate>")
+        self.assertIn("CHECKPOINT: <what the person checks here>", bundle)
+        for name in ("fix-brief", "feature-brief"):
+            text = (SKILLS / f"aidlc-plan/assets/{name}.md").read_text(encoding="utf-8")
+            self.assertRegex(text, r"(?m)^MODE\s+<hands-on", name)
+
+    def test_plan_proposes_a_mode_within_the_tier(self):
+        plan = skill("aidlc-plan")
+        self.assertIn("If unsure, choose the more hands-on mode.", plan)
+        self.assertIn("hands-on (every tier), delegate with checkpoints (Tiers 1 and 2) or delegate (Tier 1)", plan)
+        self.assertIn("a CHECKPOINT in DO before each step that touches a contract or another owner's code", plan)
+        self.assertIn("Propose MODE; the engineer chooses it when confirming.", plan)
+
+    def test_build_reads_the_mode(self):
+        build = skill("aidlc-build")
+        self.assertIn("Read the bundle's TIER and MODE.", build)
+        self.assertIn("Hands-on: wait for the person to confirm.", build)
+        self.assertIn("go on without waiting", build)
+        self.assertIn("hands-on and delegate with checkpoints stop", build)
+        self.assertIn("the slice runner named in AGENTS.md", build)
+        self.assertNotIn("claude -p", build)
+
+    def test_a_bundle_without_mode_runs_hands_on(self):
+        self.assertIn("A bundle with no MODE line runs hands-on.", skill("aidlc-build"))
+
+    def test_build_stops_on_a_mode_the_tier_does_not_allow(self):
+        stops = section(skill("aidlc-build"), "## Stop if")
+        self.assertIn("The bundle's MODE is not allowed at its TIER", stops)
+
+    def test_every_mode_keeps_every_stop(self):
+        build = skill("aidlc-build")
+        self.assertIn("The modes change only when the build waits for the person, never what stops it.", build)
+        self.assertIn("in every mode", section(build, "## Steps"))
+        self.assertIn("`stopped: <reason>`", build)
+
+    def test_the_progress_note_has_a_status_and_is_committed_first(self):
+        note = (SKILLS / "aidlc-build/assets/progress-note.md").read_text(encoding="utf-8")
+        self.assertRegex(note, r"(?m)^STATUS\s+doing\s+\(")
+        self.assertRegex(note, r"(?m)^MODE\s+")
+        self.assertIn("## Restatement", note)
+        build = skill("aidlc-build")
+        self.assertIn("commit the note on its own before any other commit of the slice", build)
+        self.assertNotIn("commit it with the slice's first commit", build)
+
+    def test_compliance_checks_status_and_mode(self):
+        compliance = read("plugins/aidlc/agents/reviewer-compliance.md")
+        self.assertIn("Each progress note's STATUS reads done", compliance)
+        self.assertIn("a MODE its TIER does not allow is a high finding", compliance)
+
 
 if __name__ == "__main__":
     unittest.main()

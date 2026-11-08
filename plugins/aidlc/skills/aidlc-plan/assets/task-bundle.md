@@ -3,6 +3,8 @@ TASK BUNDLE · {{KEY}} · {{SLICE}}
 GOAL        <one or two sentences naming the criteria covered>
 INTENT      <spec version and clarifications; plan version and approval commit>
 PINS        spec v<n> · plan v<n> · contract <name> v<n> | contract none
+TIER        <1 | 2 | 3> (from `assets/tiers.md`; the plan's rating)
+MODE        <hands-on | delegate with checkpoints | delegate>   (hands-on: every tier; delegate with checkpoints: Tiers 1 and 2; delegate: Tier 1; approved with the bundle)
 ALREADY     <what loads automatically (AGENTS.md, folder rules); not repeated here>
 LOADED
 LOAD FIRST  <pointers to the plan, spec sections and files; never pasted copies>
@@ -14,8 +16,8 @@ MUST NOT    <paths and things that must not change, incl. existing assertions>
 AMENDED ASSERTIONS  <test: what its assertion checks now> <- spec v<n>, <criterion>, decided by <owner> | none   (the only assertions this slice may change)
 EVIDENCE    FACT <...> | INFERENCE <...> | UNKNOWN <...>
 OPEN        <question> -> <owner>; what waits on it
-DO          0  Restate the goal and criteria with file references; wait for confirmation.
-            1  Tests first: <...>  CHECKPOINT: stop for review (if the mode says so)
+DO          0  Restate the goal and criteria with file references; hands-on waits for confirmation, the delegate modes write it to the progress note.
+            1  Tests first: <...>  CHECKPOINT: <what the person checks here>   (hands-on and delegate with checkpoints stop here; delegate runs on)
             2  <...>
 DONE WHEN   <checks that must pass>; the diff touches only MAY CHANGE paths (`plans/<KEY>/**` is exempt from this check)
 STOP IF     an existing assertion would need to change; a new dependency seems necessary;
