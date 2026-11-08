@@ -46,6 +46,23 @@ class GreenfieldTest(unittest.TestCase):
             self.assertIn("| new system>", text, rel)
         self.assertIn("G · new system", section(skill("using-aidlc"), "## The routes"))
 
+    def test_design_decides_a_new_system(self):
+        design = skill("aidlc-design")
+        self.assertIn("**New system** (route G)", section(design, "## When to use"))
+        self.assertIn("`assets/new-system.md`", design)
+        self.assertIn("approving this design is the approval to add them", design)
+        self.assertIn("On route G there is no codebase map, rules file or ADR yet", section(design, "## Inputs"))
+        template = read("plugins/aidlc/skills/aidlc-design/assets/new-system.md")
+        for field in ("STACK", "DEPENDENCIES", "LAYOUT", "CONTRACTS", "NFR CHECKS", "QUALITY BAR", "COMMANDS",
+                      "SCAFFOLD", "CI", "UI", "APPROVED"):
+            self.assertIn(field, template, field)
+
+    def test_a_stack_without_a_generator_has_no_scaffold(self):
+        self.assertIn("| none: slice 0 writes the skeleton by hand", read("plugins/aidlc/skills/aidlc-design/assets/new-system.md"))
+
+    def test_several_repositories_get_one_slice_0_part_each(self):
+        self.assertIn("one slice-0 part each", skill("aidlc-design"))
+
 
 if __name__ == "__main__":
     unittest.main()

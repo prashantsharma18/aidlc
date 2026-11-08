@@ -20,6 +20,7 @@ metadata:
   - decision-frame
   - adr
   - coordination-plan
+  - new-system
 disable-model-invocation: true
 ---
 # Design: decide the shape before the build
@@ -30,10 +31,12 @@ After the spec is approved and any discovery is decided, before `aidlc-plan`. Ev
 **Amendment mode.** A review, a build or a consumer finds that an approved contract must change. Only this stage changes
 a contract, and only with its consumers' approval.
 
+**New system** (route G): the first design of a system with no code. It also fills `assets/new-system.md`.
+
 ## Inputs
 Where this runs: read the story's index first: `stories/<KEY>/README.md` at the workspace root, `../stories/<KEY>/README.md` from inside one of its repositories, or `plans/<KEY>/README.md` in a lone repository. No index: ask the person to run `aidlc-start` first, and stop. When it routes the story to several repositories, run at the workspace root and write to `stories/<KEY>/`; started inside a repository for such a story, say so, name the workspace root, and stop. When it names one repository, run inside that repository: a one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`; started at the workspace root for such a story, name the repository to open, and stop.
 
-The approved spec, the evidence pack (if any), the architecture contract (codebase map, ADRs, contract files), and the UI reference, if the change adds a screen or a flow.
+The approved spec, the evidence pack (if any), the architecture contract (codebase map, ADRs, contract files), and the UI reference, if the change adds a screen or a flow. On route G there is no codebase map, rules file or ADR yet: this design creates the architecture contract.
 
 ## Steps
 1. Ask the three questions of the design note, `assets/design-note.md`: does the change alter the system's shape, move a boundary, or change a contract someone outside the team relies on? Uncertain counts as yes. If all three are no, draft the note with "none needed" and its reason; the tech lead or architect decides and records "none needed" (the note's RECORDED BY line). Then do step 2 if the change adds a screen or a flow, and stop.
@@ -49,6 +52,16 @@ The approved spec, the evidence pack (if any), the architecture contract (codeba
 7. For each consequence that must always hold, propose its enforcement (a boundary rule or a check), and show the check failing once. Advisory consequences get one line each. When the enforcement is a CI check, load the `building-ci-pipelines` skill.
 8. For a story that spans several repositories, fill the coordination plan from `assets/coordination-plan.md`: one PARTS row per repository that changes (owner, change, flag, what it waits for, undo, status), the read-only repositories, the order (contract first, then the provider behind a flag that is off, then the consumers) and the rollback of each part. Write it to `stories/<KEY>/coordination-plan.md`.
 9. Present the decision for approval against this checklist: Every decision has a Proposed record with a named decider. Contract changes follow the versioning rules, and their consumers approved them. Every non-functional requirement has a test, check or monitor that shows whether it holds. Every must-hold constraint is enforced, and its check was seen to fail. (A session at a workspace root is read-only and cannot run tests; there, the check is drafted now and shown red at the first step of its slice, and the design note says so.) The map and rules file are updated (as drafts for their owners). When a public API or behaviour users see changes, the README, API reference and changelog updates are named (load the `writing-documentation` skill). For each non-functional requirement's check, load the `tuning-performance` skill or load the `adding-observability` skill, whichever fits, if either does. No decision is left for the build to make. When it is approved, add each contract and its version to the story index's CURRENT line.
+
+New system (route G), after the draft steps:
+1. Fill `assets/new-system.md` and write it to the story's folder as `new-system.md`: the stack and the architecture,
+   with an ADR draft for each choice; every dependency named and pinned to a version, because approving this design is
+   the approval to add them; the repository layout (one repository, or several, where the coordination plan holds one
+   slice-0 part each); the contracts; a check for each non-functional requirement; the initial Quality bar targets,
+   which the team sets; the commands for tests, lint, build and run; and the scaffold commands, at pinned versions,
+   that slice 0 runs.
+2. Load the `building-ci-pipelines` skill and design the CI: the required checks, each running one of the commands.
+3. The tech lead or architect approves the design and `new-system.md` together, on the work item.
 
 Amendment mode:
 1. Quote the contract and the finding, and list the parts that consume it from the coordination plan.
