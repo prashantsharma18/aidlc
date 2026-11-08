@@ -1,6 +1,7 @@
 ---
 name: aidlc-feedback
 description: Routes each lesson from an incident, review or retrospective to the layer that would have caught it (a test, an eval case, the context, a guardrail or the review checklist), drafts that change for the owner of the source, and records each as merged or declined. Use when an incident review is done, or when a review keeps finding the same problem.
+argument-hint: "[incident ID or topic]"
 metadata:
   stage: operate
   invocation: manual

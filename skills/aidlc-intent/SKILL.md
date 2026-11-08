@@ -1,6 +1,7 @@
 ---
 name: aidlc-intent
 description: Drafts the intent statement for a work item (a new feature, a defect or an incident follow-up) from the issue and its evidence, with a provisional risk tier, and stops for the product owner. Use when work starts from a story, bug or incident, before any spec or code.
+argument-hint: "[KEY or a short description]"
 metadata:
   stage: intent
   invocation: manual

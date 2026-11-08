@@ -1,6 +1,7 @@
 ---
 name: aidlc-verify
 description: 'Fills the evidence table for a pull request from the trusted CI run, never from the session: one row per criterion and edge case, the integrity checks, scans, AI review answers and anything unproved. It drafts the table for the people who approve the merge. Use when CI has run on the pull request.'
+argument-hint: "[KEY]"
 metadata:
   stage: verify
   invocation: auto

@@ -1,6 +1,7 @@
 ---
 name: aidlc-start
 description: Routes a piece of work to where it runs. It decides the kind of work (new feature, defect, change request, incident follow-up, new system), finds which repositories the work changes, chooses the route, and writes the story's index where the work runs. Use when starting any work in a workspace or a repository, before intent, spec or code.
+argument-hint: "[KEY or a short description]"
 metadata:
   stage: intent
   invocation: manual

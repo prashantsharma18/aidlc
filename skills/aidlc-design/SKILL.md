@@ -1,6 +1,7 @@
 ---
 name: aidlc-design
 description: Decides whether a change needs a design decision, and if so drafts the decision frame, the options with their impact, the ADR and the contract change with its failing tests, contract first. It stops for the tech lead or architect, and for consumers when a contract changes. Use when the spec is approved, before planning.
+argument-hint: "[KEY]"
 metadata:
   stage: design
   invocation: manual

@@ -1,6 +1,7 @@
 ---
 name: aidlc-review
 description: Prepares a pull request for its human reviewers. It checks the inputs, drafts the description that maps changes to criteria, runs read-only bug, security, compliance and test-quality passes, drafts a disposition for every finding, and prepares the code owner's and specialists' questions. It stops for the code owner. Use when CI is green on the pull request, after aidlc-verify.
+argument-hint: "[KEY]"
 metadata:
   stage: review
   invocation: manual

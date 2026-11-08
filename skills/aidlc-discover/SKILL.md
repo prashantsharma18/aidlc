@@ -1,6 +1,7 @@
 ---
 name: aidlc-discover
 description: Answers what a change touches before anyone designs or plans it. It traces callers, callees, data, events and configuration with cited evidence, maps owners, contracts and tests, and drafts the evidence pack for the tech lead's proceed, escalate or raise-tier decision. Use when the tier asks for discovery, or when an owner, consumer or behaviour is unknown.
+argument-hint: "[KEY]"
 metadata:
   stage: discover
   invocation: manual

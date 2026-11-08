@@ -181,5 +181,33 @@ class SkillWordingTest(unittest.TestCase):
             self.assertIn("tech lead approves the plan", tier1, rel)
             self.assertIn("the engineer confirms a fast-path brief", tier1, rel)
 
+
+class CommandsTest(unittest.TestCase):
+    """The stage skills are the commands a person types: each shows its arguments, and the README lists them."""
+
+    HINTS = {"aidlc-start": "[KEY or a short description]", "aidlc-onboard": "[new prepare | new confirm]",
+             "aidlc-intent": "[KEY or a short description]", "aidlc-specify": "[KEY]", "aidlc-discover": "[KEY]",
+             "aidlc-design": "[KEY]", "aidlc-plan": "[KEY]", "aidlc-build": "[KEY] [slice]", "aidlc-verify": "[KEY]",
+             "aidlc-review": "[KEY]", "aidlc-release": "[KEY]", "aidlc-operate": "[incident ID]",
+             "aidlc-feedback": "[incident ID or topic]"}
+
+    def test_every_stage_skill_shows_its_arguments(self):
+        stages = sorted(p.name for p in (ROOT / "skills").glob("aidlc-*") if p.is_dir())
+        self.assertEqual(stages, sorted(self.HINTS))
+        for name, hint in self.HINTS.items():
+            head = read(f"skills/{name}/SKILL.md").split("\n---", 1)[0]
+            self.assertIn(f'argument-hint: "{hint}"', head, name)
+
+    def test_the_readme_lists_the_commands_you_type(self):
+        readme = read("README.md")
+        self.assertIn("## Commands you type", readme)
+        table = readme.split("## Commands you type", 1)[1].split("\n## ", 1)[0]
+        for name in self.HINTS:
+            self.assertIn(f"`/aidlc:{name}", table, name)
+
+    def test_every_quickstart_points_to_the_commands(self):
+        for rel in ("docs/quickstart/claude-code.md", "docs/quickstart/copilot.md", "docs/quickstart/codex-cursor.md"):
+            self.assertIn("../../README.md#commands-you-type", read(rel), rel)
+
 if __name__ == "__main__":
     unittest.main()

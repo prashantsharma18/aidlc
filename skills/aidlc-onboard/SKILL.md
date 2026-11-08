@@ -1,6 +1,7 @@
 ---
 name: aidlc-onboard
 description: Sets up a repository or a workspace for aidlc, new or existing. It surveys the code, gathers other tools' rule files, writes AGENTS.md with the commands and the routing block, builds the codebase map, proposes the starter files, and validates the result with probe questions. At a workspace root it writes WORKSPACE.md and stories/README.md. Use when a repository or workspace starts using aidlc, or when its rules file or map has gone stale.
+argument-hint: "[new prepare | new confirm]"
 metadata:
   stage: context
   invocation: auto

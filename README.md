@@ -40,6 +40,29 @@ The eight routes, drawn: [docs/operating-model/routes.md](docs/operating-model/r
 existing system, and who approves what: [docs/operating-model/adoption.md](docs/operating-model/adoption.md). The
 operating model: [docs/operating-model/workspace-and-repositories.md](docs/operating-model/workspace-and-repositories.md).
 
+## Commands you type
+
+The stage skills are the commands. Each drafts its documents and stops at a person's gate. In Claude Code, type
+them as below; in Copilot, Codex or Cursor, ask for the skill by name ("use aidlc-start for SHIP-12").
+
+| You type | When | It writes |
+|---|---|---|
+| `/aidlc:aidlc-onboard` | Once per repository or workspace; `new prepare` and `new confirm` for a new system | `AGENTS.md` and the codebase map |
+| `/aidlc:aidlc-start SHIP-12` | Every new piece of work: a story, a defect, a change request, an incident follow-up, a new system | The story's index, with its route |
+| `/aidlc:aidlc-intent SHIP-12` | No story yet, or a vague one | The intent, for the product owner |
+| `/aidlc:aidlc-specify SHIP-12` | To write or amend the criteria | The spec |
+| `/aidlc:aidlc-discover SHIP-12` | When the tier or an unknown asks what the change touches | The evidence pack |
+| `/aidlc:aidlc-design SHIP-12` | Always before planning; most end at "none needed" | The design note, ADR drafts, contract changes |
+| `/aidlc:aidlc-plan SHIP-12` | Once the spec is approved; on the fast paths, brief mode | The plan and one bundle per slice, or `fix.md` or `brief.md` |
+| `/aidlc:aidlc-build SHIP-12 1` | One approved slice at a time | Commits and the slice's progress note |
+| `/aidlc:aidlc-verify SHIP-12` | When the pull request's checks have run | The evidence table and the pull request description |
+| `/aidlc:aidlc-review SHIP-12` | Before the code owner reviews | The review record |
+| `/aidlc:aidlc-release SHIP-12` | When every part is merged | The readiness and change records, with stop criteria |
+| `/aidlc:aidlc-operate INC-231` | When an alert fires | The incident record and a follow-up work item |
+| `/aidlc:aidlc-feedback INC-231` | After an incident, or when findings repeat | Where each lesson goes |
+
+Which stages a piece of work needs depends on its route: see [routes.md](docs/operating-model/routes.md).
+
 ## Skills
 
 The skills (`skills/`):

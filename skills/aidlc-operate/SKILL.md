@@ -1,6 +1,7 @@
 ---
 name: aidlc-operate
 description: Supports a person through an alert or incident. It logs the signal and context, lists containment options, tests competing hypotheses on masked evidence through the ops-diagnoser agent, and drafts the incident record and a new work item that states the problem. A person runs every runbook step. Use when an alert fires or an incident is open.
+argument-hint: "[incident ID]"
 metadata:
   stage: operate
   invocation: manual

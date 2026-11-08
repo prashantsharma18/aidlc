@@ -1,6 +1,7 @@
 ---
 name: aidlc-build
 description: Builds one approved slice from its task bundle in a fresh session. It restates, confirms the steps, writes failing tests first (for a defect, the reproducing test before any fix), implements in small green steps inside the allowed paths, keeps a progress note, and stops at the first stop condition. Use when a slice's task bundle is approved.
+argument-hint: "[KEY] [slice]"
 metadata:
   stage: build
   invocation: manual

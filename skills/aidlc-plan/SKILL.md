@@ -1,6 +1,7 @@
 ---
 name: aidlc-plan
 description: Drafts the plan for an approved spec (approach, files with reasons, tests first, order, risks, rejected options, rollback, open questions), slices the work and writes one task bundle per slice, then stops for the tech lead's approval. Use when the spec is approved, and again whenever scope, approach, risk or criteria change.
+argument-hint: "[KEY]"
 metadata:
   stage: plan
   invocation: manual

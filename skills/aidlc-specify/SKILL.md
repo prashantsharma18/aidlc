@@ -1,6 +1,7 @@
 ---
 name: aidlc-specify
 description: Drafts or amends the specification of a work item (acceptance criteria with IDs and examples, edge cases with named deciders, and a Definition of Ready check by tier) and stops for the spec owner. Use when the intent is accepted, or when an approved criterion must change.
+argument-hint: "[KEY]"
 metadata:
   stage: specify
   invocation: manual

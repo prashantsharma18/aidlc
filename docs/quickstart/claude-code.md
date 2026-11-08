@@ -31,3 +31,5 @@ Stage skills run only when you ask for them by name; practice skills load on the
 
 Next: [how to adopt aidlc](../operating-model/adoption.md), on a new system or an existing one in phases, and
 [the eight routes](../operating-model/routes.md) `aidlc-start` chooses from.
+
+The commands you type, stage by stage: [the README's table](../../README.md#commands-you-type).

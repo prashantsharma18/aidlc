@@ -1,6 +1,7 @@
 ---
 name: aidlc-release
 description: Prepares a merged change for release. It checks the five readiness confirmations, chooses the safest strategy, writes the stop criteria before release, records the artefact digest, and drafts the readiness checklist, change record and follow-ups. It recommends ship, limit or hold, and stops for the release approver. Use when the pull request has merged.
+argument-hint: "[KEY]"
 metadata:
   stage: release
   invocation: manual
