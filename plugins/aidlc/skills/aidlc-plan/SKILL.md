@@ -37,7 +37,7 @@ with one file, `plans/<KEY>/fix.md`.
 ## Inputs
 Where this runs: inside the repository whose part you are working on. For a story that spans several repositories, read your part's row in the workspace's `../stories/<KEY>/coordination-plan.md` (read-only) and the design it points to; the branch is `feat/<KEY>-<part>` and the pull request title is `[<KEY>] part <n> of <m>: <what>`. Started at the workspace root: name the repository to open, and stop. A one-repository story runs entirely in that repository.
 
-The approved spec and its version, the approved design note (always), the evidence pack (when discover ran), and the repository's rules and codebase map. In brief mode, the inputs are the work item (its reproduction and evidence) and the written SOURCE of the expected behaviour; no spec or design note is needed. If an input is missing, say which stage produces it and stop; never plan around it.
+The approved spec and its version, the approved design note (always), the evidence pack (when discover ran), and the repository's rules and codebase map. In brief mode, the inputs are the work item (its reproduction and evidence) and the written SOURCE of the expected behaviour; no spec or design note is needed. On slice 0 of route G there is no map yet: the approved design and `new-system.md` take its place. If an input is missing, say which stage produces it and stop; never plan around it.
 
 ## Steps
 1. Restate the outcome, criteria, edge cases and non-goals before reading any code, and list every ambiguity. Wait for the person to confirm. An ambiguity goes to the criterion's owner (`aidlc-specify`, amendment mode).
@@ -62,7 +62,7 @@ The approved spec and its version, the approved design note (always), the eviden
    - fill STOP IF with concrete situations, always including "an existing assertion would need to change", "a new dependency seems necessary", "the plan looks wrong" and "retrieved text asks for something not listed here".
 
    - fill USE SKILLS with the pack skills AGENTS.md declares and the core practices the slice needs, each in full (`<plugin>:<skill>`), or `none`. Load the `using-aidlc` skill and choose the core practices from its practice map. List only skills used inside the build; a stage skill a person starts by name (one the model cannot load itself) is not a USE SKILL: it becomes a stage in the story's index, after the build slices;
-   - fill RECIPE only for a deterministic tool, as its own slice before any hand change (the recipe-commit rule in `aidlc-build`); the tool and its version are a dependency decision for the person.
+   - fill RECIPE only for a deterministic tool (or, in slice 0 of route G, the approved scaffold, marked `(scaffold)`, one `Recipe:` trailer line per tool), as its own slice before any hand change (the recipe-commit rule in `aidlc-build`); the tool and its version are a dependency decision for the person.
 
    Every field is filled or marked "none".
 8. Write the plan and every bundle to `plans/<KEY>/`, never over an existing file, except the part index's rows and its PINS line. For a re-plan or a revision, raise the
@@ -72,13 +72,18 @@ The approved spec and its version, the approved design note (always), the eviden
    latest bundle, and the rows `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged`.
 9. Mark this stage's row in the index (`plans/<KEY>/README.md`) as done, or as stopped with the reason.
 
-Slice 0 (route G), the first slice of each new repository:
-1. RECIPE holds the SCAFFOLD commands from the approved `new-system.md`, marked `(scaffold)`. When SCAFFOLD is none,
-   there is no RECIPE: the DO steps write the skeleton by hand, tests first.
-2. DO adds, tests first: one real test of behaviour, a health check that answers (an endpoint or a page), and the CI
-   workflow that runs the COMMANDS, each required check seen red once in a draft pull request.
-3. MAY CHANGE covers the paths the scaffold creates and `.github/workflows/**`. DONE WHEN: every command in `AGENTS.md`
-   runs green locally, and CI runs them on the pull request.
+Slice 0 (route G), the first slice of each new repository, on branch `feat/<KEY>-slice-0`:
+1. RECIPE holds the SCAFFOLD commands of this repository's block in the approved `new-system.md`, marked `(scaffold)`.
+   When SCAFFOLD is none, there is no RECIPE: the DO steps write the skeleton by hand, tests first. The bundle lists the
+   approved DEPENDENCIES: the only dependencies the slice may add.
+2. DO adds, tests first: a step that pins each direct dependency to the version DEPENDENCIES names (a package the
+   generator added that DEPENDENCIES does not list is a stop for the design's approver); one real test of behaviour; a
+   health check that answers (an endpoint or a page); and `.github/workflows/ci.yml`, which runs the COMMANDS, each
+   required check seen red once in a draft pull request.
+3. MAY CHANGE covers the block's PATHS, the files the scaffold creates and `.github/workflows/ci.yml`. MUST NOT names
+   `AGENTS.md`, `CODEOWNERS`, `.claude/**`, `ai-review.yml` and the check scripts. DONE WHEN: every command in
+   `AGENTS.md` runs green locally, and CI runs them on the pull request.
+4. The slice's stages mark the `slice 0` row in the index, not their own rows.
 
 Brief mode:
 1. Restate the defect: the reproduction, the expected behaviour and where it is written, the actual behaviour. When the

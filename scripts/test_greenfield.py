@@ -99,6 +99,67 @@ class GreenfieldTest(unittest.TestCase):
         self.assertIn("route G", read("README.md"))
         self.assertTrue((ROOT / "docs/adr/0016-greenfield-entry.md").is_file())
 
+    # Final review fixes
+    def test_confirm_does_not_stop_on_the_skeleton_it_needs(self):
+        stop = section(skill("aidlc-onboard"), "## Stop if")
+        self.assertNotIn("In new mode, the folder already holds code", stop)
+        self.assertIn("In new mode, prepare finds source code or a build manifest", stop)
+
+    def test_plan_runs_slice_0_without_a_map(self):
+        self.assertIn("On slice 0 of route G there is no map yet", section(skill("aidlc-plan"), "## Inputs"))
+
+    def test_slice_0_may_add_only_the_approved_dependencies(self):
+        plan, build = skill("aidlc-plan"), skill("aidlc-build")
+        self.assertIn("lists the approved DEPENDENCIES", plan)
+        self.assertIn("pins each direct dependency", plan)
+        self.assertIn("a dependency listed in the approved `new-system.md` is not new", build)
+        self.assertIn("DEPENDENCIES", read("plugins/aidlc/agents/reviewer-compliance.md"))
+
+    def test_route_g_has_one_sequence_of_pull_requests(self):
+        start = skill("aidlc-start")
+        self.assertIn("each step's pull request merges before the next starts", start)
+        self.assertIn("re-runs `aidlc-onboard` at the workspace root", start)
+        self.assertIn("`feat/<KEY>-slice-0`", start)
+        self.assertIn("`aidlc-onboard (prepare)`, `slice 0` and `aidlc-onboard (confirm)`", start)
+        self.assertIn("ends with `aidlc-release`", start)
+        self.assertIn("When repositories are added on route G", skill("aidlc-onboard"))
+        self.assertIn("even for one repository", skill("aidlc-design"))
+        self.assertIn("the system and the first criteria it must meet", skill("aidlc-specify"))
+        self.assertIn("On slice 0 of route G, the rows are the bundle's DONE WHEN checks", skill("aidlc-verify"))
+        self.assertIn("and `aidlc-release`", section(skill("using-aidlc"), "## The routes"))
+
+    def test_new_system_has_one_block_per_repository(self):
+        import re
+        text = (ROOT / "plugins/aidlc/skills/aidlc-design/assets/new-system.md").read_text(encoding="utf-8")
+        for field in ("STACK", "DEPENDENCIES", "LAYOUT", "CONTRACTS", "NFR CHECKS", "QUALITY BAR", "COMMANDS",
+                      "SCAFFOLD", "CI", "UI", "APPROVED", "REPOSITORY", "PATHS"):
+            self.assertRegex(text, rf"(?m)^\s*{field}\s", field)
+        self.assertIn("one REPOSITORY block per repository", text)
+
+    def test_ci_and_branch_protection_have_owners(self):
+        onboard, plan = skill("aidlc-onboard"), skill("aidlc-plan")
+        self.assertIn("slice 0 writes the CI workflow", onboard)
+        self.assertIn("branch protection", onboard)
+        self.assertIn("marks slice 0's checks as required", onboard)
+        self.assertIn("`.github/workflows/ci.yml`", plan)
+        self.assertIn("`ai-review.yml`", plan)
+
+    def test_a_scaffold_trailer_outside_slice_0_is_a_finding(self):
+        compliance = read("plugins/aidlc/agents/reviewer-compliance.md")
+        self.assertIn("outside slice 0 of a story whose index ROUTE is G", compliance)
+        self.assertIn("does not apply to a `(scaffold)` commit", compliance)
+
+    def test_review_minors_are_closed(self):
+        onboard, start, plan, design = (skill(n) for n in ("aidlc-onboard", "aidlc-start", "aidlc-plan", "aidlc-design"))
+        self.assertIn("mark its row in the index", onboard)
+        self.assertIn("no source code and no build manifest", start)
+        self.assertIn("On route G, step 9 runs after", design)
+        self.assertIn("in slice 0 of route G, the approved scaffold", plan)
+        self.assertIn("<!-- On route G", read("plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md"))
+        fm = (SKILLS / "aidlc-start/SKILL.md").read_text(encoding="utf-8").split("---")[1]
+        self.assertIn("new system", fm)
+        self.assertIn("`../stories/<KEY>/new-system.md`", onboard)
+
 
 if __name__ == "__main__":
     unittest.main()

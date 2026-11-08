@@ -1,6 +1,6 @@
 ---
 name: aidlc-start
-description: Routes a piece of work to where it runs. It decides the kind of work (new feature, defect, change request, incident follow-up), finds which repositories the work changes, chooses the route, and writes the story's index where the work runs. Use when starting any work in a workspace or a repository, before intent, spec or code.
+description: Routes a piece of work to where it runs. It decides the kind of work (new feature, defect, change request, incident follow-up, new system), finds which repositories the work changes, chooses the route, and writes the story's index where the work runs. Use when starting any work in a workspace or a repository, before intent, spec or code.
 metadata:
   stage: intent
   invocation: manual
@@ -22,7 +22,7 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
 
 ## Steps
 1. **Where am I?** A `WORKSPACE.md` here means a workspace root; an `AGENTS.md` without it means a single repository.
-   Neither: if the folder holds no code yet (only a README, a licence, a `.gitignore`, `.github/`, `docs/` or `plans/`),
+   Neither: if the folder holds no code yet (only a README, a licence, a `.gitignore`, `.github/`, `docs/` or `plans/`, or other files with no source code and no build manifest),
    ask whether the work is a new system; if it is, the kind is New system (route G). If it holds code, it is an
    existing repository that aidlc has not onboarded: name `aidlc-onboard`, and stop. Otherwise ask the person where the
    work belongs, and stop. A folder with `AGENTS.md` is never route G: its system already exists.
@@ -87,9 +87,18 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
    **Full defect route (D2):** as a new feature in one repository or several, with `aidlc-intent` first and the
    reproduction as the spec's first criterion.
 
-   **New system (G):** `aidlc-intent` (when the story needs it), `aidlc-specify`, `aidlc-design` (the new system's
-   decisions); then in each new repository `aidlc-onboard` (new mode, prepare), `aidlc-plan` (slice 0), `aidlc-build`,
-   `aidlc-verify`, `aidlc-review`, `aidlc-onboard` (new mode, confirm). After that, every feature takes F1 or F2.
+   **New system (G):** each step's pull request merges before the next starts.
+   1. In the home (the repository, or the workspace root): `aidlc-intent` (when the story needs it), `aidlc-specify`
+      (the system and its first criteria), `aidlc-design` (the new system's decisions and `new-system.md`). These
+      documents merge in their own pull request: there is no code yet.
+   2. Several repositories, or undecided: the person creates each repository the design's LAYOUT names, then re-runs
+      `aidlc-onboard` at the workspace root to add them to `WORKSPACE.md` and its deny rules.
+   3. In each new repository: `aidlc-onboard` (new mode, prepare) on its own branch; then slice 0 (`aidlc-plan`,
+      `aidlc-build`, `aidlc-verify`, `aidlc-review`) on `feat/<KEY>-slice-0`; then `aidlc-onboard` (new mode, confirm).
+   4. The story's criteria are then built as in F1 (one repository) or F2 (several), and the story ends with
+      `aidlc-release`. Later features are new stories.
+
+   The index lists the rows `aidlc-onboard (prepare)`, `slice 0` and `aidlc-onboard (confirm)` before the build rows.
 9. Tell the person the next stage, the exact folder to run it in, and the command.
 
 ## Produces

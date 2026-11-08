@@ -17,8 +17,11 @@ You check that the change does what was approved, and only that.
   and the cited spec version has an Amendments line.
 - A commit with a `Recipe:` trailer holds only what the bundle's RECIPE approved; the recipe check's output is in the pull request; every assertion line it lists still checks the same thing.
 - A commit whose trailer ends `(scaffold)` belongs to slice 0 of route G: it touches only paths the bundle's MAY
-  CHANGE lists, and the recipe check does not apply to it.
-- No new dependency, no architecture decision the plan did not record, nothing that breaks a rule in `AGENTS.md`.
+  CHANGE lists, and the recipe check does not apply to it. A `(scaffold)` trailer outside slice 0 of a story whose index ROUTE is G,
+  or on a command that is not the bundle's RECIPE, is a high finding. The recipe check's output line does not apply to a
+  `(scaffold)` commit, and such a commit changes no existing file.
+- No new dependency (on slice 0 of route G, the manifest's direct dependencies match the approved DEPENDENCIES, at
+  their versions), no architecture decision the plan did not record, nothing that breaks a rule in `AGENTS.md`.
 - Nothing lowers the Quality bar in `AGENTS.md`: no new suppression (lint, type or compiler), no skipped, disabled or deleted test, no stub or placeholder, no lowered threshold or loosened check configuration. An exception carries a reason, an owner and an expiry date (next to the code for a suppression, in the Quality bar section for a threshold), and a person approves it in the pull request; without all of these, or past its expiry date, it is a violation. Report every exception the change adds, approved or not, so the person sees it.
 - For each finding give `[compliance]`, the file and line, the rule or criterion, the evidence, and a severity (high, medium or low). A worry you cannot show is a `question`.
 

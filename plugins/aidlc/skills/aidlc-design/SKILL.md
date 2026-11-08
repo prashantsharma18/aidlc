@@ -56,12 +56,12 @@ The approved spec, the evidence pack (if any), the architecture contract (codeba
 New system (route G), after the draft steps:
 1. Fill `assets/new-system.md` and write it to the story's folder as `new-system.md`: the stack and the architecture,
    with an ADR draft for each choice; every dependency named and pinned to a version, because approving this design is
-   the approval to add them; the repository layout (one repository, or several, where the coordination plan holds one
-   slice-0 part each); the contracts; a check for each non-functional requirement; the initial Quality bar targets,
+   the approval to add them; the repository layout (one repository, or several, where the coordination plan holds one slice-0 part each; at a workspace root the coordination plan is written even for one repository); the contracts; a check for each non-functional requirement; the initial Quality bar targets,
    which the team sets; the commands for tests, lint, build and run; and the scaffold commands, at pinned versions,
-   that slice 0 runs.
+   that slice 0 runs. Write one REPOSITORY block per repository: its stack, dependencies, paths, commands, scaffold and CI.
 2. Load the `building-ci-pipelines` skill and design the CI: the required checks, each running one of the commands.
-3. The tech lead or architect approves the design and `new-system.md` together, on the work item.
+3. The tech lead or architect approves the design and `new-system.md` together, on the work item. On route G, step 9 runs after
+   these steps, and its "map and rules file" item is met by `new-system.md`, which onboard turns into them.
 
 Amendment mode:
 1. Quote the contract and the finding, and list the parts that consume it from the coordination plan.

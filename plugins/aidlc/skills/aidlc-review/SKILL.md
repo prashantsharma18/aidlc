@@ -41,7 +41,7 @@ The pull request, its evidence table, on route D1 the fix brief `plans/<KEY>/fix
 7. Draft the review record from `assets/review-record.md`, with no approval part for you.
 8. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
    workspace root) as done, or as stopped with the reason. Once the code owner approves, the person marks the `merged` row done in its final commit, so
-   the row reaches the default branch only through the merge.
+   the row reaches the default branch only through the merge. On slice 0 of route G, mark the `slice 0` row.
 
 ## Produces
 In `plans/<KEY>/`, on the part's branch: `pr-description.md`, `review-record.md` (the dispositions and the reviewers'
