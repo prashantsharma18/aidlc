@@ -151,6 +151,21 @@ class RoutesTest(unittest.TestCase):
             self.assertIn("refer a fresh session", text, rel)
             self.assertIn("discussed anything the bundle does not record", text, rel)
 
+    TRACKED = ("aidlc-intent", "aidlc-specify", "aidlc-discover", "aidlc-design", "aidlc-plan", "aidlc-build",
+               "aidlc-verify", "aidlc-review", "aidlc-release")
+
+    def test_each_tracked_stage_marks_its_row(self):
+        for stage in self.TRACKED:
+            self.assertIn("Mark this stage's row in the index", section(skill(stage), "## Steps"), stage)
+
+    def test_plan_writes_the_part_index_with_the_rows_the_status_script_reads(self):
+        text = skill("aidlc-plan")
+        self.assertIn("`assets/story-index.md`", text)
+        for row in ("`aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged`", "part <n> of <m>"):
+            self.assertIn(row, text, row)
+        self.assertEqual((SKILLS / "aidlc-plan/assets/story-index.md").read_text(encoding="utf-8"),
+                         (SKILLS / "aidlc-start/assets/story-index.md").read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

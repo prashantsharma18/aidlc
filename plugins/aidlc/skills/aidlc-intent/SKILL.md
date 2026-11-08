@@ -37,6 +37,8 @@ Where this runs: read the story's index first: `stories/<KEY>/README.md` at the 
 7. For a defect or an incident follow-up, add what reproduces it (the failing output, or the steps) and "Done when: a test that reproduces it fails before the fix and passes after".
 8. Fill `assets/intent.md`, replacing each `{{FIELD}}`, and write it to `plans/<KEY>/intent.md` (or `stories/<KEY>/intent.md` for a story that spans several repositories). Never overwrite an existing intent: add a new version.
 9. Offer to post the statement as a comment on the work item. Posting asks the person first.
+10. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
+   workspace root) as done, or as stopped with the reason.
 
 ## Produces
 The draft of `plans/<KEY>/intent.md` (or `stories/<KEY>/intent.md`), on the story branch. The accepted intent lives in the work item.

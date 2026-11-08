@@ -18,6 +18,7 @@ metadata:
   templates:
   - plan
   - task-bundle
+  - story-index
   references:
   - tiers
 disable-model-invocation: true
@@ -57,7 +58,11 @@ The approved spec and its version, the approved design note (always), the eviden
    - fill RECIPE only for a deterministic tool, as its own slice before any hand change (the recipe-commit rule in `aidlc-build`); the tool and its version are a dependency decision for the person.
 
    Every field is filled or marked "none".
-8. Write the plan and every bundle to `plans/<KEY>/`, never over an existing file. For a re-plan, raise the version and say what changed.
+8. Write the plan and every bundle to `plans/<KEY>/`, never over an existing file. For a re-plan, raise the version and
+   say what changed. For a part of a story across several repositories, also write the part index
+   `plans/<KEY>/README.md` from `assets/story-index.md`: LEVEL `part <n> of <m> in <repository>`, the PINS line of the
+   latest bundle, and the rows `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged`.
+9. Mark this stage's row in the index (`plans/<KEY>/README.md`) as done, or as stopped with the reason.
 
 ## Produces
 Drafts of `plans/<KEY>/plan.md` and one `plans/<KEY>/bundle-<slice>.md` per slice, on the story branch. Slices live only there, never as tracker sub-tasks. One branch per story per repository: `<type>/<KEY>-<slug>`.

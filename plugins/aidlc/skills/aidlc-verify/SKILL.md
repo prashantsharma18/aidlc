@@ -32,6 +32,8 @@ The pull request's CI results (the checks and their logs, test reports), or, whe
 4. Fill the integrity rows (scope, protected tests, skips), the scans, and the AI review findings, with how each was answered: fixed, with the commit; or dismissed, with the reason.
 5. Under UNPROVED, list every criterion without a passing trusted test, why, and who accepted it; or write "none".
 6. Draft the pull request description: point reviewers at the tests first, and link the spec and plan. Updating the pull request asks the person first.
+7. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
+   workspace root) as done, or as stopped with the reason.
 
 ## Produces
 The evidence table and the pull request description; updating the pull request asks the person first.

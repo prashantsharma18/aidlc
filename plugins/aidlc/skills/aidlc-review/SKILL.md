@@ -39,6 +39,8 @@ The pull request, its evidence table, the spec, plan and task bundles it impleme
 5. Prepare the code owner's questions in this order: context, evidence, tests, diff, risk.
 6. Prepare each required specialist's questions, with pointers to the hunks. At Tier 3, and whenever the change touches secrets, permissions, tool calls, dependencies or prompts, load the `securing-code` skill and draft the security review from `assets/security-review.md`.
 7. Draft the review record from `assets/review-record.md`, with no approval part for you.
+8. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
+   workspace root) as done, or as stopped with the reason.
 
 ## Produces
 In `plans/<KEY>/`, on the part's branch: `pr-description.md`, `review-record.md` (the dispositions and the reviewers'

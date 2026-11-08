@@ -40,6 +40,8 @@ The question or the accepted intent, the provisional tier, `AGENTS.md` and the c
 7. Draft the evidence pack by filling `assets/evidence-pack.md`: one impact line per dependant, and a risk and mitigation for each unknown.
 8. Bring the decision to the tech lead: proceed, escalate, or raise the tier.
 9. Keep what you learned: for each finding worth keeping, propose a codebase-map line, an ADR or a test, as a draft for its owner.
+10. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
+   workspace root) as done, or as stopped with the reason.
 
 ## Produces
 The evidence pack, written to `plans/<KEY>/evidence-pack.md` (or `stories/<KEY>/evidence-pack.md`), and the explorer briefs you used.

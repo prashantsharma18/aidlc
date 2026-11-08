@@ -36,6 +36,8 @@ The merged pull request and its evidence, the feature flag (if any), the monitor
 6. Say what an operations agent may do during the release. Production credentials and approvals are never an agent's.
 7. Recommend ship, limit or hold, with the reason.
 8. During the release, watch the stop criteria with the person: if one trips, roll back first and investigate second; if unsure whether to continue, roll back. Then close the release record and hand over to `aidlc-operate`.
+9. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
+   workspace root) as done, or as stopped with the reason.
 
 ## Produces
 In the story's folder (`plans/<KEY>/` in a repository, `stories/<KEY>/` at a workspace root), on a branch
