@@ -28,3 +28,6 @@ Open a new repository or workspace in Claude Code interactively once and accept 
 
 Start Claude Code at a repository root or the workspace root, never in a subfolder: settings load from the folder you start in.
 Stage skills run only when you ask for them by name; practice skills load on their own when relevant.
+
+Next: [how to adopt aidlc](../operating-model/adoption.md), on a new system or an existing one in phases, and
+[the eight routes](../operating-model/routes.md) `aidlc-start` chooses from.

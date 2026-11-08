@@ -75,6 +75,23 @@ class DocsTest(unittest.TestCase):
         self.assertIn("never the author", sheet)
         for row in rows:
             self.assertNotRegex(row.split("|")[2], r"(?i)\bagent\b|\bAI\b")
+    def test_the_readme_and_every_quickstart_point_to_both(self):
+        self.assertIn("docs/operating-model/routes.md", read("README.md"))
+        self.assertIn("docs/operating-model/adoption.md", read("README.md"))
+        for rel in ("docs/quickstart/claude-code.md", "docs/quickstart/copilot.md", "docs/quickstart/codex-cursor.md"):
+            text = read(rel)
+            self.assertIn("../operating-model/routes.md", text, rel)
+            self.assertIn("../operating-model/adoption.md", text, rel)
+
+    def test_no_document_still_waits_for_the_routes_page(self):
+        self.assertNotIn("arrive in `routes.md` with Plan 17", read("docs/operating-model/lifecycle.md"))
+        self.assertNotIn("Plan 17", read("docs/operating-model/workspace-and-repositories.md"))
+
+    def test_links_in_the_new_documents_resolve(self):
+        for rel in (ROUTES, ADOPTION):
+            base = (ROOT / rel).parent
+            for target in re.findall(r"\]\(([^)#]+)(?:#[^)]*)?\)", read(rel)):
+                self.assertTrue((base / target).exists(), f"{rel}: {target}")
 
 if __name__ == "__main__":
     unittest.main()

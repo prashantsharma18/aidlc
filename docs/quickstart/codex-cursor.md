@@ -13,3 +13,6 @@ Both read the same `SKILL.md` folders and `AGENTS.md`.
 
 The agents in `agents/` are written for Claude Code; in these tools, a skill that "sends the explorer agent" works as a
 focused, read-only sub-task in the same session.
+
+Next: [how to adopt aidlc](../operating-model/adoption.md), on a new system or an existing one in phases, and
+[the eight routes](../operating-model/routes.md) `aidlc-start` chooses from.

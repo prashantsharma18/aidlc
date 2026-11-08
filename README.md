@@ -36,7 +36,9 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
 - **Gates:** each skill drafts and stops; people approve in the pull request and the tracker. Tests come first; an
   existing test assertion is never changed to make a test pass.
 
-The operating model: [docs/operating-model/workspace-and-repositories.md](docs/operating-model/workspace-and-repositories.md).
+The eight routes, drawn: [docs/operating-model/routes.md](docs/operating-model/routes.md). How to adopt aidlc on a new or an
+existing system, and who approves what: [docs/operating-model/adoption.md](docs/operating-model/adoption.md). The
+operating model: [docs/operating-model/workspace-and-repositories.md](docs/operating-model/workspace-and-repositories.md).
 
 ## Skills
 
