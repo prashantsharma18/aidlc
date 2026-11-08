@@ -176,14 +176,14 @@ class ValidateTest(unittest.TestCase):
         self.assertEqual(self.check({"reviewing-code": essay}), [])
 
     def test_the_earlier_practices_are_real_core_skills(self):
-        core = Path(__file__).resolve().parents[1] / "plugins" / "aidlc" / "skills"
+        core = Path(__file__).resolve().parents[1] / "skills"
         for name in sorted(validate.EARLIER_PRACTICES):
             self.assertTrue((core / name / "SKILL.md").is_file(), name)
 
     def test_the_quality_bar_exception_reads_the_same_everywhere(self):
         root = Path(__file__).resolve().parents[1]
-        files = ("plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md", "starter/repo/AGENTS.md",
-                 "plugins/aidlc/skills/aidlc-build/SKILL.md", "plugins/aidlc/agents/reviewer-compliance.md")
+        files = ("skills/aidlc-onboard/assets/agents-md.md", "starter/repo/AGENTS.md",
+                 "skills/aidlc-build/SKILL.md", "agents/reviewer-compliance.md")
         for rel in files:
             self.assertIn("a reason, an owner and an expiry date", (root / rel).read_text(encoding="utf-8"), rel)
 
@@ -199,7 +199,7 @@ class ValidateTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             package(root, {"aidlc-plan": skill("aidlc-plan")})
-            (root / "plugins" / "aidlc" / "skills" / "aidlc-plan" / "assets" / "plan.md").write_text("See core/policy/tiers.yaml.")
+            (root / "skills" / "aidlc-plan" / "assets" / "plan.md").write_text("See core/policy/tiers.yaml.")
             problems = validate.validate(root)
         self.assertTrue(any("assets/plan.md" in p and "core/policy" in p for p in problems), problems)
 
@@ -219,9 +219,9 @@ class ValidateTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             package(root, {"aidlc-plan": skill("aidlc-plan")})
-            for f in (root / "plugins" / "aidlc" / "agents").iterdir():
+            for f in (root / "agents").iterdir():
                 f.unlink()
-            (root / "plugins" / "aidlc" / "agents").rmdir()
+            (root / "agents").rmdir()
             self.assertTrue(any("agents/" in p for p in validate.validate(root)))
 
     def test_the_workspace_starter_never_allows_a_whole_tool(self):
@@ -268,7 +268,7 @@ class ValidateTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             package(root, {"aidlc-plan": skill("aidlc-plan")}, packs=[self.pack()])
-            core = root / "plugins" / "aidlc" / ".claude-plugin" / "plugin.json"
+            core = root / ".claude-plugin" / "plugin.json"
             core.write_text(json.dumps({"name": "aidlc", "version": "2.0.0", "dependencies": ["aidlc-modernize"]}))
             self.assertTrue(any("core requires nothing" in p for p in validate.validate(root)))
 

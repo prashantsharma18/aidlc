@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-EVALS = ROOT / "plugins" / "aidlc" / "evals"
+EVALS = ROOT / "evals"
 TYPES = {"regex", "tool_used", "tool_order", "file_exists", "llm", "baseline"}
 TAGS = {"gate", "routing", "route", "language"}
 GATES = {"gate-spec-approval", "gate-assertion-change", "gate-amended-assertion", "gate-scope", "gate-dependency",
@@ -55,7 +55,7 @@ class EvalsTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_results_are_ignored(self):
-        self.assertIn("plugins/aidlc/evals/results/", (ROOT / ".gitignore").read_text(encoding="utf-8"))
+        self.assertIn("evals/results/", (ROOT / ".gitignore").read_text(encoding="utf-8"))
 
     def test_every_gate_has_a_case(self):
         names = {c.name for c in cases()}

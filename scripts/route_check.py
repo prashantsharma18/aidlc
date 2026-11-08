@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from validate import front_matter  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILLS = ROOT / "plugins" / "aidlc" / "skills"
+SKILLS = ROOT / "skills"
 STOP = set("""a an the and or of to in on for with by is are be this that it as at from your you we our use when do
 does how what which can i me my it's its into not no if so there their them then than our us they its also any all""".split())
 SUFFIXES = ("ations", "ation", "ings", "ing", "ers", "er", "ies", "es", "ed", "ly", "s", "e")

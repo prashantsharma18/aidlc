@@ -3,7 +3,7 @@ import re
 import unittest
 from pathlib import Path
 
-SKILLS = Path(__file__).resolve().parents[1] / "plugins" / "aidlc" / "skills"
+SKILLS = Path(__file__).resolve().parents[1] / "skills"
 LOAD = re.compile(r"\b[Ll]oad the `([a-z0-9-]+)` skill")
 
 

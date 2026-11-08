@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILLS = ROOT / "plugins" / "aidlc" / "skills"
+SKILLS = ROOT / "skills"
 
 
 def read(rel: str) -> str:
@@ -12,7 +12,7 @@ def read(rel: str) -> str:
 
 
 def skill(name: str) -> str:
-    return read(f"plugins/aidlc/skills/{name}/SKILL.md")
+    return read(f"skills/{name}/SKILL.md")
 
 
 def section(body: str, heading: str) -> str:
@@ -39,8 +39,8 @@ class GreenfieldTest(unittest.TestCase):
         self.assertIn("name `aidlc-onboard`, and stop", start)
 
     def test_the_index_and_the_map_know_route_g(self):
-        for rel in ("plugins/aidlc/skills/aidlc-start/assets/story-index.md",
-                    "plugins/aidlc/skills/aidlc-plan/assets/story-index.md"):
+        for rel in ("skills/aidlc-start/assets/story-index.md",
+                    "skills/aidlc-plan/assets/story-index.md"):
             text = read(rel)
             self.assertIn("| G>", text, rel)
             self.assertIn("| new system>", text, rel)
@@ -52,13 +52,13 @@ class GreenfieldTest(unittest.TestCase):
         self.assertIn("`assets/new-system.md`", design)
         self.assertIn("approving this design is the approval to add them", design)
         self.assertIn("On route G there is no codebase map, rules file or ADR yet", section(design, "## Inputs"))
-        template = read("plugins/aidlc/skills/aidlc-design/assets/new-system.md")
+        template = read("skills/aidlc-design/assets/new-system.md")
         for field in ("STACK", "DEPENDENCIES", "LAYOUT", "CONTRACTS", "NFR CHECKS", "QUALITY BAR", "COMMANDS",
                       "SCAFFOLD", "CI", "UI", "APPROVED"):
             self.assertIn(field, template, field)
 
     def test_a_stack_without_a_generator_has_no_scaffold(self):
-        self.assertIn("| none: slice 0 writes the skeleton by hand", read("plugins/aidlc/skills/aidlc-design/assets/new-system.md"))
+        self.assertIn("| none: slice 0 writes the skeleton by hand", read("skills/aidlc-design/assets/new-system.md"))
 
     def test_several_repositories_get_one_slice_0_part_each(self):
         self.assertIn("one slice-0 part each", skill("aidlc-design"))
@@ -71,7 +71,7 @@ class GreenfieldTest(unittest.TestCase):
         self.assertIn("each marked `(not yet run)`", onboard)
         self.assertIn("it is not a new system", section(onboard, "## Stop if"))
         self.assertIn("never run and is not marked `(not yet run)`", section(onboard, "## Red flags"))
-        self.assertIn("(not yet run)", read("plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md"))
+        self.assertIn("(not yet run)", read("skills/aidlc-onboard/assets/agents-md.md"))
 
     def test_confirm_stops_on_a_command_that_fails(self):
         self.assertIn("stop on any that does not", skill("aidlc-onboard"))
@@ -81,7 +81,7 @@ class GreenfieldTest(unittest.TestCase):
         self.assertIn("**Slice 0** (route G)", section(plan, "## When to use"))
         self.assertIn("marked `(scaffold)`", plan)
         self.assertIn("seen red once", plan)
-        self.assertIn("(scaffold)", read("plugins/aidlc/skills/aidlc-plan/assets/task-bundle.md"))
+        self.assertIn("(scaffold)", read("skills/aidlc-plan/assets/task-bundle.md"))
 
     def test_slice_0_without_a_scaffold_is_written_by_hand(self):
         self.assertIn("When SCAFFOLD is none, there is no RECIPE", skill("aidlc-plan"))
@@ -91,7 +91,7 @@ class GreenfieldTest(unittest.TestCase):
         self.assertIn("skip this step; the scaffold recipe commit comes first", build)
         self.assertIn("`Recipe: <tool>@<version> (scaffold)`", build)
         self.assertIn("is not checked by the recipe check", build)
-        self.assertIn("(scaffold)", read("plugins/aidlc/agents/reviewer-compliance.md"))
+        self.assertIn("(scaffold)", read("agents/reviewer-compliance.md"))
 
     def test_the_docs_describe_route_g(self):
         self.assertNotIn("G, from aidlc 4.1", read("docs/operating-model/lifecycle.md"))
@@ -113,7 +113,7 @@ class GreenfieldTest(unittest.TestCase):
         self.assertIn("lists the approved DEPENDENCIES", plan)
         self.assertIn("pins each direct dependency", plan)
         self.assertIn("a dependency listed in the approved `new-system.md` is not new", build)
-        self.assertIn("DEPENDENCIES", read("plugins/aidlc/agents/reviewer-compliance.md"))
+        self.assertIn("DEPENDENCIES", read("agents/reviewer-compliance.md"))
 
     def test_route_g_has_one_sequence_of_pull_requests(self):
         start = skill("aidlc-start")
@@ -130,7 +130,7 @@ class GreenfieldTest(unittest.TestCase):
 
     def test_new_system_has_one_block_per_repository(self):
         import re
-        text = (ROOT / "plugins/aidlc/skills/aidlc-design/assets/new-system.md").read_text(encoding="utf-8")
+        text = (ROOT / "skills/aidlc-design/assets/new-system.md").read_text(encoding="utf-8")
         for field in ("STACK", "DEPENDENCIES", "LAYOUT", "CONTRACTS", "NFR CHECKS", "QUALITY BAR", "COMMANDS",
                       "SCAFFOLD", "CI", "UI", "APPROVED", "REPOSITORY", "PATHS"):
             self.assertRegex(text, rf"(?m)^\s*{field}\s", field)
@@ -145,7 +145,7 @@ class GreenfieldTest(unittest.TestCase):
         self.assertIn("`ai-review.yml`", plan)
 
     def test_a_scaffold_trailer_outside_slice_0_is_a_finding(self):
-        compliance = read("plugins/aidlc/agents/reviewer-compliance.md")
+        compliance = read("agents/reviewer-compliance.md")
         self.assertIn("outside slice 0 of a story whose index ROUTE is G", compliance)
         self.assertIn("does not apply to a `(scaffold)` commit", compliance)
 
@@ -155,7 +155,7 @@ class GreenfieldTest(unittest.TestCase):
         self.assertIn("no source code and no build manifest", start)
         self.assertIn("On route G, step 9 runs after", design)
         self.assertIn("in slice 0 of route G, the approved scaffold", plan)
-        self.assertIn("<!-- On route G", read("plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md"))
+        self.assertIn("<!-- On route G", read("skills/aidlc-onboard/assets/agents-md.md"))
         fm = (SKILLS / "aidlc-start/SKILL.md").read_text(encoding="utf-8").split("---")[1]
         self.assertIn("new system", fm)
         self.assertIn("`../stories/<KEY>/new-system.md`", onboard)

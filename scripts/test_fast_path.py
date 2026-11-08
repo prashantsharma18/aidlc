@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILLS = ROOT / "plugins" / "aidlc" / "skills"
+SKILLS = ROOT / "skills"
 
 
 def read(rel: str) -> str:
@@ -12,7 +12,7 @@ def read(rel: str) -> str:
 
 
 def skill(name: str) -> str:
-    return read(f"plugins/aidlc/skills/{name}/SKILL.md")
+    return read(f"skills/{name}/SKILL.md")
 
 
 def section(body: str, heading: str) -> str:
@@ -31,7 +31,7 @@ class FastPathTest(unittest.TestCase):
 
     def test_the_index_and_the_map_know_f0(self):
         for name in ("aidlc-start", "aidlc-plan"):
-            self.assertIn("<F0 | F1 | F2 | C | D1 | D2 | G>", read(f"plugins/aidlc/skills/{name}/assets/story-index.md"))
+            self.assertIn("<F0 | F1 | F2 | C | D1 | D2 | G>", read(f"skills/{name}/assets/story-index.md"))
         self.assertIn("| F0 · feature, fast path |", skill("using-aidlc"))
 
     def test_plan_writes_a_feature_brief(self):
@@ -42,7 +42,7 @@ class FastPathTest(unittest.TestCase):
         self.assertIn("- feature-brief", (SKILLS / "aidlc-plan/SKILL.md").read_text(encoding="utf-8"))
 
     def test_the_brief_holds_every_condition(self):
-        brief = read("plugins/aidlc/skills/aidlc-plan/assets/feature-brief.md")
+        brief = read("skills/aidlc-plan/assets/feature-brief.md")
         self.assertTrue(brief.startswith("<!-- aidlc template: feature-brief -->"))
         for field in ("CRITERIA", "OWNER", "TIER 1", "DESIGN none needed", "DEPENDENCIES none new",
                       "DATA no change", "MODE", "MAY CHANGE", "DONE WHEN", "STOP IF", "CONFIRMED"):
@@ -72,10 +72,10 @@ class FastPathTest(unittest.TestCase):
     def test_verify_and_review_read_the_feature_brief(self):
         self.assertIn("On route F0, the feature brief `plans/<KEY>/brief.md`", skill("aidlc-verify"))
         self.assertIn("on route F0 the feature brief `plans/<KEY>/brief.md`", skill("aidlc-review"))
-        compliance = read("plugins/aidlc/agents/reviewer-compliance.md")
+        compliance = read("agents/reviewer-compliance.md")
         self.assertIn("On route D1 or F0 the brief", compliance)
 
-    TIER_TABLES = [f"plugins/aidlc/skills/{s}/assets/tiers.md" for s in
+    TIER_TABLES = [f"skills/{s}/assets/tiers.md" for s in
                    ("aidlc-start", "aidlc-intent", "aidlc-specify", "aidlc-discover", "aidlc-plan", "aidlc-review")]
 
     def test_the_tier_tables_name_the_modes(self):
@@ -140,7 +140,7 @@ class FastPathTest(unittest.TestCase):
         self.assertNotIn("commit it with the slice's first commit", build)
 
     def test_compliance_checks_status_and_mode(self):
-        compliance = read("plugins/aidlc/agents/reviewer-compliance.md")
+        compliance = read("agents/reviewer-compliance.md")
         self.assertIn("Each progress note's STATUS reads done", compliance)
         self.assertIn("a MODE its TIER does not allow is a high finding", compliance)
 
@@ -149,10 +149,10 @@ class FastPathTest(unittest.TestCase):
         self.assertIn("`run_slices.py`", skill("aidlc-onboard"))
 
     def test_the_new_gates_have_cases(self):
-        evals = ROOT / "plugins/aidlc/evals"
+        evals = ROOT / "evals"
         for name in ("route-f0-start", "gate-f0-data-change", "gate-delegate-tier2"):
             self.assertTrue((evals / name / "case.yaml").is_file(), name)
-        self.assertIn("gate-delegate-tier2", read("plugins/aidlc/evals/README.md"))
+        self.assertIn("gate-delegate-tier2", read("evals/README.md"))
 
     def test_the_docs_describe_f0_and_the_modes(self):
         self.assertIn("features by the fast path (F0)", read("docs/operating-model/lifecycle.md"))
@@ -175,7 +175,7 @@ class ReviewFixesTest(unittest.TestCase):
     def test_i3_a_pause_resumes_only_on_a_recorded_confirmation(self):
         build = skill("aidlc-build")
         self.assertIn("<pause> confirmed by <name>, <YYYY-MM-DD>", build)
-        note = read("plugins/aidlc/skills/aidlc-build/assets/progress-note.md")
+        note = read("skills/aidlc-build/assets/progress-note.md")
         self.assertIn("## Pauses confirmed (by the person)", note)
 
     def test_i4_re_routing_is_a_step(self):
@@ -190,11 +190,11 @@ class ReviewFixesTest(unittest.TestCase):
 
     def test_i5_onboarded_repositories_name_the_runner(self):
         line = "python3 scripts/run_slices.py <KEY> <slice> [<slice> ...] [--part <n>]"
-        self.assertIn(line, read("plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md"))
+        self.assertIn(line, read("skills/aidlc-onboard/assets/agents-md.md"))
         self.assertIn(line, read("starter/repo/AGENTS.md"))
 
     def test_i6_i7_the_f0_cases_reach_their_gates(self):
-        evals = "plugins/aidlc/evals"
+        evals = "evals"
         self.assertIn("I confirm your restatement in advance", read(f"{evals}/gate-f0-data-change/prompt.md"))
         setup = read(f"{evals}/route-f0-start/setup.sh")
         self.assertIn("tests/test_labels.py", setup)
@@ -206,7 +206,7 @@ class ReviewFixesTest(unittest.TestCase):
         self.assertIn("A stop before step 4, when there is no note yet, only reports.", build)
 
     def test_m8_m9_compliance_on_checkpoints_and_old_notes(self):
-        compliance = read("plugins/aidlc/agents/reviewer-compliance.md")
+        compliance = read("agents/reviewer-compliance.md")
         self.assertIn("A Tier 2 bundle in delegate with checkpoints with no CHECKPOINT", compliance)
         self.assertIn("A note written before aidlc 4.3 has no STATUS or MODE line: that is not a finding.", compliance)
 
@@ -220,7 +220,7 @@ class ReviewFixesTest(unittest.TestCase):
         self.assertIn("run_slices.py", read("docs/codebase-map.md"))
 
     def test_m13_the_tier_2_case_forbids_the_test_file(self):
-        graders = ROOT / "plugins/aidlc/evals/gate-delegate-tier2/graders"
+        graders = ROOT / "evals/gate-delegate-tier2/graders"
         for tool in ("write", "edit"):
             text = (graders / f"no-test-{tool}.md").read_text(encoding="utf-8")
             self.assertIn("tests/test_labels", text)
@@ -228,7 +228,7 @@ class ReviewFixesTest(unittest.TestCase):
     def test_m14_briefs_say_checkpoints_run_as_delegate(self):
         for name in ("fix-brief", "feature-brief"):
             self.assertIn("a brief has no CHECKPOINT, so delegate with checkpoints runs as delegate",
-                          read(f"plugins/aidlc/skills/aidlc-plan/assets/{name}.md"))
+                          read(f"skills/aidlc-plan/assets/{name}.md"))
 
 
 if __name__ == "__main__":

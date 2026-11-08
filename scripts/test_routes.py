@@ -5,8 +5,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILLS = ROOT / "plugins" / "aidlc" / "skills"
-AGENTS = ROOT / "plugins" / "aidlc" / "agents"
+SKILLS = ROOT / "skills"
+AGENTS = ROOT / "agents"
 STAGES = sorted(p.name for p in SKILLS.iterdir() if p.name.startswith("aidlc-"))
 
 
@@ -16,7 +16,7 @@ def read(rel: str) -> str:
 
 
 def skill(name: str) -> str:
-    return read(f"plugins/aidlc/skills/{name}/SKILL.md")
+    return read(f"skills/{name}/SKILL.md")
 
 
 def section(body: str, heading: str) -> str:
@@ -55,7 +55,7 @@ class RoutesTest(unittest.TestCase):
             "permissions"]["allow"]
         for rule in ("Edit(/stories/**)", "Edit(/incidents/**)", "Edit(/feedback/**)"):
             self.assertIn(rule, allow)
-        for rel in ("starter/workspace/WORKSPACE.md", "plugins/aidlc/skills/aidlc-onboard/assets/workspace.md"):
+        for rel in ("starter/workspace/WORKSPACE.md", "skills/aidlc-onboard/assets/workspace.md"):
             self.assertIn("write only under `stories/`, `incidents/` and `feedback/`", read(rel), rel)
 
     def test_no_stage_produces_only_in_the_reply(self):
@@ -81,14 +81,14 @@ class RoutesTest(unittest.TestCase):
         self.assertIn("an index left by aidlc 3 that only points to a repository", skill("aidlc-start"))
 
     def test_the_story_index_template_has_the_tracked_lines(self):
-        template = read("plugins/aidlc/skills/aidlc-start/assets/story-index.md")
+        template = read("skills/aidlc-start/assets/story-index.md")
         for line in ("SOURCE", "KIND", "ROUTE", "LEVEL", "CURRENT", "PINS", "UNAFFECTED", "| Stage | Runs in | Status |"):
             self.assertIn(line, template, line)
         self.assertIn("`assets/story-index.md`", skill("aidlc-start"))
 
     def test_the_workspace_keeps_nothing_for_a_one_repository_story(self):
         for rel in ("starter/workspace/stories/README.md", "starter/workspace/WORKSPACE.md",
-                    "plugins/aidlc/skills/aidlc-onboard/assets/workspace.md"):
+                    "skills/aidlc-onboard/assets/workspace.md"):
             text = read(rel)
             self.assertNotIn("pointer", text, rel)
             self.assertIn("A story that changes one repository has nothing here", text, rel)
@@ -120,14 +120,14 @@ class RoutesTest(unittest.TestCase):
     def test_verify_writes_one_evidence_file_per_part(self):
         self.assertNotIn("evidence-<slice>.md", skill("aidlc-verify"))
         self.assertIn("plans/<KEY>/evidence.md", skill("aidlc-verify"))
-        self.assertIn("{{PART}}", read("plugins/aidlc/skills/aidlc-verify/assets/evidence-table.md"))
+        self.assertIn("{{PART}}", read("skills/aidlc-verify/assets/evidence-table.md"))
 
     def test_story_documents_are_exempt_from_the_scope_check(self):
         phrase = "`plans/<KEY>/**` is exempt from this check"
-        for rel in ("plugins/aidlc/skills/aidlc-build/SKILL.md", "plugins/aidlc/agents/reviewer-compliance.md",
-                    "plugins/aidlc/skills/aidlc-plan/assets/task-bundle.md"):
+        for rel in ("skills/aidlc-build/SKILL.md", "agents/reviewer-compliance.md",
+                    "skills/aidlc-plan/assets/task-bundle.md"):
             self.assertIn(phrase, read(rel), rel)
-        self.assertIn("plans/<KEY>/** exempt", read("plugins/aidlc/skills/aidlc-verify/assets/evidence-table.md"))
+        self.assertIn("plans/<KEY>/** exempt", read("skills/aidlc-verify/assets/evidence-table.md"))
 
     def test_the_plan_approval_is_recorded_on_the_work_item(self):
         gate = section(skill("aidlc-plan"), "## Gate")
@@ -138,15 +138,15 @@ class RoutesTest(unittest.TestCase):
         build = skill("aidlc-build")
         self.assertNotIn("Keep the steps as a checklist in your reply", build)
         self.assertIn("plans/<KEY>/progress-<slice>.md", build)
-        self.assertIn("plans/<KEY>/progress-{{SLICE}}.md", read("plugins/aidlc/skills/aidlc-build/assets/progress-note.md"))
+        self.assertIn("plans/<KEY>/progress-{{SLICE}}.md", read("skills/aidlc-build/assets/progress-note.md"))
         self.assertIn("plans/<KEY>/progress-<slice>.md", section(skill("aidlc-review"), "## Inputs"))
-        compliance = read("plugins/aidlc/agents/reviewer-compliance.md")
+        compliance = read("agents/reviewer-compliance.md")
         self.assertIn("plans/<KEY>/progress-<slice>.md", compliance)
         self.assertIn("covers the bundle's USE SKILLS and every skill `aidlc-build` commands", compliance)
 
     def test_a_fresh_session_per_slice_is_preferred_and_required_after_a_slip(self):
-        for rel in ("plugins/aidlc/skills/aidlc-build/SKILL.md", "starter/repo/AGENTS.md",
-                    "plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md"):
+        for rel in ("skills/aidlc-build/SKILL.md", "starter/repo/AGENTS.md",
+                    "skills/aidlc-onboard/assets/agents-md.md"):
             text = read(rel)
             self.assertIn("refer a fresh session", text, rel)
             self.assertIn("discussed anything the bundle does not record", text, rel)
@@ -167,10 +167,10 @@ class RoutesTest(unittest.TestCase):
                          (SKILLS / "aidlc-start/assets/story-index.md").read_text(encoding="utf-8"))
 
     def test_the_workspace_names_the_status_command(self):
-        for rel in ("starter/workspace/WORKSPACE.md", "plugins/aidlc/skills/aidlc-onboard/assets/workspace.md"):
+        for rel in ("starter/workspace/WORKSPACE.md", "skills/aidlc-onboard/assets/workspace.md"):
             self.assertIn("`python3 scripts/story_status.py <KEY> --write`", read(rel), rel)
         self.assertIn("story_status.py", skill("aidlc-onboard"))
-        self.assertIn("Status is derived", read("plugins/aidlc/skills/aidlc-design/assets/coordination-plan.md"))
+        self.assertIn("Status is derived", read("skills/aidlc-design/assets/coordination-plan.md"))
 
     def test_design_amends_a_contract_at_the_story_level(self):
         text = skill("aidlc-design")
@@ -186,9 +186,9 @@ class RoutesTest(unittest.TestCase):
         self.assertIn("needs a contract change", skill("aidlc-build"))
 
     def test_bundles_pin_their_versions(self):
-        self.assertIn("PINS", read("plugins/aidlc/skills/aidlc-plan/assets/task-bundle.md"))
+        self.assertIn("PINS", read("skills/aidlc-plan/assets/task-bundle.md"))
         self.assertIn("pin the spec, plan and contract versions", skill("aidlc-plan"))
-        self.assertIn("<contract> v<n>", read("plugins/aidlc/skills/aidlc-design/assets/coordination-plan.md"))
+        self.assertIn("<contract> v<n>", read("skills/aidlc-design/assets/coordination-plan.md"))
 
     def test_release_checks_every_part_and_runs_the_integration_check(self):
         text = skill("aidlc-release")
@@ -209,12 +209,12 @@ class RoutesTest(unittest.TestCase):
         text = skill("aidlc-plan")
         self.assertIn("<type>/<KEY>-<part>-r<n>", text)
         self.assertIn("revision <r>", text)
-        self.assertIn("AMENDED ASSERTIONS", read("plugins/aidlc/skills/aidlc-plan/assets/task-bundle.md"))
+        self.assertIn("AMENDED ASSERTIONS", read("skills/aidlc-plan/assets/task-bundle.md"))
 
     def test_amended_assertions_are_the_second_exception_everywhere(self):
-        for rel in ("plugins/aidlc/skills/aidlc-build/SKILL.md", "plugins/aidlc/agents/reviewer-compliance.md",
-                    "plugins/aidlc/skills/writing-tests/SKILL.md", "plugins/aidlc/skills/debugging-failures/SKILL.md",
-                    "plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md", "starter/repo/AGENTS.md"):
+        for rel in ("skills/aidlc-build/SKILL.md", "agents/reviewer-compliance.md",
+                    "skills/writing-tests/SKILL.md", "skills/debugging-failures/SKILL.md",
+                    "skills/aidlc-onboard/assets/agents-md.md", "starter/repo/AGENTS.md"):
             self.assertIn(self.AMENDED, read(rel), rel)
         self.assertNotIn("The one exception is an approved recipe commit", skill("aidlc-build"))
         self.assertIn("fail against the old code", skill("aidlc-build"))
@@ -233,7 +233,7 @@ class RoutesTest(unittest.TestCase):
         text = skill("aidlc-plan")
         self.assertIn("**Brief mode**", text)
         self.assertIn("plans/<KEY>/fix.md", text)
-        brief = read("plugins/aidlc/skills/aidlc-plan/assets/fix-brief.md")
+        brief = read("skills/aidlc-plan/assets/fix-brief.md")
         for line in ("REPRO", "EXPECTED", "SOURCE", "ACTUAL", "DESIGN", "MAY CHANGE", "STOP IF", "CONFIRMED",
                      "`plans/<KEY>/**` is exempt from this check"):
             self.assertIn(line, brief, line)
@@ -254,8 +254,8 @@ class RoutesTest(unittest.TestCase):
         self.assertIn("Figma link and version", text)
         self.assertIn("the product owner approves", text)
         self.assertIn("follows the design system", text)
-        self.assertIn("UI REFERENCE", read("plugins/aidlc/skills/aidlc-design/assets/design-note.md"))
-        ui = read("plugins/aidlc/skills/building-user-interfaces/SKILL.md")
+        self.assertIn("UI REFERENCE", read("skills/aidlc-design/assets/design-note.md"))
+        ui = read("skills/building-user-interfaces/SKILL.md")
         self.assertIn("the approved UI design is the contract", ui)
         self.assertIn("UI REFERENCE", ui)
 
@@ -293,8 +293,8 @@ class RoutesTest(unittest.TestCase):
     def test_who_marks_merged_and_what_a_re_plan_resets(self):
         self.assertIn("marks the `merged` row done in its final commit", skill("aidlc-review"))
         self.assertIn("reset the `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged` rows", skill("aidlc-plan"))
-        for rel in ("plugins/aidlc/skills/aidlc-start/assets/story-index.md", "starter/workspace/WORKSPACE.md",
-                    "plugins/aidlc/skills/aidlc-onboard/assets/workspace.md"):
+        for rel in ("skills/aidlc-start/assets/story-index.md", "starter/workspace/WORKSPACE.md",
+                    "skills/aidlc-onboard/assets/workspace.md"):
             self.assertIn("default branch", read(rel), rel)
 
     def test_build_is_consistent_with_its_own_exceptions(self):
@@ -319,7 +319,7 @@ class RoutesTest(unittest.TestCase):
         self.assertNotIn("One branch per story per repository", plan)
 
     def test_design_always_runs_in_the_onboarding_texts(self):
-        for rel in ("starter/repo/AGENTS.md", "plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md",
+        for rel in ("starter/repo/AGENTS.md", "skills/aidlc-onboard/assets/agents-md.md",
                     "docs/operating-model/workspace-and-repositories.md"):
             text = read(rel)
             self.assertNotIn("`aidlc-discover` and `aidlc-design` (when the tier or a contract asks", text, rel)
@@ -331,7 +331,7 @@ class RoutesTest(unittest.TestCase):
             self.assertTrue((SKILLS / name / "SKILL.md").is_file(), name)
         self.assertIn("**Brief mode**", skill("aidlc-plan"))
         self.assertIn("Amendment mode", skill("aidlc-specify"))
-        self.assertIn("PINS", read("plugins/aidlc/agents/reviewer-compliance.md"))
+        self.assertIn("PINS", read("agents/reviewer-compliance.md"))
 
     def test_review_minors_are_closed(self):
         start = skill("aidlc-start")
@@ -340,8 +340,8 @@ class RoutesTest(unittest.TestCase):
         build = skill("aidlc-build")
         self.assertIn("progress-fix.md", build)
         self.assertIn("still holds its placeholder", build)
-        self.assertIn("Amended assertions seen red", read("plugins/aidlc/skills/aidlc-build/assets/progress-note.md"))
-        self.assertIn("Amended assertions seen red", read("plugins/aidlc/agents/reviewer-compliance.md"))
+        self.assertIn("Amended assertions seen red", read("skills/aidlc-build/assets/progress-note.md"))
+        self.assertIn("Amended assertions seen red", read("agents/reviewer-compliance.md"))
         self.assertIn("except the part index's rows and its PINS line", skill("aidlc-plan"))
         self.assertIn("In one repository", skill("aidlc-release"))
         self.assertIn("not counting `plans/<KEY>/**`", skill("committing-changes"))
