@@ -42,6 +42,22 @@ class RoutesTest(unittest.TestCase):
             self.assertNotIn("`implementer`", text, rel)
             self.assertNotIn("`planner`", text, rel)
 
+    def test_operate_and_feedback_need_no_story(self):
+        for name in ("aidlc-operate", "aidlc-feedback"):
+            text = skill(name)
+            self.assertNotIn("No index: ask the person to run `aidlc-start` first", text, name)
+            self.assertIn("No story is needed", text, name)
+            self.assertIn("incidents/<ID>/", text, name)
+        self.assertIn("feedback/<YYYY-MM-DD>-<topic>/", skill("aidlc-feedback"))
+
+    def test_the_workspace_root_may_write_incidents_and_feedback(self):
+        allow = json.loads((ROOT / "starter/workspace/.claude/settings.json").read_text(encoding="utf-8"))[
+            "permissions"]["allow"]
+        for rule in ("Edit(/stories/**)", "Edit(/incidents/**)", "Edit(/feedback/**)"):
+            self.assertIn(rule, allow)
+        for rel in ("starter/workspace/WORKSPACE.md", "plugins/aidlc/skills/aidlc-onboard/assets/workspace.md"):
+            self.assertIn("write only under `stories/`, `incidents/` and `feedback/`", read(rel), rel)
+
 
 if __name__ == "__main__":
     unittest.main()

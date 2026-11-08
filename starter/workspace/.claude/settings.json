@@ -3,6 +3,8 @@
   "permissions": {
     "allow": [
       "Edit(/stories/**)",
+      "Edit(/incidents/**)",
+      "Edit(/feedback/**)",
       "Read(~/.claude/plugins/cache/aidlc/**)",
       "Read(~/.claude/plugins/marketplaces/aidlc/**)"
     ],

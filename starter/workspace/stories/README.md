@@ -13,6 +13,8 @@ the files below.
 | `design-note.md` | `aidlc-design` | The decisions and the contract change (ADRs live in the repository each one governs) |
 | `coordination-plan.md` | `aidlc-design` | The job sheet: one row per repository part, with its status |
 | `readiness.md`, `release-runbook.md`, `change-record.md`, `compat-matrix.md` | `aidlc-release` | The release |
-| `incident-NN.md`, `feedback.md` | `aidlc-operate`, `aidlc-feedback` | Only when needed |
+
+Incidents need no story: they live in `incidents/<ID>/` at the root, and lessons from repeated review findings in
+`feedback/<YYYY-MM-DD>-<topic>/`.
 
 Each repository keeps its own part's plan, task bundles, evidence and review record in its `plans/<KEY>/`.
