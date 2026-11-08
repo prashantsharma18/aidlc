@@ -36,8 +36,8 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
      where). Otherwise the **full defect route (D2)**.
    - **Change request:** find the original story and its documents (`stories/<ORIG>/` at the workspace root, or
      `plans/<ORIG>/` in a repository). Not found: ask, and stop. Still in progress: route it to `aidlc-specify` in
-     amendment mode; the parts whose criteria change are marked "re-plan". Already released: it is new work with its
-     own key that points to the original, and its criteria include "the original's criteria still hold".
+     amendment mode (route C); the parts whose criteria change are marked "re-plan". Already released: it is new work
+     with its own key that points to the original, and its criteria include "the original's criteria still hold".
    - **Incident follow-up:** link the incident record; route it as a defect, with the incident as the evidence.
 4. **No story yet:** do not draft one. Route to `aidlc-intent`: `aidlc-intent` interviews the person and drafts the
    story for the product owner, who creates it in the tracker.
@@ -53,6 +53,8 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
    - One repository, started inside it: the story runs entirely here, with its documents in `plans/<KEY>/`.
    - Several repositories, or unsure (unsure counts as several): the story runs at the workspace root, with its
      documents in `stories/<KEY>/`; each repository's part runs inside that repository.
+   Name the route in the index's ROUTE line: F1 (a feature in one repository), F2 (a feature across several), C (a
+   change request), D1 or D2 (a defect).
 8. **Write the story's index** where this session runs, from `assets/story-index.md`: `plans/<KEY>/README.md` inside a
    repository, `stories/<KEY>/README.md` at a workspace root. Fill SOURCE, KIND, ROUTE and LEVEL, and one row per stage
    of the route with where it runs and the status "to do".

@@ -32,6 +32,20 @@ aidlc has two kinds of skill.
 | 11 | `aidlc-operate` | The incident record and a new work item | Story level | On-call owns the incident; people act | `aidlc-feedback` |
 | 12 | `aidlc-feedback` | Each lesson routed to a test, an eval case, the context, a guardrail or a checklist | Story level | The owner of each source | — |
 
+## The routes
+
+`aidlc-start` chooses one. Several repositories: the workspace root holds the story and tracks every part. One
+repository: everything happens in that repository.
+
+| Route | When | Stages |
+|---|---|---|
+| F1 · feature, one repository | A new capability or changed behaviour in one repository | `aidlc-intent` (when the story needs it), `aidlc-specify`, `aidlc-discover` (when needed), `aidlc-design`, `aidlc-plan`, `aidlc-build` per slice, `aidlc-verify`, `aidlc-review`, `aidlc-release` |
+| F2 · feature, several repositories | Two or more repositories, or unsure | At the root: intent, specify, discover, design (with the contract and the coordination plan). In each repository: plan, build, verify, review. At the root: release |
+| C · change request, story in progress | An approved criterion must change before release | `aidlc-specify` (amendment mode); each part by its state; a merged part gets a revision pull request |
+| D1 · defect, fast path | Tier 1, one repository, a reproduction, expected behaviour written | `aidlc-plan` (brief mode), the engineer confirms, `aidlc-build`, `aidlc-verify`, `aidlc-review` |
+| D2 · defect, full route | Any other defect | As F1 or F2; the reproduction is the spec's first criterion |
+| I · incident | An alert fires or an incident is open | `aidlc-operate` (no story), then `aidlc-feedback`; the follow-up enters at `aidlc-start` |
+
 ## The practice map
 
 Choose by the kind of work. A slice can need several.

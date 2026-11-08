@@ -15,12 +15,11 @@ Every piece of work starts with `aidlc-start`, at the workspace root (or in a lo
 | Kind | What it needs | Route |
 |---|---|---|
 | New feature | No story: an interview, then a story the product owner creates. A story: a clear problem, outcome and acceptance criteria | intent (if needed), specify, discover and design when the tier or a contract asks, then each part, then release |
-| Defect | How to reproduce it, expected and actual behaviour, evidence (missing: ask and stop) | intent in defect mode, a short plan, build with the reproducing test first, verify, review, release |
+| Defect | How to reproduce it, expected and actual behaviour, evidence (missing: ask and stop) | Tier 1, one repository, reproduced, expected behaviour written: the fast path D1 (plan's brief mode, build, verify, review). Otherwise the full route D2 |
 | Change request | The original story and its documents (not found: ask and stop) | In progress: specify in amendment mode; the affected parts are marked "re-plan". Released: new work with its own key, whose criteria include "the original's criteria still hold" |
 | Incident follow-up | The incident record | As a defect, with the incident as the evidence |
 
-**The scope.** One explorer per repository answers "would this work change you?". One repository: everything runs there,
-documents in its `plans/<KEY>/`. Several, or unsure: the workspace flow.
+**The scope.** One explorer per repository answers "would this work change you?". One repository: everything runs and is tracked there, in its `plans/<KEY>/`; nothing is written at the root. Several, or unsure: the workspace flow.
 
 ## The two levels
 
@@ -46,7 +45,7 @@ workspace root ── release (flags on in the plan's order) ─► the story is
 | Level | Defined by | Tracked by |
 |---|---|---|
 | Story | the tracker | its status; its development panel lists every branch and PR named with its key |
-| Part | a row of `stories/<KEY>/coordination-plan.md` | the row's status: waiting, planned, building, in review, merged, released, re-plan |
+| Part | a row of `stories/<KEY>/coordination-plan.md` | its index in the repository; the story status command at the root derives `stories/<KEY>/status.md` (routes: see `routes.md`, Plan 17) |
 | Slice | a task bundle `plans/<KEY>/bundle-<slice>.md` from `aidlc-plan` | its approval in the pull request; its commits |
 | Step | the numbered checklist `aidlc-build` proposes | one commit per green step |
 
@@ -56,7 +55,7 @@ workspace root ── release (flags on in the plan's order) ─► the story is
 |---|---|---|---|
 | Build | minutes | `aidlc-build`: a failing test, the code, the repository's tests; on a failure, name the cause and make one targeted fix | Three attempts at the same failure, then stop and report |
 | Pull request | hours | CI runs; `aidlc-verify` maps every criterion to its test; a red run goes back to `aidlc-build` | CI stays red; nothing merges |
-| Review | hours to days | `aidlc-review` sends the change to three reviewer agents; the code owner decides each finding; fixes go back through `aidlc-build` | The code owner's approval; branch protection |
+| Review | hours to days | `aidlc-review` sends the change to four reviewer agents; the code owner decides each finding; fixes go back through `aidlc-build` | The code owner's approval; branch protection |
 | Production | days | `aidlc-operate`, then `aidlc-feedback` turns each lesson into a test, a rule, a skill change or an eval case | People decide containment and where each lesson goes |
 
 ## Packs

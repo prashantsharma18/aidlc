@@ -259,6 +259,26 @@ class RoutesTest(unittest.TestCase):
         self.assertIn("the approved UI design is the contract", ui)
         self.assertIn("UI REFERENCE", ui)
 
+    def test_the_map_and_start_name_the_same_routes(self):
+        routes = section(skill("using-aidlc"), "## The routes")
+        start = skill("aidlc-start")
+        for code in ("F1", "F2", "D1", "D2"):
+            self.assertIn(code, routes, code)
+            self.assertIn(code, start, code)
+        self.assertIn("C ·", routes)
+        self.assertIn("I ·", routes)
+        self.assertIn("route C", start)
+
+    def test_the_docs_match_the_kit(self):
+        lifecycle = read("docs/operating-model/lifecycle.md")
+        self.assertNotIn("Eight stages", lifecycle)
+        self.assertIn("routes.md", lifecycle + read("docs/operating-model/workspace-and-repositories.md"))
+        ws = read("docs/operating-model/workspace-and-repositories.md")
+        self.assertNotIn("three reviewer agents", ws)
+        self.assertIn("four reviewer agents", ws)
+        self.assertIn("the eight earlier practices keep their own structure", read("AGENTS.md"))
+        self.assertTrue((ROOT / "docs/adr/0015-work-routes-and-the-part-model.md").is_file())
+
 
 if __name__ == "__main__":
     unittest.main()

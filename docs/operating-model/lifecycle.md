@@ -11,7 +11,7 @@ and gate the framework provides at each stage.
   brief → load context → plan → act → check → correct (retry limit 3) → evidence → hand off.
   Everything it proves is local evidence until trusted CI runs it again.
 
-## Eight stages
+## The stages
 
 | Stage | Decides | Artefact (template) | System of record | Gate | Skill |
 |---|---|---|---|---|---|
@@ -30,9 +30,9 @@ Every stage has a skill in [plugins/aidlc/skills/](../../plugins/aidlc/skills/),
 Start every piece of work with `aidlc-start`: it decides the kind of work and the repositories it changes, and
 says where each stage runs ([workspace-and-repositories.md](workspace-and-repositories.md)).
 
-**Three kinds of work** use the same stages: new work takes the full path by tier; a defect starts
-with a failing test that reproduces it; a change request amends the spec through its owner (spec
-v2), and the plan returns for approval.
+**Seven routes** use these stages: features in one repository (F1) or several (F2), change requests (C), defects by the
+fast path (D1) or the full route (D2), incidents (I), and new systems (G, from aidlc 4.1). `aidlc-start` chooses one;
+the route table is in the `using-aidlc` skill, and the diagrams arrive in `routes.md` with Plan 17.
 
 ## Rules that hold at every stage
 
