@@ -12,7 +12,7 @@ fields: [NAME, PURPOSE]
 ## Repositories
 | Repository | Owner | What it is | Rules file |
 |---|---|---|---|
-| <repo> | <team> | <one line> | AGENTS.md |
+| {{repo}} | {{team}} | {{one line}} | AGENTS.md |
 
 ## How work runs here
 - Start every piece of work with `aidlc-start` here, at the workspace root: a new requirement, a story, a defect, a
@@ -24,7 +24,7 @@ fields: [NAME, PURPOSE]
 - A story is never split into more tracker issues: its parts are rows of `stories/<KEY>/coordination-plan.md`.
 
 ## Tools
-- Tracker: <site, project>; read issues with <tool>; never transition an issue; creating or commenting asks first.
+- Tracker: {{site, project}}; read issues with {{tool}}; never transition an issue; creating or commenting asks first.
 
 ## Commands
 - Story status, after any part moves: `python3 scripts/story_status.py <KEY> --write` (writes `stories/<KEY>/status.md`).

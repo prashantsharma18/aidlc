@@ -52,5 +52,16 @@ class HandoffsTest(unittest.TestCase):
                          read("skills/aidlc-onboard/assets/explorer-brief.md"))
 
 
+    CONVERTED = ["aidlc-design/assets/adr.md", "aidlc-onboard/assets/agents-md.md",
+                 "aidlc-onboard/assets/codebase-map.md", "aidlc-release/assets/compat-matrix.md",
+                 "aidlc-build/assets/progress-note.md", "aidlc-specify/assets/spec.md",
+                 "aidlc-onboard/assets/workspace.md", "aidlc-review/assets/review-record.md"]
+
+    def test_heading_documents_write_placeholders_in_braces(self):
+        for name in self.CONVERTED:
+            rel = f"skills/{name}"
+            self.assertEqual(vanishing(rel), [], rel)
+            self.assertIn("{{", read(rel), rel)
+
 if __name__ == "__main__":
     unittest.main()
