@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-HISTORY = ("docs/plans/", "docs/design/", "docs/verification/", "docs/archive/")
+HISTORY = ("docs/plans/", "docs/design/", "docs/verification/", "docs/archive/", "docs/adr/")
 
 
 def read(rel: str) -> str:
@@ -19,13 +19,10 @@ def tracked() -> list[str]:
 
 
 def live(paths: list[str]) -> list[str]:
-    """Files that describe the kit as it is today: not history, not an ADR before 0018, not this test."""
+    """Files that describe the kit as it is today: not history (decision records included), not this test."""
     keep = []
     for p in paths:
         if p.startswith(HISTORY) or p == "scripts/test_one_plugin.py":
-            continue
-        adr = re.match(r"docs/adr/(\d{4})-", p)
-        if adr and int(adr.group(1)) < 18:
             continue
         if p.endswith((".md", ".py", ".json", ".yml", ".yaml", ".sh")):
             keep.append(p)
