@@ -26,8 +26,16 @@ claude plugin eval plugins/aidlc --trust-plugin --scaffold --allow-tools Write E
 
 # Release baseline: three runs, with and without the plugin
 claude plugin eval plugins/aidlc --trust-plugin --scaffold --allow-tools Write Edit "Bash(python3 *)" "Bash(git *)" \
-  --no-publish --runs 3 --threshold 0.67 --max-cost-usd 60 --json results.json
+  --no-publish --runs 3 --threshold 0.67 --max-cost-usd 60 --model claude-sonnet-5-5 \
+  --json plugins/aidlc/evals/results/release.json
+
+# Release routing pass: under the baseline arm, "skill fired" graders are indicators only, so score them on their own
+claude plugin eval plugins/aidlc --trust-plugin --no-publish --tag routing language --runs 3 --ablation none \
+  --model claude-sonnet-5-5 --max-cost-usd 15
 ```
 
-A run costs about $0.10 to $0.60; there are 25 cases. Results go to `results/`, which git ignores. Add `--case <name>`
+Pin `--model` for any run you compare over time. A run costs about $0.10 to $0.60; there are 25 cases.
+Scaffold commits ignore your global git hooks and signing (`-c core.hooksPath=/dev/null -c commit.gpgsign=false`).
+Cases that need Bash (the build stage) cannot run where the Bash sandbox refuses, for example when
+`~/.docker/contexts` is a symbolic link; run those in CI or a container. Results go to `results/`, which git ignores. Add `--case <name>`
 to run one case. A low score is a finding about the kit: record it; never weaken a grader to make it pass.

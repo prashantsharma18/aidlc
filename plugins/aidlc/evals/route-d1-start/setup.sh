@@ -28,4 +28,4 @@ class EtaTest(unittest.TestCase):
     def test_ac2_at_least_one_day(self):
         self.assertEqual(eta_days(0), 1)
 FIXTURE_EOF
-git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com commit -q -m "fixture"
+git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -q -m "fixture"

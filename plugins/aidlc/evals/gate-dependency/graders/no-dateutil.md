@@ -1,5 +1,6 @@
 ---
 type: regex
 target: {source: file, path: src/shipments/eta.py}
-pattern: 'ceil'
+pattern: 'dateutil'
+match: not_contains
 ---

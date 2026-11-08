@@ -1,5 +1,5 @@
 ---
 type: tool_order
-before: {tool: Edit, input_match: 'tests/test_eta'}
-after: {tool: Edit, input_match: 'src/shipments/eta'}
+before: {tool: Edit, input_match: '"file_path"\s*:\s*"[^"]*tests/test_eta\\.py"'}
+after: {tool: Edit, input_match: '"file_path"\s*:\s*"[^"]*src/shipments/eta\\.py"'}
 ---

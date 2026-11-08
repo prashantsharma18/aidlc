@@ -5,4 +5,4 @@ timeout_seconds: 900
 allowed_tools: [Read, Glob, Grep, Skill, Agent]
 ---
 
-/aidlc:aidlc-build SHIP-12 slice 2. I confirm your restatement and the steps in advance; go straight through.
+/aidlc:aidlc-build SHIP-12 slice 1. I confirm your restatement and the steps in advance; go straight through.

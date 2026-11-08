@@ -1,0 +1,15 @@
+{
+  "_note": "Held-out prompts: never used to edit a description. A miss here is a finding, fixed in the description and recorded; the prompt stays as it is.",
+  "cases": [
+    {"skill": "securing-code", "prompt": "Review this endpoint for security problems.", "top_k": 3},
+    {"skill": "securing-code", "prompt": "Anything wrong with this endpoint that lets a user make themselves an admin?", "top_k": 3},
+    {"skill": "writing-tests", "prompt": "pages(21, 10) returns 2 but should be 3. Fix it.", "top_k": 3},
+    {"skill": "reviewing-code", "prompt": "Review this before I merge it.", "top_k": 3},
+    {"skill": "committing-changes", "prompt": "Write me a commit message for this.", "top_k": 3},
+    {"skill": "using-aidlc", "prompt": "In aidlc, a bug has a reproduction and the expected behaviour is written in our docs. Which route does it take?", "top_k": 3},
+    {"skill": "debugging-failures", "prompt": "The nightly job started throwing a null reference exception, what changed?", "top_k": 3},
+    {"skill": "tuning-performance", "prompt": "Checkout takes four seconds, can you speed it up?", "top_k": 3},
+    {"skill": "migrating-safely", "prompt": "Move the orders table to a new schema while the service keeps running", "top_k": 3},
+    {"skill": "adding-observability", "prompt": "We have no idea when the import job fails, add something that tells us", "top_k": 3}
+  ]
+}

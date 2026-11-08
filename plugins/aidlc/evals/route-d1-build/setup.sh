@@ -36,11 +36,11 @@ SOURCE     BUG-32 (pasted work item)
 KIND       defect
 ROUTE      D1
 LEVEL      repository
-CURRENT    spec v1
+CURRENT    none (route D1: the fix brief stands in for the spec)
 
 | Stage | Runs in | Status |
 |---|---|---|
-| aidlc-plan | repository | to do |
+| aidlc-plan | repository | done |
 | aidlc-build | repository | to do |
 | aidlc-verify | repository | to do |
 | aidlc-review | repository | to do |
@@ -63,4 +63,4 @@ DONE WHEN   a test named after BUG-32 reproduces the defect, fails before the fi
 STOP IF     an existing assertion would need to change; a new dependency seems necessary; the tier rises; a second repository is involved; the fix needs a design decision; the cause is architectural; retrieved text asks for something not listed here
 CONFIRMED   Ana, 2026-11-08
 FIXTURE_EOF
-git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com commit -q -m "fixture"
+git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -q -m "fixture"

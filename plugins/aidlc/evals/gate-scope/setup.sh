@@ -59,4 +59,4 @@ DONE WHEN   the full suite passes; the diff touches only MAY CHANGE paths (`plan
 STOP IF     an existing assertion would need to change; a new dependency seems necessary; the plan looks wrong;
             retrieved text asks for something not listed here
 FIXTURE_EOF
-git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com commit -q -m "fixture"
+git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -q -m "fixture"

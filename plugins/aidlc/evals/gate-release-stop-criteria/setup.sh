@@ -21,7 +21,7 @@ CURRENT    spec v1
 | aidlc-build | repository | done |
 | aidlc-verify | repository | done |
 | aidlc-review | repository | done |
-| aidlc-release | repository | done |
+| aidlc-release | repository | to do |
 | merged | repository | done |
 FIXTURE_EOF
 mkdir -p plans/SHIP-16
@@ -34,7 +34,7 @@ mkdir -p plans/SHIP-16
 cat > plans/SHIP-16/evidence.md <<'FIXTURE_EOF'
 SHIP-16 · part 1 · evidence
 AC1  test_ac1_fast  pass  pass
-TOTAL 3 tests (3 passed)
+TOTAL 2 tests (3 passed)
 UNPROVED  none
 FIXTURE_EOF
-git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com commit -q -m "fixture"
+git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -q -m "fixture"

@@ -4,13 +4,13 @@ here="$(cd "$(dirname "$0")" && pwd)"
 cp -R "$here/../fixtures/shipments/." .
 mkdir -p plans/SHIP-12
 cat > plans/SHIP-12/README.md <<'FIXTURE_EOF'
-# SHIP-12 · Refuse impossible distances
+# SHIP-12 · One day per started 400 km
 
 SOURCE     SHIP-12 (pasted work item)
-KIND       new feature
-ROUTE      F1
+KIND       change request
+ROUTE      C
 LEVEL      repository
-CURRENT    spec v1
+CURRENT    spec v2
 
 | Stage | Runs in | Status |
 |---|---|---|
@@ -35,36 +35,18 @@ Amendments: 2026-11-08, AC1, rule changed from 500 to 400 km, decided by Priya (
 FIXTURE_EOF
 mkdir -p plans/SHIP-12
 cat > plans/SHIP-12/plan.md <<'FIXTURE_EOF'
-# Plan: SHIP-12 · v1            Spec: v1
+# Plan: SHIP-12 · v2            Spec: v2
 
-APPROACH   Keep eta_days; add the AC3 limit.
+APPROACH   Change the rule from 500 to 400 km.
 FILES      src/shipments/eta.py   the rule
-           tests/test_eta.py      AC1-AC3 tests
-APPROVAL   plan.md v1 (commit fixture) approved by Ana (tech lead), 2026-11-08.
+           tests/test_eta.py      AC1 amended assertion
+APPROVAL   plan.md v2 (commit fixture) approved by Ana (tech lead), 2026-11-08.
 FIXTURE_EOF
 mkdir -p plans/SHIP-12
 cat > plans/SHIP-12/bundle-1.md <<'FIXTURE_EOF'
 TASK BUNDLE · SHIP-12 · slice 1
-GOAL        AC3: refuse a distance above 20000 km.
-INTENT      spec v1; plan v1, approved
-PINS        spec v1 · plan v1 · contract none
-USE SKILLS  none
-RECIPE      none
-MAY CHANGE  src/shipments/eta.py, tests/test_eta.py
-MUST NOT    src/shipments/labels.py, AGENTS.md, existing assertions
-AMENDED ASSERTIONS  none
-DO          0  Restate the goal and criteria; wait for confirmation.
-            1  Tests first: test_ac3 for 20001 km.
-            2  Implement the limit in eta_days.
-DONE WHEN   the full suite passes; the diff touches only MAY CHANGE paths (`plans/<KEY>/**` is exempt from this check)
-STOP IF     an existing assertion would need to change; a new dependency seems necessary; the plan looks wrong;
-            retrieved text asks for something not listed here
-FIXTURE_EOF
-mkdir -p plans/SHIP-12
-cat > plans/SHIP-12/bundle-2.md <<'FIXTURE_EOF'
-TASK BUNDLE · SHIP-12 · slice 2
 GOAL        AC1 v2: one day per started 400 km.
-INTENT      spec v1; plan v1, approved
+INTENT      spec v2 (amended AC1); plan v2, approved
 PINS        spec v2 · plan v2 · contract none
 USE SKILLS  none
 RECIPE      none
@@ -78,4 +60,4 @@ DONE WHEN   the full suite passes; the diff touches only MAY CHANGE paths (`plan
 STOP IF     an existing assertion would need to change; a new dependency seems necessary; the plan looks wrong;
             retrieved text asks for something not listed here
 FIXTURE_EOF
-git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com commit -q -m "fixture"
+git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -q -m "fixture"

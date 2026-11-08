@@ -33,4 +33,4 @@ Outcome: a customer sees the delivery day for an order.
 Tier: 1 (one repository, no contract, well-tested code).
 Accepted by Priya (product owner) on the work item, 2026-11-07.
 FIXTURE_EOF
-git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com commit -q -m "fixture"
+git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -q -m "fixture"

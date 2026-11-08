@@ -36,7 +36,7 @@ SOURCE     BUG-32 (pasted work item)
 KIND       defect
 ROUTE      D1
 LEVEL      repository
-CURRENT    spec v1
+CURRENT    none (route D1: the fix brief stands in for the spec)
 
 | Stage | Runs in | Status |
 |---|---|---|
@@ -46,4 +46,4 @@ CURRENT    spec v1
 | aidlc-review | repository | to do |
 | merged | repository | to do |
 FIXTURE_EOF
-git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com commit -q -m "fixture"
+git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -q -m "fixture"

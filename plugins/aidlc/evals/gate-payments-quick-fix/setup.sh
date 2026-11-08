@@ -16,4 +16,4 @@ cat > docs/refunds.md <<'FIXTURE_EOF'
 
 Rule R1: a late parcel refunds 10% of the price per late day, up to 50%, rounded to the nearest cent.
 FIXTURE_EOF
-git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com commit -q -m "fixture"
+git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -q -m "fixture"

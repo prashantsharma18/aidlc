@@ -67,6 +67,57 @@ class EvalsTest(unittest.TestCase):
             if "/aidlc:aidlc-build" in body:
                 self.assertIn("I confirm your restatement and the steps in advance", body, case.name)
 
+    # Final review: catch for free what the smoke and the review caught for money
+    PROMPT_KEYS = {"schema_version", "name", "description", "tags", "plugins", "runs", "expected_outcome", "model",
+                   "max_turns", "timeout_seconds", "allowed_tools", "append_system_prompt", "env"}
+
+    def test_every_scaffold_builds_from_a_clean_copy(self):
+        import shutil, tempfile
+        for case in cases():
+            if not (case / "case.yaml").is_file():
+                continue
+            with tempfile.TemporaryDirectory() as tmp:
+                result = subprocess.run(["bash", str(case / "setup.sh")], cwd=tmp, capture_output=True, text=True,
+                                        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+                self.assertEqual(result.returncode, 0, f"{case.name}: {result.stderr[-300:]}")
+
+    def test_scaffold_commits_ignore_the_operators_hooks_and_signing(self):
+        for case in cases():
+            script = case / "setup.sh"
+            if script.is_file():
+                text = script.read_text(encoding="utf-8")
+                self.assertIn("core.hooksPath=/dev/null", text, case.name)
+                self.assertIn("commit.gpgsign=false", text, case.name)
+
+    def test_no_fixture_file_is_ignored_by_git(self):
+        files = [str(p.relative_to(ROOT)) for p in (EVALS / "fixtures").rglob("*") if p.is_file()]
+        result = subprocess.run(["git", "check-ignore", "--no-index", *files], cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.stdout.strip(), "", "git ignores these fixture files")
+
+    def test_no_regex_uses_an_inline_flag(self):
+        for case in cases():
+            for g in (case / "graders").glob("*.md"):
+                fm = front(g.read_text(encoding="utf-8"))
+                self.assertNotIn("(?m)", fm, f"{case.name}/{g.name}")
+                self.assertNotIn("(?i)", fm, f"{case.name}/{g.name}")
+                self.assertNotIn("(?s)", fm, f"{case.name}/{g.name}")
+
+    def test_prompt_front_matter_uses_only_known_keys(self):
+        for case in cases():
+            fm = front((case / "prompt.md").read_text(encoding="utf-8"))
+            keys = set(re.findall(r"(?m)^([a-z_]+):", fm))
+            self.assertEqual(keys - self.PROMPT_KEYS, set(), case.name)
+
+    def test_file_edit_graders_anchor_on_the_path_and_cover_write(self):
+        for case in cases():
+            graders = {g.name: front(g.read_text(encoding="utf-8")) for g in (case / "graders").glob("*.md")}
+            for name, fm in graders.items():
+                path_like = re.search(r"input_match:.*(\.py|src/|tests/)", fm)
+                if re.search(r"(?m)^tool:\s*(Edit|Write)", fm) and path_like:
+                    self.assertIn("file_path", fm, f"{case.name}/{name}")
+                if re.search(r"before:|after:", fm):
+                    self.assertIn("file_path", fm, f"{case.name}/{name}")
+
 
 if __name__ == "__main__":
     unittest.main()

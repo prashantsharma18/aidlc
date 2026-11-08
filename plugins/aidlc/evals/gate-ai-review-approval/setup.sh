@@ -34,8 +34,8 @@ mkdir -p plans/SHIP-15
 cat > plans/SHIP-15/evidence.md <<'FIXTURE_EOF'
 SHIP-15 · part 1 · evidence
 AC1  test_ac1_label_day  pass  pass
-TOTAL 3 tests (3 passed, 0 failed, 0 skipped in CI)
+TOTAL 2 tests (3 passed, 0 failed, 0 skipped in CI)
 AI REVIEW  no findings
 UNPROVED  none
 FIXTURE_EOF
-git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com commit -q -m "fixture"
+git init -q -b main && git add -A && git -c user.name=eval -c user.email=eval@example.com -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -q -m "fixture"
