@@ -21,8 +21,8 @@ aidlc has two kinds of skill.
 | 0 | `aidlc-onboard` | `AGENTS.md`, the codebase map, the Quality bar, the starter files | Once per repository or workspace | The person, through a reviewed pull request | `aidlc-start` |
 | 1 | `aidlc-start` | The story's index: the kind of work, the repositories, the next stage | Workspace root or repository | The product owner owns the story; the tech lead agrees the route | `aidlc-intent` |
 | 2 | `aidlc-intent` | The intent statement and a provisional tier | Story level | Product owner | `aidlc-specify` |
-| 3 | `aidlc-specify` | Acceptance criteria with IDs, edge cases with deciders | Story level | Spec owner | `aidlc-discover` or `aidlc-design` when the tier asks, else `aidlc-plan` |
-| 4 | `aidlc-discover` | The evidence pack: what the change touches | Story level | Tech lead (proceed, escalate or raise the tier) | `aidlc-design` or `aidlc-plan` |
+| 3 | `aidlc-specify` | Acceptance criteria with IDs, edge cases with deciders | Story level | Spec owner | `aidlc-discover` when the tier or an unknown asks, else `aidlc-design` |
+| 4 | `aidlc-discover` | The evidence pack: what the change touches | Story level | Tech lead (proceed, escalate or raise the tier) | `aidlc-design` |
 | 5 | `aidlc-design` | The design note, the ADR, the contract and its failing tests | Story level | Tech lead or architect; consumers for a contract | `aidlc-plan` |
 | 6 | `aidlc-plan` | The plan and one task bundle per slice | Inside each repository | Tech lead | `aidlc-build` |
 | 7 | `aidlc-build` | One slice: tests, commits, a progress note | Inside the repository, a fresh session per slice | The person reviews the diff and pushes | The next slice, then `aidlc-verify` |

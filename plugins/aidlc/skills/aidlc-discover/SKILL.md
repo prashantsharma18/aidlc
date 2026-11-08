@@ -35,8 +35,8 @@ The question or the accepted intent, the provisional tier, `AGENTS.md` and the c
 2. List every entry point with its file reference and the command that found it. Say what you searched and what you excluded.
 3. Trace outward in five directions: callers, callees, data, events and configuration. Send heavy reading to the `explorer` agent, one precise question each, briefed from `assets/explorer-brief.md`, and spot-check two or three references from each answer; at Tier 3, every reference behind a "safe" conclusion. Label every finding FACT, INFERENCE or UNKNOWN.
 4. Look for hidden dependants (scheduled jobs, reports, other services reading the same data). Ask the person for runtime evidence, and compare its retention window with the slowest cycle that could read the data.
-5. Map the owners (CODEOWNERS or the catalogue) and the contract files. Where a contract is missing, load the `designing-apis` skill and draft one for its owner to review. Ask each owner to confirm their dependants, and record who confirmed and when.
-6. Map each changing path to the tests that cover it. Where none exist, load the `writing-tests` skill and draft characterisation tests that record today's behaviour.
+5. Map the owners (CODEOWNERS or the catalogue) and the contract files. Where a contract is missing, load the `designing-apis` skill and record what the contract must cover as a finding for `aidlc-design`. Ask each owner to confirm their dependants, and record who confirmed and when.
+6. Map each changing path to the tests that cover it. Where none exist, load the `writing-tests` skill and record which characterisation tests are needed, path by path, as a finding for `aidlc-plan`.
 7. Draft the evidence pack by filling `assets/evidence-pack.md`: one impact line per dependant, and a risk and mitigation for each unknown.
 8. Bring the decision to the tech lead: proceed, escalate, or raise the tier.
 9. Keep what you learned: for each finding worth keeping, propose a codebase-map line, an ADR or a test, as a draft for its owner.

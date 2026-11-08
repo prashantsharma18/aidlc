@@ -93,6 +93,21 @@ class RoutesTest(unittest.TestCase):
             self.assertNotIn("pointer", text, rel)
             self.assertIn("A story that changes one repository has nothing here", text, rel)
 
+    def test_design_always_runs_and_only_discover_is_optional(self):
+        for name in ("aidlc-start", "using-aidlc"):
+            text = skill(name)
+            self.assertNotIn("`aidlc-discover` and `aidlc-design` (only when", text, name)
+            self.assertNotIn("`aidlc-discover` or `aidlc-design` when the tier asks", text, name)
+        self.assertIn('`aidlc-design` (always; at Tier 1 usually a recorded "none needed")', skill("aidlc-start"))
+        self.assertIn("the approved design note (always)", skill("aidlc-plan"))
+
+    def test_discover_records_findings_instead_of_drafting(self):
+        text = skill("aidlc-discover")
+        self.assertNotIn("draft one for its owner to review", text)
+        self.assertNotIn("draft characterisation tests that record today's behaviour", text)
+        self.assertIn("as a finding for `aidlc-design`", text)
+        self.assertIn("as a finding for `aidlc-plan`", text)
+
 
 if __name__ == "__main__":
     unittest.main()

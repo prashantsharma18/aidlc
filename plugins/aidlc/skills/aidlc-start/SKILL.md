@@ -56,8 +56,9 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
    of the route with where it runs and the status "to do".
 
    **One repository:** every stage runs inside that repository: `aidlc-intent` (only if the story needs it),
-   `aidlc-specify`, `aidlc-discover` and `aidlc-design` (only when the tier or a contract asks), `aidlc-plan`,
-   `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`; on events, `aidlc-operate`, `aidlc-feedback`.
+   `aidlc-specify`, `aidlc-discover` (only when the tier or an unknown asks), `aidlc-design` (always; at Tier 1 usually
+   a recorded "none needed"), `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`; on events,
+   `aidlc-operate`, `aidlc-feedback`.
 
    **Several repositories:**
    - story level, at the workspace root: `aidlc-intent` (only if the story needs it), `aidlc-specify`,

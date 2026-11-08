@@ -30,7 +30,7 @@ After the spec is approved: above Tier 1, planning starts only from a spec its o
 ## Inputs
 Where this runs: inside the repository whose part you are working on. For a story that spans several repositories, read your part's row in the workspace's `../stories/<KEY>/coordination-plan.md` (read-only) and the design it points to; the branch is `feat/<KEY>-<part>` and the pull request title is `[<KEY>] part <n> of <m>: <what>`. Started at the workspace root: name the repository to open, and stop. A one-repository story runs entirely in that repository.
 
-The approved spec and its version, design decisions, discovery evidence, and the repository's rules and codebase map. If an input is missing, say which stage produces it and stop; never plan around it.
+The approved spec and its version, the approved design note (always), the evidence pack (when discover ran), and the repository's rules and codebase map. If an input is missing, say which stage produces it and stop; never plan around it.
 
 ## Steps
 1. Restate the outcome, criteria, edge cases and non-goals before reading any code, and list every ambiguity. Wait for the person to confirm. An ambiguity goes to the criterion's owner (`aidlc-specify`, amendment mode).
