@@ -10,9 +10,9 @@
 ## How work runs here
 - Start every piece of work with `aidlc-start` here, at the workspace root: a new requirement, a story, a defect, a
   change request or an incident follow-up. It tells you where each next step runs.
-- Story level runs here: intent, specify, discover, design (with the coordination plan), release, operate, feedback.
-  A story that spans several repositories keeps its documents in `stories/<KEY>/`; a one-repository story has only
-  its index there, a pointer, and runs every stage inside that repository.
+- Story level runs here: intent, specify, discover, design (with the coordination plan), release, operate, feedback. A
+  story that spans several repositories keeps its documents in `stories/<KEY>/`. A story that changes one repository has
+  nothing here: it runs and is tracked inside that repository.
 - Part level runs inside each repository: plan, build, verify, review, on branch `feat/<KEY>-<part>`.
 - A story is never split into more tracker issues: its parts are rows of `stories/<KEY>/coordination-plan.md`.
 

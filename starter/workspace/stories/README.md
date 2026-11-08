@@ -1,8 +1,8 @@
 # Stories
 
-One folder per story, named by its tracker key (for example `SHIP-1/`). A story that changes one repository has only
-`README.md` here, a pointer to that repository, where every stage runs. A story that spans several repositories keeps
-the files below.
+One folder per story, named by its tracker key (for example `SHIP-1/`). A story that changes one repository has nothing
+here: it runs and is tracked inside that repository, in its `plans/<KEY>/`. A story that spans several repositories
+keeps the files below.
 
 | File | Written by | What it is |
 |---|---|---|

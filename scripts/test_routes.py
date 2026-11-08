@@ -69,6 +69,30 @@ class RoutesTest(unittest.TestCase):
             self.assertIn(name, section(skill("aidlc-release"), "## Produces"), name)
         self.assertIn("release/<KEY>", skill("aidlc-release"))
 
+    def test_start_routes_and_never_drafts_the_story(self):
+        text = skill("aidlc-start")
+        self.assertNotIn("Draft the story from", text)
+        self.assertNotIn("is only a pointer", text)
+        self.assertIn("`aidlc-intent` interviews", text)
+        self.assertIn("write nothing at the workspace root", text)
+        self.assertFalse((SKILLS / "aidlc-start" / "assets" / "intent.md").exists())
+
+    def test_start_hands_over_an_old_pointer_index(self):
+        self.assertIn("an index left by aidlc 3 that only points to a repository", skill("aidlc-start"))
+
+    def test_the_story_index_template_has_the_tracked_lines(self):
+        template = read("plugins/aidlc/skills/aidlc-start/assets/story-index.md")
+        for line in ("SOURCE", "KIND", "ROUTE", "LEVEL", "CURRENT", "PINS", "UNAFFECTED", "| Stage | Runs in | Status |"):
+            self.assertIn(line, template, line)
+        self.assertIn("`assets/story-index.md`", skill("aidlc-start"))
+
+    def test_the_workspace_keeps_nothing_for_a_one_repository_story(self):
+        for rel in ("starter/workspace/stories/README.md", "starter/workspace/WORKSPACE.md",
+                    "plugins/aidlc/skills/aidlc-onboard/assets/workspace.md"):
+            text = read(rel)
+            self.assertNotIn("pointer", text, rel)
+            self.assertIn("A story that changes one repository has nothing here", text, rel)
+
 
 if __name__ == "__main__":
     unittest.main()
