@@ -176,7 +176,7 @@ Archived on 2026-11-08 by the owner, Prashant Sharma, to focus on aidlc. Not del
 - [ ] **Step 6: Run all tests and the validator.**
 
 Run: `python3 -m unittest discover -s scripts -p 'test_*.py' 2>&1 | grep -E "^Ran|^OK|^FAILED"; python3 scripts/validate.py | tail -1`
-Expected: `OK` (287 − 19 deleted + 3 new = 271); `validate: 1 plugin(s), 30 skill(s), 0 problem(s)`.
+Expected: `OK` (288: today's run of 287 counts the two deleted pack test files as two load errors; 285 + 3 new); `validate: 1 plugin(s), 30 skill(s), 0 problem(s)`.
 
 - [ ] **Step 7: Commit.**
 
@@ -426,4 +426,4 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 - [ ] **Step 7: Final review.** A fresh reviewer on the most capable model reads the branch against this plan's decisions, the owner-approved test changes and the Review Focus. It checks that no gate weakened, no live file names a pack or the old path, the moved files are byte-identical apart from path strings, and Claude Code would load nothing unintended from the root. Fix critical, important and cheap real low findings test-first; dismiss other lows with a reason.
 
-- [ ] **Step 8: Write the verification record** in Plan 15's layout: the checks (test counts before and after, with the 35 deleted tests named), the local install result, the Review Focus cases with their tests, the review's findings and fixes, and the decisions. Commit it with the fix pass.
+- [ ] **Step 8: Write the verification record** in Plan 15's layout: the checks (test counts before and after, with the 38 deleted tests named (11 parity, 8 retarget, 14 pack check, 5 validator) and the one replaced), the local install result, the Review Focus cases with their tests, the review's findings and fixes, and the decisions. Commit it with the fix pass.
