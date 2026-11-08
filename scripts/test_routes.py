@@ -134,6 +134,23 @@ class RoutesTest(unittest.TestCase):
         self.assertIn("records the approval on the work item with the plan's version and commit", gate)
         self.assertNotIn("in the pull request that adds the plan", gate)
 
+    def test_the_progress_note_is_a_committed_file(self):
+        build = skill("aidlc-build")
+        self.assertNotIn("Keep the steps as a checklist in your reply", build)
+        self.assertIn("plans/<KEY>/progress-<slice>.md", build)
+        self.assertIn("plans/<KEY>/progress-{{SLICE}}.md", read("plugins/aidlc/skills/aidlc-build/assets/progress-note.md"))
+        self.assertIn("plans/<KEY>/progress-<slice>.md", section(skill("aidlc-review"), "## Inputs"))
+        compliance = read("plugins/aidlc/agents/reviewer-compliance.md")
+        self.assertIn("plans/<KEY>/progress-<slice>.md", compliance)
+        self.assertIn("covers the bundle's USE SKILLS and every skill `aidlc-build` commands", compliance)
+
+    def test_a_fresh_session_per_slice_is_preferred_and_required_after_a_slip(self):
+        for rel in ("plugins/aidlc/skills/aidlc-build/SKILL.md", "starter/repo/AGENTS.md",
+                    "plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md"):
+            text = read(rel)
+            self.assertIn("refer a fresh session", text, rel)
+            self.assertIn("discussed anything the bundle does not record", text, rel)
+
 
 if __name__ == "__main__":
     unittest.main()

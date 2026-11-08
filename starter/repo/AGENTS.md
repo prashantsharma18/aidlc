@@ -10,8 +10,8 @@
 - Prefer the simplest change that meets the criteria.
 - Touch only what the task needs: no drive-by refactors, no removing what you do not understand.
 - Done means evidence: tests run, counts read, behaviour checked; never "looks right".
-- Start a fresh session for each slice, and again after repeated slips or any slip once the conversation was
-  compacted.
+- Prefer a fresh session for each slice. Start one after a compaction, after repeated slips, or when the conversation
+  discussed anything the bundle does not record.
 
 ## How work runs here
 - Start any new piece of work with the `aidlc-start` skill: a new requirement, a story, a defect, a change request or

@@ -2,6 +2,7 @@
 # Progress · {{KEY}} · {{SLICE}}
 
 Session state, not memory: it lets a fresh session resume from the record.
+File: `plans/<KEY>/progress-{{SLICE}}.md`, committed with the slice; the compliance reviewer reads it.
 
 ## Session plan
 - [ ] 1 <step> — files: <...> — check: <...>
