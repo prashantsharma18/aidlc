@@ -63,6 +63,19 @@ class GreenfieldTest(unittest.TestCase):
     def test_several_repositories_get_one_slice_0_part_each(self):
         self.assertIn("one slice-0 part each", skill("aidlc-design"))
 
+    def test_onboard_has_a_new_mode_in_two_steps(self):
+        onboard = skill("aidlc-onboard")
+        self.assertIn("**New mode** (route G)", section(onboard, "## When to use"))
+        self.assertIn("Prepare, before slice 0", onboard)
+        self.assertIn("Confirm, after slice 0 merges", onboard)
+        self.assertIn("each marked `(not yet run)`", onboard)
+        self.assertIn("it is not a new system", section(onboard, "## Stop if"))
+        self.assertIn("never run and is not marked `(not yet run)`", section(onboard, "## Red flags"))
+        self.assertIn("(not yet run)", read("plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md"))
+
+    def test_confirm_stops_on_a_command_that_fails(self):
+        self.assertIn("stop on any that does not", skill("aidlc-onboard"))
+
 
 if __name__ == "__main__":
     unittest.main()

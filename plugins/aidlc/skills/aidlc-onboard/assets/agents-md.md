@@ -35,6 +35,7 @@ Full map: `docs/codebase-map.md`. Read it before planning a change.
 - <area path>  <one-line responsibility>
 
 ## Commands
+(On route G, a command written before slice 0 reads `(not yet run)` until `aidlc-onboard` confirms it.)
 - Tests and lint, must pass before you report done: `{{CHECK_COMMAND}}`
 - Pack check, at the start of work and in CI: `python3 scripts/check_packs.py`
 - Recipe check, after a recipe commit: `python3 scripts/check_recipe_commit.py <commit> --recipe "<approved command>" --count "<test count command>"`
