@@ -17,8 +17,8 @@
 - Start any new piece of work with the `aidlc-start` skill: a new requirement, a story, a defect, a change request or
   an incident follow-up. It says which stage comes next and where it runs.
 - The full map of stages and practices: the `using-aidlc` skill.
-- The stages, in order: `aidlc-intent`, `aidlc-specify`, `aidlc-discover` and `aidlc-design` (when the tier or a
-  contract asks for them), `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`; after an
+- The stages, in order: `aidlc-intent`, `aidlc-specify`, `aidlc-discover` (when the tier or an unknown asks),
+  `aidlc-design` (always), `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`; after an
   incident, `aidlc-operate` and `aidlc-feedback`.
 - Tests first: a failing test before any code; for a defect, a test that reproduces it.
 - Every change is reviewed in a pull request by a code owner who did not write it.

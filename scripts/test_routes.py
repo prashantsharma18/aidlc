@@ -279,6 +279,78 @@ class RoutesTest(unittest.TestCase):
         self.assertIn("the eight earlier practices keep their own structure", read("AGENTS.md"))
         self.assertTrue((ROOT / "docs/adr/0015-work-routes-and-the-part-model.md").is_file())
 
+    # Final review fixes (C1, C2, I2, I4-I9, minors)
+    def test_a_new_requirement_gets_a_provisional_key(self):
+        start = skill("aidlc-start")
+        self.assertIn("provisional key `NEW-<slug>`", start)
+        self.assertIn("renames the folder to the item's key", start)
+        self.assertIn("provisional key `NEW-<slug>`", skill("aidlc-intent"))
+
+    def test_the_first_current_line_is_written(self):
+        self.assertIn("CURRENT spec v1", skill("aidlc-specify"))
+        self.assertIn("add each contract and its version to the story index's CURRENT line", skill("aidlc-design"))
+
+    def test_who_marks_merged_and_what_a_re_plan_resets(self):
+        self.assertIn("marks the `merged` row done in its final commit", skill("aidlc-review"))
+        self.assertIn("reset the `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged` rows", skill("aidlc-plan"))
+        for rel in ("plugins/aidlc/skills/aidlc-start/assets/story-index.md", "starter/workspace/WORKSPACE.md",
+                    "plugins/aidlc/skills/aidlc-onboard/assets/workspace.md"):
+            self.assertIn("default branch", read(rel), rel)
+
+    def test_build_is_consistent_with_its_own_exceptions(self):
+        build = skill("aidlc-build")
+        self.assertIn("your progress note and your row in the index", build)
+        self.assertIn("no changed assertion outside AMENDED ASSERTIONS", build)
+        self.assertIn("changes an assertion outside AMENDED ASSERTIONS", build)
+
+    def test_the_fast_path_brief_replaces_spec_and_plan_downstream(self):
+        self.assertIn("In brief mode, the inputs are the work item", skill("aidlc-plan"))
+        for name in ("aidlc-verify", "aidlc-review"):
+            self.assertIn("`plans/<KEY>/fix.md`", section(skill(name), "## Inputs"), name)
+
+    def test_a_change_request_works_in_the_original_index(self):
+        self.assertIn("works in the original story's index", skill("aidlc-start"))
+        self.assertIn("add an `aidlc-specify (amendment)` row", skill("aidlc-specify"))
+
+    def test_a_split_part_gets_its_own_folder(self):
+        plan = skill("aidlc-plan")
+        self.assertIn("propose the split to `aidlc-design`", plan)
+        self.assertIn("plans/<KEY>/part-<n>/", plan)
+        self.assertNotIn("One branch per story per repository", plan)
+
+    def test_design_always_runs_in_the_onboarding_texts(self):
+        for rel in ("starter/repo/AGENTS.md", "plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md",
+                    "docs/operating-model/workspace-and-repositories.md"):
+            text = read(rel)
+            self.assertNotIn("`aidlc-discover` and `aidlc-design` (when the tier or a contract asks", text, rel)
+            self.assertNotIn("discover and design when the tier or a contract asks", text, rel)
+
+    def test_every_route_names_only_stages_and_modes_that_exist(self):
+        routes = section(skill("using-aidlc"), "## The routes")
+        for name in set(re.findall(r"`(aidlc-[a-z-]+)`", routes)):
+            self.assertTrue((SKILLS / name / "SKILL.md").is_file(), name)
+        self.assertIn("**Brief mode**", skill("aidlc-plan"))
+        self.assertIn("Amendment mode", skill("aidlc-specify"))
+        self.assertIn("PINS", read("plugins/aidlc/agents/reviewer-compliance.md"))
+
+    def test_review_minors_are_closed(self):
+        start = skill("aidlc-start")
+        self.assertIn("parts: see `status.md`", start)
+        self.assertNotIn("      - **Defect:**", (SKILLS / "aidlc-start/SKILL.md").read_text(encoding="utf-8"))
+        build = skill("aidlc-build")
+        self.assertIn("progress-fix.md", build)
+        self.assertIn("still holds its placeholder", build)
+        self.assertIn("Amended assertions seen red", read("plugins/aidlc/skills/aidlc-build/assets/progress-note.md"))
+        self.assertIn("Amended assertions seen red", read("plugins/aidlc/agents/reviewer-compliance.md"))
+        self.assertIn("except the part index's rows and its PINS line", skill("aidlc-plan"))
+        self.assertIn("In one repository", skill("aidlc-release"))
+        self.assertIn("not counting `plans/<KEY>/**`", skill("committing-changes"))
+        self.assertIn("status.md", read("starter/workspace/stories/README.md"))
+        self.assertNotIn("in the pull request or the work item", read("docs/operating-model/lifecycle.md"))
+        for adr in ("docs/adr/0009-workspace-working-model.md", "docs/adr/0012-mechanical-recipe-commit.md"):
+            self.assertIn("Amended by ADR 0015", read(adr), adr)
+        self.assertIn("on the work item with its version and commit", section(skill("aidlc-design"), "## Gate"))
+
 
 if __name__ == "__main__":
     unittest.main()

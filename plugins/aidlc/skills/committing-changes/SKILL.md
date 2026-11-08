@@ -27,7 +27,7 @@ Not for: the team's branching and release strategy, which AGENTS.md and `aidlc-r
    - **Subject:** `<type>(<scope>): <what changed>`, in the imperative, about 50 characters, no full stop. Types: `feat`, `fix`, `refactor`, `test`, `docs`, `build`, `ci`, `perf`, `chore`. A `!` after the type marks a breaking change.
    - **Body,** after a blank line, wrapped at 72: why the change was needed, what you decided and why, and what it deliberately does not do. Never retell the diff.
    - **Footer:** the work item key, `BREAKING CHANGE: <what callers must now do>`, and any trailer the repository requires.
-5. Size the pull request: one part of the story (all of that part's slices), within the pull-request size `reviewing-code` gives (about 300 changed lines is acceptable; about 1,000 is too large), not counting generated files and lock files. Bigger means split: by behaviour behind a flag, or by layer only when each layer works on its own.
+5. Size the pull request: one part of the story (all of that part's slices), within the pull-request size `reviewing-code` gives (about 300 changed lines is acceptable; about 1,000 is too large), not counting `plans/<KEY>/**`, generated files or lock files. Bigger means split: by behaviour behind a flag, or by layer only when each layer works on its own.
 6. For a release, choose the version from the commits since the last tag (semantic versioning): a breaking change raises the major number, a new capability the minor, a fix only the patch. Below 1.0.0, say that anything may still change.
 7. Write the changelog entry for the people who use the software: Added, Changed, Deprecated, Removed, Fixed, Security. Each line says what a user will notice and links the work item.
 

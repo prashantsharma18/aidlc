@@ -1,6 +1,8 @@
 # 0012 · The mechanical recipe commit: the one exception to the gates
 
 Status: Accepted (2026-10-26). · Decider: Prashant Sharma (framework owner), "only if it is the correct way and not a
+Amended by ADR 0015 (2026-11-08): an assertion listed under AMENDED ASSERTIONS, citing an approved spec amendment, is a
+second exception beside the recipe commit.
 shortcut"
 
 ## Context

@@ -22,7 +22,7 @@ After the pull request's required checks have run in CI. Checks you ran yourself
 ## Inputs
 Where this runs: inside the repository whose part you are working on. For a story that spans several repositories, read your part's row in the workspace's `../stories/<KEY>/coordination-plan.md` (read-only) and the design it points to; the branch is `feat/<KEY>-<part>` and the pull request title is `[<KEY>] part <n> of <m>: <what>`. Started at the workspace root: name the repository to open, and stop. A one-repository story runs entirely in that repository.
 
-The pull request's CI results (the checks and their logs, test reports), or, where there is no CI yet, the output of the repository's test commands run for this purpose, the spec's criteria and edge cases, and the plan's criterion-to-test map.
+The pull request's CI results (the checks and their logs, test reports), or, where there is no CI yet, the output of the repository's test commands run for this purpose, the spec's criteria and edge cases, and the plan's criterion-to-test map; on route D1, the fix brief `plans/<KEY>/fix.md` (its EXPECTED line and the reproducing test) in place of the spec and the plan.
 
 ## Steps
 1. Read the trusted run's results: the CI run on the pull request. Where the repository has no CI yet, run its test commands once for this table, record the output, and mark every row "local only". Never use your memory of earlier runs.

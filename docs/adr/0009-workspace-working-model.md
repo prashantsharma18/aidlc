@@ -1,6 +1,7 @@
 # 0009 · The workspace working model
 
 Status: Accepted (2026-10-25). · Decider: Prashant Sharma (framework owner)
+Amended by ADR 0015 (2026-11-08): a story that changes one repository keeps nothing at the workspace root; the pointer index is gone.
 
 ## Context
 In the SHIP-1 demo nobody could tell where work starts or where each step runs. The story's shared documents sat in one

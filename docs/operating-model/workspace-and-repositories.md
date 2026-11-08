@@ -14,7 +14,7 @@ Every piece of work starts with `aidlc-start`, at the workspace root (or in a lo
 
 | Kind | What it needs | Route |
 |---|---|---|
-| New feature | No story: an interview, then a story the product owner creates. A story: a clear problem, outcome and acceptance criteria | intent (if needed), specify, discover and design when the tier or a contract asks, then each part, then release |
+| New feature | No story: an interview, then a story the product owner creates. A story: a clear problem, outcome and acceptance criteria | intent (if needed), specify, discover when the tier or an unknown asks, design always, then each part, then release |
 | Defect | How to reproduce it, expected and actual behaviour, evidence (missing: ask and stop) | Tier 1, one repository, reproduced, expected behaviour written: the fast path D1 (plan's brief mode, build, verify, review). Otherwise the full route D2 |
 | Change request | The original story and its documents (not found: ask and stop) | In progress: specify in amendment mode; the affected parts are marked "re-plan". Released: new work with its own key, whose criteria include "the original's criteria still hold" |
 | Incident follow-up | The incident record | As a defect, with the incident as the evidence |

@@ -13,6 +13,9 @@ File: `plans/<KEY>/progress-{{SLICE}}.md`, committed with the slice; the complia
 ## Deviations
 - <a practice loaded that the bundle does not name, or another departure from the bundle> — <why>
 
+## Amended assertions seen red
+- <test> — failed against the old code: <the failing line of the output> | none
+
 ## Decisions made while working (for the PR)
 - <decision> — <why> — confirm with <who>
 

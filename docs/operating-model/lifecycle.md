@@ -18,7 +18,7 @@ and gate the framework provides at each stage.
 | Intent | Product owner | `intent` | Jira issue | Owner, priority, provisional tier | `aidlc-intent` |
 | Specify | Spec owner (+ specialists) | `spec` | Jira (approved version) | Criteria testable; approval recorded | `aidlc-specify` |
 | Design | Tech lead / architect; consumers | `design-note`, `adr`, contract | Jira note; `docs/adr/`; contract file | Decisions approved, or "none needed" recorded | `aidlc-design` |
-| Plan | Engineer drafts, tech lead approves | `plan`, `task-bundle`, `coordination-plan` | `plans/<KEY>/` (or `stories/<KEY>/coordination-plan.md`) | Approval in the pull request or the work item | `aidlc-plan` |
+| Plan | Engineer drafts, tech lead approves | `plan`, `task-bundle`, `coordination-plan` | `plans/<KEY>/` (or `stories/<KEY>/coordination-plan.md`) | Approval on the work item, with the plan's version and commit | `aidlc-plan` |
 | Build | Engineer | commits, `progress-note` | Feature branch `<type>/<KEY>-<slug>` (`feat/<KEY>-<part>` for a part) | Local check green; diff inside MAY CHANGE | `aidlc-build` |
 | Verify | Automated gates | `evidence-table` | CI record | Required checks green | `aidlc-verify` |
 | Review & release | Code owners, specialists, release approver | `review-record`, `readiness`, `change-record` | Git host; change management | Code-owner approval; release approval | `aidlc-review`, `aidlc-release` |

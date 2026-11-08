@@ -40,7 +40,7 @@ Draft mode:
 3. Acceptance criteria: start from the story's criteria. For a story that spans several repositories, each criterion names the repository whose tests prove it. Write AC1 to ACn, each observable, specific (one behaviour, with numbers), complete (the refusal and failure behaviour stated) and illustrated by a Given/When/Then example. List every assumption you made. For a defect (route D2), AC1 is the reproduction: given the reported inputs, the system shows the expected behaviour, not the actual one.
 4. Edge cases: for each input ask zero, minimum, maximum, missing, duplicate, expired and conflicting. Simulate timeouts, authorisation errors, downstream failure and concurrency. Sweep data shape, state and timing, permissions, integration failure, scale and limits, and human review. Propose a behaviour for each concern as E1 to En, and name who must decide it: the spec owner, or the risk's owner for a risk. Never decide it yourself.
 5. Readiness: check the Definition of Ready for the tier with `assets/tiers.md`, and report each gap.
-6. Fill `assets/spec.md`, replacing each `{{FIELD}}`, and write it to `plans/<KEY>/spec.md` (or `stories/<KEY>/spec.md`). Nothing overwrites an existing spec: a change is a new version.
+6. Fill `assets/spec.md`, replacing each `{{FIELD}}`, and write it to `plans/<KEY>/spec.md` (or `stories/<KEY>/spec.md`). Nothing overwrites an existing spec: a change is a new version. Write the story index's CURRENT line as `CURRENT spec v1`, raised with each new version.
 7. Offer to post the criteria as a comment on the work item, for the product owner to put in the story. Posting asks the person first.
 
 Amendment mode:
@@ -60,7 +60,8 @@ Amendment mode:
    | Released | Not a change request: a new story with its own key |
 
    For a story across several repositories, raise the CURRENT line in the story index; the story status command then
-   marks every part pinned to the old spec "re-plan".
+   marks every part pinned to the old spec "re-plan". In the original story's index, add an `aidlc-specify (amendment)` row that
+   links the change request.
 
 Last: Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
 workspace root) as done, or as stopped with the reason.

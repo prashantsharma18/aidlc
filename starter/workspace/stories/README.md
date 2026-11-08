@@ -11,7 +11,8 @@ keeps the files below.
 | `spec.md` | `aidlc-specify` | Acceptance criteria, each naming the repository whose tests prove it |
 | `evidence-pack.md` | `aidlc-discover` | Which repositories, owners and contracts the story touches |
 | `design-note.md`, `adr-draft-<n>.md`, `contract/` | `aidlc-design` | The decisions, ADR drafts and the drafted contract change (accepted ADRs move to the repository each one governs) |
-| `coordination-plan.md` | `aidlc-design` | The job sheet: one row per repository part, with its status |
+| `coordination-plan.md` | `aidlc-design` | The job sheet: one row per repository part |
+| `status.md` | the story status command | Every part's status, derived from the repositories' own indexes (do not edit) |
 | `readiness.md`, `release-runbook.md`, `change-record.md`, `compat-matrix.md`, `follow-ups.md` | `aidlc-release` | The release, on a branch `release/<KEY>` |
 
 Incidents need no story: they live in `incidents/<ID>/` at the root, and lessons from repeated review findings in

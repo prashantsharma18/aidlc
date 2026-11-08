@@ -10,7 +10,8 @@ PINS       spec v<n> · plan v<n> · contract <name> v<n>        (a part: what i
 UNAFFECTED <repository> spec v<n>: <why>, <tech lead>, <YYYY-MM-DD>        (one line per part recorded as unaffected; delete when none)
 
 Each stage marks its own row when it ends: done, or stopped: <reason>. The build row reads doing while slices remain.
-After the pull request merges, the person marks the merged row done.
+Once the code owner approves, the person marks the merged row done in the pull request's final commit, so it reaches
+the default branch only through the merge. A re-plan or a revision resets the later rows to "to do".
 
 | Stage | Runs in | Status |
 |---|---|---|

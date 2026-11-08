@@ -48,7 +48,7 @@ The approved spec, the evidence pack (if any), the architecture contract (codeba
 6. Work contract first: draft the contract change and the failing provider and consumer tests before any code. The consumer tests are drafts for the consumer team, which owns them. Load the `designing-apis` skill for the contract, and load the `writing-tests` skill for its tests. The consumer tests run in the provider's CI, so a provider change that would break a consumer fails the provider's own pull request.
 7. For each consequence that must always hold, propose its enforcement (a boundary rule or a check), and show the check failing once. Advisory consequences get one line each. When the enforcement is a CI check, load the `building-ci-pipelines` skill.
 8. For a story that spans several repositories, fill the coordination plan from `assets/coordination-plan.md`: one PARTS row per repository that changes (owner, change, flag, what it waits for, undo, status), the read-only repositories, the order (contract first, then the provider behind a flag that is off, then the consumers) and the rollback of each part. Write it to `stories/<KEY>/coordination-plan.md`.
-9. Present the decision for approval against this checklist: Every decision has a Proposed record with a named decider. Contract changes follow the versioning rules, and their consumers approved them. Every non-functional requirement has a test, check or monitor that shows whether it holds. Every must-hold constraint is enforced, and its check was seen to fail. (A session at a workspace root is read-only and cannot run tests; there, the check is drafted now and shown red at the first step of its slice, and the design note says so.) The map and rules file are updated (as drafts for their owners). When a public API or behaviour users see changes, the README, API reference and changelog updates are named (load the `writing-documentation` skill). For each non-functional requirement's check, load the `tuning-performance` skill or load the `adding-observability` skill, whichever fits, if either does. No decision is left for the build to make.
+9. Present the decision for approval against this checklist: Every decision has a Proposed record with a named decider. Contract changes follow the versioning rules, and their consumers approved them. Every non-functional requirement has a test, check or monitor that shows whether it holds. Every must-hold constraint is enforced, and its check was seen to fail. (A session at a workspace root is read-only and cannot run tests; there, the check is drafted now and shown red at the first step of its slice, and the design note says so.) The map and rules file are updated (as drafts for their owners). When a public API or behaviour users see changes, the README, API reference and changelog updates are named (load the `writing-documentation` skill). For each non-functional requirement's check, load the `tuning-performance` skill or load the `adding-observability` skill, whichever fits, if either does. No decision is left for the build to make. When it is approved, add each contract and its version to the story index's CURRENT line.
 
 Amendment mode:
 1. Quote the contract and the finding, and list the parts that consume it from the coordination plan.
@@ -56,7 +56,8 @@ Amendment mode:
    breaking (major, done by expand and contract).
 3. The consumers approve the new version on the tracker. Record it in the ADR and in the story index's CURRENT line.
 4. Run the story status command named in WORKSPACE.md: every part pinned to the old version shows "re-plan". Those
-   parts return to `aidlc-plan`; their bundles are approved again.
+   parts return to `aidlc-plan`; their bundles are approved again. In one repository there is no coordination plan or
+   status command: list the bundles that pin the old version and mark them for re-plan.
 
 Last: Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
 workspace root) as done, or as stopped with the reason.
@@ -68,7 +69,7 @@ folder once it is accepted; `contract/` holding the drafted contract change and 
 tests, which the contract's owner applies; and, for a story across several repositories, `coordination-plan.md`.
 
 ## Gate
-The tech lead or architect approves the design, and the consumers approve a contract change; Tier 3 adds the specialists. The ADR becomes Accepted when the design is approved, and the APPROVED line of the design note records it. A "none needed" note is decided and recorded by the tech lead or architect too. You draft; you never approve.
+The tech lead or architect approves the design, and the consumers approve a contract change; Tier 3 adds the specialists. The ADR becomes Accepted when the design is approved, and the APPROVED line of the design note records it; the approval is recorded on the work item with its version and commit. A "none needed" note is decided and recorded by the tech lead or architect too. You draft; you never approve.
 
 ## Stop if
 - The evidence cannot support a choice: return to discovery, or to the spec owner.

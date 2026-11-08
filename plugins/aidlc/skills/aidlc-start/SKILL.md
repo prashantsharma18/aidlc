@@ -29,18 +29,20 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
    or any other stage: it decides what the rest of the route needs. Write it first in the index's stage checklist.
 3. **What kind of work is it?** New feature, Defect, Change request or Incident follow-up, from the work item. If it
    does not say, ask.
-      - **Defect:** it needs how to reproduce it, the expected and the actual behaviour, and the evidence. Anything
+   - **Defect:** it needs how to reproduce it, the expected and the actual behaviour, and the evidence. Anything
      missing becomes a question for the reporter; stop until it is answered. Then sort it:
      **Defect fast path (D1)** when all four hold: Tier 1 (`assets/tiers.md`); one repository; a reproduction; and the
      expected behaviour already written in an approved criterion, a spec, a contract or the documentation (name
      where). Otherwise the **full defect route (D2)**.
    - **Change request:** find the original story and its documents (`stories/<ORIG>/` at the workspace root, or
      `plans/<ORIG>/` in a repository). Not found: ask, and stop. Still in progress: route it to `aidlc-specify` in
-     amendment mode (route C); the parts whose criteria change are marked "re-plan". Already released: it is new work
+     amendment mode (route C), which works in the original story's index, never a new one; the parts whose criteria
+     change are marked "re-plan". Already released: it is new work
      with its own key that points to the original, and its criteria include "the original's criteria still hold".
    - **Incident follow-up:** link the incident record; route it as a defect, with the incident as the evidence.
-4. **No story yet:** do not draft one. Route to `aidlc-intent`: `aidlc-intent` interviews the person and drafts the
-   story for the product owner, who creates it in the tracker.
+4. **No story yet:** do not draft one. Write the index under a provisional key `NEW-<slug>` (a short name for the
+   requirement), with ROUTE pending, and route to `aidlc-intent`: `aidlc-intent` interviews the person and drafts the
+   story for the product owner. When the product owner creates the item, the person renames the folder to the item's key.
 5. **The story exists:** read it for its kind and its scope only. Judging whether it states a problem, an outcome and
    testable criteria is `aidlc-intent`'s job. Never redraft or split it: its parts are tracked in the coordination plan.
 6. **Which repositories change?** At a workspace root, send one `explorer` agent into each repository listed in
@@ -67,10 +69,11 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
    **Several repositories:**
    - story level, at the workspace root: `aidlc-intent` (only if the story needs it), `aidlc-specify`,
      `aidlc-discover`, `aidlc-design` (with the coordination plan, one row per repository part);
-   - part level, inside each repository: `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`;
+   - part level, inside each repository: `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`. The root index
+     has no rows for them, only the line "parts: see `status.md`";
    - back at the root: `aidlc-release`; on events: `aidlc-operate`, `aidlc-feedback`.
 
-      **Defect fast path (D1):** inside the repository, `aidlc-plan` (brief mode), the engineer confirms the brief,
+   **Defect fast path (D1):** inside the repository, `aidlc-plan` (brief mode), the engineer confirms the brief,
    `aidlc-build` (the reproducing test first), `aidlc-verify`, `aidlc-review`. No release stage unless the fix changes
    data or a schema; the normal pipeline ships it.
 

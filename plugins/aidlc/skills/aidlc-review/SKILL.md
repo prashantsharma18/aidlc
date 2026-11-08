@@ -29,7 +29,7 @@ After `aidlc-verify`, when every required check is green on the pull request.
 ## Inputs
 Where this runs: inside the repository whose part you are working on. For a story that spans several repositories, read your part's row in the workspace's `../stories/<KEY>/coordination-plan.md` (read-only) and the design it points to; the branch is `feat/<KEY>-<part>` and the pull request title is `[<KEY>] part <n> of <m>: <what>`. Started at the workspace root: name the repository to open, and stop. A one-repository story runs entirely in that repository.
 
-The pull request, its evidence table, the spec, plan and task bundles it implements, the progress notes (`plans/<KEY>/progress-<slice>.md`, one per slice), the tier (`assets/tiers.md`), and, if the tool keeps one, the session's log of the agent's tool calls, which the person supplies (the security review's TOOLS row needs it).
+The pull request, its evidence table, on route D1 the fix brief `plans/<KEY>/fix.md` in place of the spec and plan, the spec, plan and task bundles it implements, the progress notes (`plans/<KEY>/progress-<slice>.md`, one per slice), the tier (`assets/tiers.md`), and, if the tool keeps one, the session's log of the agent's tool calls, which the person supplies (the security review's TOOLS row needs it).
 
 ## Steps
 1. Check the inputs: every required check green, a code owner who is not the author or pusher, the evidence table filled. If any is missing, go back to the stage that owns it.
@@ -40,7 +40,8 @@ The pull request, its evidence table, the spec, plan and task bundles it impleme
 6. Prepare each required specialist's questions, with pointers to the hunks. At Tier 3, and whenever the change touches secrets, permissions, tool calls, dependencies or prompts, load the `securing-code` skill and draft the security review from `assets/security-review.md`.
 7. Draft the review record from `assets/review-record.md`, with no approval part for you.
 8. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
-   workspace root) as done, or as stopped with the reason.
+   workspace root) as done, or as stopped with the reason. Once the code owner approves, the person marks the `merged` row done in its final commit, so
+   the row reaches the default branch only through the merge.
 
 ## Produces
 In `plans/<KEY>/`, on the part's branch: `pr-description.md`, `review-record.md` (the dispositions and the reviewers'
