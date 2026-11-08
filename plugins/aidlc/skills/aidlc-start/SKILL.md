@@ -22,12 +22,15 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
 
 ## Steps
 1. **Where am I?** A `WORKSPACE.md` here means a workspace root; an `AGENTS.md` without it means a single repository.
-   Neither: ask the person where the work belongs, and stop.
-2. **Packs.** Read AGENTS.md's `Packs used here`. If it lists packs, run the pack check named in AGENTS.md's
+   Neither: if the folder holds no code yet (only a README, a licence, a `.gitignore`, `.github/`, `docs/` or `plans/`),
+   ask whether the work is a new system; if it is, the kind is New system (route G). If it holds code, it is an
+   existing repository that aidlc has not onboarded: name `aidlc-onboard`, and stop. Otherwise ask the person where the
+   work belongs, and stop. A folder with `AGENTS.md` is never route G: its system already exists.
+2. **Packs.** On route G there is no `AGENTS.md` yet: skip this step. Otherwise read AGENTS.md's `Packs used here`. If it lists packs, run the pack check named in AGENTS.md's
    Commands; if it fails, report its lines and stop. When the work is the kind a pack line covers, the route's next
    stage after this one is that line's first skill, written in full (`<plugin>:<skill>`), before intent, specify
    or any other stage: it decides what the rest of the route needs. Write it first in the index's stage checklist.
-3. **What kind of work is it?** New feature, Defect, Change request or Incident follow-up, from the work item. If it
+3. **What kind of work is it?** New feature, Defect, Change request, Incident follow-up or New system, from the work item. If it
    does not say, ask.
    - **Defect:** it needs how to reproduce it, the expected and the actual behaviour, and the evidence. Anything
      missing becomes a question for the reporter; stop until it is answered. Then sort it:
@@ -40,6 +43,10 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
      change are marked "re-plan". Already released: it is new work
      with its own key that points to the original, and its criteria include "the original's criteria still hold".
    - **Incident follow-up:** link the incident record; route it as a defect, with the incident as the evidence.
+   - **New system:** there is no code yet. A person creates the home first; the agent never creates a repository. One
+     repository known: an empty repository, where the story runs. Several, or undecided: a workspace whose root
+     `aidlc-onboard` has set up (that needs no code); the story runs at the root, and `aidlc-design` decides the
+     repositories.
 4. **No story yet:** do not draft one. Write the index under a provisional key `NEW-<slug>` (a short name for the
    requirement), with ROUTE pending, and route to `aidlc-intent`: `aidlc-intent` interviews the person and drafts the
    story for the product owner. When the product owner creates the item, the person renames the folder to the item's key.
@@ -56,7 +63,7 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
    - Several repositories, or unsure (unsure counts as several): the story runs at the workspace root, with its
      documents in `stories/<KEY>/`; each repository's part runs inside that repository.
    Name the route in the index's ROUTE line: F1 (a feature in one repository), F2 (a feature across several), C (a
-   change request), D1 or D2 (a defect).
+   change request), D1 or D2 (a defect), G (a new system).
 8. **Write the story's index** where this session runs, from `assets/story-index.md`: `plans/<KEY>/README.md` inside a
    repository, `stories/<KEY>/README.md` at a workspace root. Fill SOURCE, KIND, ROUTE and LEVEL, and one row per stage
    of the route with where it runs and the status "to do".
@@ -79,6 +86,10 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
 
    **Full defect route (D2):** as a new feature in one repository or several, with `aidlc-intent` first and the
    reproduction as the spec's first criterion.
+
+   **New system (G):** `aidlc-intent` (when the story needs it), `aidlc-specify`, `aidlc-design` (the new system's
+   decisions); then in each new repository `aidlc-onboard` (new mode, prepare), `aidlc-plan` (slice 0), `aidlc-build`,
+   `aidlc-verify`, `aidlc-review`, `aidlc-onboard` (new mode, confirm). After that, every feature takes F1 or F2.
 9. Tell the person the next stage, the exact folder to run it in, and the command.
 
 ## Produces

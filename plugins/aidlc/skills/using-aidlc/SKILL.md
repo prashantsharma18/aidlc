@@ -45,6 +45,7 @@ repository: everything happens in that repository.
 | D1 · defect, fast path | Tier 1, one repository, a reproduction, expected behaviour written | `aidlc-plan` (brief mode), the engineer confirms, `aidlc-build`, `aidlc-verify`, `aidlc-review` |
 | D2 · defect, full route | Any other defect | As F1 or F2; the reproduction is the spec's first criterion |
 | I · incident | An alert fires or an incident is open | `aidlc-operate` (no story), then `aidlc-feedback`; the follow-up enters at `aidlc-start` |
+| G · new system | No code yet: a new product, service or application | `aidlc-intent` (when needed), `aidlc-specify`, `aidlc-design` (the new system's decisions); in each new repository `aidlc-onboard` (new mode, prepare), `aidlc-plan` (slice 0), `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-onboard` (new mode, confirm); then F1 or F2 |
 
 ## The practice map
 
