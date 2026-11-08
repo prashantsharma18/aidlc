@@ -61,9 +61,8 @@ workspace root ── release (flags on in the plan's order) ─► the story is
 
 ## Packs
 
-A repository switches on the packs it needs (for example `aidlc-modernize`) and declares them in AGENTS.md's
-`Packs used here`; core never names a pack. See [modernisation.md](modernisation.md) and
-[ADR 0011](../adr/0011-plugins-and-packs.md).
+A repository switches on the packs it needs and declares them in AGENTS.md's `Packs used here`; core never names a
+pack. See [ADR 0011](../adr/0011-plugins-and-packs.md).
 
 ## Who decides
 

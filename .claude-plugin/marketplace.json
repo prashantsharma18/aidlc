@@ -3,17 +3,12 @@
   "owner": {
     "name": "prashantsharma18"
   },
-  "description": "aidlc: skills for AI-assisted software delivery, from a requirement to a verified, reviewed change, and packs that extend it.",
+  "description": "aidlc: skills for AI-assisted software delivery, from a requirement to a verified, reviewed change.",
   "plugins": [
     {
       "name": "aidlc",
       "source": "./plugins/aidlc",
       "description": "Core: stage skills (start to feedback, onboard), engineering-practice skills and agent roles. Each stage stops at its human gate."
-    },
-    {
-      "name": "aidlc-modernize",
-      "source": "./plugins/aidlc-modernize",
-      "description": "Modernisation method and .NET and Java factories. Requires aidlc. Switch on per repository."
     }
   ]
 }

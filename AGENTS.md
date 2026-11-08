@@ -6,7 +6,6 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
 ## Map
 - `plugins/aidlc/` the core plugin: `skills/` (the `aidlc-*` stage skills and the engineering-practice skills; `skills/NOTICE`
   holds the third-party licence for parts of the eight earlier practices) and `agents/`.
-- `plugins/aidlc-modernize/` the modernisation pack: method skills, the .NET and Java factories, the parity-checker.
 - `starter/` files a team copies once into a repository or a workspace, including `starter/repo/scripts/`.
 - `.claude-plugin/marketplace.json` the marketplace that lists both plugins.
 - `docs/` quickstarts, the operating model, ADRs, designs, plans, verification records.
@@ -19,7 +18,7 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
 
 ## Standards
 - Skills follow the open Agent Skills format: the folder name equals `name:`; the description says what the skill does
-  and "Use when …". Stage, method and recipe skills (`aidlc-`, `modernize-`, `dotnet-`, `java-`) keep the sections: When
+  and "Use when …". Stage skills (`aidlc-`) keep the sections: When
   to use, Inputs, Steps, Produces, Gate, Stop if, Common excuses, Red flags, Rules. Practice skills (`metadata.kind:
   practice`) keep: When to use, Steps, Checks, Stop if, Common excuses, Red flags, Rules; the eight earlier practices
   keep their own structure. `using-aidlc` keeps the open format. A stage step commands a practice with "Load the

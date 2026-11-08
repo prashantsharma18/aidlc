@@ -20,11 +20,8 @@
 (for example `mcp__<server>__getjiraissue` and its search tool), deny its transition tool, and name the site and project in
 `AGENTS.md` or `WORKSPACE.md` ("Tools"). Without the allow rule, a headless session cannot read the work item.
 
-**Packs.** A repository being modernised also switches on `aidlc-modernize@aidlc` in `.claude/settings.json`
-(`enabledPlugins`) and declares it in AGENTS.md's `Packs used here`; `python3 scripts/check_packs.py` (from the
-starter) checks the two agree, at the start of work and in CI. Installing `aidlc-modernize` installs `aidlc` with it.
 Cloud sessions and headless (`-p`) runs do not add a repository's marketplace, because that needs the folder-trust
-dialog: in CI, install the plugins explicitly (`claude plugin marketplace add`, then `claude plugin install`).
+dialog: in CI, install the plugin explicitly (`claude plugin marketplace add`, then `claude plugin install`).
 
 Open a new repository or workspace in Claude Code interactively once and accept the folder-trust dialog: until then its
 `.claude/settings.json` allow rules and `additionalDirectories` are ignored, and headless runs never show the dialog.

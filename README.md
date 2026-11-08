@@ -3,8 +3,7 @@
 A skills package for AI-assisted software delivery: from a requirement to a verified, reviewed change, with a person
 deciding at every gate. It implements the guide "From Intent to Verified Change".
 
-One marketplace, two plugins: **`aidlc`** (the core every repository uses) and **`aidlc-modernize`** (switched on only
-in repositories being modernised). The skills work in **Claude Code, GitHub Copilot, Codex and Cursor**: they are plain
+One plugin, **`aidlc`**. The skills work in **Claude Code, GitHub Copilot, Codex and Cursor**: they are plain
 `SKILL.md` folders in the open Agent Skills format.
 
 ## Install
@@ -45,8 +44,6 @@ A pack is a plugin a repository switches on for one kind of work. Core never nam
 its packs in AGENTS.md (`Packs used here`), `scripts/check_packs.py` checks the declaration against what is installed,
 and the task bundle names the pack skills a slice uses ([ADR 0011](docs/adr/0011-plugins-and-packs.md)).
 
-- **`aidlc-modernize`**: assess, characterise, wave plans, parity and cutover, with a .NET factory (proven end to end)
-  and a Java factory (written, not yet proven). See [docs/operating-model/modernisation.md](docs/operating-model/modernisation.md).
 
 ## Skills
 
@@ -60,10 +57,6 @@ The map of stages and practices, and the first skill to read: `using-aidlc`.
 
 Agents the skills call: `explorer`, `reviewer-bug`, `reviewer-security`, `reviewer-compliance`, `reviewer-tests`,
 `ops-diagnoser` (in `plugins/aidlc/agents/`).
-
-`aidlc-modernize` (`plugins/aidlc-modernize/`): `modernize-assess`, `modernize-characterize`, `modernize-wave-plan`,
-`modernize-parity`, `modernize-cutover`, the factories `dotnet-modernize` and `java-modernize`, and the agent
-`parity-checker`.
 
 ## Contributing
 
