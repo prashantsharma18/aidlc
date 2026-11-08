@@ -7,7 +7,7 @@ ACTUAL      <what happens instead>
 TIER        1 (<why: one repository; no money, personal data, security, contract or untested legacy code>)
 DESIGN      none needed: no change of shape, boundary or contract   (any yes: stop, it is route D2)
 LIKELY AREA <file:line, labelled FACT or INFERENCE>
-MODE        <hands-on | delegate with checkpoints | delegate>   (Tier 1 allows every mode; the engineer chooses when confirming)
+MODE        <hands-on | delegate with checkpoints | delegate>   (Tier 1 allows every mode; the engineer chooses when confirming; a brief has no CHECKPOINT, so delegate with checkpoints runs as delegate)
 USE SKILLS  <plugin:skill, …> | none
 MAY CHANGE  <glob>, <glob>   (paths and globs only)
 MUST NOT    <paths and things that must not change, incl. existing assertions>

@@ -12,8 +12,8 @@ copy the plugins' `skills/` folders into Copilot, Codex or Cursor.
 `plugins/aidlc/agents/`   agent roles the core skills call (Claude Code subagent format)
 `plugins/aidlc-modernize/`   the modernisation pack: method skills, factories (`dotnet-modernize` with `scripts/retarget.py`,
 `java-modernize`), `modernize-parity/scripts/parity.py`, the `parity-checker` agent
-`starter/repo/`, `starter/workspace/`   files a team copies once; `starter/repo/scripts/` holds `check_packs.py` and
-`check_recipe_commit.py`
+`starter/repo/`, `starter/workspace/`   files a team copies once; `starter/repo/scripts/` holds `check_packs.py`,
+`check_recipe_commit.py` and `run_slices.py`
 `.claude-plugin/marketplace.json`   the marketplace listing both plugins
 `scripts/validate.py`   the marketplace check; `scripts/test_*.py` test it and every script above
 `docs/`   quickstarts, operating model, ADRs, designs, plans, verification records

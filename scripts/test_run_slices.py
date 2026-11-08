@@ -217,5 +217,86 @@ class MainTest(unittest.TestCase):
             run_slices.main(["SHIP-7"])
 
 
+
+class ReviewFixesTest(unittest.TestCase):
+    """Plan 15 final review: each test was seen failing before its fix."""
+
+    def test_i2_the_default_prompt_names_the_part(self):
+        repo = Repo({"plans/SHIP-7/part-2/bundle-1.md": bundle()})
+        calls = []
+
+        def invoke(argv, cwd):
+            calls.append(argv)
+            (repo.root / "plans/SHIP-7/part-2/progress-1.md").write_text("STATUS      done\n", encoding="utf-8")
+            repo.commit("slice")
+            return 0
+
+        code = run_slices.run(repo.root, "SHIP-7", ["1"], invoke, COMMAND, run_slices.DEFAULT_PROMPT, part=2,
+                              out=lambda line: None)
+        self.assertEqual(code, 0)
+        self.assertEqual(calls[0][-1], "/aidlc:aidlc-build SHIP-7 1 part 2")
+
+    def test_i3_a_paused_slice_needs_the_persons_confirmation(self):
+        paused = "STATUS      paused: checkpoint 1\n"
+        repo = Repo({"plans/SHIP-7/bundle-1.md": bundle("delegate with checkpoints"),
+                     "plans/SHIP-7/progress-1.md": paused})
+        invoke, calls = repo.agent([])
+        code, lines = repo.run(["1"], invoke)
+        self.assertEqual((code, calls), (2, []))
+        self.assertIn("not confirmed", " ".join(lines))
+
+    def test_i3_a_confirmed_pause_runs(self):
+        note = ("STATUS      paused: checkpoint 1\n\n## Pauses confirmed (by the person)\n"
+                "- checkpoint 1 confirmed by Ana, 2026-11-08\n")
+        repo = Repo({"plans/SHIP-7/bundle-1.md": bundle("delegate with checkpoints"),
+                     "plans/SHIP-7/progress-1.md": note})
+        invoke, calls = repo.agent([("done", 0, False)])
+        self.assertEqual(repo.run(["1"], invoke)[0], 0)
+
+    def test_m1_a_branch_without_the_key_is_refused(self):
+        repo = Repo({"plans/SHIP-7/bundle-1.md": bundle()}, branch="trunk-work")
+        invoke, calls = repo.agent([])
+        code, lines = repo.run(["1"], invoke)
+        self.assertEqual((code, calls), (2, []))
+        self.assertIn("does not name SHIP-7", " ".join(lines))
+
+    def test_m2_outside_a_repository_is_refused_plainly(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lines = []
+            code = run_slices.run(Path(tmp), "SHIP-7", ["1"], lambda a, c: 0, COMMAND, PROMPT, out=lines.append)
+        self.assertEqual(code, 2)
+        self.assertIn("not a git repository", " ".join(lines))
+        self.assertNotIn("detached", " ".join(lines))
+
+    def test_m3_an_agent_that_cannot_start_is_a_clean_refusal(self):
+        repo = Repo({"plans/SHIP-7/bundle-1.md": bundle()})
+
+        def invoke(argv, cwd):
+            raise FileNotFoundError("agent")
+
+        code, lines = repo.run(["1"], invoke)
+        self.assertEqual(code, 2)
+        self.assertIn("could not start", " ".join(lines))
+
+    def test_m3_an_unknown_prompt_placeholder_is_refused(self):
+        repo = Repo({"plans/SHIP-7/bundle-1.md": bundle()})
+        invoke, calls = repo.agent([])
+        lines = []
+        code = run_slices.run(repo.root, "SHIP-7", ["1"], invoke, COMMAND, "{nope}", out=lines.append)
+        self.assertEqual((code, calls), (2, []))
+        self.assertIn("--prompt", " ".join(lines))
+
+    def test_m4_field_stays_on_its_line_and_reads_common_markup(self):
+        self.assertIsNone(run_slices.field("STATUS\n\nMODE        delegate\n", "STATUS"))
+        self.assertEqual(run_slices.field("STATUS:  `done`\n", "STATUS"), "done")
+        self.assertEqual(run_slices.field("**STATUS** done\n", "STATUS"), "done")
+
+    def test_m5_the_default_command_denies_push(self):
+        argv = __import__("shlex").split(run_slices.DEFAULT_COMMAND)
+        self.assertIn("--disallowedTools", argv)
+        self.assertEqual(argv[argv.index("--disallowedTools") + 1], "Bash(git push*)")
+        self.assertLess(argv.index("--disallowedTools"), argv.index("-p"))
+
+
 if __name__ == "__main__":
     unittest.main()

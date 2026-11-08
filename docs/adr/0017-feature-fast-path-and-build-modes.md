@@ -25,10 +25,12 @@ Defects already had a fast path (D1); features had none.
 - A starter script, `run_slices.py`, runs one fresh headless session per approved slice, in the order the person
   names. It refuses hands-on slices and modes above their tier before any session starts, stops at the first slice
   that does not end done, and never pushes. The person reviews the diffs at the end.
+- A paused slice resumes only after the person writes `- <pause> confirmed by <name>, <date>` in its progress note;
+  the runner refuses a paused slice without it.
 
 ## Consequences
 - aidlc 4.3.0.
 - Bundles written before 4.3 keep today's behaviour.
 - The runner's default command is Claude Code's headless mode with edits accepted. Other tools pass `--command` and
-  `--prompt`. The starter settings keep `git push` on "ask", which a headless session cannot answer.
+  `--prompt`. The default command denies `git push` to the session; the starter settings also keep it on "ask".
 - The eval case for delegate at Tier 2 needs Bash, so it runs where the Bash sandbox runs.

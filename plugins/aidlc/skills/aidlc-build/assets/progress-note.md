@@ -11,6 +11,9 @@ MODE        <the bundle's MODE; hands-on when the bundle has none>
 ## Restatement (delegate modes)
 - <goal, criteria covered, MAY CHANGE and STOP IF, with file references>
 
+## Pauses confirmed (by the person)
+- <checkpoint n | recipe review> confirmed by <name>, <YYYY-MM-DD>
+
 ## Session plan
 - [ ] 1 <step> — files: <...> — check: <...>
 

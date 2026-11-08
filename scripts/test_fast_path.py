@@ -160,5 +160,76 @@ class FastPathTest(unittest.TestCase):
         self.assertTrue((ROOT / "docs/adr/0017-feature-fast-path-and-build-modes.md").is_file())
 
 
+
+class ReviewFixesTest(unittest.TestCase):
+    """Plan 15 final review: each test was seen failing before its fix."""
+
+    def test_i1_build_commits_the_index_with_the_done_note(self):
+        step = section(skill("aidlc-build"), "10. ")
+        self.assertLess(step.index("Mark this stage's row"), step.index("Set STATUS to `done`"))
+        self.assertIn("commit the note and the index together, as the session's last commit", step)
+
+    def test_i2_build_reads_a_part_folder(self):
+        self.assertIn("`plans/<KEY>/part-<n>/`", section(skill("aidlc-build"), "## Inputs"))
+
+    def test_i3_a_pause_resumes_only_on_a_recorded_confirmation(self):
+        build = skill("aidlc-build")
+        self.assertIn("<pause> confirmed by <name>, <YYYY-MM-DD>", build)
+        note = read("plugins/aidlc/skills/aidlc-build/assets/progress-note.md")
+        self.assertIn("## Pauses confirmed (by the person)", note)
+
+    def test_i4_re_routing_is_a_step(self):
+        start = skill("aidlc-start")
+        self.assertIn("**An index for this key already exists**", section(start, "## Steps"))
+        self.assertIn("(re-routed from <old route>, <YYYY-MM-DD>: <reason>)", start)
+        self.assertIn("`stories/<KEY>/README.md`", section(start, "**An index for this key already exists**"))
+        plan = skill("aidlc-plan")
+        self.assertEqual(plan.count("it is route D2, and `aidlc-start` re-routes it"), 2)
+        self.assertIn("it is route F1, and `aidlc-start` re-routes it. 2.", plan)
+        self.assertIn("goes back to `aidlc-start`, which re-routes the work", section(skill("aidlc-build"), "## Stop if"))
+
+    def test_i5_onboarded_repositories_name_the_runner(self):
+        line = "python3 scripts/run_slices.py <KEY> <slice> [<slice> ...] [--part <n>]"
+        self.assertIn(line, read("plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md"))
+        self.assertIn(line, read("starter/repo/AGENTS.md"))
+
+    def test_i6_i7_the_f0_cases_reach_their_gates(self):
+        evals = "plugins/aidlc/evals"
+        self.assertIn("I confirm your restatement in advance", read(f"{evals}/gate-f0-data-change/prompt.md"))
+        setup = read(f"{evals}/route-f0-start/setup.sh")
+        self.assertIn("tests/test_labels.py", setup)
+        self.assertIn("return_label", read(f"{evals}/route-f0-start/prompt.md"))
+
+    def test_m6_m7_build_checks_the_mode_in_step_2(self):
+        build = skill("aidlc-build")
+        self.assertIn("a delegate MODE with no TIER line, is a stop before any edit", section(build, "## Steps"))
+        self.assertIn("A stop before step 4, when there is no note yet, only reports.", build)
+
+    def test_m8_m9_compliance_on_checkpoints_and_old_notes(self):
+        compliance = read("plugins/aidlc/agents/reviewer-compliance.md")
+        self.assertIn("A Tier 2 bundle in delegate with checkpoints with no CHECKPOINT", compliance)
+        self.assertIn("A note written before aidlc 4.3 has no STATUS or MODE line: that is not a finding.", compliance)
+
+    def test_m10_m11_review_and_plan_on_the_feature_brief(self):
+        self.assertIn("On route F0, the code owner approves `brief.md` with the change.", skill("aidlc-review"))
+        self.assertIn("the tier rises above 1", section(skill("aidlc-plan"), "Feature brief mode (route F0):"))
+
+    def test_m12_stale_lines(self):
+        produces = section(skill("aidlc-build"), "## Produces")
+        self.assertIn("committed on its own first, then with the slice", produces)
+        self.assertIn("run_slices.py", read("docs/codebase-map.md"))
+
+    def test_m13_the_tier_2_case_forbids_the_test_file(self):
+        graders = ROOT / "plugins/aidlc/evals/gate-delegate-tier2/graders"
+        for tool in ("write", "edit"):
+            text = (graders / f"no-test-{tool}.md").read_text(encoding="utf-8")
+            self.assertIn("tests/test_labels", text)
+
+    def test_m14_briefs_say_checkpoints_run_as_delegate(self):
+        for name in ("fix-brief", "feature-brief"):
+            self.assertIn("a brief has no CHECKPOINT, so delegate with checkpoints runs as delegate",
+                          read(f"plugins/aidlc/skills/aidlc-plan/assets/{name}.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -110,6 +110,14 @@ route, keeps every row already done, and names the next stage.
       `aidlc-release`. Later features are new stories.
 
    The index lists the rows `aidlc-onboard (prepare)`, `slice 0` and `aidlc-onboard (confirm)` before the build rows.
+   **An index for this key already exists** (re-routing, after a stage stopped because the route no longer fits):
+   - keep every row marked done; give the new route's other stages a row "to do"; a row marked stopped becomes "to
+     do" when the new route has that stage, and is removed otherwise;
+   - write the ROUTE line as `<new route>   (re-routed from <old route>, <YYYY-MM-DD>: <reason>)`;
+   - keep the old brief (`fix.md` or `brief.md`) as history: the new route's documents replace it;
+   - when the new route spans several repositories, run this at the workspace root: it writes
+     `stories/<KEY>/README.md` there with the story-level rows, and the repository's `plans/<KEY>/README.md` becomes
+     that repository's part index when `aidlc-plan` runs for the part.
 9. Tell the person the next stage, the exact folder to run it in, and the command.
 
 ## Produces

@@ -92,10 +92,10 @@ Slice 0 (route G), the first slice of each new repository, on branch `feat/<KEY>
 
 Brief mode:
 1. Restate the defect: the reproduction, the expected behaviour and where it is written, the actual behaviour. When the
-   expected behaviour is written nowhere, stop: it is route D2.
+   expected behaviour is written nowhere, stop: it is route D2, and `aidlc-start` re-routes it.
 2. Find the likely area read-only, with the `explorer` agent if the reading is heavy. Label each finding FACT or
    INFERENCE with `file:line`.
-3. Ask the three design questions; any yes, stop: it is route D2.
+3. Ask the three design questions; any yes, stop: it is route D2, and `aidlc-start` re-routes it.
 4. Fill `assets/fix-brief.md` and write it to `plans/<KEY>/fix.md`. Choose USE SKILLS from the practice map
    (`debugging-failures` and `writing-tests` at least). Propose MODE; the engineer chooses it when
    confirming.
@@ -105,10 +105,11 @@ Brief mode:
 Feature brief mode (route F0):
 1. Restate the outcome and each acceptance criterion as the work item gives it, with its ID, and list every
    ambiguity. Wait for the person to confirm. A criterion not written on the work item by its owner, or an ambiguity
-   only the owner can settle, means stop: it is route F1.
+   only the owner can settle, means stop: it is route F1, and `aidlc-start` re-routes it.
 2. Find the area read-only, with the `explorer` agent if the reading is heavy. Label each finding FACT or INFERENCE
    with `file:line`.
 3. Check the rest of the fast-path test. Any of these means stop: it is route F1, and `aidlc-start` re-routes it.
+   - the tier rises above 1 (`assets/tiers.md`): what the code shows outranks the first rating;
    - any of the three design questions (`aidlc-design`, step 1) is yes, or uncertain;
    - a new dependency seems necessary;
    - stored data or a schema changes (a migration, a new field, a backfill);

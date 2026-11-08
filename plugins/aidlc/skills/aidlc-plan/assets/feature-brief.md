@@ -8,7 +8,7 @@ DESIGN      none needed: the three design questions are no   (any yes or unsure:
 DEPENDENCIES none new   (one needed: stop, it is route F1)
 DATA        no change to stored data or a schema   (a change: stop, it is route F1)
 LIKELY AREA <file:line, labelled FACT or INFERENCE>
-MODE        <hands-on | delegate with checkpoints | delegate>   (Tier 1 allows every mode; the engineer chooses when confirming)
+MODE        <hands-on | delegate with checkpoints | delegate>   (Tier 1 allows every mode; the engineer chooses when confirming; a brief has no CHECKPOINT, so delegate with checkpoints runs as delegate)
 USE SKILLS  <plugin:skill, …> | none
 MAY CHANGE  <glob>, <glob>   (paths and globs only)
 MUST NOT    <paths and things that must not change, incl. existing assertions>
