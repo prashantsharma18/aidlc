@@ -166,6 +166,12 @@ class RoutesTest(unittest.TestCase):
         self.assertEqual((SKILLS / "aidlc-plan/assets/story-index.md").read_text(encoding="utf-8"),
                          (SKILLS / "aidlc-start/assets/story-index.md").read_text(encoding="utf-8"))
 
+    def test_the_workspace_names_the_status_command(self):
+        for rel in ("starter/workspace/WORKSPACE.md", "plugins/aidlc/skills/aidlc-onboard/assets/workspace.md"):
+            self.assertIn("`python3 scripts/story_status.py <KEY> --write`", read(rel), rel)
+        self.assertIn("story_status.py", skill("aidlc-onboard"))
+        self.assertIn("Status is derived", read("plugins/aidlc/skills/aidlc-design/assets/coordination-plan.md"))
+
 
 if __name__ == "__main__":
     unittest.main()

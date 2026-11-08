@@ -19,6 +19,11 @@
 ## Tools
 - Tracker: <site, project>; read issues with <tool>; never transition an issue; creating or commenting asks first.
 
+## Commands
+- Story status, after any part moves: `python3 scripts/story_status.py <KEY> --write` (writes `stories/<KEY>/status.md`).
+- Before release: `python3 scripts/story_status.py <KEY> --check-release` (fails unless every part is merged at the
+  current versions).
+
 ## Rules
 - A repository's own rules apply to its code. Read its AGENTS.md before reasoning about it, and say when two
   repositories' rules conflict.

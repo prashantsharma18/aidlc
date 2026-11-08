@@ -10,7 +10,7 @@ OUTCOME    <...>. Tier <n> (<reason; unknown consumers raise it>)
 CONTRACTS  <contract> <from> -> <to> (<minor, additive | major via expand and contract>)
 PARTS      #  Repository     Owner    Change                 Flag          Waits for     Undo       Status
            1  <repository>   <team>   <what changes>         <flag, off>   <tag or ->    flag off   waiting
-           (Status: waiting, planned, building, in review, merged, released, re-plan. Update it as each part moves.)
+           (Status is derived: run the story status command named in WORKSPACE.md; it reads each part's index and writes `status.md` beside this plan.)
 TRACKING   Branch feat/{{KEY}}-<part> in each repository; pull request title "[{{KEY}}] part <n> of <m>: <what>".
            The story stays one tracker item: parts are tracked here, never as more issues.
 READ-ONLY  <repositories read but not changed>
