@@ -34,7 +34,8 @@ aidlc has two kinds of skill.
 
 ## The routes
 
-`aidlc-start` chooses one. Several repositories: the workspace root holds the story and tracks every part. One
+`aidlc-start` chooses one of the other seven; route I starts at `aidlc-operate` when an alert fires. Several
+repositories: the workspace root holds the story and tracks every part. One
 repository: everything happens in that repository.
 
 | Route | When | Stages |
