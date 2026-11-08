@@ -1,6 +1,7 @@
 <!-- aidlc template: evidence-pack -->
 # {{KEY}} · evidence pack · Tier {{TIER}}
 
+```text
 QUESTION  <who reads or writes X, by what path, and what must stay true when Y?>
 LEVEL     <L0-L3 and the trigger that forced it>
 
@@ -18,3 +19,4 @@ Tier 2 requires items 1-5; Tier 3 requires all eight (`assets/tiers.md`).
 SEARCHED  <what was searched>   EXCLUDED  <what was not>
 
 DECISION  <proceed | escalate a level | raise the tier> — <reasons> — <tech lead, date>
+```

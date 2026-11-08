@@ -1,4 +1,7 @@
 <!-- aidlc template: task-bundle -->
+# {{KEY}} · task bundle · {{SLICE}}
+
+```text
 TASK BUNDLE · {{KEY}} · {{SLICE}}
 GOAL        <one or two sentences naming the criteria covered>
 INTENT      <spec version and clarifications; plan version and approval commit>
@@ -25,3 +28,4 @@ STOP IF     an existing assertion would need to change; a new dependency seems n
 RETURN      Branch <type>/{{KEY}}-<slug>; criterion -> test table; test output; assumptions
 NOT         <what was left out, and why>
 INCLUDED
+```

@@ -1,4 +1,7 @@
 <!-- aidlc template: new-system -->
+# {{KEY}} · {{TITLE}} · new system
+
+```text
 NEW SYSTEM · {{KEY}} · {{TITLE}}          (one REPOSITORY block per repository the LAYOUT names)
 LAYOUT       <one repository: name | several: name, name — the coordination plan holds one slice-0 part each>
 CONTRACTS    <contract v1: provider -> consumers> | none
@@ -15,3 +18,4 @@ SCAFFOLD     <tool@version — the exact generator and install commands — the 
 CI           <each required check, running one of the COMMANDS>
 
 APPROVED     <tech lead or architect>, <YYYY-MM-DD>, recorded on the work item with this file's version and commit
+```

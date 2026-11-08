@@ -1,4 +1,7 @@
 <!-- aidlc template: security-review -->
+# Security review · {{KEY}} · {{PR}}
+
+```text
 Security review record · {{KEY}} · {{PR}}
 SCOPE      <criteria, bundle at approval commit, plan version, sessions>
 REVIEWER   <security champion>. Code owner approves (branch protection).
@@ -18,3 +21,4 @@ PROMPT AND CONTEXT      <context minimal? retrieved text acted as instruction?> 
 APPLICATION SECURITY    <authorisation, input handling>          <ok|finding>
 
 5 GATE     <intent, evidence and policy agree?> <reviewed, no open findings | revise | reject>
+```

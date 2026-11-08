@@ -5,7 +5,9 @@ stage: plan
 guide: ["14.9", "7.14"]
 fields: [KEY, TITLE]
 ---
-Coordination plan · {{KEY}} · {{TITLE}} · v1
+# Coordination plan · {{KEY}} · {{TITLE}} · v1
+
+```text
 OUTCOME    <...>. Tier <n> (<reason; unknown consumers raise it>)
 CONTRACTS  <contract> v<n> <from> -> <to> (<minor, additive | major via expand and contract>)
 PARTS      #  Repository     Owner    Change                 Flag          Waits for     Undo       Status
@@ -22,3 +24,4 @@ UNKNOWNS   U1 <...>: owner <...>, answer by <date>, blocks <path only>
 ROLLBACK   <per slice, each working alone (matrix rows)>
 APPROVALS  Each slice by its own code owners. Plan: <approver>. Specialist: <role>.
            Nobody approves or merges in another team's repository on its behalf.
+```

@@ -1,4 +1,7 @@
 <!-- aidlc template: release-runbook -->
+# Release runbook · {{KEY}}
+
+```text
 Release runbook · {{KEY}}
 STEP  WHAT                              WHO (own process)      ROLLBACK, ALONE
 1     <contract published>              <team>                 <none; fix forward>
@@ -12,3 +15,4 @@ STOP CRITERIA (written before the step; act at once, no further approval)
 <step>  <signal, threshold, duration> -> <action>
 
 WATCH  <window>; the agent posts read-only summaries; people decide.
+```

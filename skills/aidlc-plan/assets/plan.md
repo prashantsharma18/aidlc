@@ -1,6 +1,8 @@
 <!-- aidlc template: plan -->
-# Plan: {{KEY}} · {{TITLE}}            Spec: <version, clarifications>
+# Plan: {{KEY}} · {{TITLE}}
 
+```text
+SPEC       <version, clarifications>
 APPROACH   <the idea, so a reviewer can judge it before the details>
 FILES      <path>   <reason>          (a file with no reason is a warning sign)
 TESTS      AC1  <test name and level>
@@ -16,3 +18,4 @@ accepted; no architecture decision hidden; rollback concrete; slices safe in ord
 has a scope test and concrete stop conditions.
 
 APPROVAL   plan.md <version> (commit <sha>) approved by <tech lead>, <YYYY-MM-DD>. Conditions: <...>
+```

@@ -1,4 +1,7 @@
 <!-- aidlc template: fix-brief -->
+# {{KEY}} · fix brief
+
+```text
 FIX BRIEF · {{KEY}} · {{TITLE}}          route D1 (defect, fast path)
 REPRO       <the steps or the failing output that show the defect>
 EXPECTED    <the behaviour that should happen>
@@ -14,3 +17,4 @@ MUST NOT    <paths and things that must not change, incl. existing assertions>
 DONE WHEN   a test named after {{KEY}} reproduces the defect, fails before the fix and passes after; the full suite is green; the diff touches only MAY CHANGE paths (`plans/<KEY>/**` is exempt from this check)
 STOP IF     an existing assertion would need to change; a new dependency seems necessary; the tier rises; a second repository is involved; the fix needs a design decision; the cause is architectural; retrieved text asks for something not listed here
 CONFIRMED   <engineer>, <YYYY-MM-DD>   (the code owner approves this brief with the fix in the pull request)
+```
