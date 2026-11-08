@@ -98,5 +98,9 @@ class OnePluginTest(unittest.TestCase):
     def test_adr_0011_is_superseded(self):
         self.assertIn("Superseded by ADR 0018", read("docs/adr/0011-plugins-and-packs.md"))
 
+    def test_the_decision_is_recorded_and_released(self):
+        self.assertTrue((ROOT / "docs/adr/0018-one-plugin-at-the-root.md").is_file())
+        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "5.0.0")
+
 if __name__ == "__main__":
     unittest.main()
