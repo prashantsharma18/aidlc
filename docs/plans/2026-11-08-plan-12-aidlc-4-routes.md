@@ -614,9 +614,16 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
         compliance = read("plugins/aidlc/agents/reviewer-compliance.md")
         self.assertIn("plans/<KEY>/progress-<slice>.md", compliance)
         self.assertIn("covers the bundle's USE SKILLS and every skill `aidlc-build` commands", compliance)
+
+    def test_a_fresh_session_per_slice_is_preferred_and_required_after_a_slip(self):
+        for rel in ("plugins/aidlc/skills/aidlc-build/SKILL.md", "starter/repo/AGENTS.md",
+                    "plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md"):
+            text = read(rel)
+            self.assertIn("refer a fresh session", text, rel)
+            self.assertIn("discussed anything the bundle does not record", text, rel)
 ```
 
-- [ ] **Step 2: Run it and watch it fail.** Expected: 1 FAIL.
+- [ ] **Step 2: Run them and watch them fail.** Expected: 2 FAIL.
 
 - [ ] **Step 3: Edit the texts.**
   - `aidlc-build` step 4: replace "Keep the steps as a checklist in your reply, in the shape of `assets/progress-note.md`." with "Write the steps as a checklist to `plans/<KEY>/progress-<slice>.md`, from `assets/progress-note.md`, commit it with the slice's first commit, and keep it current as steps finish."
@@ -625,13 +632,16 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   - `progress-note.md`: after the line "Session state, not memory: it lets a fresh session resume from the record." add a line "File: `plans/<KEY>/progress-{{SLICE}}.md`, committed with the slice; the compliance reviewer reads it."
   - `aidlc-review` Inputs: replace "The pull request, its evidence table, the spec, plan and task bundle it implements," with "The pull request, its evidence table, the spec, plan and task bundles it implements, the progress notes (`plans/<KEY>/progress-<slice>.md`, one per slice),".
   - `reviewer-compliance.md`: replace "- The progress note's `Skills loaded` covers the bundle's USE SKILLS and every skill `aidlc-build` commands" with "- Each progress note (`plans/<KEY>/progress-<slice>.md`) has a `Skills loaded` list that covers the bundle's USE SKILLS and every skill `aidlc-build` commands" (the rest of that bullet stays).
+  - `aidlc-build` When to use: replace the whole body with "One slice at a time, on the story's branch, after the slice's task bundle is approved. Prefer a fresh session per slice. Continuing in the same session is fine while it is short; start a new one after a compaction, after repeated slips, or when the earlier conversation discussed anything the bundle does not record. A new session rebuilds the state from the bundle, the progress note and the branch's commits."
+  - `aidlc-build` Rules: replace "- A fresh session per slice. The bundle and the commits are the state, never the chat." with "- Prefer a fresh session per slice. The bundle, the progress note and the commits are the state, never the chat."
+  - `starter/repo/AGENTS.md` and `aidlc-onboard/assets/agents-md.md`: replace "Start a fresh session for each slice, and again after repeated slips or any slip once the conversation was compacted." with "Prefer a fresh session for each slice. Start one after a compaction, after repeated slips, or when the conversation discussed anything the bundle does not record."
 
 - [ ] **Step 4: Run all tests and the validator.** Expected: `OK`; 0 problems.
 
 - [ ] **Step 5: Commit.**
 
 ```bash
-git add plugins/aidlc/skills/aidlc-build plugins/aidlc/skills/aidlc-review plugins/aidlc/agents/reviewer-compliance.md scripts/test_routes.py
+git add plugins/aidlc/skills/aidlc-build plugins/aidlc/skills/aidlc-review plugins/aidlc/skills/aidlc-onboard plugins/aidlc/agents/reviewer-compliance.md starter/repo/AGENTS.md scripts/test_routes.py
 git commit -m "fix(build): the progress note is a committed file the compliance reviewer reads (W8)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
