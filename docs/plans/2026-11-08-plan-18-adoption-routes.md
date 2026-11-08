@@ -379,7 +379,7 @@ spans several repositories, the story moves to `stories/<KEY>/` at the workspace
 | I | `incidents/<ID>/` | none | none: the follow-up item starts its own |
 ````
 
-- [ ] **Step 4: Run all tests.** Expected: `OK` (304 + 3).
+- [ ] **Step 4: Run all tests.** Expected: `OK` (285 + 3).
 
 - [ ] **Step 5: Commit.**
 
