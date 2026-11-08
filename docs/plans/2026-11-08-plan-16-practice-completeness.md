@@ -1,5 +1,9 @@
 # Practice completeness Implementation Plan (Plan 16, aidlc 4.4.0)
 
+**Status: Parked (2026-11-08) by the owner, Prashant Sharma.** Not executed: the eight earlier practices stay as they are
+for now. The research below (gaps, outdated statements, sources and proposed wording) is kept for when the plan is
+picked up again. Nothing in the kit depends on it.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** The eight earlier practices state every principle an experienced engineer expects, in words that hold in any stack, with their code marked as illustrations; `securing-code` gains the five missing attack classes.

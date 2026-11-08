@@ -217,6 +217,9 @@ suppressions, with patterns for TypeScript, Java, .NET and Python.
 
 ## Plan 16: practice completeness (aidlc 4.4.0)
 
+Parked (2026-11-08) by the owner: the eight practices stay as they are for now. The researched plan is
+`docs/plans/2026-11-08-plan-16-practice-completeness.md`.
+
 - `securing-code` gains five general principles, each with a short hint naming several stacks: insecure
   deserialization, XML external entities, mass assignment, template injection, regular-expression denial of service.
 - The same completeness check runs on the other seven earlier practices; gaps become principles, never per-language
