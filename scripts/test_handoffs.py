@@ -133,5 +133,20 @@ class HandoffsTest(unittest.TestCase):
             self.assertIn(where, block, name)
             self.assertIn(who.split(" or ")[0], gate.lower(), f"{name}: the Gate of {skill} does not name {who}")
 
+    def test_no_template_has_a_placeholder_that_vanishes(self):
+        offenders = {}
+        for path in sorted((ROOT / "skills").glob("aidlc-*/assets/*.md")):
+            rel = str(path.relative_to(ROOT))
+            found = vanishing(rel)
+            if found:
+                offenders[rel] = found[:3]
+        self.assertEqual(offenders, {})
+
+    def test_agents_md_states_the_template_rule(self):
+        text = " ".join(read("AGENTS.md").split())
+        self.assertIn("a placeholder outside a code block is written `{{…}}`", text)
+        self.assertIn("a block of FIELD lines sits in a ```text fence", text)
+        self.assertIn("opens with a `## For the reviewer` section", text)
+
 if __name__ == "__main__":
     unittest.main()
