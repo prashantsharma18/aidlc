@@ -1,12 +1,24 @@
 <!-- aidlc template: incident -->
-Incident record · {{KEY}}
-Title      <...>
-Severity   <...>
-Impact     <who, what, from-to>
-Timeline   <hh:mm event>
-Contained  <action> · Undo: <step and trigger>
-Cause      <confirmed cause> (confirmed by <person>, <time>)
-Actions    A1 <...>   <owner>   <date>
-Prevention <lesson> -> <test | eval case | context | guardrail | review checklist | measure> -> <where it went>
-Measures   <counted as failed change? rework?>
-Closes only when every prevention change is merged or explicitly declined.
+# {{KEY}} · incident record
+
+- **Title:** {{title}}
+- **Severity:** {{severity}}
+- **Impact:** {{who, what, from and to}}
+- **Contained:** {{action}}. Undo: {{step and its trigger}}
+- **Cause:** {{confirmed cause}} (confirmed by {{person}}, {{time}})
+
+## Timeline
+- {{hh:mm}} {{event}}
+
+## Actions
+| ID | Action | Owner | Due |
+|---|---|---|---|
+| A1 | {{action}} | {{owner}} | {{YYYY-MM-DD}} |
+
+## Prevention
+- {{lesson}} -> {{test, eval case, context, guardrail, review checklist or measure}} -> {{where it went}}
+
+## Measures
+- {{counted as a failed change? rework?}}
+
+The record closes only when every prevention change is merged or explicitly declined.

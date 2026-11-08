@@ -31,7 +31,7 @@ The pull request's CI results (the checks and their logs, test reports), or, whe
    For a criterion users see in a web page, its row is the browser test from `testing-in-browser`, with the screenshots and the accessibility result.
 3. Write the total counts from the run, including skipped tests. A skipped or quarantined test is never a pass: its criterion is unproved.
 4. Fill the integrity rows (scope, protected tests, skips), the scans, and the AI review findings, with how each was answered: fixed, with the commit; or dismissed, with the reason.
-5. Under UNPROVED, list every criterion without a passing trusted test, why, and who accepted it; or write "none".
+5. Under Unproved, list every criterion without a passing trusted test, why, and who accepted it; or write "none".
 6. Draft the pull request description: point reviewers at the tests first, and link the spec and plan. Updating the pull request asks the person first.
 7. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
    workspace root) as done, or as stopped with the reason. On slice 0 of route G, the rows are the bundle's DONE WHEN checks (the real test, the health
@@ -53,12 +53,12 @@ Every required check is green on the pull request; every row points to the trust
 |---|---|
 | "The failure is a known flake, so the run is effectively green." | A red, missing or skipped check is reported as it is. Never describe the change as passing. |
 | "It passed earlier in the session, so the row passes." | Only a recorded run counts: the pull request's CI, or a fresh run marked "local only". |
-| "Nothing failed, so skipped tests are fine." | A skipped test leaves its criterion unproved. List it under UNPROVED. |
+| "Nothing failed, so skipped tests are fine." | A skipped test leaves its criterion unproved. List it under Unproved. |
 | "Reviewers only need to hear that all tests pass." | Give the counts. |
 
 ## Red flags
 - A row cites a local run, or your memory of one.
-- UNPROVED says "none" while a test was skipped.
+- Unproved says "none" while a test was skipped.
 - You are writing "approved" or "ready to merge".
 - The summary has no counts.
 
