@@ -144,6 +144,10 @@ class FastPathTest(unittest.TestCase):
         self.assertIn("Each progress note's STATUS reads done", compliance)
         self.assertIn("a MODE its TIER does not allow is a high finding", compliance)
 
+    def test_the_runner_is_named_where_it_is_used(self):
+        self.assertIn("python3 scripts/run_slices.py <KEY> <slice>", read("starter/repo/AGENTS.md"))
+        self.assertIn("`run_slices.py`", skill("aidlc-onboard"))
+
 
 if __name__ == "__main__":
     unittest.main()

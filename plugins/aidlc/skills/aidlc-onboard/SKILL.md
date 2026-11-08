@@ -59,7 +59,7 @@ If you started this skill on your own (the person did not ask for it by name), d
 
 New mode (route G), instead of steps 1 to 6:
 - Prepare, before slice 0, on its own branch: copy the starter files that fit from aidlc's `starter/repo/`
-  (`.claude/settings.json`, `CODEOWNERS`, `ai-review.yml`, and `check_packs.py` and `check_recipe_commit.py` into the
+  (`.claude/settings.json`, `CODEOWNERS`, `ai-review.yml`, and `check_packs.py`, `check_recipe_commit.py` and `run_slices.py` into the
   repository's scripts folder); slice 0 writes the CI workflow. Ask the person to turn on branch protection that
   requires a code owner's review. Write `AGENTS.md` from `assets/agents-md.md` with the COMMANDS of the approved
   `new-system.md`, each marked `(not yet run)`; the Quality bar's Enforced lines from its targets; `Packs used here` as

@@ -37,6 +37,8 @@ Full map: `docs/codebase-map.md`. Read it before planning a change.
 - Tests and lint, must pass before you report done: `<the command that runs tests and lint>`
 - Pack check, at the start of work and in CI: `python3 scripts/check_packs.py`
 - Recipe check, after a recipe commit: `python3 scripts/check_recipe_commit.py <commit> --recipe "<approved command>" --count "<test count command>"`
+- Slice runner, for approved delegate slices only, one fresh session each: `python3 scripts/run_slices.py <KEY> <slice> [<slice> ...]`;
+  it stops at the first slice that does not end done, and never pushes
 - <run one test file>: <exact command>
 
 ## Legacy
