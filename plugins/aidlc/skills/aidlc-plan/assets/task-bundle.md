@@ -11,6 +11,7 @@ USE SKILLS  <plugin:skill, … pack skills AGENTS.md declares and core practices
 RECIPE      <tool@version — the exact command — the files it may change> | none   (a mechanical recipe commit)
 MAY CHANGE  <glob>, <glob>   (paths and globs only; a note goes on its own line in parentheses)
 MUST NOT    <paths and things that must not change, incl. existing assertions>
+AMENDED ASSERTIONS  <test: what its assertion checks now> <- spec v<n>, <criterion>, decided by <owner> | none   (the only assertions this slice may change)
 EVIDENCE    FACT <...> | INFERENCE <...> | UNKNOWN <...>
 OPEN        <question> -> <owner>; what waits on it
 DO          0  Restate the goal and criteria with file references; wait for confirmation.

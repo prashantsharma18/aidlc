@@ -48,7 +48,19 @@ Amendment mode:
 2. Classify it: a misreading (the spec is right; fix the reading) or a gap or conflict (someone must decide). If unsure, treat it as a gap.
 3. For a gap, prepare the decision for the criterion's owner, with the options and their consequences. Never pick one.
 4. Only after the owner has decided, and only from that decision: write the new version of the spec, with its version raised (v1 to v2) and an Amendments line with the date, criterion, reason and decider. The person saves it.
-5. List everything that cites the criterion (tests, plan, task bundles, evidence) and say that the plan returns for approval, because the criteria changed. For a story that spans several repositories, mark each coordination-plan part whose criteria changed as "re-plan": only those repositories re-plan, and their bundles are approved again.
+5. List everything that cites the criterion (tests, plan, task bundles, evidence) and say that the plan returns for
+   approval, because the criteria changed. Then the tech lead classifies each part by its state:
+
+   | Part's state | Action |
+   |---|---|
+   | Not started | Plans against the new version |
+   | Building or in review | Re-plans on the same branch; the same pull request continues |
+   | Merged, flag off | A revision pull request in that repository (see `aidlc-plan`), or a revert if its code owner chooses |
+   | Unaffected | The tech lead records why, as an `UNAFFECTED <repository> spec v<n>: <why>, <who>, <date>` line in the story index |
+   | Released | Not a change request: a new story with its own key |
+
+   For a story across several repositories, raise the CURRENT line in the story index; the story status command then
+   marks every part pinned to the old spec "re-plan".
 
 Last: Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
 workspace root) as done, or as stopped with the reason.

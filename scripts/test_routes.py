@@ -197,6 +197,31 @@ class RoutesTest(unittest.TestCase):
         self.assertIn("integration check", text)
         self.assertIn("provider first", text)
 
+    AMENDED = "listed under AMENDED ASSERTIONS"
+
+    def test_specify_classifies_each_part_by_its_state(self):
+        text = skill("aidlc-specify")
+        for state in ("Not started", "Building or in review", "Merged, flag off", "Unaffected", "Released"):
+            self.assertIn(state, text, state)
+        self.assertIn("UNAFFECTED", text)
+
+    def test_a_merged_part_gets_a_revision_pull_request(self):
+        text = skill("aidlc-plan")
+        self.assertIn("<type>/<KEY>-<part>-r<n>", text)
+        self.assertIn("revision <r>", text)
+        self.assertIn("AMENDED ASSERTIONS", read("plugins/aidlc/skills/aidlc-plan/assets/task-bundle.md"))
+
+    def test_amended_assertions_are_the_second_exception_everywhere(self):
+        for rel in ("plugins/aidlc/skills/aidlc-build/SKILL.md", "plugins/aidlc/agents/reviewer-compliance.md",
+                    "plugins/aidlc/skills/writing-tests/SKILL.md", "plugins/aidlc/skills/debugging-failures/SKILL.md",
+                    "plugins/aidlc/skills/aidlc-onboard/assets/agents-md.md", "starter/repo/AGENTS.md"):
+            self.assertIn(self.AMENDED, read(rel), rel)
+        self.assertNotIn("The one exception is an approved recipe commit", skill("aidlc-build"))
+        self.assertIn("fail against the old code", skill("aidlc-build"))
+
+    def test_release_waits_for_every_part_at_the_current_spec(self):
+        self.assertIn("or recorded as unaffected", skill("aidlc-release"))
+
 
 if __name__ == "__main__":
     unittest.main()

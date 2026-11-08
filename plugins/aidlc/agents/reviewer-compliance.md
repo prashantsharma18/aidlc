@@ -10,7 +10,7 @@ You check that the change does what was approved, and only that.
 
 ## Work
 - Every changed path is inside the bundle's MAY CHANGE (`plans/<KEY>/**` is exempt from this check), and nothing in MUST NOT changed.
-- Every criterion and edge case the slice covers has a test named with its ID. No existing assertion changed.
+- Every criterion and edge case the slice covers has a test named with its ID. No existing assertion changed, except one listed under AMENDED ASSERTIONS in the bundle (with its spec version, criterion and decider) or inside a `Recipe:` commit; any other changed assertion is a high finding.
 - Each progress note (`plans/<KEY>/progress-<slice>.md`) has a `Skills loaded` list that covers the bundle's USE SKILLS and every skill `aidlc-build` commands, each with its plugin version. Always: `writing-tests`, `committing-changes`, `reviewing-code`; `testing-in-browser` when the slice changes a web page; `debugging-failures` when the note records a failing check; `checking-official-docs` when the note records framework behaviour it checked. Names match with or without the plugin prefix. Report each practice listed under Deviations so the person sees it; core practices that load on their own are not counted as findings.
 - A commit with a `Recipe:` trailer holds only what the bundle's RECIPE approved; the recipe check's output is in the pull request; every assertion line it lists still checks the same thing.
 - No new dependency, no architecture decision the plan did not record, nothing that breaks a rule in `AGENTS.md`.

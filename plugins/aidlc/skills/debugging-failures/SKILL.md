@@ -186,7 +186,7 @@ npm run dev  # Verify in browser
 Test fails after code change:
 ├── Did you change code the test covers?
 │   └── YES → Check if the test or the code is wrong
-│       ├── Test looks outdated → Stop and report: never change an existing assertion; its owner decides
+│       ├── Test looks outdated → Stop and report: never change an existing assertion; its owner decides (unless it is listed under AMENDED ASSERTIONS in the bundle)
 │       └── Code has a bug → Fix the code
 ├── Did you change unrelated code?
 │   └── YES → Likely a side effect → Check shared state, imports, globals

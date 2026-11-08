@@ -44,7 +44,7 @@ Not for: finding why a test fails (`debugging-failures`), or browser tests of a 
 - **Fast:** unit tests take milliseconds; slow ones are marked so the quick suite stays quick.
 
 ## Stop if
-- A test can pass only by changing an existing assertion. Never change it: stop and report; the criterion's owner decides.
+- A test can pass only by changing an existing assertion. Never change it: stop and report; the criterion's owner decides. An assertion listed under AMENDED ASSERTIONS in the bundle is that decision already made: change exactly that one.
 - The expected behaviour is written nowhere: no criterion, no spec line, an unclear bug report. Ask. Never invent the rule inside a test.
 - The code cannot be tested without a new library or tool: a new dependency needs a person's approval.
 - A test is flaky and one investigation does not find why: report it with how often it fails. Never re-run it until it passes.
