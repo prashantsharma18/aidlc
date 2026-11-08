@@ -1,6 +1,6 @@
 ---
 name: reviewing-code
-description: Runs a multi-axis code review. Use before merging any change. Use when reviewing code written by yourself, another agent, or a human. Use when you need to judge code quality across several dimensions before it reaches the main branch. Use when asked to review a diff or a pull request, even if the diff is pasted inline.
+description: Runs a multi-axis code review of a diff or pull request. Use before merging any change. Use when reviewing code written by yourself, another agent, or a human. Use when you need to judge code quality across several dimensions before it reaches the main branch. Use when asked to review a diff or a pull request, even if the diff is pasted inline.
 metadata:
   kind: practice
   invocation: auto

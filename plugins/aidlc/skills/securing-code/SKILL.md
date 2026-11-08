@@ -1,6 +1,6 @@
 ---
 name: securing-code
-description: Protects code against common vulnerabilities. Use when reviewing an input handler for vulnerabilities, when code handles user input, authentication, stored data or external integrations, or when checking that a login flow holds up against the OWASP Top Ten. Use when building a feature that takes untrusted data, manages user sessions or calls third-party services. Use when auditing dependencies for known vulnerabilities, triaging package-manager audit findings, or judging the supply-chain risk of a new package. Use when personal data or privacy law (GDPR, CCPA) is involved.
+description: Protects code against common vulnerabilities. Use when reviewing an input handler for vulnerabilities, when code handles user input, authentication, stored data or external integrations, or when checking that a login flow holds up against the OWASP Top Ten. Use when building a feature that takes untrusted data, manages user sessions or calls third-party services. Use when auditing dependencies for known vulnerabilities, triaging package-manager audit findings, or judging the supply-chain risk of a new package. Use when personal data or privacy law (GDPR, CCPA) is involved. Use when asked whether code is safe from attackers, how to store secrets such as API keys and passwords, or whether a file upload or an endpoint can be abused.
 metadata:
   kind: practice
   invocation: auto

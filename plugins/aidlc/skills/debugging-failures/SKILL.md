@@ -1,6 +1,6 @@
 ---
 name: debugging-failures
-description: Guides systematic root-cause debugging. Use when the user asks why a test or build fails, when tests fail, builds break, something that worked yesterday broke, behavior doesn't match expectations, or you hit any unexpected error. Use when you need to find what broke and why, and to fix the root cause instead of guessing.
+description: Guides systematic root-cause debugging. Use when the user asks why a test or build fails, when tests fail, builds break, something that worked yesterday broke, behavior doesn't match expectations, or you hit any unexpected error. Use when you need to find what broke and why, and to fix the root cause instead of guessing, including a test that fails only in CI or only sometimes.
 metadata:
   kind: practice
   invocation: auto

@@ -1,6 +1,6 @@
 ---
 name: tuning-performance
-description: Improves application performance across the frontend, backend, queries, and databases. Use when performance requirements exist, when you suspect performance regressions, when Core Web Vitals or load times must improve, when N+1 query patterns need fixing, or when profiling shows bottlenecks.
+description: Improves application performance across the frontend, backend, queries, and databases. Use when performance requirements exist, when you suspect performance regressions, when Core Web Vitals or load times must improve, when N+1 query patterns need fixing, or when profiling shows bottlenecks. Use when someone says a function, endpoint, query or page is slow, or asks to make it faster.
 metadata:
   kind: practice
   invocation: auto
