@@ -2,6 +2,7 @@
 TASK BUNDLE · {{KEY}} · {{SLICE}}
 GOAL        <one or two sentences naming the criteria covered>
 INTENT      <spec version and clarifications; plan version and approval commit>
+PINS        spec v<n> · plan v<n> · contract <name> v<n> | contract none
 ALREADY     <what loads automatically (AGENTS.md, folder rules); not repeated here>
 LOADED
 LOAD FIRST  <pointers to the plan, spec sections and files; never pasted copies>

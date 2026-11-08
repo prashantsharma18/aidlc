@@ -27,6 +27,9 @@ disable-model-invocation: true
 ## When to use
 After the spec is approved and any discovery is decided, before `aidlc-plan`. Every change gets the design note; most end at "none needed".
 
+**Amendment mode.** A review, a build or a consumer finds that an approved contract must change. Only this stage changes
+a contract, and only with its consumers' approval.
+
 ## Inputs
 Where this runs: read the story's index first: `stories/<KEY>/README.md` at the workspace root, `../stories/<KEY>/README.md` from inside one of its repositories, or `plans/<KEY>/README.md` in a lone repository. No index: ask the person to run `aidlc-start` first, and stop. When it routes the story to several repositories, run at the workspace root and write to `stories/<KEY>/`; started inside a repository for such a story, say so, name the workspace root, and stop. When it names one repository, run inside that repository: a one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`; started at the workspace root for such a story, name the repository to open, and stop.
 
@@ -37,10 +40,18 @@ The approved spec, the evidence pack (if any), the architecture contract (codeba
 2. For each yes, draft a decision frame from `assets/decision-frame.md`: one question, one owner, checkable drivers, at least two real options (including the cheapest workaround), and the unknowns with their owners. When the change touches a trust boundary, or at Tier 3, load the `securing-code` skill and add its threat model to the frame. When it changes data or a schema, or deprecates something, load the `migrating-safely` skill.
 3. For each option, draft the impact, labelled FACT, INFERENCE or UNKNOWN, and add the strongest argument against your recommendation. At Tier 2 and above, load the `stress-testing-decisions` skill and challenge the recommended option; where an option depends on a framework's or vendor's behaviour, load the `checking-official-docs` skill and cite the official documentation.
 4. Draft the ADR from `assets/adr.md` with status Proposed, the named decider, and the consumers who must agree.
-5. Work contract first: draft the contract change and the failing provider and consumer tests before any code. The consumer tests are drafts for the consumer team, which owns them. Load the `designing-apis` skill for the contract, and load the `writing-tests` skill for its tests.
+5. Work contract first: draft the contract change and the failing provider and consumer tests before any code. The consumer tests are drafts for the consumer team, which owns them. Load the `designing-apis` skill for the contract, and load the `writing-tests` skill for its tests. The consumer tests run in the provider's CI, so a provider change that would break a consumer fails the provider's own pull request.
 6. For each consequence that must always hold, propose its enforcement (a boundary rule or a check), and show the check failing once. Advisory consequences get one line each. When the enforcement is a CI check, load the `building-ci-pipelines` skill.
 7. For a story that spans several repositories, fill the coordination plan from `assets/coordination-plan.md`: one PARTS row per repository that changes (owner, change, flag, what it waits for, undo, status), the read-only repositories, the order (contract first, then the provider behind a flag that is off, then the consumers) and the rollback of each part. Write it to `stories/<KEY>/coordination-plan.md`.
 8. Present the decision for approval against this checklist: Every decision has a Proposed record with a named decider. Contract changes follow the versioning rules, and their consumers approved them. Every non-functional requirement has a test, check or monitor that shows whether it holds. Every must-hold constraint is enforced, and its check was seen to fail. (A session at a workspace root is read-only and cannot run tests; there, the check is drafted now and shown red at the first step of its slice, and the design note says so.) The map and rules file are updated (as drafts for their owners). When a public API or behaviour users see changes, the README, API reference and changelog updates are named (load the `writing-documentation` skill). For each non-functional requirement's check, load the `tuning-performance` skill or load the `adding-observability` skill, whichever fits, if either does. No decision is left for the build to make.
+
+Amendment mode:
+1. Quote the contract and the finding, and list the parts that consume it from the coordination plan.
+2. Draft the contract's next version and the updated consumer tests. Say whether the change is additive (minor) or
+   breaking (major, done by expand and contract).
+3. The consumers approve the new version on the tracker. Record it in the ADR and in the story index's CURRENT line.
+4. Run the story status command named in WORKSPACE.md: every part pinned to the old version shows "re-plan". Those
+   parts return to `aidlc-plan`; their bundles are approved again.
 
 Last: Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
 workspace root) as done, or as stopped with the reason.

@@ -7,7 +7,7 @@ fields: [KEY, TITLE]
 ---
 Coordination plan · {{KEY}} · {{TITLE}} · v1
 OUTCOME    <...>. Tier <n> (<reason; unknown consumers raise it>)
-CONTRACTS  <contract> <from> -> <to> (<minor, additive | major via expand and contract>)
+CONTRACTS  <contract> v<n> <from> -> <to> (<minor, additive | major via expand and contract>)
 PARTS      #  Repository     Owner    Change                 Flag          Waits for     Undo       Status
            1  <repository>   <team>   <what changes>         <flag, off>   <tag or ->    flag off   waiting
            (Status is derived: run the story status command named in WORKSPACE.md; it reads each part's index and writes `status.md` beside this plan.)

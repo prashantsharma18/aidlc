@@ -172,6 +172,31 @@ class RoutesTest(unittest.TestCase):
         self.assertIn("story_status.py", skill("aidlc-onboard"))
         self.assertIn("Status is derived", read("plugins/aidlc/skills/aidlc-design/assets/coordination-plan.md"))
 
+    def test_design_amends_a_contract_at_the_story_level(self):
+        text = skill("aidlc-design")
+        self.assertIn("**Amendment mode.**", section(text, "## When to use"))
+        self.assertIn("consumers approve the new version", text)
+        self.assertIn("CURRENT line", text)
+        self.assertIn("run in the provider's CI", text)
+
+    def test_review_sends_a_contract_change_to_design(self):
+        text = skill("aidlc-review")
+        self.assertNotIn("the work returns to planning", text)
+        self.assertIn("goes to `aidlc-design` in amendment mode", text)
+        self.assertIn("needs a contract change", skill("aidlc-build"))
+
+    def test_bundles_pin_their_versions(self):
+        self.assertIn("PINS", read("plugins/aidlc/skills/aidlc-plan/assets/task-bundle.md"))
+        self.assertIn("pin the spec, plan and contract versions", skill("aidlc-plan"))
+        self.assertIn("<contract> v<n>", read("plugins/aidlc/skills/aidlc-design/assets/coordination-plan.md"))
+
+    def test_release_checks_every_part_and_runs_the_integration_check(self):
+        text = skill("aidlc-release")
+        self.assertIn("When the story spans several repositories", text)
+        self.assertIn("--check-release", text)
+        self.assertIn("integration check", text)
+        self.assertIn("provider first", text)
+
 
 if __name__ == "__main__":
     unittest.main()
