@@ -8,5 +8,6 @@
 Uncertain counts as yes.
 
 OUTCOME  <"none needed" with reason | decisions, each with its owner -> decision frame>
+UI REFERENCE  <Figma link and version | wireframes/<screen>.md vN, approved by <product owner> | none: no new screen or flow>
 RECORDED BY  <tech lead or architect>, <YYYY-MM-DD>
 APPROVED  <ADR now Accepted · contract version and its tests · boundary rules · approvers (tech lead or architect; consumers for a contract), YYYY-MM-DD>

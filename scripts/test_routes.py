@@ -248,6 +248,17 @@ class RoutesTest(unittest.TestCase):
     def test_a_d2_defect_starts_its_spec_with_the_reproduction(self):
         self.assertIn("For a defect (route D2), AC1 is the reproduction", skill("aidlc-specify"))
 
+    def test_design_records_a_ui_reference_or_drafts_a_wireframe(self):
+        text = skill("aidlc-design")
+        self.assertIn("wireframes/<screen>.md", text)
+        self.assertIn("Figma link and version", text)
+        self.assertIn("the product owner approves", text)
+        self.assertIn("follows the design system", text)
+        self.assertIn("UI REFERENCE", read("plugins/aidlc/skills/aidlc-design/assets/design-note.md"))
+        ui = read("plugins/aidlc/skills/building-user-interfaces/SKILL.md")
+        self.assertIn("the approved UI design is the contract", ui)
+        self.assertIn("UI REFERENCE", ui)
+
 
 if __name__ == "__main__":
     unittest.main()

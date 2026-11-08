@@ -15,7 +15,7 @@ metadata:
 
 Build user interfaces that are accessible, performant, and visually polished, at production quality. The goal is UI that looks like a design-aware engineer at a top company built it, not an AI. That means following the real design system, proper accessibility, thoughtful interaction patterns, and no generic "AI aesthetic."
 
-> **In this framework:** the approved UI design is the contract. If there is none for this change, stop and route it to `aidlc-design`.
+> **In this framework:** the approved UI design is the contract: the design note's UI REFERENCE line names it. If there is none for this change, stop and route it to `aidlc-design`.
 
 ## When to Use
 
