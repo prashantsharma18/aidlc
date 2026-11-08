@@ -39,6 +39,7 @@ repository: everything happens in that repository.
 
 | Route | When | Stages |
 |---|---|---|
+| F0 · feature, fast path | Tier 1, one repository, criteria written on the work item by its owner, no design change, no new dependency, no data change, one slice | `aidlc-plan` (brief mode), the engineer confirms, `aidlc-build`, `aidlc-verify`, `aidlc-review` |
 | F1 · feature, one repository | A new capability or changed behaviour in one repository | `aidlc-intent` (when the story needs it), `aidlc-specify`, `aidlc-discover` (when needed), `aidlc-design`, `aidlc-plan`, `aidlc-build` per slice, `aidlc-verify`, `aidlc-review`, `aidlc-release` |
 | F2 · feature, several repositories | Two or more repositories, or unsure | At the root: intent, specify, discover, design (with the contract and the coordination plan). In each repository: plan, build, verify, review. At the root: release |
 | C · change request, story in progress | An approved criterion must change before release | `aidlc-specify` (amendment mode); each part by its state; a merged part gets a revision pull request |

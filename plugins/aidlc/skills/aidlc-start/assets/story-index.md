@@ -3,7 +3,7 @@
 
 SOURCE     <work item link>
 KIND       <new feature | change request | defect | incident follow-up | new system>
-ROUTE      <F1 | F2 | C | D1 | D2 | G>
+ROUTE      <F0 | F1 | F2 | C | D1 | D2 | G>
 LEVEL      <repository | workspace root | part <n> of <m> in <repository>>
 CURRENT    spec v<n> · contract <name> v<n>        (the story's approved versions; a part leaves this line out)
 PINS       spec v<n> · plan v<n> · contract <name> v<n>        (a part: what its latest bundle builds on; a story leaves this line out)

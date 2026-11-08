@@ -15,6 +15,10 @@ disable-model-invocation: true
 First, for any new piece of work: a new requirement, a user story, a defect, a change request or an incident
 follow-up. Run it at the workspace root when the workspace holds several repositories; in a lone repository, run it there.
 
+**Re-routing.** When a later stage stops because the route no longer fits (a brief that fails its test: F0 to F1, D1
+to D2), run `aidlc-start` again on the same key. It rewrites the ROUTE line and the rows still "to do" for the new
+route, keeps every row already done, and names the next stage.
+
 ## Inputs
 - A work item key (for example `SHIP-1`), or the person's description of a new requirement. Read the work item with
   the tracker tool if one is connected; otherwise ask the person to paste it.
@@ -32,6 +36,9 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
    or any other stage: it decides what the rest of the route needs. Write it first in the index's stage checklist.
 3. **What kind of work is it?** New feature, Defect, Change request, Incident follow-up or New system, from the work item. If it
    does not say, ask.
+   - **New feature:** the **feature fast path (F0)** when all three hold: Tier 1 (`assets/tiers.md`); one
+     repository; and acceptance criteria written on the work item by its owner (name the owner). `aidlc-plan` (brief
+     mode) checks the rest. Otherwise F1 (one repository) or F2 (several), chosen in step 7.
    - **Defect:** it needs how to reproduce it, the expected and the actual behaviour, and the evidence. Anything
      missing becomes a question for the reporter; stop until it is answered. Then sort it:
      **Defect fast path (D1)** when all four hold: Tier 1 (`assets/tiers.md`); one repository; a reproduction; and the
@@ -62,7 +69,7 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
    - One repository, started inside it: the story runs entirely here, with its documents in `plans/<KEY>/`.
    - Several repositories, or unsure (unsure counts as several): the story runs at the workspace root, with its
      documents in `stories/<KEY>/`; each repository's part runs inside that repository.
-   Name the route in the index's ROUTE line: F1 (a feature in one repository), F2 (a feature across several), C (a
+   Name the route in the index's ROUTE line: F0 (a feature, fast path), F1 (a feature in one repository), F2 (a feature across several), C (a
    change request), D1 or D2 (a defect), G (a new system).
 8. **Write the story's index** where this session runs, from `assets/story-index.md`: `plans/<KEY>/README.md` inside a
    repository, `stories/<KEY>/README.md` at a workspace root. Fill SOURCE, KIND, ROUTE and LEVEL, and one row per stage
@@ -83,6 +90,10 @@ follow-up. Run it at the workspace root when the workspace holds several reposit
    **Defect fast path (D1):** inside the repository, `aidlc-plan` (brief mode), the engineer confirms the brief,
    `aidlc-build` (the reproducing test first), `aidlc-verify`, `aidlc-review`. No release stage unless the fix changes
    data or a schema; the normal pipeline ships it.
+
+   **Feature fast path (F0):** inside the repository, `aidlc-plan` (brief mode), the engineer confirms the brief,
+   `aidlc-build`, `aidlc-verify`, `aidlc-review`. No intent, spec, design or release stage: the brief stands in for
+   them, and the normal pipeline ships it.
 
    **Full defect route (D2):** as a new feature in one repository or several, with `aidlc-intent` first and the
    reproduction as the spec's first criterion.

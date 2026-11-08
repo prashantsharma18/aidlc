@@ -20,6 +20,7 @@ metadata:
   - task-bundle
   - story-index
   - fix-brief
+  - feature-brief
   references:
   - tiers
 disable-model-invocation: true
@@ -32,12 +33,16 @@ After the spec is approved: above Tier 1, planning starts only from a spec its o
 **Brief mode** (route D1): a defect that passed `aidlc-start`'s fast-path test. It replaces intent, plan and bundle
 with one file, `plans/<KEY>/fix.md`.
 
+**Brief mode for a feature** (route F0): a Tier 1 feature that passed `aidlc-start`'s fast-path test. It replaces
+the spec, the design note, the plan and the bundle with one file, `plans/<KEY>/brief.md`, built as one slice named
+`brief`.
+
 **Slice 0** (route G): the first slice of each new repository, the skeleton.
 
 ## Inputs
 Where this runs: inside the repository whose part you are working on. For a story that spans several repositories, read your part's row in the workspace's `../stories/<KEY>/coordination-plan.md` (read-only) and the design it points to; the branch is `feat/<KEY>-<part>` and the pull request title is `[<KEY>] part <n> of <m>: <what>`. Started at the workspace root: name the repository to open, and stop. A one-repository story runs entirely in that repository.
 
-The approved spec and its version, the approved design note (always), the evidence pack (when discover ran), and the repository's rules and codebase map. In brief mode, the inputs are the work item (its reproduction and evidence) and the written SOURCE of the expected behaviour; no spec or design note is needed. On slice 0 of route G there is no map yet: the approved design and `new-system.md` take its place. If an input is missing, say which stage produces it and stop; never plan around it.
+The approved spec and its version, the approved design note (always), the evidence pack (when discover ran), and the repository's rules and codebase map. In brief mode, the inputs are the work item (its reproduction and evidence) and the written SOURCE of the expected behaviour; no spec or design note is needed. For a feature brief, the inputs are the work item and its acceptance criteria as their owner wrote them; no spec or design note is needed. On slice 0 of route G there is no map yet: the approved design and `new-system.md` take its place. If an input is missing, say which stage produces it and stop; never plan around it.
 
 ## Steps
 1. Restate the outcome, criteria, edge cases and non-goals before reading any code, and list every ambiguity. Wait for the person to confirm. An ambiguity goes to the criterion's owner (`aidlc-specify`, amendment mode).
@@ -96,11 +101,27 @@ Brief mode:
 5. The engineer confirms the brief and the CONFIRMED line records it. Build starts only from a confirmed brief. Mark
    this stage's row in the index as done.
 
+Feature brief mode (route F0):
+1. Restate the outcome and each acceptance criterion as the work item gives it, with its ID, and list every
+   ambiguity. Wait for the person to confirm. A criterion not written on the work item by its owner, or an ambiguity
+   only the owner can settle, means stop: it is route F1.
+2. Find the area read-only, with the `explorer` agent if the reading is heavy. Label each finding FACT or INFERENCE
+   with `file:line`.
+3. Check the rest of the fast-path test. Any of these means stop: it is route F1, and `aidlc-start` re-routes it.
+   - any of the three design questions (`aidlc-design`, step 1) is yes, or uncertain;
+   - a new dependency seems necessary;
+   - stored data or a schema changes (a migration, a new field, a backfill);
+   - the work needs more than one slice, or more than the pull-request size `reviewing-code` gives.
+4. Fill `assets/feature-brief.md` and write it to `plans/<KEY>/brief.md`. Map each criterion to a test named with
+   its ID. Choose USE SKILLS from the practice map (`writing-tests` at least).
+5. The engineer confirms the brief and the CONFIRMED line records it. Build starts only from a confirmed brief. Mark
+   this stage's row in the index as done, or as stopped with the reason.
+
 ## Produces
 Drafts of `plans/<KEY>/plan.md` and one `plans/<KEY>/bundle-<slice>.md` per slice, on the story branch. Slices live only there, never as tracker sub-tasks. One branch per part: `<type>/<KEY>-<slug>` (`feat/<KEY>-<part>` for a story across several repositories), with `-r<n>` for a revision.
 
 ## Gate
-The tech lead reviews the plan against its checklist and records the approval on the work item with the plan's version and commit. The plan travels on the part's branch, in the same pull request as the code. A slice is built only from an approved bundle; a bundle changed after approval is approved again. In brief mode, the engineer confirms the brief; the code owner approves it with the fix in the pull request. You draft; you never approve.
+The tech lead reviews the plan against its checklist and records the approval on the work item with the plan's version and commit. The plan travels on the part's branch, in the same pull request as the code. A slice is built only from an approved bundle; a bundle changed after approval is approved again. In brief mode, the engineer confirms the brief (`fix.md` or `brief.md`); the code owner approves it with the change in the pull request. You draft; you never approve.
 
 ## Stop if
 - The spec is not approved (outside brief mode), or a criterion is ambiguous.
