@@ -154,6 +154,11 @@ class FastPathTest(unittest.TestCase):
             self.assertTrue((evals / name / "case.yaml").is_file(), name)
         self.assertIn("gate-delegate-tier2", read("plugins/aidlc/evals/README.md"))
 
+    def test_the_docs_describe_f0_and_the_modes(self):
+        self.assertIn("features by the fast path (F0)", read("docs/operating-model/lifecycle.md"))
+        self.assertIn("the fast path F0", read("docs/operating-model/workspace-and-repositories.md"))
+        self.assertTrue((ROOT / "docs/adr/0017-feature-fast-path-and-build-modes.md").is_file())
+
 
 if __name__ == "__main__":
     unittest.main()

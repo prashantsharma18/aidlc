@@ -200,7 +200,7 @@ suppressions, with patterns for TypeScript, Java, .NET and Python.
 
 ## Plan 15: Tier 1 feature fast path and delegate mode (aidlc 4.3.0)
 
-- **Brief mode for features.** `aidlc-plan` writes `brief.md` when the feature is Tier 1, touches one repository, has
+- **Brief mode for features** (route F0, named in Plan 15's plan). `aidlc-plan` writes `brief.md` when the feature is Tier 1, touches one repository, has
   acceptance criteria written on the work item by its owner, answers the three design questions "no", and needs no
   new dependency and no data change. Route: start, brief, the engineer confirms, build, verify, review, merge. Any
   condition failing: F1.
@@ -227,7 +227,7 @@ suppressions, with patterns for TypeScript, Java, .NET and Python.
 
 ## Plan 17: adoption guide and routes documents
 
-- `docs/operating-model/routes.md`: the seven routes, the linked-parts sequence and the amendment table, as Mermaid
+- `docs/operating-model/routes.md`: the eight routes (with F0), the linked-parts sequence and the amendment table, as Mermaid
   diagrams.
 - `docs/operating-model/adoption.md`: greenfield day 0; brownfield in phases (onboard and low-risk value first, review
   on incoming pull requests and D1 for bugs; then characterisation tests where change is planned; then the full routes
