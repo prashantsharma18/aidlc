@@ -27,7 +27,7 @@ One slice at a time, on the story's branch, after the slice's task bundle is app
 ## Inputs
 Where this runs: inside the repository whose part you are working on. For a story that spans several repositories, read your part's row in the workspace's `../stories/<KEY>/coordination-plan.md` (read-only) and the design it points to; the branch is `feat/<KEY>-<part>` and the pull request title is `[<KEY>] part <n> of <m>: <what>`. Started at the workspace root: name the repository to open, and stop. A one-repository story runs entirely in that repository.
 
-The approved task bundle `plans/<KEY>/bundle-<slice>.md`, or, on route D1, the confirmed fix brief `plans/<KEY>/fix.md`, which serves as the bundle (its slice is named `fix`, so its progress note is `plans/<KEY>/progress-fix.md`), the spec and plan versions it pins, and the branch's earlier commits (`git log`) if this slice was started before. The bundle's MAY CHANGE list is the boundary of this slice: every file you change must be on it.
+The approved task bundle `plans/<KEY>/bundle-<slice>.md`, or, on route D1, the confirmed fix brief `plans/<KEY>/fix.md`, which serves as the bundle (its slice is named `fix`, so its progress note is `plans/<KEY>/progress-fix.md`), or, on route F0, the confirmed feature brief `plans/<KEY>/brief.md`, which serves the same way (its slice is named `brief`), the spec and plan versions it pins, and the branch's earlier commits (`git log`) if this slice was started before. The bundle's MAY CHANGE list is the boundary of this slice: every file you change must be on it.
 
 ## Steps
 1. Run the repository's test and lint commands, named in `AGENTS.md`, before any change. If it is red or skips tests, stop: the environment is fixed first. On slice 0 of route G there is no code yet and the commands in `AGENTS.md` read `(not yet run)`: skip this step; the scaffold recipe commit comes first, and step 8 is the first full run.
@@ -54,6 +54,8 @@ The local check is green with no unexplained skips, the diff stays inside MAY CH
 - A new dependency seems necessary. (On slice 0 of route G, a dependency listed in the approved `new-system.md` is not new.)
 - The fix brief names no written source for the expected behaviour, its CONFIRMED line is empty or still holds its
   placeholder, its TIER is not 1, or its DESIGN is not "none needed".
+- The feature brief's CONFIRMED line is empty or still holds its placeholder, its TIER is not 1, its DESIGN is not
+  "none needed", its DEPENDENCIES is not "none new", or its DATA is not "no change".
 - The plan looks wrong, or the code differs from what the plan assumed. Never improvise a new approach: it goes back to `aidlc-plan`.
 - The spec does not say how something should behave.
 - A failure is about architecture, scope or security, or the fix needs a contract change (it goes to `aidlc-design` in

@@ -10,6 +10,7 @@ You check that the change does what was approved, and only that.
 
 ## Work
 - Every changed path is inside the bundle's MAY CHANGE (`plans/<KEY>/**` is exempt from this check), and nothing in MUST NOT changed.
+- On route D1 or F0 the brief (`plans/<KEY>/fix.md` or `plans/<KEY>/brief.md`) is the bundle: its MAY CHANGE, MUST NOT and DONE WHEN apply, its CONFIRMED line names the engineer, and every CRITERIA line (F0) or the reproduction (D1) has its test.
 - Every criterion and edge case the slice covers has a test named with its ID. No existing assertion changed, except one listed under AMENDED ASSERTIONS in the bundle (with its spec version, criterion and decider) or inside a `Recipe:` commit; any other changed assertion is a high finding.
 - Each progress note (`plans/<KEY>/progress-<slice>.md`) has a `Skills loaded` list that covers the bundle's USE SKILLS and every skill `aidlc-build` commands, each with its plugin version. Always: `writing-tests`, `committing-changes`, `reviewing-code`; `testing-in-browser` when the slice changes a web page; `debugging-failures` when the note records a failing check; `checking-official-docs` when the note records framework behaviour it checked. Names match with or without the plugin prefix. Report each practice listed under Deviations so the person sees it; core practices that load on their own are not counted as findings.
 - The bundle's PINS match the spec, plan and contract versions the change builds on.

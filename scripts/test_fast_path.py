@@ -61,6 +61,20 @@ class FastPathTest(unittest.TestCase):
         self.assertIn("keeps every row already done", start)
         self.assertIn("F0 to F1, D1 to D2", start)
 
+    def test_build_builds_from_a_feature_brief(self):
+        build = skill("aidlc-build")
+        self.assertIn("on route F0, the confirmed feature brief `plans/<KEY>/brief.md`", build)
+        self.assertIn("(its slice is named `brief`)", build)
+        stops = section(build, "## Stop if")
+        self.assertIn("The feature brief's CONFIRMED line is empty", stops)
+        self.assertIn("its DATA is not \"no change\"", stops)
+
+    def test_verify_and_review_read_the_feature_brief(self):
+        self.assertIn("On route F0, the feature brief `plans/<KEY>/brief.md`", skill("aidlc-verify"))
+        self.assertIn("on route F0 the feature brief `plans/<KEY>/brief.md`", skill("aidlc-review"))
+        compliance = read("plugins/aidlc/agents/reviewer-compliance.md")
+        self.assertIn("On route D1 or F0 the brief", compliance)
+
 
 if __name__ == "__main__":
     unittest.main()
