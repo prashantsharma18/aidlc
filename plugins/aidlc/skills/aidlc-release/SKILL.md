@@ -38,7 +38,10 @@ The merged pull request and its evidence, the feature flag (if any), the monitor
 8. During the release, watch the stop criteria with the person: if one trips, roll back first and investigate second; if unsure whether to continue, roll back. Then close the release record and hand over to `aidlc-operate`.
 
 ## Produces
-In your reply: the readiness checklist, the stop criteria, the change record, the release runbook and the follow-ups.
+In the story's folder (`plans/<KEY>/` in a repository, `stories/<KEY>/` at a workspace root), on a branch
+`release/<KEY>`: `readiness.md` with the stop criteria, `change-record.md`, `release-runbook.md`, `compat-matrix.md`
+for a story across several repositories, and `follow-ups.md`. The release approver approves in change management; the
+records merge in their own small pull request.
 
 ## Gate
 The release approver decides ship, limit or hold, and approves in change management. The engineer owns the plan, and the owning team confirms monitoring and rollback. You draft; you never approve.

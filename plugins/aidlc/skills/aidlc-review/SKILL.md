@@ -41,7 +41,8 @@ The pull request, its evidence table, the spec, plan and task bundle it implemen
 7. Draft the review record from `assets/review-record.md`, with no approval part for you.
 
 ## Produces
-In your reply: the pull request description, the dispositions, the reviewers' questions, the security review draft when required, and the review record. Posting any of them to the pull request asks the person first.
+In `plans/<KEY>/`, on the part's branch: `pr-description.md`, `review-record.md` (the dispositions and the reviewers'
+questions) and, when required, `security-review.md`. Posting any of them to the pull request asks the person first.
 
 ## Gate
 A code owner who is neither the author nor the pusher approves, and a required specialist can block; branch protection enforces both, and the decision is recorded on the pull request. You draft; you never approve.

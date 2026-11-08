@@ -10,9 +10,9 @@ the files below.
 | `intent.md` | `aidlc-intent` | Only when the story needed a problem statement |
 | `spec.md` | `aidlc-specify` | Acceptance criteria, each naming the repository whose tests prove it |
 | `evidence-pack.md` | `aidlc-discover` | Which repositories, owners and contracts the story touches |
-| `design-note.md` | `aidlc-design` | The decisions and the contract change (ADRs live in the repository each one governs) |
+| `design-note.md`, `adr-draft-<n>.md`, `contract/` | `aidlc-design` | The decisions, ADR drafts and the drafted contract change (accepted ADRs move to the repository each one governs) |
 | `coordination-plan.md` | `aidlc-design` | The job sheet: one row per repository part, with its status |
-| `readiness.md`, `release-runbook.md`, `change-record.md`, `compat-matrix.md` | `aidlc-release` | The release |
+| `readiness.md`, `release-runbook.md`, `change-record.md`, `compat-matrix.md`, `follow-ups.md` | `aidlc-release` | The release, on a branch `release/<KEY>` |
 
 Incidents need no story: they live in `incidents/<ID>/` at the root, and lessons from repeated review findings in
 `feedback/<YYYY-MM-DD>-<topic>/`.

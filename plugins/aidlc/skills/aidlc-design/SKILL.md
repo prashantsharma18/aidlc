@@ -43,7 +43,10 @@ The approved spec, the evidence pack (if any), the architecture contract (codeba
 8. Present the decision for approval against this checklist: Every decision has a Proposed record with a named decider. Contract changes follow the versioning rules, and their consumers approved them. Every non-functional requirement has a test, check or monitor that shows whether it holds. Every must-hold constraint is enforced, and its check was seen to fail. (A session at a workspace root is read-only and cannot run tests; there, the check is drafted now and shown red at the first step of its slice, and the design note says so.) The map and rules file are updated (as drafts for their owners). When a public API or behaviour users see changes, the README, API reference and changelog updates are named (load the `writing-documentation` skill). For each non-functional requirement's check, load the `tuning-performance` skill or load the `adding-observability` skill, whichever fits, if either does. No decision is left for the build to make.
 
 ## Produces
-In your reply: the design note (for `plans/<KEY>/design-note.md`), the decision frames, the ADR draft, the contract change and its failing tests, and the proposed enforcement.
+In the story's folder (`plans/<KEY>/` in a repository, `stories/<KEY>/` at a workspace root): `design-note.md` with
+its decision frames; one `adr-draft-<n>.md` per decision, which its owner moves into the governed repository's ADR
+folder once it is accepted; `contract/` holding the drafted contract change and its failing provider and consumer
+tests, which the contract's owner applies; and, for a story across several repositories, `coordination-plan.md`.
 
 ## Gate
 The tech lead or architect approves the design, and the consumers approve a contract change; Tier 3 adds the specialists. The ADR becomes Accepted when the design is approved, and the APPROVED line of the design note records it. A "none needed" note is decided and recorded by the tech lead or architect too. You draft; you never approve.

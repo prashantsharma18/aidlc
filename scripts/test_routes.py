@@ -58,6 +58,17 @@ class RoutesTest(unittest.TestCase):
         for rel in ("starter/workspace/WORKSPACE.md", "plugins/aidlc/skills/aidlc-onboard/assets/workspace.md"):
             self.assertIn("write only under `stories/`, `incidents/` and `feedback/`", read(rel), rel)
 
+    def test_no_stage_produces_only_in_the_reply(self):
+        for stage in STAGES:
+            self.assertNotIn("in your reply", skill(stage).lower(), stage)
+
+    def test_design_review_and_release_name_their_files(self):
+        self.assertIn("design-note.md", section(skill("aidlc-design"), "## Produces"))
+        self.assertIn("review-record.md", section(skill("aidlc-review"), "## Produces"))
+        for name in ("readiness.md", "change-record.md", "release-runbook.md", "follow-ups.md"):
+            self.assertIn(name, section(skill("aidlc-release"), "## Produces"), name)
+        self.assertIn("release/<KEY>", skill("aidlc-release"))
+
 
 if __name__ == "__main__":
     unittest.main()
