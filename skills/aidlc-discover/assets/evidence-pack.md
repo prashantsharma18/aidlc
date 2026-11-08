@@ -1,6 +1,12 @@
 <!-- aidlc template: evidence-pack -->
 # {{KEY}} · evidence pack · Tier {{TIER}}
 
+## For the reviewer
+- **Asked of:** The tech lead, with the affected owners, to proceed, escalate or raise the tier
+- **Record it:** On the DECISION line below, and on the work item
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
 ```text
 QUESTION  <who reads or writes X, by what path, and what must stay true when Y?>
 LEVEL     <L0-L3 and the trigger that forced it>

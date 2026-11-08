@@ -1,6 +1,12 @@
 <!-- aidlc template: feature-brief -->
 # {{KEY}} · feature brief
 
+## For the reviewer
+- **Asked of:** The engineer, to confirm the brief and choose its MODE; the code owner approves it with the change
+- **Record it:** On the CONFIRMED line below; then in the pull request
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
 ```text
 FEATURE BRIEF · {{KEY}} · {{TITLE}}      route F0 (feature, fast path)
 OUTCOME     <the observable behaviour the work item asks for, in one or two sentences>

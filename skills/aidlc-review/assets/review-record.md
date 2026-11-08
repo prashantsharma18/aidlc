@@ -1,6 +1,12 @@
 <!-- aidlc template: review-record -->
 # Review · {{KEY}} · {{PR}}
 
+## For the reviewer
+- **Asked of:** The engineer, to decide each finding (high and medium block the merge); then a code owner, to approve
+- **Record it:** In the findings and the DECISION below; the approval in the pull request
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
 Reviewer: {{name, role}} — not the author, not the engineer who directed the agent, not the pushing identity.
 Order followed: context -> evidence -> tests (against criteria) -> diff (before the summary) -> risk
 

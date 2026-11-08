@@ -1,6 +1,12 @@
 <!-- aidlc template: change-record -->
 # {{KEY}} · change record
 
+## For the reviewer
+- **Asked of:** The release approver, to approve the change and its stop criteria
+- **Record it:** In change management
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
 ## Change
 - **What:** {{what is switched or deployed}}
 - **Artefact:** build of commit {{sha}}; digest recorded by the release pipeline

@@ -3,6 +3,12 @@
 
 Spec owner: {{OWNER}} · Tier: {{TIER}} · Version: v1
 
+## For the reviewer
+- **Asked of:** The spec owner, to approve the criteria and decide every edge case; a specialist reviews at Tier 3
+- **Record it:** On the work item: "Spec vN approved by name"
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
 ## Outcome
 {{what changes, for whom, and why}}
 

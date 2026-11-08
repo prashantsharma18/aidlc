@@ -1,6 +1,12 @@
 <!-- aidlc template: intent -->
 # {{KEY}} · {{TITLE}} · intent
 
+## For the reviewer
+- **Asked of:** The product owner, to accept or decline the work, set its priority and agree the provisional tier with whoever owns the risk
+- **Record it:** In the tracker
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
 ```text
 Kind      <new feature | defect | incident follow-up>   (a change to an approved spec is an amendment, not new intent)
 Problem   <what is wrong, for whom, why now; link the evidence (support reports, incidents)>

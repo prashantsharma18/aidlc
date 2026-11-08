@@ -1,6 +1,12 @@
 <!-- aidlc template: fix-brief -->
 # {{KEY}} · fix brief
 
+## For the reviewer
+- **Asked of:** The engineer, to confirm the brief and choose its MODE; the code owner approves it with the fix
+- **Record it:** On the CONFIRMED line below; then in the pull request
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
 ```text
 FIX BRIEF · {{KEY}} · {{TITLE}}          route D1 (defect, fast path)
 REPRO       <the steps or the failing output that show the defect>

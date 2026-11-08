@@ -1,6 +1,12 @@
 <!-- aidlc template: new-system -->
 # {{KEY}} · {{TITLE}} · new system
 
+## For the reviewer
+- **Asked of:** The tech lead or architect, to approve the stack, every dependency and the scaffold commands
+- **Record it:** On the APPROVED line below, and on the work item with this file's version and commit
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
 ```text
 NEW SYSTEM · {{KEY}} · {{TITLE}}          (one REPOSITORY block per repository the LAYOUT names)
 LAYOUT       <one repository: name | several: name, name — the coordination plan holds one slice-0 part each>

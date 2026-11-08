@@ -1,6 +1,12 @@
 <!-- aidlc template: security-review -->
 # Security review · {{KEY}} · {{PR}}
 
+## For the reviewer
+- **Asked of:** The security champion (the required specialist), to clear or block the change; a code owner approves
+- **Record it:** On the GATE line below, and in the pull request
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
 ```text
 Security review record · {{KEY}} · {{PR}}
 SCOPE      <criteria, bundle at approval commit, plan version, sessions>

@@ -1,6 +1,12 @@
 <!-- aidlc template: task-bundle -->
 # {{KEY}} · task bundle · {{SLICE}}
 
+## For the reviewer
+- **Asked of:** The tech lead, to approve this slice, its MODE and its boundaries
+- **Record it:** On the work item with the plan's version and commit; a changed bundle is approved again
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
 ```text
 TASK BUNDLE · {{KEY}} · {{SLICE}}
 GOAL        <one or two sentences naming the criteria covered>

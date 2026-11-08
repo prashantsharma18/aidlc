@@ -1,6 +1,12 @@
 <!-- aidlc template: plan -->
 # Plan: {{KEY}} · {{TITLE}}
 
+## For the reviewer
+- **Asked of:** The tech lead, to approve the plan and its bundles
+- **Record it:** On the work item, with the plan's version and commit
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
 ```text
 SPEC       <version, clarifications>
 APPROACH   <the idea, so a reviewer can judge it before the details>

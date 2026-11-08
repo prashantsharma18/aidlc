@@ -3,6 +3,12 @@
 
 The worst of the five decides.
 
+## For the reviewer
+- **Asked of:** The release approver, to decide ship, limit or hold; the owning team confirms monitoring and rollback
+- **Record it:** In change management
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
 ## 1. Scope known
 - [ ] Users: {{what people experience, including refusals}}
 - [ ] Services and blast radius: {{services}}
