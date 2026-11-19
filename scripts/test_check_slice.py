@@ -937,6 +937,110 @@ class CloserPairTest(unittest.TestCase):
         self.assertIn("(skip, test, all rules → skip, suite, all rules)", problems[0])
 
 
+TAIL = "".join(f"console.log({i})\n" for i in range(2, 6))
+NESTED = ("/* eslint-disable no-console */\nconsole.log(1)\n/* eslint-disable no-alert */\nalert(1)\n"
+          "/* eslint-enable no-alert */\n/* eslint-enable no-console */\n" + TAIL)
+
+
+class OpenInTheHeadTest(unittest.TestCase):
+    """Item 2 fix round 3: a removed closer is judged by what is still open at its former place in the head file:
+    every same-family block-or-wider opener still open there with overlapping rules needs its own valid exception in
+    the head. Checked in both modes (CI on commits, the hook on the working tree)."""
+
+    def both(self, path, before, after):
+        ci, hook = Repo(bundle(), {path: before}), Repo(bundle(), {path: before})
+        ci.commit("s1", {path: after})
+        hook.write({path: after})
+        return ci.check()[0], check_slice.check(hook.root, "main", "SHIP-7", None, worktree=True, today=TODAY)[0]
+
+    def assert_reported(self, path, before, after):
+        for mode, problems in zip(("ci", "hook"), self.both(path, before, after)):
+            with self.subTest(mode=mode):
+                self.assertEqual(len(problems), 1, problems)
+                self.assertIn("its closing eslint-enable was removed" if path.endswith(".js")
+                              else "its closing pylint: enable was removed", problems[0])
+
+    def assert_clean(self, path, before, after):
+        for mode, problems in zip(("ci", "hook"), self.both(path, before, after)):
+            with self.subTest(mode=mode):
+                self.assertEqual(problems, [])
+
+    def test_a1_dropping_the_inner_opener_and_the_outer_closer_is_reported(self):
+        after = "/* eslint-disable no-console */\nconsole.log(1)\nalert(1)\n/* eslint-enable no-alert */\n" + TAIL
+        self.assert_reported("src/n.js", NESTED, after)
+
+    def test_a1b_dropping_the_inner_pair_and_the_outer_closer_is_reported(self):
+        self.assert_reported("src/n.js", NESTED, "/* eslint-disable no-console */\nconsole.log(1)\nalert(1)\n" + TAIL)
+
+    def test_a2_a_pylint_module_disable_left_open_is_reported(self):
+        before = ("# pylint: disable=no-member\nimport os\n\n\ndef f(x):\n    # pylint: disable=protected-access\n"
+                  "    return x._y\n# pylint: enable=no-member\n\n\ndef g(a):\n    return a.b.c\n")
+        after = ("# pylint: disable=no-member\nimport os\n\n\ndef f(x):\n    return x._y\n\n\n"
+                 "def g(a):\n    return a.b.c\n")
+        self.assert_reported("src/p.py", before, after)
+
+    def test_a3_a_duplicate_opener_left_open_is_reported(self):
+        before = ("/* eslint-disable no-console */\nconsole.log(0)\n/* eslint-disable no-console */\nconsole.log(1)\n"
+                  "/* eslint-enable no-console */\n" + TAIL)
+        self.assert_reported("src/d.js", before,
+                             "/* eslint-disable no-console */\nconsole.log(0)\nconsole.log(1)\n" + TAIL)
+
+    def test_s1_an_edited_opener_left_open_is_reported_even_when_another_equal_opener_goes(self):
+        before = ("/* eslint-disable no-console */\nconsole.log(0)\n/* eslint-enable no-console */\nx()\n"
+                  "/* eslint-disable no-console */\nconsole.log(1)\n/* eslint-enable no-console */\n" + TAIL)
+        after = ("console.log(0)\n/* eslint-enable no-console */\nx()\n"
+                 "/* eslint-disable no-console -- legacy */\nconsole.log(1)\n" + TAIL)
+        self.assert_reported("src/s.js", before, after)
+
+    def test_a4_removing_one_of_two_interleaved_pairs_is_clean(self):
+        before = ("/* eslint-disable no-console */\n/* eslint-disable no-alert */\nconsole.log(1)\nalert(1)\n"
+                  "/* eslint-enable no-console */\nalert(2)\n/* eslint-enable no-alert */\n" + TAIL)
+        after = ("/* eslint-disable no-alert */\nconsole.log(1)\nalert(1)\nalert(2)\n/* eslint-enable no-alert */\n"
+                 + TAIL)
+        self.assert_clean("src/i.js", before, after)
+
+    def test_n1_a_block_pair_narrowed_to_a_next_line_disable_is_clean(self):
+        before = "/* eslint-disable no-console */\nconsole.log(1)\n/* eslint-enable no-console */\n" + TAIL
+        self.assert_clean("src/r.js", before, "// eslint-disable-next-line no-console\nconsole.log(1)\n" + TAIL)
+
+    def test_an_exception_on_the_still_open_opener_in_the_head_excuses(self):
+        after = (f"/* eslint-disable no-console */ // {VALID}\nconsole.log(1)\nalert(1)\n"
+                 "/* eslint-enable no-alert */\n" + TAIL)
+        self.assert_clean("src/n.js", NESTED, after)
+
+    def test_a_base_exception_above_the_closer_for_another_marker_does_not_excuse(self):
+        before = ("/* eslint-disable no-console */\nconsole.log(1)\n"
+                  f"alert(1) // eslint-disable-line no-alert -- {VALID}\n/* eslint-enable no-console */\n" + TAIL)
+        self.assert_reported("src/b.js", before, before.replace("/* eslint-enable no-console */\n", ""))
+
+    def test_a_closer_replaced_by_one_that_ends_the_same_rules_is_clean(self):
+        before = "/* eslint-disable no-console */\nconsole.log(1)\n/* eslint-enable no-console */\n" + TAIL
+        self.assert_clean("src/w.js", before, before.replace("/* eslint-enable no-console */", "/* eslint-enable */"))
+
+    def test_a_closer_moved_down_is_reported(self):
+        before = "/* eslint-disable no-console */\nconsole.log(1)\n/* eslint-enable no-console */\n" + TAIL
+        self.assert_reported("src/w.js", before, "/* eslint-disable no-console */\nconsole.log(1)\n" + TAIL
+                             + "/* eslint-enable no-console */\n")
+
+    def test_a_closer_whose_spacing_changes_in_place_is_clean(self):
+        before = "/* eslint-disable no-console */\nconsole.log(1)\n/* eslint-enable no-console */\n" + TAIL
+        self.assert_clean("src/w.js", before, before.replace("/* eslint-enable", "/*  eslint-enable"))
+
+    def test_a_lone_carriage_return_above_keeps_hook_line_numbers_in_step_with_git(self):
+        methods = "".join(f"    def test_{i}(self, m):\n        pass\n\n" for i in range(4))
+
+        def py(on):
+            return ("import unittest\nfrom unittest import mock\n# a\rb\rc\rd\re\rf\rg\n\n\nX = 1\n\n\n"
+                    + ("@unittest.skip('f')\n" if on else "") + "@mock.patch('x')\nclass T(unittest.TestCase):\n"
+                    + methods + ("" if on else "    @unittest.skip('f')\n")
+                    + "    def test_a(self, m):\n        pass\n")
+        r = Repo(bundle(), {"tests/test_p.py": py(False)})
+        r.write({"tests/test_p.py": py(True)})
+        code, _, err = run_main(r.root, ["--hook"], stdin="{}")
+        self.assertEqual(code, 2, err)
+        self.assertIn("(skip, test, all rules → skip, suite, all rules)", err)
+
+
 class WideningRanksTest(unittest.TestCase):
     """Item 2 fixes 3 to 5: "got wider" only when the added marker widens a removed one; ts and pylint ranks."""
 

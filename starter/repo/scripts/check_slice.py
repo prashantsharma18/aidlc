@@ -271,7 +271,7 @@ def collect(repo: Path, base: str, folder: str, worktree: bool) -> Branch:
     for path in untracked:
         file = repo / path
         if file.is_file() and file.stat().st_size < 1_000_000:
-            lines = git_lines(file.read_text(encoding="utf-8", errors="replace"))
+            lines = git_lines(file.read_bytes().decode("utf-8", errors="replace"))
             new_files.append(f"diff --git a/{path} b/{path}\n--- /dev/null\n+++ b/{path}\n@@ -0,0 +1 @@\n"
                              + "".join(f"+{line}\n" for line in lines))
     if worktree:
@@ -713,46 +713,70 @@ def head_number(lines: list[DiffLine], path: str, number: int) -> int:
     return number + shift
 
 
-def paired_opener(base: list[str], number: int, family: str) -> int | None:
-    """The line number of the opener a closer at line `number` ends: the nearest block-or-wider marker of its family
-    above it in the same file."""
-    for above in range(number - 1, 0, -1):
-        if any(m is not None and m.family == family and m.scope >= SCOPE_BLOCK for m in markers_of(base[above - 1])):
-            return above
-    return None
+def read_closer(text: str) -> tuple[str, frozenset[str] | None, str] | None:
+    """(family, the rules it ends or None for every rule, its directive) for the closing directive on a line."""
+    m = CLOSER.search(text)
+    if not m:
+        return None
+    family, directive, rest = m.lastgroup.replace("_", "-"), re.sub(r"\s+", " ", m.group(m.lastgroup)), text[m.end():]
+    if family == "eslint":
+        listed = re.split(r"\*/|--", rest, maxsplit=1)[0]
+    elif family == "pylint":
+        names = re.match(r"\s*=\s*([\w-]+(?:\s*,\s*[\w-]+)*)", rest)
+        listed = names.group(1) if names and names.group(1) != "all" else ""
+    elif family == "csharp-pragma":
+        listed = rest.split("//", 1)[0]
+    else:
+        listed = ""     # coverage: `ignore stop` ends whatever `ignore start` began
+    return family, rule_set(listed) or None, directive
 
 
-def closer_problems(lines: list[DiffLine], source: Source | None, today: dt.date,
-                    spent: set[tuple[str, int]]) -> list[str]:
-    """A closing directive removed (and not added back the same in that file) extends the suppression it ended. It is
-    clean when the file is deleted, when it has no opener, or when its paired opener (`paired_opener`) is removed too
-    and not re-added (`spent` holds the removed markers that covered an added one). Otherwise only a valid exception
-    on that opener (or the line above it) in the head, or on the closer's own line (or the line above) in the base,
-    excuses it. When a file version cannot be read, it is reported (fail safe)."""
-    added = collections.Counter((d.path, d.text.strip()) for d in lines if d.kind == "+")
-    removed = {(d.path, d.number) for d in lines if d.kind == "-"}
+def overlap(a: frozenset[str] | None, b: frozenset[str] | None) -> bool:
+    """Two rule lists share a rule; a list that names none (None) shares every rule."""
+    return a is None or b is None or bool(a & b)
+
+
+def still_open(head: list[str], before: int, family: str) -> list[tuple[int, frozenset[str] | None]]:
+    """(line, rules still off) for each opener of a family still open just above line `before` of the head file: a
+    block-or-wider marker, less the rules each later closer of its family ends (a closer naming no rule ends them all;
+    one naming some cannot narrow an opener that names none, which stays open)."""
+    opened: list[tuple[int, frozenset[str] | None]] = []
+    for number, text in enumerate(head[:max(0, before - 1)], start=1):
+        closer = read_closer(text)
+        if closer and closer[0] == family:
+            ended, kept = closer[1], []
+            for at, rules in opened:
+                if ended is None:     # a closer naming no rule ends every opener
+                    continue
+                left = None if rules is None else rules - ended     # an opener naming no rule stays open
+                if left is None or left:
+                    kept.append((at, left))
+            opened = kept
+        opened += [(number, m.rules) for m in markers_of(text)
+                   if m is not None and m.family == family and m.scope >= SCOPE_BLOCK]
+    return opened
+
+
+def closer_problems(lines: list[DiffLine], source: Source | None, today: dt.date) -> list[str]:
+    """A closing directive removed in the net diff may leave a suppression running further. It is judged on the head
+    file at the closer's former place: each opener of its family still open there with rules it ended needs a valid
+    exception on its own line or the line above it, in the head. A deleted file is clean; a head that cannot be read
+    is reported (fail safe)."""
     problems = []
     for d in lines:
-        closer = CLOSER.search(d.text) if d.kind == "-" and not d.path.endswith(PROSE_SUFFIXES) else None
+        closer = read_closer(d.text) if d.kind == "-" and not d.path.endswith(PROSE_SUFFIXES) else None
         if not closer or d.deleted:
             continue
-        if added[(d.path, d.text.strip())] > 0:
-            added[(d.path, d.text.strip())] -= 1     # moved within the file
-            continue
-        family = closer.lastgroup.replace("_", "-")
-        base = source("-", d.old_path) if source and d.old_path else None
-        if base is not None and d.number <= len(base):
-            if valid_exception(d.text, today) or (d.number > 1 and valid_exception(base[d.number - 2], today)):
+        family, rules, directive = closer
+        head = source("+", d.path) if source else None
+        if head is not None:
+            # Up to the next old line's place, so a closer that replaced it on the same spot counts
+            place = head_number(lines, d.path, d.number + 1)
+            unexcused = [at for at, left in still_open(head, place, family) if overlap(left, rules)
+                         and not (valid_exception(head[at - 1], today)
+                                  or (at > 1 and valid_exception(head[at - 2], today)))]
+            if not unexcused:
                 continue
-            opener = paired_opener(base, d.number, family)
-            if opener is None or ((d.path, opener) in removed and (d.path, opener) not in spent):
-                continue     # nothing to extend, or the pair went together
-            head = source("+", d.path) if (d.path, opener) not in removed else None
-            at = head_number(lines, d.path, opener) if head is not None else 0
-            if 0 < at <= len(head or []) and (valid_exception(head[at - 1], today)
-                                              or (at > 1 and valid_exception(head[at - 2], today))):
-                continue
-        directive = re.sub(r"\s+", " ", closer.group(closer.lastgroup))
         problems.append(f"{d.path}: a suppression got wider (its closing {directive} was removed) without a valid "
                         f"aidlc-exception: {d.text.strip()[:120]}")
     return problems
@@ -765,13 +789,12 @@ def marker_problems(patch: str, today: dt.date, source: Source | None = None) ->
     be read (fail safe) still needs its exception; so does a removed closing directive. `source` reads each version of
     a file, to tell whether a decorator sits on a class; without it, the fail-safe reading applies."""
     lines = list(diff_lines(patch))
-    # (path, family) -> (marker, its line in the old file) for each removed marker not yet spent as a cover
-    unused = collections.defaultdict(list)
+    unused = collections.defaultdict(list)     # (path, family) -> removed markers not yet spent as a cover
     for d in lines:
         if d.kind == "-" and MARKER.search(d.text):
             for marker in markers_of(d.text, following_line(d, source), added=False):
                 if marker:
-                    unused[(d.path, marker.family)].append((marker, d.number))
+                    unused[(d.path, marker.family)].append(marker)
     needed, previous = [], ""     # (path, text, markers) for each added marker line without a valid exception
     for d in lines:
         if d.kind == "@":
@@ -788,15 +811,12 @@ def marker_problems(patch: str, today: dt.date, source: Source | None = None) ->
     # Widest first, each taking the narrowest removed marker that covers it, so a broad cover is not spent on a
     # narrow marker that a narrower one could cover
     readable = [(n, m) for n, (_, _, markers) in enumerate(needed) if None not in markers for m in markers]
-    uncovered, spent = collections.defaultdict(list), set()
+    uncovered = collections.defaultdict(list)
     for n, marker in sorted(readable, key=lambda item: item[1].width, reverse=True):
-        path = needed[n][0]
-        pool = unused[(path, marker.family)]
-        covers = [removed for removed in pool if removed[0].covers(marker)]
+        pool = unused[(needed[n][0], marker.family)]
+        covers = [removed for removed in pool if removed.covers(marker)]
         if covers:
-            cover = min(covers, key=lambda removed: removed[0].width)
-            pool.remove(cover)
-            spent.add((path, cover[1]))
+            pool.remove(min(covers, key=lambda removed: removed.width))
         else:
             uncovered[n].append(marker)
     problems = []
@@ -806,15 +826,15 @@ def marker_problems(patch: str, today: dt.date, source: Source | None = None) ->
             continue
         # "got wider" only when a removed marker of the family is one this added marker widens
         pair = next(((old, new) for new in uncovered[n] for old in unused[(path, new.family)]
-                     if new.wider_than(old[0])), None)
+                     if new.wider_than(old)), None)
         if pair:
             unused[(path, pair[1].family)].remove(pair[0])
-            problems.append(f"{path}: a suppression or skip got wider ({pair[0][0]} \u2192 {pair[1]}) without a valid "
+            problems.append(f"{path}: a suppression or skip got wider ({pair[0]} \u2192 {pair[1]}) without a valid "
                             f"aidlc-exception: {line}")
         else:
             problems.append(f"{path}: a suppression or skip without a valid aidlc-exception (reason, owner and an "
                             f"expiry date not past): {line}")
-    return problems + closer_problems(lines, source, today, spent)
+    return problems + closer_problems(lines, source, today)
 
 
 def file_source(repo: Path, branch: Branch) -> Source:
@@ -826,8 +846,8 @@ def file_source(repo: Path, branch: Branch) -> Source:
             text = None
             if side == "+" and branch.worktree:
                 file = repo / path
-                if file.is_file():
-                    text = file.read_text(encoding="utf-8", errors="replace")
+                if file.is_file():     # bytes: read_text would turn a lone "\r" into a line break git does not count
+                    text = file.read_bytes().decode("utf-8", errors="replace")
             else:
                 rev = branch.base if side == "-" else "HEAD"
                 shown = subprocess.run(["git", "-C", str(repo), "show", f"{rev}:{path}"], capture_output=True)
