@@ -1,5 +1,5 @@
 # aidlc: codebase map
-Owner: framework owners · Last verified: 2026-11-08
+Owner: framework owners · Last verified: 2026-11-19
 
 ## What this repository is
 One skills plugin, `aidlc`, at the repository root. Engineers install it in Claude Code, or copy its `skills/`
