@@ -10,7 +10,13 @@
       "Read(**/*.key)",
       "Read(secrets/**)",
       "Read(~/.ssh/**)",
-      "Read(~/.aws/**)"
+      "Read(~/.aws/**)",
+      "Edit(/.claude/**)",
+      "Edit(/scripts/check_*.py)",
+      "Edit(/scripts/run_slices.py)",
+      "Edit(/.github/workflows/ai-review.yml)",
+      "Edit(/CODEOWNERS)",
+      "Edit(/.github/CODEOWNERS)"
     ],
     "ask": [
       "Bash(git push*)",

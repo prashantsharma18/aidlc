@@ -18,6 +18,8 @@
       "Read(secrets/**)",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
+      "Edit(/.claude/**)",
+      "Edit(/scripts/story_status.py)",
       "Bash(git push*)"
     ],
     "disableBypassPermissionsMode": "disable"

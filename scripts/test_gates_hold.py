@@ -73,5 +73,36 @@ class StarterReviewTest(unittest.TestCase):
         self.assertIn("scripts/           @your-org/your-team-leads", owners)
 
 
+REPO_DENIES = ["Edit(/.claude/**)", "Edit(/scripts/check_*.py)", "Edit(/scripts/run_slices.py)",
+               "Edit(/.github/workflows/ai-review.yml)", "Edit(/CODEOWNERS)", "Edit(/.github/CODEOWNERS)"]
+
+
+class DenyTest(unittest.TestCase):
+    """A4: a session cannot edit the files that enforce its own rules."""
+
+    def settings(self, kind):
+        return json.loads(read(f"starter/{kind}/.claude/settings.json"))["permissions"]
+
+    def test_the_repository_denies_edits_to_its_controls(self):
+        deny = self.settings("repo")["deny"]
+        for rule in REPO_DENIES:
+            self.assertIn(rule, deny)
+
+    def test_agents_md_and_ci_stay_editable(self):
+        deny = " ".join(self.settings("repo")["deny"])
+        self.assertNotIn("AGENTS.md", deny)
+        self.assertNotIn("ci.yml", deny)
+
+    def test_the_workspace_denies_edits_to_its_controls(self):
+        deny = self.settings("workspace")["deny"]
+        self.assertIn("Edit(/.claude/**)", deny)
+        self.assertIn("Edit(/scripts/story_status.py)", deny)
+
+    def test_onboard_copies_the_settings_last(self):
+        onboard = " ".join(read("skills/aidlc-onboard/SKILL.md").split())
+        self.assertIn("copy `.claude/settings.json` last", onboard)
+        self.assertIn("its deny rules then protect the files copied before it", onboard)
+
+
 if __name__ == "__main__":
     unittest.main()
