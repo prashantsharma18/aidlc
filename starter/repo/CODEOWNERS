@@ -9,4 +9,5 @@ tests/            @your-org/your-team-leads
 # Scripts and settings that enforce the rules.
 scripts/           @your-org/your-team-leads
 .claude/           @your-org/your-team-leads
+.mcp.json          @your-org/your-team-leads
 .github/           @your-org/your-team-leads

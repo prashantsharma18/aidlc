@@ -19,7 +19,7 @@ in the repository starter and no CI check for them, and a starter AI review weak
   `CODEOWNERS`. `AGENTS.md` and `ci.yml` stay editable (onboard and slice 0 need them); the slice check covers them
   in a build.
 - Adopters get the hardened AI review: pinned actions, the key in an approved environment, fail-closed, rules read
-  from the base branch.
+  from the base branch, and it loads no settings, hooks or MCP servers the repository controls.
 
 ## Consequences
 - A branch whose name carries no tracker key is not checked (dependency bots, chores). A person sees that in the PR.

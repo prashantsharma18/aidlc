@@ -80,6 +80,28 @@ class StarterReviewTest(unittest.TestCase):
         owners = read("starter/repo/CODEOWNERS")
         self.assertRegex(owners, r"(?m)^CLAUDE\.md\s+@your-org/your-team-leads$")
 
+    def test_both_passes_load_no_repository_settings_or_hooks(self):
+        self.assertEqual(self.review.count("--setting-sources user"), 2)
+        self.assertEqual(self.review.count("""--settings '{"disableAllHooks": true}'"""), 2)
+
+    def test_the_restore_loop_names_every_path_the_action_restores(self):
+        step = self.review.split("- name: Review under the base branch's rules", 1)[1].split("- name:", 1)[0]
+        loop = re.search(r"for f in ([^;]+); do", step).group(1).split()
+        for name in ("AGENTS.md", "CLAUDE.md", "CLAUDE.local.md", ".claude", ".claude.json", ".mcp.json",
+                     ".gitmodules", ".ripgreprc", ".husky"):
+            self.assertIn(name, loop)
+
+    def test_no_run_block_interpolates_any_expression(self):
+        for block in run_blocks(self.review):
+            self.assertNotIn("${{", block)
+
+    def test_code_owners_own_the_mcp_config(self):
+        self.assertRegex(read("starter/repo/CODEOWNERS"), r"(?m)^\.mcp\.json\s+@your-org/your-team-leads$")
+
+    def test_strict_mcp_config_is_not_used(self):
+        # Unverified: it may also drop the action's own inline-comment tool.
+        self.assertNotIn("--strict-mcp-config", self.review)
+
 
 REPO_DENIES = ["Edit(/.claude/**)", "Edit(/scripts/check_*.py)", "Edit(/scripts/run_slices.py)",
                "Edit(/.github/workflows/ai-review.yml)", "Edit(/CODEOWNERS)", "Edit(/.github/CODEOWNERS)"]

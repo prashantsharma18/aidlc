@@ -4,9 +4,14 @@
 # jobs fail on them (fail closed). Make the job "ai-review" a required check in branch protection: on GitHub
 # Free that works on public repositories only; a private repository needs Pro or Team.
 #
-# The review reads AGENTS.md, CLAUDE.md, .claude/ and .mcp.json from the BASE branch, so a pull request that loosens
-# the rules is reviewed under the rules it would loosen, and its own settings, hooks and servers never load in the
-# review. Its token can comment but cannot push or approve.
+# A job that holds a secret never runs code from the pull request. Two measures keep that true here.
+# - Flags: both passes pass claude_args that read user settings only and turn every hook off, so Claude Code
+#   loads no settings, hooks or MCP servers the repository controls. A hook is a command, so a pull request that
+#   edited one would otherwise run its own code next to the key.
+# - Restore: the review reads the instruction and config files (AGENTS.md, CLAUDE.md, .claude, .mcp.json and the
+#   rest of the list below) from the BASE branch, so a pull request that loosens the rules is reviewed under the
+#   rules it would loosen. The action restores the same list only for authors without write access.
+# Its token can comment but cannot push or approve.
 name: ai-review
 on:
   pull_request:
@@ -30,7 +35,7 @@ jobs:
       - name: Review under the base branch's rules
         env: {BASE_REF: "${{ github.base_ref }}"}
         run: |
-          for f in AGENTS.md CLAUDE.md .claude .mcp.json; do
+          for f in AGENTS.md CLAUDE.md CLAUDE.local.md .claude .claude.json .mcp.json .gitmodules .ripgreprc .husky; do
             git rm -r -q --cached --ignore-unmatch -- "$f"
             rm -rf -- "$f"
             if git cat-file -e "origin/$BASE_REF:$f" 2>/dev/null; then git checkout "origin/$BASE_REF" -- "$f"; fi
@@ -52,6 +57,7 @@ jobs:
           prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
           claude_args: >-
             --model claude-sonnet-5-5 --max-turns 40
+            --setting-sources user --settings '{"disableAllHooks": true}'
             --allowedTools "mcp__github_inline_comment__create_inline_comment"
             --disallowedTools "Read(./.git/**)"
             --json-schema '{"type":"object","properties":{"reviewed":{"type":"boolean","description":"true only if you read the whole change and completed this review pass; false if any tool, command or the sandbox failed"},"skipped_reason":{"type":"string","enum":["none","already_reviewed","draft","closed","trivial","failed"]},"findings_posted":{"type":"integer","minimum":0},"summary":{"type":"string"}},"required":["reviewed","skipped_reason","findings_posted","summary"],"additionalProperties":false}'
@@ -77,6 +83,7 @@ jobs:
             Report reviewed: false if the command or any tool failed and you could not review the whole change.
           claude_args: >-
             --model claude-sonnet-5-5 --max-turns 30
+            --setting-sources user --settings '{"disableAllHooks": true}'
             --allowedTools "Read(./**),Bash(git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}),mcp__github_inline_comment__create_inline_comment"
             --disallowedTools "Read(./.git/**)"
             --json-schema '{"type":"object","properties":{"reviewed":{"type":"boolean"},"skipped_reason":{"type":"string","enum":["none","already_reviewed","draft","closed","trivial","failed"]},"findings_posted":{"type":"integer","minimum":0},"summary":{"type":"string"}},"required":["reviewed","skipped_reason","findings_posted","summary"],"additionalProperties":false}'
