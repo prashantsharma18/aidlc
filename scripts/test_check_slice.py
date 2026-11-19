@@ -392,5 +392,61 @@ class ApprovalTest(unittest.TestCase):
                                               f"pull request; {self.ADR}"])
 
 
+class CommandTest(unittest.TestCase):
+    def run_main(self, root, argv, stdin=""):
+        out, err, old = io.StringIO(), io.StringIO(), sys.stdin
+        sys.stdin = io.StringIO(stdin)
+        try:
+            with redirect_stdout(out), redirect_stderr(err):
+                code = check_slice.main(argv + ["--root", str(root)])
+        finally:
+            sys.stdin = old
+        return code, out.getvalue(), err.getvalue()
+
+    def test_a_branch_with_no_key_is_not_checked(self):
+        r = Repo(bundle())
+        r.git("switch", "-q", "-c", "chore/tidy")
+        code, out, _ = self.run_main(r.root, ["--base", "main"])
+        self.assertEqual(code, 0)
+        self.assertIn("names no story key", out)
+
+    def test_problems_exit_1_and_a_clean_branch_exits_0(self):
+        r = Repo(bundle())
+        r.commit("s1", {"src/app.py": "x = 1\n"})
+        self.assertEqual(self.run_main(r.root, ["--base", "main"])[0], 0)
+        r.commit("s2", {"web/page.ts": "x\n"})
+        code, out, _ = self.run_main(r.root, ["--base", "main"])
+        self.assertEqual(code, 1)
+        self.assertIn("web/page.ts: outside", out)
+
+    def test_the_branch_can_be_named_for_ci(self):
+        r = Repo(bundle())
+        r.commit("s2", {"web/page.ts": "x\n"})
+        self.assertEqual(self.run_main(r.root, ["--base", "main", "--branch", "feat/SHIP-7-x"])[0], 1)
+
+    def test_the_hook_blocks_with_exit_2_and_sees_untracked_work(self):
+        r = Repo(bundle())
+        r.write({"web/page.ts": "x\n"})
+        code, _, err = self.run_main(r.root, ["--hook"], stdin=json.dumps({"stop_hook_active": False}))
+        self.assertEqual(code, 2)
+        self.assertIn("web/page.ts: outside", err)
+
+    def test_the_hook_sees_uncommitted_edits_to_tests(self):
+        r = Repo(bundle())
+        r.write({"tests/test_app.py": BASE_TEST.replace("== 3", "> 0")})
+        code, _, err = self.run_main(r.root, ["--hook"], stdin="{}")
+        self.assertEqual(code, 2)
+        self.assertIn("assert total(1, 2) == 3", err)
+
+    def test_the_hook_lets_the_session_stop_the_second_time(self):
+        r = Repo(bundle())
+        r.write({"web/page.ts": "x\n"})
+        self.assertEqual(self.run_main(r.root, ["--hook"], stdin='{"stop_hook_active": true}')[0], 0)
+
+    def test_the_hook_never_blocks_outside_a_repository(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(self.run_main(Path(tmp), ["--hook"], stdin="{}")[0], 0)
+
+
 if __name__ == "__main__":
     unittest.main()

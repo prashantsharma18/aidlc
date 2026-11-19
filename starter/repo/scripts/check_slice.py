@@ -406,3 +406,55 @@ def check(repo: Path, base: str, key: str, part: int | None = None, worktree: bo
         problems += marker_problems(patch, today or dt.date.today())
     problems += approval_problems(branch, key_folder)
     return problems, notes
+
+
+def default_base(repo: Path) -> str:
+    remote = git(repo, "symbolic-ref", "--short", "refs/remotes/origin/HEAD", check=False).strip()
+    if remote:
+        return remote
+    return "main" if git(repo, "rev-parse", "--verify", "--quiet", "refs/heads/main", check=False).strip() else "master"
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--key")
+    parser.add_argument("--part", type=int)
+    parser.add_argument("--base")
+    parser.add_argument("--branch")
+    parser.add_argument("--root", default=".")
+    parser.add_argument("--hook", action="store_true")
+    args = parser.parse_args(argv)
+    repo = Path(args.root).resolve()
+    out = sys.stderr if args.hook else sys.stdout
+    if args.hook:
+        try:
+            payload = json.loads(sys.stdin.read() or "{}")
+        except ValueError:
+            payload = {}
+        if payload.get("stop_hook_active"):
+            return 0
+    try:
+        branch = args.branch or git(repo, "branch", "--show-current").strip()
+        key = args.key or key_from_branch(branch)
+        if not key:
+            print(f"check_slice: the branch '{branch}' names no story key; nothing to check", file=out)
+            return 0
+        problems, notes = check(repo, args.base or default_base(repo), key, args.part, worktree=args.hook)
+    except RuntimeError as error:
+        print(f"check_slice: cannot check: {error}", file=sys.stderr)
+        return 0 if args.hook else 1
+    for note in notes:
+        print(f"for the reviewer: {note}", file=out)
+    for problem in problems:
+        print(problem, file=out)
+    if problems:
+        if args.hook:
+            print("check_slice: fix these before you stop, or stop the slice and report them (STATUS stopped).", file=out)
+        return 2 if args.hook else 1
+    print(f"check_slice: {key}: scope, tests, manifests, markers and approved documents hold "
+          f"({len(notes)} note(s) for the reviewer)", file=out)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

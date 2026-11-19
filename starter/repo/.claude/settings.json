@@ -44,6 +44,15 @@
       ]
     }
   },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/check_slice.py\" --hook --root \"$CLAUDE_PROJECT_DIR\""}
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
     "aidlc@aidlc": true
   },

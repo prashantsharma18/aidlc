@@ -1,4 +1,5 @@
 # The repository's checks on every pull request. Replace the two commands with the ones AGENTS.md names.
+# Make "checks" and "slice-check" required checks in branch protection (GitHub Free: public repositories only).
 name: ci
 on:
   pull_request:
@@ -10,9 +11,32 @@ jobs:
   checks:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      # Set up your language here, for example actions/setup-node or actions/setup-dotnet.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: {persist-credentials: false}
+      # Set up your language here, for example actions/setup-node or actions/setup-dotnet, pinned to a commit.
       - name: Lint
         run: echo "replace with your lint command" && exit 1
       - name: Tests
         run: echo "replace with your test command" && exit 1
+  # The story's rules, checked by code (aidlc ADR 0019): scope, tests, manifests, suppressions, approved documents.
+  # It runs the base branch's copy of the script on the pull request's own head commit, so a pull request cannot
+  # weaken its own check, and a merge commit adds nothing to check.
+  slice-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Slice check, from the base branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/aidlc"
+          if ! git show "origin/$BASE_REF:scripts/check_slice.py" > "$RUNNER_TEMP/aidlc/check_slice.py" 2>/dev/null; then
+            cp scripts/check_slice.py "$RUNNER_TEMP/aidlc/check_slice.py"
+          fi
+          python3 "$RUNNER_TEMP/aidlc/check_slice.py" --base "origin/$BASE_REF" --branch "$HEAD_REF"

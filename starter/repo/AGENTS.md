@@ -32,6 +32,8 @@ Full map: `docs/codebase-map.md`. Read it before planning a change.
 - Recipe check, after a recipe commit: `python3 scripts/check_recipe_commit.py <commit> --recipe "<approved command>" --count "<test count command>"`
 - Slice runner, for approved delegate slices only, one fresh session each: `python3 scripts/run_slices.py <KEY> <slice> [<slice> ...] [--part <n>]`;
   it stops at the first slice that does not end done, and never pushes
+- Slice check, on the story's branch (CI and the session's Stop hook run it too): `python3 scripts/check_slice.py`
+- Plan check, before asking for the plan's approval: `python3 scripts/check_plan.py <KEY> [--part <n>]`
 - <run one test file>: <exact command>
 
 ## Legacy
@@ -46,6 +48,8 @@ Full map: `docs/codebase-map.md`. Read it before planning a change.
   a reason, an owner and an expiry date (next to the code for a suppression, in the Quality bar section for a
   threshold), and a person approves it in the pull request; without all of these, or past its expiry date, it is
   a violation.
+- Exception format, next to the code: `aidlc-exception: reason=...; owner=...; expires=YYYY-MM-DD`, on the line or
+  the line above. The slice check rejects a suppression or skip without one, or past its date.
 - Enforced: <dimension>: <threshold>, checked by `<command>`
 - Measured, not yet enforced: <dimension>: <value> on <date>
 

@@ -138,5 +138,35 @@ class AdrTest(unittest.TestCase):
                 self.assertIn(heading, text, name)
 
 
+class WiringTest(unittest.TestCase):
+    """A1 and A5: CI and the session run the slice check; the guide and the skills name it."""
+
+    def test_the_stop_hook_runs_the_slice_check(self):
+        hooks = json.loads(read("starter/repo/.claude/settings.json"))["hooks"]["Stop"]
+        commands = [h["command"] for group in hooks for h in group["hooks"]]
+        self.assertTrue(any("scripts/check_slice.py" in c and "--hook" in c for c in commands), commands)
+
+    def test_ci_runs_the_base_branchs_copy_on_the_head_commit(self):
+        ci = read("starter/repo/.github/workflows/ci.yml")
+        self.assertIn("slice-check:", ci)
+        self.assertIn("ref: ${{ github.event.pull_request.head.sha }}", ci)
+        self.assertIn('git show "origin/$BASE_REF:scripts/check_slice.py"', ci)
+        self.assertEqual(pinned_uses(ci), [])
+        for block in run_blocks(ci):
+            self.assertNotRegex(block, r"\$\{\{\s*github\.(head_ref|base_ref|event)", block)
+
+    def test_the_guide_names_the_commands_and_the_exception_format(self):
+        for rel in ("starter/repo/AGENTS.md", "skills/aidlc-onboard/assets/agents-md.md"):
+            text = read(rel)
+            self.assertIn("python3 scripts/check_slice.py", text, rel)
+            self.assertIn("python3 scripts/check_plan.py", text, rel)
+            self.assertIn("aidlc-exception: reason=...; owner=...; expires=YYYY-MM-DD", text, rel)
+
+    def test_build_and_compliance_use_it(self):
+        build = " ".join(read("skills/aidlc-build/SKILL.md").split())
+        self.assertIn("Run the slice check named in AGENTS.md", build)
+        self.assertIn("slice check", read("agents/reviewer-compliance.md"))
+
+
 if __name__ == "__main__":
     unittest.main()
