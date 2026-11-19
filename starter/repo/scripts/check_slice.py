@@ -15,6 +15,7 @@ Standard library only; copied into a repository from aidlc's starter/repo/script
 from __future__ import annotations
 
 import argparse
+import collections
 import datetime as dt
 import json
 import re
@@ -69,6 +70,7 @@ class Branch:
     at_base: set[str]              # files that exist at the merge base
     base_docs: dict[str, str]      # the story folder's plan, bundles and briefs at the merge base
     head_docs: dict[str, str]      # the same documents now
+    folder: str = ""               # the folder whose bundles scope the work (the story folder, or a part's)
 
 
 def field_of(line: str) -> tuple[str, str] | None:
@@ -189,25 +191,27 @@ def collect(repo: Path, base: str, folder: str, worktree: bool) -> Branch:
                                + "".join(f"+{line}\n" for line in lines))
     at_base = set(git(repo, "ls-tree", "-r", "--name-only", "-z", mb).split("\0")[:-1])
 
+    story = "/".join(folder.split("/")[:2])     # plans/<KEY>: the plan lives here even when the work is a part
+
     def docs_in(names: list[str]) -> list[str]:
-        return [p for p in names if p.startswith(folder + "/") and DOC.match(p[len(folder) + 1:])]
+        return [p for p in names if p.startswith(story + "/") and DOC.match(p.rsplit("/", 1)[1])]
 
     base_docs = {p: git(repo, "show", f"{mb}:{p}") for p in docs_in(sorted(at_base))}
     if worktree:
-        here = [p.relative_to(repo).as_posix() for p in (repo / folder).glob("*.md")] if (repo / folder).is_dir() else []
+        here = [p.relative_to(repo).as_posix() for p in (repo / story).rglob("*.md")] if (repo / story).is_dir() else []
         head_docs = {p: (repo / p).read_text(encoding="utf-8", errors="replace") for p in docs_in(sorted(here))}
     else:
         now = git(repo, "ls-tree", "-r", "--name-only", "-z", "HEAD").split("\0")[:-1]
         head_docs = {p: git(repo, "show", f"HEAD:{p}") for p in docs_in(now)}
-    return Branch(changed, patches, at_base, base_docs, head_docs)
+    return Branch(changed, patches, at_base, base_docs, head_docs, folder)
 
 
 def approved_bundles(branch: Branch) -> list[Bundle]:
     """At Tier 2 and 3 the copy on the base branch is the approved one; at Tier 1 the bundle travels with the code."""
     bundles = []
     for path in sorted(set(branch.base_docs) | set(branch.head_docs)):
-        name = path.rsplit("/", 1)[1]
-        if not BUNDLE_DOC.match(name):
+        folder, name = path.rsplit("/", 1)
+        if folder != branch.folder or not BUNDLE_DOC.match(name):
             continue
         base, head = branch.base_docs.get(path), branch.head_docs.get(path)
         text = base if base is not None and (head is None or (tier_of(base) or 1) >= 2) else head
@@ -273,10 +277,10 @@ def hunks(patch: str):
         if line.startswith("diff --git "):
             path, in_header = None, True
         elif in_header and line.startswith("--- "):
-            old = unquote(line[4:])
+            old = unquote(line[4:].split("\t", 1)[0])     # git adds a trailing tab after a path with a space
             path = old[2:] if old.startswith("a/") else None
         elif in_header and line.startswith("+++ "):
-            new = unquote(line[4:])
+            new = unquote(line[4:].split("\t", 1)[0])
             path = new[2:] if new.startswith("b/") else path
         elif line.startswith("@@"):
             in_header = False
@@ -287,29 +291,45 @@ def hunks(patch: str):
 
 def removed_tests(patch: str) -> list[tuple[str, str]]:
     """(file, line) for each test definition or assertion the patch removes that the same patch does not add back
-    (a moved or renamed test is not a removed one)."""
-    removed, added = [], set()
+    (a moved or renamed test is not a removed one). Each added line covers one removal of the same text, no more."""
+    removed, added = [], collections.Counter()
     for path, kind, text in hunks(patch):
         if kind == "-" and (ASSERTION.search(text) or TEST_DEF.search(text)):
             removed.append((path, text))
         elif kind == "+":
-            added.add(text.strip())
-    return [(p, t) for p, t in removed if t.strip() not in added]
+            added[text.strip()] += 1
+    left = []
+    for path, text in removed:
+        if added[text.strip()] > 0:
+            added[text.strip()] -= 1
+        else:
+            left.append((path, text))
+    return left
+
+
+def amended_paths(bundles: list[Bundle]) -> set[str]:
+    """The files named under AMENDED ASSERTIONS: `path::test_name: reason` entries give the path; matched exactly."""
+    return {t for b in bundles for t in path_tokens(re.sub(r"::\S*", "", b.amended))}
 
 
 def test_problems(branch: Branch, bundles: list[Bundle]) -> tuple[list[str], list[str]]:
-    amended = " ".join(b.amended for b in bundles)
-    problems, notes, added_here = [], [], set()
+    amended = amended_paths(bundles)
+    problems, notes, added_before = [], [], collections.Counter()
     for patch in branch.patches:
         for path, text in removed_tests(patch):
-            if path not in branch.at_base or not TEST_PATH.search(path) or text.strip() in added_here:
+            if path not in branch.at_base or not TEST_PATH.search(path):
+                continue
+            if added_before[(path, text.strip())] > 0:     # added earlier on this branch, in this same file
+                added_before[(path, text.strip())] -= 1
                 continue
             where = f"{path}: {text.strip()[:120]}"
-            if amended and (path in amended or path.rsplit("/", 1)[-1] in amended):
+            if path in amended:
                 notes.append(f"amended assertion, listed under AMENDED ASSERTIONS: {where}")
             else:
                 problems.append(f"an existing test or assertion is removed or changed: {where}")
-        added_here |= {text.strip() for _, kind, text in hunks(patch) if kind == "+"}
+        for path, kind, text in hunks(patch):
+            if kind == "+":
+                added_before[(path, text.strip())] += 1
     return problems, notes
 
 
@@ -333,28 +353,37 @@ def marker_problems(patch: str, today: dt.date) -> list[str]:
             if not (valid_exception(text, today) or valid_exception(previous, today)):
                 problems.append(f"{path}: a suppression or skip without a valid aidlc-exception (reason, owner and an "
                                 f"expiry date not past): {text.strip()[:120]}")
-        if kind in ("+", " "):
+        if SUPPRESS.search(text) or SKIP.search(text):
+            previous = ""     # a marker line never lends its exception to the next line
+        elif kind in ("+", " "):
             previous = text
     return problems
 
 
 def approval_problems(branch: Branch, key_folder: str) -> list[str]:
-    """ADR 0020: at Tier 2 and 3 a code pull request never adds or changes the plan or a bundle."""
+    """ADR 0020: at Tier 2 and 3 a code pull request never adds, changes or removes the plan or a bundle."""
     if all(path.startswith(key_folder + "/") for path in branch.changed):
         return []
-    tiers = [tier_of(t) or 1 for t in list(branch.base_docs.values()) + list(branch.head_docs.values())]
-    highest = max(tiers, default=1)
+    base_tiers = [tier_of(t) or 1 for t in branch.base_docs.values()]
+    story = max(base_tiers, default=1)     # the tier the plan was approved at
+    highest = max([story] + [tier_of(t) or 1 for t in branch.head_docs.values()])
     problems = []
     for path in sorted(branch.changed):
-        if branch.changed[path] not in ("A", "M") or path not in branch.head_docs:
+        status = branch.changed[path]
+        text = branch.head_docs.get(path) if status != "D" else None
+        if path not in branch.head_docs and not (status == "D" and path in branch.base_docs):
+            continue
+        if status in ("A", "M") and text is None:
             continue
         name = path.rsplit("/", 1)[1]
         if name in ("fix.md", "brief.md"):
             continue
-        level = highest if name == "plan.md" else max(tier_of(branch.head_docs[path]) or 1,
-                                                      tier_of(branch.base_docs.get(path)) or 1)
+        if name == "plan.md":
+            level = highest
+        else:
+            level = max(tier_of(text) or 1, tier_of(branch.base_docs.get(path)) or 1, story)
         if level >= 2:
-            verb = "added" if branch.changed[path] == "A" else "changed"
+            verb = {"A": "added", "M": "changed", "D": "removed"}.get(status, "changed")
             problems.append(f"{path}: a Tier {level} plan or bundle is {verb} in a code pull request; it merges first "
                             f"in its own pull request, approved by the tech lead (ADR 0020)")
     return problems

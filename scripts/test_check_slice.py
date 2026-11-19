@@ -263,6 +263,40 @@ class TestIntegrityTest(unittest.TestCase):
         self.assertEqual(check_slice.unquote('"a/q\\"x\\\\y"'), 'a/q"x\\y')
         self.assertEqual(check_slice.unquote("a/plain.py"), "a/plain.py")
 
+    def test_a_path_with_a_space_is_still_checked(self):
+        r = Repo(bundle(may="**"), {"tests dir/test_x.py": BASE_TEST})
+        r.commit("loosen", {"tests dir/test_x.py": BASE_TEST.replace("== 3", "> 0")})
+        self.assertEqual(r.check()[0], ["an existing test or assertion is removed or changed: "
+                                        "tests dir/test_x.py: assert total(1, 2) == 3"])
+
+    def test_the_same_line_added_in_another_file_earlier_does_not_cover_a_weakened_assertion(self):
+        r = Repo(bundle())
+        r.commit("new", {"tests/test_new.py": "def test_new():\n    assert total(1, 2) == 3\n"})
+        r.commit("weaken", {"tests/test_app.py": BASE_TEST.replace("== 3", "> 0")})
+        self.assertEqual(r.check()[0], ["an existing test or assertion is removed or changed: "
+                                        "tests/test_app.py: assert total(1, 2) == 3"])
+
+    def test_a_line_added_earlier_in_the_same_file_covers_one_removal_only(self):
+        r = Repo(bundle())
+        r.commit("dup", {"tests/test_app.py": BASE_TEST + "\n\ndef test_again():\n    assert total(1, 2) == 3\n"})
+        r.commit("weaken both", {"tests/test_app.py": (BASE_TEST + "\n\ndef test_again():\n"
+                                                        "    assert total(1, 2) == 3\n").replace("== 3", "> 0")})
+        self.assertEqual(len(r.check()[0]), 1)
+
+    def test_an_amended_entry_for_one_file_does_not_waive_another(self):
+        r = Repo(bundle(amended="tests/a.py::test_a: checks 4, spec v2, AC1, decided by Bo"),
+                 {"tests/data.py": BASE_TEST})
+        r.commit("loosen", {"tests/data.py": BASE_TEST.replace("== 3", "> 0")})
+        self.assertEqual(r.check()[0], ["an existing test or assertion is removed or changed: "
+                                        "tests/data.py: assert total(1, 2) == 3"])
+
+    def test_an_amended_entry_waives_only_its_own_path_exactly(self):
+        r = Repo(bundle(amended="tests/data.py::test_a: checks 4, spec v2, AC1, decided by Bo"),
+                 {"tests/data.py": BASE_TEST})
+        r.commit("amend", {"tests/data.py": BASE_TEST.replace("== 3", "== 4")})
+        problems, notes = r.check()
+        self.assertEqual((problems, len(notes)), ([], 1))
+
 
 class MarkerTest(unittest.TestCase):
     def test_a_skip_without_an_exception_is_a_problem(self):
@@ -294,6 +328,15 @@ class MarkerTest(unittest.TestCase):
         r = Repo(bundle(may="src/**, tests/**, docs/**"))
         r.commit("doc", {"docs/lint.md": "Use `# noqa` only with an exception.\n"})
         self.assertEqual(r.check(), ([], []))
+
+    def test_two_skips_need_two_exceptions(self):
+        r = Repo(bundle())
+        text = ("# aidlc-exception: reason=flaky; owner=Bo; expires=2026-12-31\n"
+                "@unittest.skip('a')\n@unittest.skip('b')\ndef test_total():\n    pass\n")
+        r.commit("skips", {"tests/test_extra.py": text})
+        problems = r.check()[0]
+        self.assertEqual(len(problems), 1)
+        self.assertIn("@unittest.skip('b')", problems[0])
 
 
 class ApprovalTest(unittest.TestCase):
@@ -328,6 +371,25 @@ class ApprovalTest(unittest.TestCase):
         r.commit("s1", {"web/page.ts": "x\n",
                         "plans/SHIP-7/bundle-1.md": bundle(tier="2", may="src/**, tests/**, web/**")})
         self.assertIn("web/page.ts: outside every bundle's MAY CHANGE", r.check()[0])
+
+    def test_a_tier_1_bundle_added_to_a_tier_2_plan_is_a_problem(self):
+        r = Repo(bundle(tier="2"))
+        r.commit("s1", {"src/app.py": "x = 1\n", "plans/SHIP-7/bundle-2.md": bundle(tier="1")})
+        self.assertIn(f"plans/SHIP-7/bundle-2.md: a Tier 2 plan or bundle is added in a code pull request; {self.ADR}",
+                      r.check()[0])
+
+    def test_a_tier_2_bundle_removed_in_a_code_pull_request_is_a_problem(self):
+        r = Repo(bundle(tier="2"))
+        r.git("rm", "-q", "plans/SHIP-7/bundle-1.md")
+        r.commit("drop", {"src/app.py": "x = 1\n"})
+        self.assertIn(f"plans/SHIP-7/bundle-1.md: a Tier 2 plan or bundle is removed in a code pull request; {self.ADR}",
+                      r.check()[0])
+
+    def test_the_story_plan_changed_from_a_part_is_a_problem(self):
+        r = Repo(None, {"plans/SHIP-7/plan.md": "TIER        2\n", "plans/SHIP-7/part-2/bundle-1.md": bundle(tier="2", may="web/**")})
+        r.commit("s1", {"web/page.ts": "export {}\n", "plans/SHIP-7/plan.md": "TIER        2\nchanged\n"})
+        self.assertEqual(r.check(part=2)[0], [f"plans/SHIP-7/plan.md: a Tier 2 plan or bundle is changed in a code "
+                                              f"pull request; {self.ADR}"])
 
 
 if __name__ == "__main__":
