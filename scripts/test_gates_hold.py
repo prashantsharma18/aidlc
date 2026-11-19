@@ -330,6 +330,25 @@ class RecordTest(unittest.TestCase):
         self.assertTrue((ROOT / "docs/verification/2026-11-19-plan-20.md").is_file())
 
 
+class SuppressionRulesTest(unittest.TestCase):
+    """Item 2, second layer: onboard proposes each stack's own rules against blanket and unused suppressions."""
+
+    def test_the_reference_names_each_stacks_rules(self):
+        path = ROOT / "skills/aidlc-onboard/references/suppression-rules.md"
+        self.assertTrue(path.is_file())
+        text = path.read_text(encoding="utf-8")
+        for rule in ("PGH004", "RUF100", "ignore-without-code", "warn_unused_ignores", "useless-suppression",
+                     "reportUnusedDisableDirectives", "no-unlimited-disable", "require-description",
+                     "@typescript-eslint/ban-ts-comment", "nolintlint", "IDE0079"):
+            self.assertIn(rule, text)
+        self.assertIn("official documentation", text)
+
+    def test_onboard_points_to_it(self):
+        onboard = " ".join(read("skills/aidlc-onboard/SKILL.md").split())
+        self.assertIn("`references/suppression-rules.md`", onboard)
+        self.assertIn("blanket and unused suppressions", onboard)
+
+
 class VerificationRecordTest(unittest.TestCase):
     """T8: the record shows the hook blocking on a keyed branch and names what claude-code-action may load."""
 
