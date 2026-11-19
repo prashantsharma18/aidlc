@@ -1069,6 +1069,95 @@ class WideningRanksTest(unittest.TestCase):
         self.assertIn("(pylint, line, invalid-name → pylint, block, invalid-name)", problems[0])
 
 
+PYLINT_NESTED = ("# pylint: disable=no-member\nimport os\n# pylint: disable=protected-access\nX = os._exit\n"
+                 "# pylint: enable=protected-access\nY = os.path.sep\n# pylint: enable=no-member\n"
+                 "Z = os.environ.copy\n")
+
+
+class HeadSimulationTest(unittest.TestCase):
+    """Item 2 fix round 4: the head simulation reads a pylint closer's own rules, reads every directive on a line in
+    the order written, keeps an opener it cannot read open, and finds a restyled closer past an edited next line.
+    Checked in both modes (CI on commits, the hook on the working tree)."""
+
+    def both(self, path, before, after):
+        ci, hook = Repo(bundle(), {path: before}), Repo(bundle(), {path: before})
+        ci.commit("s1", {path: after})
+        hook.write({path: after})
+        return ci.check()[0], check_slice.check(hook.root, "main", "SHIP-7", None, worktree=True, today=TODAY)[0]
+
+    def assert_reported(self, path, before, after, directive):
+        for mode, problems in zip(("ci", "hook"), self.both(path, before, after)):
+            with self.subTest(mode=mode):
+                self.assertEqual(len(problems), 1, problems)
+                self.assertIn(f"its closing {directive} was removed", problems[0])
+
+    def assert_clean(self, path, before, after):
+        for mode, problems in zip(("ci", "hook"), self.both(path, before, after)):
+            with self.subTest(mode=mode):
+                self.assertEqual(problems, [])
+
+    def test_a_pylint_enable_ends_only_the_rules_it_names(self):
+        closers = check_slice.read_closers("# pylint: enable=protected-access, too-many-locals")
+        self.assertEqual([(c.family, c.rules) for c in closers],
+                         [("pylint", frozenset({"protected-access", "too-many-locals"}))])
+        self.assertIsNone(check_slice.read_closers("# pylint: enable=all")[0].rules)
+
+    def test_p1_an_unrelated_pylint_enable_does_not_hide_a_removed_one(self):
+        self.assert_reported("src/p.py", PYLINT_NESTED, PYLINT_NESTED.replace("# pylint: enable=no-member\n", ""),
+                             "pylint: enable")
+
+    def test_p2_a_pylint_pair_removed_beside_a_module_disable_of_another_rule_is_clean(self):
+        before = ("# pylint: disable=invalid-name\nimport os\n# pylint: disable=no-member\nx = os.a\n"
+                  "# pylint: enable=no-member\ny = 1\n")
+        self.assert_clean("src/p.py", before, "# pylint: disable=invalid-name\nimport os\nx = os.a\ny = 1\n")
+
+    def test_a_closer_restyled_in_place_with_the_next_line_edited_is_clean(self):
+        before = "/* eslint-disable no-console */\nconsole.log(1)\n/* eslint-enable no-console */\nfoo(1)\nbar()\n"
+        self.assert_clean("src/f.js", before, "/* eslint-disable no-console */\nconsole.log(1)\n"
+                                              "// eslint-enable no-console\nfoo(2)\nbar()\n")
+
+    def test_a_closer_restyled_in_place_with_the_next_line_unchanged_is_clean(self):
+        before = "/* eslint-disable no-console */\nconsole.log(1)\n/* eslint-enable no-console */\nfoo(1)\nbar()\n"
+        self.assert_clean("src/f.js", before, before.replace("/* eslint-enable no-console */",
+                                                             "// eslint-enable no-console"))
+
+    def test_an_opener_and_closer_on_one_line_close_in_the_order_written(self):
+        top = "foo(); /* eslint-disable no-console */ console.log(0); /* eslint-enable no-console */\nx()\n"
+        self.assert_clean("src/g.js", top + PAIR + TAIL, top + "console.log(1)\n" + TAIL)
+
+    def test_a_closer_then_an_opener_on_one_line_leaves_it_open(self):
+        top = "/* eslint-disable no-console */\n/* eslint-enable no-console */ x(); /* eslint-disable no-console */\n"
+        before = top + "console.log(1)\n/* eslint-enable no-console */\n" + TAIL
+        self.assert_reported("src/g.js", before, top + "console.log(1)\n" + TAIL, "eslint-enable")
+
+    def test_every_closer_on_a_line_ends_its_rules(self):
+        before = ("/* eslint-disable no-console, no-alert */\nalert(1)\n"
+                  "/* eslint-enable no-alert */ /* eslint-enable no-console */\nx()\n" + PAIR + TAIL)
+        after = ("/* eslint-disable no-console, no-alert */\nalert(1)\n"
+                 "/* eslint-enable no-alert */ /* eslint-enable no-console */\nx()\nconsole.log(1)\n" + TAIL)
+        self.assert_clean("src/h.js", before, after)
+
+    def test_removing_a_line_of_two_closers_is_judged_on_each(self):
+        before = ("/* eslint-disable no-console */\nconsole.log(1)\n"
+                  "/* eslint-enable no-alert */ /* eslint-enable no-console */\n" + TAIL)
+        self.assert_reported("src/h.js", before, "/* eslint-disable no-console */\nconsole.log(1)\n" + TAIL,
+                             "eslint-enable")
+
+    def test_an_opener_whose_details_cannot_be_read_stays_open(self):
+        before = ("class A {\n#pragma warning disable CS0618 /* legacy */\n  void F() { Old(); }\n"
+                  "#pragma warning restore CS0618\n  void G() { Old(); }\n}\n")
+        self.assert_reported("src/A.cs", before, before.replace("#pragma warning restore CS0618\n", ""),
+                             "#pragma warning restore")
+
+    def test_a_numeric_pragma_code_is_its_cs_code(self):
+        self.assertEqual(check_slice.parse_marker("#pragma warning disable 618, CA1062").rules,
+                         frozenset({"CS0618", "CA1062"}))
+        before = ("class A {\n#pragma warning disable 618\n  void F() { Old(); }\n#pragma warning restore CS0618\n"
+                  "  void G() { Old(); }\n}\n")
+        self.assert_reported("src/A.cs", before, before.replace("#pragma warning restore CS0618\n", ""),
+                             "#pragma warning restore")
+
+
 class HookOnAnyTurnTest(unittest.TestCase):
     """T1: the Stop hook runs on every turn; with nothing approved to check it notes it and lets the session stop."""
 

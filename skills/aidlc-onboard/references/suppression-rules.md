@@ -69,6 +69,23 @@ only with `EnforceCodeStyleInBuild` set to `true`.
 No built-in analyzer rejects a `#pragma warning disable` that names no code. The slice check catches a new one, or
 one widened from a named code, in the diff; one already in the code stays until someone removes it.
 
+## What the slice check does not model
+
+The slice check judges a removed closing directive (`eslint-enable`, `# pylint: enable=`, `#pragma warning restore`,
+`c8 ignore stop`) by reading the file from the top, in order. It does not know each tool's scoping rules, so two pylint
+cases slip past it unreported:
+
+- **Block scope.** pylint ends an own-line `disable` or `enable` inside a function or class at the end of that block.
+  The slice check lets it run on to the end of the file. So an `enable` inside a function can read as closing a
+  module-level `disable`, and removing the module-level `enable` below it is missed.
+- **Names and ids.** `no-member` and `E1101` are one message to pylint but two rules to the slice check. Removing
+  `enable=no-member` below `disable=E1101` is missed.
+
+The linters' own rules narrow the gap. pylint's `use-symbolic-message-instead` rejects the numeric ids, so every
+suppression uses one name. `useless-suppression` (above) removes a `disable` that silences nothing. Prefer a trailing
+`disable` or `disable-next` on the one line that needs it: the slice check reads those exactly. A reviewer still reads
+any removed `enable` in the diff.
+
 ## The Enforced lines
 
 One line per tool, in the Quality bar's format, with the exact command the repository runs. For example:

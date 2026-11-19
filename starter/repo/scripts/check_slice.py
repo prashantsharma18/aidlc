@@ -59,9 +59,10 @@ SKIP = re.compile(r"\b(?:it|test|describe)\.(?:skip|only|todo)\s*\(|\bx(?:it|des
                   r"|\bSkip\s*=\s*\"|@Disabled\b|@Ignore\b|\bt\.Skip\("
                   r"|\bpytestmark\b.*?\bpytest\.mark\.(?:skip|skipif|xfail)\b")
 MARKER = re.compile(f"{SUPPRESS.pattern}|{SKIP.pattern}")
-# A closing directive ends a suppression its family opened earlier in the file; it is never a marker itself
+# A closing directive ends a suppression its family opened earlier in the file; it is never a marker itself. The
+# pylint `=` is looked at, not taken, so the rule list after it is still there to read.
 CLOSER = re.compile(r"(?P<eslint>eslint-enable)\b|(?P<csharp_pragma>#pragma\s+warning\s+restore)\b"
-                    r"|(?P<pylint>pylint:\s*enable)\s*=|(?P<coverage>(?:istanbul|c8|v8) ignore\s+stop)\b")
+                    r"|(?P<pylint>pylint:\s*enable)(?=\s*=)|(?P<coverage>(?:istanbul|c8|v8) ignore\s+stop)\b")
 # How far a marker reaches, smallest first. A skip reads the same ranks as test < suite < file (`.only` skips the rest
 # of the file).
 SCOPE_LINE = 1                     # one line or statement
@@ -553,14 +554,21 @@ def read_pylint(rest: str, at: Place) -> Marker | None:
     return Marker("pylint", scope, None if "all" in rules else rules)
 
 
+def pragma_codes(listed: str) -> frozenset[str] | None:
+    """The codes a `#pragma warning disable` or `restore` names, before any `//`; a bare number is the compiler's own
+    code (`618` is `CS0618`). None when one is not an identifier."""
+    codes = rule_set(listed.split("//", 1)[0])
+    if any(not re.fullmatch(r"\w+", code) for code in codes):
+        return None
+    return frozenset(f"CS{int(code):04d}" if re.fullmatch(r"[0-9]+", code) else code for code in codes)
+
+
 def read_pragma(rest: str, at: Place) -> Marker | None:
     m = re.match(r"#pragma\s+warning\s+disable\b(.*)", rest)
-    if not m:
+    codes = pragma_codes(m.group(1)) if m else None
+    if codes is None:
         return None
-    rules = rule_set(m.group(1).split("//", 1)[0])
-    if any(not re.fullmatch(r"\w+", code) for code in rules):
-        return None
-    return Marker("csharp-pragma", SCOPE_BLOCK, rules or None)
+    return Marker("csharp-pragma", SCOPE_BLOCK, codes or None)
 
 
 def read_suppress_message(rest: str, at: Place) -> Marker | None:
@@ -634,34 +642,43 @@ def read_skip(rest: str, at: Place) -> Marker | None:
     return None
 
 
-READERS = [(re.compile(r"eslint-disable"), read_eslint),
-           (re.compile(r"@ts-"), read_ts),
-           (re.compile(r"#\s*(?:(?:flake8|ruff)\s*:\s*)?noqa", re.IGNORECASE), read_noqa),
-           (re.compile(r"#\s*(?:type|mypy):"), read_mypy),
-           (re.compile(r"pylint:"), read_pylint),
-           (re.compile(r"#pragma"), read_pragma),
-           (re.compile(r"\[SuppressMessage"), read_suppress_message),
-           (re.compile(r"//\s*nolint"), read_nolint),
-           (re.compile(r"@SuppressWarnings"), read_java),
-           (re.compile(r"NOSONAR"), read_sonar),
-           (re.compile(r"istanbul|c8|v8"), read_coverage)]
+# (the marker's head, its family, its reader); a marker no head matches is a skip
+READERS = [(re.compile(r"eslint-disable"), "eslint", read_eslint),
+           (re.compile(r"@ts-"), "ts", read_ts),
+           (re.compile(r"#\s*(?:(?:flake8|ruff)\s*:\s*)?noqa", re.IGNORECASE), "noqa", read_noqa),
+           (re.compile(r"#\s*(?:type|mypy):"), "mypy", read_mypy),
+           (re.compile(r"pylint:"), "pylint", read_pylint),
+           (re.compile(r"#pragma"), "csharp-pragma", read_pragma),
+           (re.compile(r"\[SuppressMessage"), "csharp-attr", read_suppress_message),
+           (re.compile(r"//\s*nolint"), "go-nolint", read_nolint),
+           (re.compile(r"@SuppressWarnings"), "java", read_java),
+           (re.compile(r"NOSONAR"), "sonar", read_sonar),
+           (re.compile(r"istanbul|c8|v8"), "coverage", read_coverage)]
 CLASS_LINE = re.compile(r"\s*(?:[\w@]+\s+)*class\s+\w")     # `class T(...)`, `public final class OrderTest {`
 BLOCK_HEADER = re.compile(r"\s*(?:async\s+)?(?:def|class)\s")    # a Python `def` or `class` line
 
 
-def markers_of(text: str, following: str | None = "", added: bool = True) -> list[Marker | None]:
-    """Every suppression or skip on a line, in order, each read as a Marker, or None where the details cannot be read.
-    `following` is the next code line below it, which tells whether a decorator or attribute sits on a class. When it
-    is unknown (None), an added marker is read as on a class (its widest) and a removed one as not (its narrowest)."""
+def read_markers(text: str, following: str | None = "", added: bool = True) -> list[tuple[int, str, Marker | None]]:
+    """(where it starts, its family, the Marker or None when its details cannot be read) for every suppression or skip
+    on a line, in order. `following` is the next code line below it, which tells whether a decorator or attribute sits
+    on a class. When it is unknown (None), an added marker is read as on a class (its widest) and a removed one as not
+    (its narrowest)."""
     on_class = CLASS_LINE.match(following) is not None if following is not None else added
     found = []
     for m in MARKER.finditer(text):
         rest = text[m.start():].split("aidlc-exception", 1)[0]     # an exception's text is not part of the marker
         before = text[:m.start()]
         at = Place(re.fullmatch(r"[\s#/*{<!-]*", before) is not None, on_class, BLOCK_HEADER.match(before) is not None)
-        reader = next((read for head, read in READERS if head.match(rest)), read_skip)
-        found.append(reader(rest, at))
+        family, reader = next(((family, read) for head, family, read in READERS if head.match(rest)),
+                              ("skip", read_skip))
+        found.append((m.start(), family, reader(rest, at)))
     return found
+
+
+def markers_of(text: str, following: str | None = "", added: bool = True) -> list[Marker | None]:
+    """Every suppression or skip on a line, in order, each read as a Marker, or None where the details cannot be
+    read."""
+    return [marker for _, _, marker in read_markers(text, following, added)]
 
 
 def parse_marker(text: str, following: str = "") -> Marker | None:
@@ -713,22 +730,37 @@ def head_number(lines: list[DiffLine], path: str, number: int) -> int:
     return number + shift
 
 
-def read_closer(text: str) -> tuple[str, frozenset[str] | None, str] | None:
-    """(family, the rules it ends or None for every rule, its directive) for the closing directive on a line."""
-    m = CLOSER.search(text)
-    if not m:
-        return None
-    family, directive, rest = m.lastgroup.replace("_", "-"), re.sub(r"\s+", " ", m.group(m.lastgroup)), text[m.end():]
-    if family == "eslint":
-        listed = re.split(r"\*/|--", rest, maxsplit=1)[0]
-    elif family == "pylint":
-        names = re.match(r"\s*=\s*([\w-]+(?:\s*,\s*[\w-]+)*)", rest)
-        listed = names.group(1) if names and names.group(1) != "all" else ""
-    elif family == "csharp-pragma":
-        listed = rest.split("//", 1)[0]
-    else:
-        listed = ""     # coverage: `ignore stop` ends whatever `ignore start` began
-    return family, rule_set(listed) or None, directive
+@dataclass(frozen=True)
+class Closer:
+    """A closing directive: it ends rules its family opened earlier in the file."""
+    family: str
+    rules: frozenset[str] | None   # the rules it ends; None when it names none, so it ends every rule
+    directive: str                 # its name, for the report: eslint-enable, pylint: enable, ...
+    start: int                     # where it starts on its line
+    readable: bool = True          # False when its rule list cannot be read: in the head it then ends nothing, and
+                                   # removed it counts as ending every rule (fail safe both ways)
+
+
+def read_closers(text: str) -> list[Closer]:
+    """Every closing directive on a line, in order, each reading its rule list up to the next one."""
+    found = list(CLOSER.finditer(text))
+    closers = []
+    for m, after in zip(found, found[1:] + [None]):
+        family, rest = m.lastgroup.replace("_", "-"), text[m.end():after.start() if after else len(text)]
+        rules, readable = None, True
+        if family == "eslint":
+            rules = rule_set(re.split(r"\*/|--", rest, maxsplit=1)[0]) or None
+        elif family == "pylint":
+            names = re.match(r"\s*=\s*([\w-]+(?:\s*,\s*[\w-]+)*)", rest)
+            readable = names is not None
+            rules = rule_set(names.group(1)) if names else None
+            rules = None if rules is None or "all" in rules else rules
+        elif family == "csharp-pragma":
+            codes = pragma_codes(rest)
+            readable, rules = codes is not None, codes or None
+        # coverage: `ignore stop` names no rule; it ends whatever `ignore start` began
+        closers.append(Closer(family, rules, re.sub(r"\s+", " ", m.group(m.lastgroup)), m.start(), readable))
+    return closers
 
 
 def overlap(a: frozenset[str] | None, b: frozenset[str] | None) -> bool:
@@ -736,49 +768,79 @@ def overlap(a: frozenset[str] | None, b: frozenset[str] | None) -> bool:
     return a is None or b is None or bool(a & b)
 
 
+def end_rules(opened: list[tuple[int, frozenset[str] | None]],
+              ended: frozenset[str] | None) -> list[tuple[int, frozenset[str] | None]]:
+    """The openers left open once a closer ends some rules: a closer naming no rule ends them all; one naming some
+    takes those out of each opener, which closes when none are left (one naming no rule stays open)."""
+    if ended is None:
+        return []
+    kept = []
+    for at, rules in opened:
+        left = None if rules is None else rules - ended
+        if left is None or left:
+            kept.append((at, left))
+    return kept
+
+
 def still_open(head: list[str], before: int, family: str) -> list[tuple[int, frozenset[str] | None]]:
-    """(line, rules still off) for each opener of a family still open just above line `before` of the head file: a
-    block-or-wider marker, less the rules each later closer of its family ends (a closer naming no rule ends them all;
-    one naming some cannot narrow an opener that names none, which stays open)."""
+    """(line, rules still off) for each opener of a family still open just above line `before` of the head file. An
+    opener is a block-or-wider marker; the openers and closers on a line apply in the order they are written. An opener
+    whose details cannot be read stays open with every rule, and a closer that cannot be read ends nothing (fail
+    safe)."""
     opened: list[tuple[int, frozenset[str] | None]] = []
     for number, text in enumerate(head[:max(0, before - 1)], start=1):
-        closer = read_closer(text)
-        if closer and closer[0] == family:
-            ended, kept = closer[1], []
-            for at, rules in opened:
-                if ended is None:     # a closer naming no rule ends every opener
-                    continue
-                left = None if rules is None else rules - ended     # an opener naming no rule stays open
-                if left is None or left:
-                    kept.append((at, left))
-            opened = kept
-        opened += [(number, m.rules) for m in markers_of(text)
-                   if m is not None and m.family == family and m.scope >= SCOPE_BLOCK]
+        openers = [(start, marker) for start, kind, marker in read_markers(text)
+                   if kind == family and (marker is None or marker.scope >= SCOPE_BLOCK)]
+        closers = [(closer.start, closer) for closer in read_closers(text) if closer.family == family]
+        for _, directive in sorted(openers + closers, key=lambda item: item[0]):
+            if isinstance(directive, Closer):
+                opened = end_rules(opened, directive.rules) if directive.readable else opened
+            else:
+                opened.append((number, None if directive is None else directive.rules))
     return opened
 
 
+def kept_line_after(lines: list[DiffLine], path: str, number: int) -> int:
+    """The first line below line `number` of the old file that the diff keeps (does not remove)."""
+    removed = {d.old_number for d in lines if d.path == path and d.kind == "-"}
+    number += 1
+    while number in removed:
+        number += 1
+    return number
+
+
 def closer_problems(lines: list[DiffLine], source: Source | None, today: dt.date) -> list[str]:
-    """A closing directive removed in the net diff may leave a suppression running further. It is judged on the head
-    file at the closer's former place: each opener of its family still open there with rules it ended needs a valid
-    exception on its own line or the line above it, in the head. A deleted file is clean; a head that cannot be read
-    is reported (fail safe)."""
+    """A closing directive removed in the net diff may leave a suppression running further. Each closer on the removed
+    line is judged on the head file at its former place: each opener of its family still open there with rules it
+    ended needs a valid exception on its own line or the line above it, in the head. A deleted file is clean; a head
+    that cannot be read is reported (fail safe).
+
+    The simulation reads directives in order down the file; it does not model each tool's scoping. Known limits, which
+    the linters' own rules against unused suppressions cover (the onboard skill's suppression-rules reference):
+    - pylint ends an own-line `disable` or `enable` inside a function or class at the end of that block. Here it runs
+      to the end of the file, so an `enable` inside a function can close a module-level `disable` early, and removing
+      the module-level `enable` below it is then missed. A `disable` inside a block can likewise read as still open.
+    - pylint's symbolic names and message ids (`no-member`, `E1101`) are different rules here, so removing
+      `enable=no-member` below `disable=E1101` is missed.
+    - `c8 ignore next N` (N > 1) counts as an opener and a file-wide marker as always open: extra reports only."""
     problems = []
     for d in lines:
-        closer = read_closer(d.text) if d.kind == "-" and not d.path.endswith(PROSE_SUFFIXES) else None
-        if not closer or d.deleted:
+        if d.kind != "-" or d.deleted or d.path.endswith(PROSE_SUFFIXES):
             continue
-        family, rules, directive = closer
-        head = source("+", d.path) if source else None
+        closers = read_closers(d.text)
+        head = source("+", d.path) if source and closers else None
         if head is not None:
-            # Up to the next old line's place, so a closer that replaced it on the same spot counts
-            place = head_number(lines, d.path, d.number + 1)
-            unexcused = [at for at, left in still_open(head, place, family) if overlap(left, rules)
-                         and not (valid_exception(head[at - 1], today)
-                                  or (at > 1 and valid_exception(head[at - 2], today)))]
-            if not unexcused:
-                continue
-        problems.append(f"{d.path}: a suppression got wider (its closing {directive} was removed) without a valid "
-                        f"aidlc-exception: {d.text.strip()[:120]}")
+            # Up to the next line the diff keeps, so a closer rewritten on the same spot counts, even when the lines
+            # after it changed too
+            place = head_number(lines, d.path, kept_line_after(lines, d.path, d.number))
+            closers = [closer for closer in closers
+                       if any(overlap(left, closer.rules)
+                              and not (valid_exception(head[at - 1], today)
+                                       or (at > 1 and valid_exception(head[at - 2], today)))
+                              for at, left in still_open(head, place, closer.family))]
+        if closers:
+            problems.append(f"{d.path}: a suppression got wider (its closing {closers[0].directive} was removed) "
+                            f"without a valid aidlc-exception: {d.text.strip()[:120]}")
     return problems
 
 
