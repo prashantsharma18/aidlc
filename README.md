@@ -36,6 +36,23 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
 - **Gates:** each skill drafts and stops; people approve in the pull request and the tracker. Tests come first; an
   existing test assertion is never changed to make a test pass.
 
+## Where the gates hold
+
+The skills say what must hold. These controls make it hold:
+
+| Control | Claude Code | GitHub Copilot, Codex, Cursor |
+|---|---|---|
+| Slice check in CI (scope, tests, manifests, suppressions, approved plans) | yes | yes |
+| AI review in CI, required and fail-closed | yes | yes |
+| Code-owner review, branch protection | yes | yes |
+| Slice check before the session stops (Stop hook) | yes | no: prose only |
+| Deny rules: secrets, settings, check scripts | yes | the tool's own settings, or prose only |
+| Read-only reviewer agents | yes | the tool's own agents, or prose only |
+
+On GitHub Free, branch protection, rulesets and required checks work only on public repositories. A private
+repository needs GitHub Pro (personal account) or Team (organisation). Never turn on auto-merge without required
+checks: it would merge whatever is pushed.
+
 The eight routes, drawn: [docs/operating-model/routes.md](docs/operating-model/routes.md). How to adopt aidlc on a new or an
 existing system, and who approves what: [docs/operating-model/adoption.md](docs/operating-model/adoption.md). The
 operating model: [docs/operating-model/workspace-and-repositories.md](docs/operating-model/workspace-and-repositories.md).

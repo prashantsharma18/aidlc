@@ -104,5 +104,24 @@ class DenyTest(unittest.TestCase):
         self.assertIn("its deny rules then protect the files copied before it", onboard)
 
 
+class WhereGatesHoldTest(unittest.TestCase):
+    """A8 and D6: the docs say which controls hold in which tool and on which GitHub plan."""
+
+    def test_the_readme_has_the_table(self):
+        readme = read("README.md")
+        self.assertIn("## Where the gates hold", readme)
+        for tool in ("Claude Code", "GitHub Copilot, Codex, Cursor"):
+            self.assertIn(tool, readme.split("## Where the gates hold", 1)[1].split("\n## ", 1)[0])
+
+    def test_the_github_free_limit_is_stated(self):
+        readme = " ".join(read("README.md").split())
+        self.assertIn("On GitHub Free, branch protection, rulesets and required checks work only on public repositories", readme)
+        self.assertIn("Never turn on auto-merge without required checks", readme)
+
+    def test_onboard_says_it_too(self):
+        onboard = " ".join(read("skills/aidlc-onboard/SKILL.md").split())
+        self.assertIn("Say which controls hold in the team's tool and on its GitHub plan", onboard)
+
+
 if __name__ == "__main__":
     unittest.main()
