@@ -29,7 +29,7 @@ disable-model-invocation: true
 # Plan: from approved criteria to sliced, bounded task bundles
 
 ## When to use
-After the spec is approved: above Tier 1, planning starts only from a spec its owner approved, recorded with its version. Again, from step 1, whenever scope, approach, risk or criteria change: the plan returns for approval.
+After the spec is approved: above Tier 1, planning starts only from a spec its owner approved, recorded with its version. At Tier 2 and 3 that version is the one merged on the default branch. Again, from step 1, whenever scope, approach, risk or criteria change: the plan returns for approval.
 
 **Brief mode** (route D1): a defect that passed `aidlc-start`'s fast-path test. It replaces intent, plan and bundle
 with one file, `plans/<KEY>/fix.md`.
@@ -124,7 +124,7 @@ Feature brief mode (route F0):
 Drafts of `plans/<KEY>/plan.md` and one `plans/<KEY>/bundle-<slice>.md` per slice, on the story branch. Slices live only there, never as tracker sub-tasks. One branch per part: `<type>/<KEY>-<slug>` (`feat/<KEY>-<part>` for a story across several repositories), with `-r<n>` for a revision.
 
 ## Gate
-The tech lead reviews the plan against its checklist and records the approval on the work item with the plan's version and commit. The plan travels on the part's branch, in the same pull request as the code. A slice is built only from an approved bundle; a bundle changed after approval is approved again. In brief mode, the engineer confirms the brief (`fix.md` or `brief.md`); the code owner approves it with the change in the pull request. You draft; you never approve.
+The tech lead reviews the plan against its checklist and records the approval on the work item with the plan's version and commit. At Tier 1 the plan travels on the part's branch, in the same pull request as the code. At Tier 2 and 3 the plan, with its bundles, merges to the default branch first, in its own pull request, which the tech lead approves; the commit on the work item is that merge, and the build starts only from it (ADR 0020). A slice is built only from an approved bundle; a bundle changed after approval is approved again. In brief mode, the engineer confirms the brief (`fix.md` or `brief.md`); the code owner approves it with the change in the pull request. You draft; you never approve.
 
 ## Stop if
 - The spec is not approved (outside brief mode), or a criterion is ambiguous.

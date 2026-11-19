@@ -168,5 +168,25 @@ class WiringTest(unittest.TestCase):
         self.assertIn("slice check", read("agents/reviewer-compliance.md"))
 
 
+class MergeFirstTest(unittest.TestCase):
+    """A2 (ADR 0020): the approval is still recorded on the work item, and at Tier 2 and 3 it is also a merge."""
+
+    def gate(self, name):
+        return " ".join(read(f"skills/{name}/SKILL.md").split("## Gate", 1)[1].split("\n## ", 1)[0].split())
+
+    def test_each_approving_stage_merges_first_at_tier_2_and_3(self):
+        for name in ("aidlc-specify", "aidlc-design", "aidlc-plan"):
+            self.assertIn("At Tier 2 and 3", self.gate(name), name)
+            self.assertIn("merges to the default branch first, in its own pull request", self.gate(name), name)
+            self.assertIn("ADR 0020", self.gate(name), name)
+
+    def test_the_work_item_record_stays(self):
+        self.assertIn("records the approval on the work item with the plan's version and commit", self.gate("aidlc-plan"))
+
+    def test_build_starts_only_from_the_merged_bundle(self):
+        build = " ".join(read("skills/aidlc-build/SKILL.md").split())
+        self.assertIn("At Tier 2 and 3, the bundle is the copy merged on the default branch", build)
+
+
 if __name__ == "__main__":
     unittest.main()

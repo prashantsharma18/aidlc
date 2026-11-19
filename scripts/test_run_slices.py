@@ -313,5 +313,35 @@ class ReviewFixesTest(unittest.TestCase):
         self.assertLess(argv.index("--disallowedTools"), argv.index("-p"))
 
 
+class ApprovedOnDefaultTest(unittest.TestCase):
+    """ADR 0020: a Tier 2 or 3 bundle runs only as the copy merged on the default branch."""
+
+    def test_a_tier_2_bundle_only_on_the_branch_cannot_start(self):
+        repo = Repo({"plans/SHIP-7/README.md": "# index\n"})
+        (repo.root / "plans/SHIP-7/bundle-1.md").write_text(bundle("delegate with checkpoints", "2"), encoding="utf-8")
+        repo.commit("plan on the branch")
+        invoke, calls = repo.agent([("done", 0, False)])
+        code, lines = repo.run(["1"], invoke)
+        self.assertEqual(code, 2)
+        self.assertIn("not there yet (ADR 0020)", "\n".join(lines))
+        self.assertEqual(calls, [])
+
+    def test_a_tier_2_bundle_changed_on_the_branch_cannot_start(self):
+        repo = Repo({"plans/SHIP-7/bundle-1.md": bundle("delegate with checkpoints", "2")})
+        (repo.root / "plans/SHIP-7/bundle-1.md").write_text(bundle("delegate with checkpoints", "2") + "DO   more\n",
+                                                            encoding="utf-8")
+        repo.commit("edit")
+        code, lines = repo.run(["1"], repo.agent([("done", 0, False)])[0])
+        self.assertEqual(code, 2)
+        self.assertIn("differs from the copy merged on main", "\n".join(lines))
+
+    def test_a_tier_1_bundle_may_travel_with_the_code(self):
+        repo = Repo({"plans/SHIP-7/README.md": "# index\n"})
+        (repo.root / "plans/SHIP-7/bundle-1.md").write_text(bundle("delegate", "1"), encoding="utf-8")
+        repo.commit("plan on the branch")
+        code, _ = repo.run(["1"], repo.agent([("done", 0, False)])[0])
+        self.assertEqual(code, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

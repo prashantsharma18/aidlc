@@ -71,7 +71,7 @@ workspace root) as done, or as stopped with the reason.
 The draft of the spec, or its new version, on the story branch; for an amendment, also the list of artefacts that cite the changed criterion.
 
 ## Gate
-The spec owner rewrites until each criterion says what they mean, decides every edge case or routes it to its decider, and records the approval with the spec's version in the work item ("Spec v1 approved by …"). Tier 3 needs a specialist's review. You can check readiness; you cannot grant it. You draft; you never approve.
+The spec owner rewrites until each criterion says what they mean, decides every edge case or routes it to its decider, and records the approval with the spec's version in the work item ("Spec v1 approved by …"). Tier 3 needs a specialist's review. You can check readiness; you cannot grant it. At Tier 2 and 3 the spec also merges to the default branch first, in its own pull request, which the spec owner approves; planning starts only from that merged version (ADR 0020). You draft; you never approve.
 
 ## Stop if
 - The spec does not say how something should behave: ask; never invent it.

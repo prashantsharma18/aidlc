@@ -9,7 +9,8 @@ aidlc's starter/repo/scripts/.
 
 A slice named `fix` reads plans/<KEY>/fix.md, `brief` reads plans/<KEY>/brief.md, any other reads
 plans/<KEY>/bundle-<slice>.md (plans/<KEY>/part-<n>/ with --part). Each must say MODE delegate (Tier 1) or delegate
-with checkpoints (Tiers 1 and 2); a hands-on slice is built with a person. After each session the slice's progress
+with checkpoints (Tiers 1 and 2); a hands-on slice is built with a person. A Tier 2 or 3 bundle must be identical to the copy merged on the
+default branch (ADR 0020). After each session the slice's progress
 note must read STATUS done, the session must exit 0 and the tree must be clean; anything else ends the run. A paused
 slice runs again only after the person adds "- <pause> confirmed by <name>, <date>" to its progress note. The
 default command denies `git push` to the session, whatever the repository's settings say.
@@ -127,12 +128,34 @@ def tree_problems(root: Path, key: str) -> list[str]:
     return problems
 
 
+def approval_problems(root: Path, plans: Path, slices: list[str]) -> list[str]:
+    """ADR 0020: a Tier 2 or 3 bundle is built only from the copy merged on the default branch."""
+    problems, base = [], default_branch(root)
+    for name in slices:
+        path = document(plans, name)
+        if name in BRIEFS or not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        level = tier(text)
+        if level is None or level < 2:
+            continue
+        rel = path.relative_to(root).as_posix()
+        merged = subprocess.run(["git", "show", f"{base}:{rel}"], cwd=root, capture_output=True, text=True)
+        if merged.returncode != 0:
+            problems.append(f"{name}: a Tier {level} bundle is built only from the copy merged on {base}; "
+                            f"it is not there yet (ADR 0020)")
+        elif merged.stdout != text:
+            problems.append(f"{name}: differs from the copy merged on {base}; a changed bundle is approved again "
+                            f"(ADR 0020)")
+    return problems
+
+
 def run(root: Path, key: str, slices: list[str], invoke: Invoke, command: list[str], prompt: str,
         part: int | None = None, out: Callable[[str], None] = print) -> int:
     plans = root / "plans" / key if part is None else root / "plans" / key / f"part-{part}"
     if part is not None and "{part}" not in prompt:
         prompt += " part {part}"
-    problems = preflight(plans, slices) + tree_problems(root, key)
+    problems = preflight(plans, slices) + approval_problems(root, plans, slices) + tree_problems(root, key)
     try:
         prompt.format(key=key, slice="x", part=part or "")
     except (KeyError, IndexError, ValueError) as error:

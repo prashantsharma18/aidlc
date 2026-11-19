@@ -28,7 +28,7 @@ One slice at a time, on the story's branch, after the slice's task bundle is app
 ## Inputs
 Where this runs: inside the repository whose part you are working on. For a story that spans several repositories, read your part's row in the workspace's `../stories/<KEY>/coordination-plan.md` (read-only) and the design it points to; the branch is `feat/<KEY>-<part>` and the pull request title is `[<KEY>] part <n> of <m>: <what>`. Started at the workspace root: name the repository to open, and stop. A one-repository story runs entirely in that repository.
 
-The approved task bundle `plans/<KEY>/bundle-<slice>.md`, or, on route D1, the confirmed fix brief `plans/<KEY>/fix.md`, which serves as the bundle (its slice is named `fix`, so its progress note is `plans/<KEY>/progress-fix.md`), or, on route F0, the confirmed feature brief `plans/<KEY>/brief.md`, which serves the same way (its slice is named `brief`), the spec and plan versions it pins, and the branch's earlier commits (`git log`) if this slice was started before. A second part in the same repository keeps these documents in `plans/<KEY>/part-<n>/`: when the person names the part, read the bundle and write the progress note there. The bundle's MAY CHANGE list is the boundary of this slice: every file you change must be on it.
+The approved task bundle `plans/<KEY>/bundle-<slice>.md`, or, on route D1, the confirmed fix brief `plans/<KEY>/fix.md`, which serves as the bundle (its slice is named `fix`, so its progress note is `plans/<KEY>/progress-fix.md`), or, on route F0, the confirmed feature brief `plans/<KEY>/brief.md`, which serves the same way (its slice is named `brief`), the spec and plan versions it pins, and the branch's earlier commits (`git log`) if this slice was started before. A second part in the same repository keeps these documents in `plans/<KEY>/part-<n>/`: when the person names the part, read the bundle and write the progress note there. The bundle's MAY CHANGE list is the boundary of this slice: every file you change must be on it. At Tier 2 and 3, the bundle is the copy merged on the default branch: compare yours with it before any edit.
 
 ## Steps
 1. Run the repository's test and lint commands, named in `AGENTS.md`, before any change. If it is red or skips tests, stop: the environment is fixed first. On slice 0 of route G there is no code yet and the commands in `AGENTS.md` read `(not yet run)`: skip this step; the scaffold recipe commit comes first, and step 8 is the first full run.
@@ -51,6 +51,7 @@ The local check is green with no unexplained skips, the diff stays inside MAY CH
 ## Stop if
 - The bundle's MODE is not allowed at its TIER (delegate with checkpoints above Tier 2, delegate above Tier 1), or a
   delegate MODE has no TIER line: the tech lead corrects the bundle.
+- At Tier 2 or 3, the bundle is missing from the default branch or differs from it: it is not approved (ADR 0020).
 - A brief's STOP IF that changes the route (the tier rises, a second repository, a design decision, a data change, a
   second slice) goes back to `aidlc-start`, which re-routes the work.
 - Code that AGENTS.md lists as legacy has no tests that pin its behaviour: change one only after a characterisation test records what it does today. If none exists yet, write it first, or stop.

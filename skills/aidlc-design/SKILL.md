@@ -83,7 +83,7 @@ folder once it is accepted; `contract/` holding the drafted contract change and 
 tests, which the contract's owner applies; and, for a story across several repositories, `coordination-plan.md`.
 
 ## Gate
-The tech lead or architect approves the design, and the consumers approve a contract change; Tier 3 adds the specialists. The ADR becomes Accepted when the design is approved, and the APPROVED line of the design note records it; the approval is recorded on the work item with its version and commit. A "none needed" note is decided and recorded by the tech lead or architect too. You draft; you never approve.
+The tech lead or architect approves the design, and the consumers approve a contract change; Tier 3 adds the specialists. The ADR becomes Accepted when the design is approved, and the APPROVED line of the design note records it; the approval is recorded on the work item with its version and commit. A "none needed" note is decided and recorded by the tech lead or architect too. At Tier 2 and 3 the design (its note, ADR drafts and contract change) merges to the default branch first, in its own pull request, which the tech lead or architect approves (ADR 0020). You draft; you never approve.
 
 ## Stop if
 - The evidence cannot support a choice: return to discovery, or to the spec owner.
