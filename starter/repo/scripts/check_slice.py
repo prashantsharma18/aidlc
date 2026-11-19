@@ -271,7 +271,7 @@ def collect(repo: Path, base: str, folder: str, worktree: bool) -> Branch:
     for path in untracked:
         file = repo / path
         if file.is_file() and file.stat().st_size < 1_000_000:
-            lines = file.read_text(encoding="utf-8", errors="replace").splitlines()
+            lines = git_lines(file.read_text(encoding="utf-8", errors="replace"))
             new_files.append(f"diff --git a/{path} b/{path}\n--- /dev/null\n+++ b/{path}\n@@ -0,0 +1 @@\n"
                              + "".join(f"+{line}\n" for line in lines))
     if worktree:
@@ -361,37 +361,53 @@ def unquote(path: str) -> str:
     return out.decode("utf-8", errors="replace")
 
 
+def git_lines(text: str) -> list[str]:
+    """Split text into lines as git counts them: on "\n" only, so a form feed or U+2028 stays inside its line (Python's
+    splitlines would split there and put every later line number out of step with the diff); a trailing "\r" goes."""
+    lines = text.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    return [line.removesuffix("\r") for line in lines]
+
+
 @dataclass
 class DiffLine:
     path: str | None               # the file's path after the change (its old path when it was deleted)
     old_path: str | None           # its path before the change; None for a new file
     kind: str                      # '-', '+' or ' '; '@' starts a hunk
     text: str
-    number: int = 0                # its line number in its own version: the old file for '-', the new one otherwise
+    old_number: int = 0            # the line's number in the old file ('-', ' '), or the old line it comes before ('+')
+    new_number: int = 0            # the line's number in the new file ('+', ' '), or the new line it comes before ('-')
+    deleted: bool = False          # the change deletes the file
+
+    @property
+    def number(self) -> int:
+        """Its line number in its own version: the old file for '-', the new one otherwise."""
+        return self.old_number if self.kind == "-" else self.new_number
 
 
 def diff_lines(patch: str):
     """Yield a DiffLine for each hunk start and body line of a unified diff."""
-    path, old_path, in_header, old_no, new_no = None, None, False, 0, 0
-    for line in patch.splitlines():
+    path, old_path, deleted, in_header, old_no, new_no = None, None, False, False, 0, 0
+    for line in git_lines(patch):
         if line.startswith("diff --git "):
-            path, old_path, in_header = None, None, True
+            path, old_path, deleted, in_header = None, None, False, True
         elif in_header and line.startswith("--- "):
             old = unquote(line[4:].split("\t", 1)[0])     # git adds a trailing tab after a path with a space
             path = old_path = old[2:] if old.startswith("a/") else None
         elif in_header and line.startswith("+++ "):
             new = unquote(line[4:].split("\t", 1)[0])
             path = new[2:] if new.startswith("b/") else path
+            deleted = new == "/dev/null"
         elif line.startswith("@@"):
             in_header = False
             start = re.match(r"@@ -(\d+)(?:,\d+)? \+(\d+)", line)
             old_no, new_no = (int(start.group(1)), int(start.group(2))) if start else (0, 0)
-            yield DiffLine(path, old_path, "@", "")
+            yield DiffLine(path, old_path, "@", "", old_no, new_no, deleted)
         elif not in_header and path and line[:1] in ("-", "+", " "):
-            number = old_no if line[0] == "-" else new_no
+            yield DiffLine(path, old_path, line[0], line[1:], old_no, new_no, deleted)
             old_no += line[0] != "+"
             new_no += line[0] != "-"
-            yield DiffLine(path, old_path, line[0], line[1:], number)
 
 
 def hunks(patch: str):
@@ -683,26 +699,58 @@ def following_line(d: DiffLine, source: Source | None) -> str | None:
     return following_code(file_lines, d.number) if file_lines is not None else None
 
 
-def closer_problems(lines: list[DiffLine], source: Source | None, today: dt.date) -> list[str]:
-    """A closing directive removed (and not added back the same in that file) extends its family's suppression to the
-    rest of the file. It is not a problem when the head file has no opener of that family left, or when an opener
-    there carries a valid exception (on its line or the line above); when the head cannot be read, it is reported."""
+def head_number(lines: list[DiffLine], path: str, number: int) -> int:
+    """Where an unchanged line of the old file (line `number`) sits in the new one: shifted by the lines the diff
+    added and removed above it."""
+    shift = 0
+    for d in lines:
+        if d.path != path or d.kind == "@":
+            continue
+        old_after, new_after = d.old_number + (d.kind != "+"), d.new_number + (d.kind != "-")
+        if old_after > number:
+            break
+        shift = new_after - old_after
+    return number + shift
+
+
+def paired_opener(base: list[str], number: int, family: str) -> int | None:
+    """The line number of the opener a closer at line `number` ends: the nearest block-or-wider marker of its family
+    above it in the same file."""
+    for above in range(number - 1, 0, -1):
+        if any(m is not None and m.family == family and m.scope >= SCOPE_BLOCK for m in markers_of(base[above - 1])):
+            return above
+    return None
+
+
+def closer_problems(lines: list[DiffLine], source: Source | None, today: dt.date,
+                    spent: set[tuple[str, int]]) -> list[str]:
+    """A closing directive removed (and not added back the same in that file) extends the suppression it ended. It is
+    clean when the file is deleted, when it has no opener, or when its paired opener (`paired_opener`) is removed too
+    and not re-added (`spent` holds the removed markers that covered an added one). Otherwise only a valid exception
+    on that opener (or the line above it) in the head, or on the closer's own line (or the line above) in the base,
+    excuses it. When a file version cannot be read, it is reported (fail safe)."""
     added = collections.Counter((d.path, d.text.strip()) for d in lines if d.kind == "+")
+    removed = {(d.path, d.number) for d in lines if d.kind == "-"}
     problems = []
     for d in lines:
         closer = CLOSER.search(d.text) if d.kind == "-" and not d.path.endswith(PROSE_SUFFIXES) else None
-        if not closer:
+        if not closer or d.deleted:
             continue
         if added[(d.path, d.text.strip())] > 0:
             added[(d.path, d.text.strip())] -= 1     # moved within the file
             continue
         family = closer.lastgroup.replace("_", "-")
-        head = source("+", d.path) if source else None
-        if head is not None:
-            openers = [i for i, text in enumerate(head)
-                       if any(m is not None and m.family == family for m in markers_of(text))]
-            if not openers or any(valid_exception(head[i], today) or (i and valid_exception(head[i - 1], today))
-                                  for i in openers):
+        base = source("-", d.old_path) if source and d.old_path else None
+        if base is not None and d.number <= len(base):
+            if valid_exception(d.text, today) or (d.number > 1 and valid_exception(base[d.number - 2], today)):
+                continue
+            opener = paired_opener(base, d.number, family)
+            if opener is None or ((d.path, opener) in removed and (d.path, opener) not in spent):
+                continue     # nothing to extend, or the pair went together
+            head = source("+", d.path) if (d.path, opener) not in removed else None
+            at = head_number(lines, d.path, opener) if head is not None else 0
+            if 0 < at <= len(head or []) and (valid_exception(head[at - 1], today)
+                                              or (at > 1 and valid_exception(head[at - 2], today))):
                 continue
         directive = re.sub(r"\s+", " ", closer.group(closer.lastgroup))
         problems.append(f"{d.path}: a suppression got wider (its closing {directive} was removed) without a valid "
@@ -717,12 +765,13 @@ def marker_problems(patch: str, today: dt.date, source: Source | None = None) ->
     be read (fail safe) still needs its exception; so does a removed closing directive. `source` reads each version of
     a file, to tell whether a decorator sits on a class; without it, the fail-safe reading applies."""
     lines = list(diff_lines(patch))
-    unused = collections.defaultdict(list)     # (path, family) -> removed markers not yet spent as a cover
+    # (path, family) -> (marker, its line in the old file) for each removed marker not yet spent as a cover
+    unused = collections.defaultdict(list)
     for d in lines:
         if d.kind == "-" and MARKER.search(d.text):
             for marker in markers_of(d.text, following_line(d, source), added=False):
                 if marker:
-                    unused[(d.path, marker.family)].append(marker)
+                    unused[(d.path, marker.family)].append((marker, d.number))
     needed, previous = [], ""     # (path, text, markers) for each added marker line without a valid exception
     for d in lines:
         if d.kind == "@":
@@ -739,12 +788,15 @@ def marker_problems(patch: str, today: dt.date, source: Source | None = None) ->
     # Widest first, each taking the narrowest removed marker that covers it, so a broad cover is not spent on a
     # narrow marker that a narrower one could cover
     readable = [(n, m) for n, (_, _, markers) in enumerate(needed) if None not in markers for m in markers]
-    uncovered = collections.defaultdict(list)
+    uncovered, spent = collections.defaultdict(list), set()
     for n, marker in sorted(readable, key=lambda item: item[1].width, reverse=True):
-        pool = unused[(needed[n][0], marker.family)]
-        covers = [removed for removed in pool if removed.covers(marker)]
+        path = needed[n][0]
+        pool = unused[(path, marker.family)]
+        covers = [removed for removed in pool if removed[0].covers(marker)]
         if covers:
-            pool.remove(min(covers, key=lambda removed: removed.width))
+            cover = min(covers, key=lambda removed: removed[0].width)
+            pool.remove(cover)
+            spent.add((path, cover[1]))
         else:
             uncovered[n].append(marker)
     problems = []
@@ -753,16 +805,16 @@ def marker_problems(patch: str, today: dt.date, source: Source | None = None) ->
         if None not in markers and not uncovered[n]:
             continue
         # "got wider" only when a removed marker of the family is one this added marker widens
-        pair = next(((old, new) for new in uncovered[n] for old in unused[(path, new.family)] if new.wider_than(old)),
-                    None)
+        pair = next(((old, new) for new in uncovered[n] for old in unused[(path, new.family)]
+                     if new.wider_than(old[0])), None)
         if pair:
             unused[(path, pair[1].family)].remove(pair[0])
-            problems.append(f"{path}: a suppression or skip got wider ({pair[0]} \u2192 {pair[1]}) without a valid "
+            problems.append(f"{path}: a suppression or skip got wider ({pair[0][0]} \u2192 {pair[1]}) without a valid "
                             f"aidlc-exception: {line}")
         else:
             problems.append(f"{path}: a suppression or skip without a valid aidlc-exception (reason, owner and an "
                             f"expiry date not past): {line}")
-    return problems + closer_problems(lines, source, today)
+    return problems + closer_problems(lines, source, today, spent)
 
 
 def file_source(repo: Path, branch: Branch) -> Source:
@@ -781,7 +833,7 @@ def file_source(repo: Path, branch: Branch) -> Source:
                 shown = subprocess.run(["git", "-C", str(repo), "show", f"{rev}:{path}"], capture_output=True)
                 if shown.returncode == 0:
                     text = shown.stdout.decode("utf-8", errors="replace")
-            cache[(side, path)] = None if text is None else text.splitlines()
+            cache[(side, path)] = None if text is None else git_lines(text)
         return cache[(side, path)]
     return read
 

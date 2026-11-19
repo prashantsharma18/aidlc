@@ -869,6 +869,74 @@ class ClosingDirectiveTest(unittest.TestCase):
         self.assertEqual(edit_one("src/log.js", before, after), [])
 
 
+PAIR = "/* eslint-disable no-console */\nconsole.log(1)\n/* eslint-enable no-console */\n"
+VALID = "aidlc-exception: reason=legacy logger; owner=Bo; expires=2026-12-31"
+
+
+class CloserPairTest(unittest.TestCase):
+    """Item 2 fix round 2: a removed closer pairs with the nearest block-or-wider opener of its family above it in the
+    base file; removing the pair is clean, and only that opener's exception (or the closer's own) excuses it."""
+
+    def test_removing_a_pair_next_to_an_unrelated_opener_is_clean(self):
+        before = "// eslint-disable-next-line no-alert\nalert(1)\n" + PAIR + "console.log(2)\n"
+        after = "// eslint-disable-next-line no-alert\nalert(1)\nconsole.log(1)\nconsole.log(2)\n"
+        self.assertEqual(edit_one("src/log.js", before, after), [])
+
+    def test_removing_a_pylint_pair_next_to_a_trailing_disable_is_clean(self):
+        before = ("x = 1  # pylint: disable=invalid-name\n# pylint: disable=no-member\ny = a.b\n"
+                  "# pylint: enable=no-member\nz = c.d\n")
+        after = "x = 1  # pylint: disable=invalid-name\ny = a.b\nz = c.d\n"
+        self.assertEqual(edit_one("src/calc.py", before, after), [])
+
+    def test_removing_only_the_closer_while_its_opener_stays_is_reported(self):
+        before = "// eslint-disable-next-line no-alert\nalert(1)\n" + PAIR + "console.log(2)\n"
+        after = before.replace("/* eslint-enable no-console */\n", "")
+        problems = edit_one("src/log.js", before, after)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("its closing eslint-enable was removed", problems[0])
+
+    def test_deleting_a_file_with_a_pair_is_clean_in_ci(self):
+        r = Repo(bundle(), {"src/log.js": PAIR + "console.log(2)\n"})
+        r.git("rm", "-q", "src/log.js")
+        r.commit("drop")
+        self.assertEqual(r.check(), ([], []))
+
+    def test_deleting_a_file_with_a_pair_is_clean_in_the_hook(self):
+        r = Repo(bundle(), {"src/log.js": PAIR + "console.log(2)\n"})
+        (r.root / "src/log.js").unlink()
+        self.assertEqual(run_main(r.root, ["--hook"], stdin="{}")[0], 0)
+
+    def test_an_excepted_unrelated_opener_does_not_excuse_a_removed_closer(self):
+        before = f"// eslint-disable-next-line no-alert -- {VALID}\nalert(1)\n" + PAIR + "console.log(2)\n"
+        after = before.replace("/* eslint-enable no-console */\n", "")
+        problems = edit_one("src/log.js", before, after)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("its closing eslint-enable was removed", problems[0])
+
+    def test_an_exception_added_on_the_paired_opener_excuses_a_removed_closer(self):
+        before = PAIR + "console.log(2)\n"
+        after = f"/* eslint-disable no-console */ // {VALID}\nconsole.log(1)\nconsole.log(2)\n"
+        self.assertEqual(edit_one("src/log.js", before, after), [])
+
+    def test_an_edited_opener_without_an_exception_does_not_pair(self):
+        before = PAIR + "console.log(2)\n"
+        after = "/* eslint-disable  no-console */\nconsole.log(1)\nconsole.log(2)\n"
+        problems = edit_one("src/log.js", before, after)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("its closing eslint-enable was removed", problems[0])
+
+    def test_form_feeds_above_keep_line_numbers_in_step_with_git(self):
+        methods = "".join(f"    def test_{i}(self, m):\n        pass\n\n" for i in range(4))
+        top = "import unittest\nfrom unittest import mock\n" + "".join(f"x{i} = {i}\x0c\n" for i in range(6)) + "\n\n"
+        before = (top + "@mock.patch('x')\nclass T(unittest.TestCase):\n" + methods
+                  + "    @unittest.skip('f')\n    def test_a(self, m):\n        pass\n")
+        after = (top + "@unittest.skip('f')\n@mock.patch('x')\nclass T(unittest.TestCase):\n" + methods
+                 + "    def test_a(self, m):\n        pass\n")
+        problems = edit_one("tests/test_patched.py", before, after)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("(skip, test, all rules → skip, suite, all rules)", problems[0])
+
+
 class WideningRanksTest(unittest.TestCase):
     """Item 2 fixes 3 to 5: "got wider" only when the added marker widens a removed one; ts and pylint ranks."""
 
