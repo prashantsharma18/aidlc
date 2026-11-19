@@ -1,7 +1,8 @@
 # aidlc behaviour evals
 
 Behaviour cases for `claude plugin eval`: each case runs the plugin on a realistic prompt in an isolated session and
-grades what it did. They spend model calls on your account, so they run on demand and before each release, never in CI.
+grades what it did. They spend model calls on your account, so they run on demand and before each release,
+never on pull requests.
 The free routing check (`scripts/route_check.py`) runs in CI instead.
 
 | Tag | What it proves |
@@ -14,6 +15,12 @@ The free routing check (`scripts/route_check.py`) runs in CI instead.
 Stage cases start a person-only stage by its slash command. The stage's text does not appear in the run's trace, so
 these cases grade behaviour: files written, tools called, the reply. Cases that need a repository copy one from
 `fixtures/` in their `setup.sh`.
+
+## In CI
+
+The `evals` workflow runs the release baseline in a clean container, where the Bash cases can run: Actions → evals →
+Run workflow, then approve the run in the `ai-gates` environment. It writes a pass-rate table to the run's summary.
+Run it before each release, and after any change to a stage skill.
 
 ## Run
 

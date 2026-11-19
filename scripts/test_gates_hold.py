@@ -240,5 +240,32 @@ class FeedbackTest(unittest.TestCase):
             self.assertIn("| Rule | Enforced by | Seen failing on |", text, rel)
 
 
+class EvalsWorkflowTest(unittest.TestCase):
+    """A7: the 28 behaviour evals, Bash cases included, run in a CI container on demand and before each release."""
+
+    def setUp(self):
+        self.wf = read(".github/workflows/evals.yml")
+
+    def test_it_runs_on_demand_only(self):
+        self.assertIn("workflow_dispatch:", self.wf)
+        self.assertNotIn("pull_request", self.wf)
+
+    def test_the_key_needs_an_approved_run(self):
+        self.assertIn("environment: ai-gates", self.wf)
+        self.assertIn("permissions: {contents: read}", self.wf)
+
+    def test_tools_are_pinned(self):
+        self.assertEqual(pinned_uses(self.wf), [])
+        self.assertIn("@anthropic-ai/claude-code@2.1.296", self.wf)
+        self.assertIn("--model claude-sonnet-5-5", self.wf)
+
+    def test_inputs_reach_the_shell_through_env(self):
+        for block in run_blocks(self.wf):
+            self.assertNotIn("${{", block, block)
+
+    def test_the_readme_points_to_it(self):
+        self.assertIn("## In CI", read("evals/README.md"))
+
+
 if __name__ == "__main__":
     unittest.main()
