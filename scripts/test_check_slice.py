@@ -238,7 +238,7 @@ class TestIntegrityTest(unittest.TestCase):
         self.assertEqual(r.check(), ([], []))
 
     def test_a_recipe_commit_may_change_test_syntax(self):
-        r = Repo(bundle())
+        r = Repo(bundle().replace("MAY CHANGE", "RECIPE      pyupgrade@3.19.0 \u2014 pyupgrade --py312-plus \u2014 tests/**\nMAY CHANGE", 1))
         r.commit("mechanical\n\nRecipe: pyupgrade@3.19.0",
                  {"tests/test_app.py": BASE_TEST.replace("assert total(1, 2) == 3", "assert (total(1, 2) == 3)")})
         self.assertEqual(r.check(), ([], []))
@@ -446,6 +446,187 @@ class CommandTest(unittest.TestCase):
     def test_the_hook_never_blocks_outside_a_repository(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(self.run_main(Path(tmp), ["--hook"], stdin="{}")[0], 0)
+
+
+EXCEPTION_LINE = "# aidlc-exception: reason=read by plugins; owner=Bo; expires=2026-12-31\n"
+SWAPPED = "def total(a, b):\n    return b + a\n"
+RECIPE_LINE = "RECIPE      pyupgrade@3.19.0 \u2014 pyupgrade --py312-plus \u2014 tests/**\n"
+
+
+def with_recipe(text, recipe=RECIPE_LINE):
+    return text.replace("MAY CHANGE", recipe + "MAY CHANGE", 1)
+
+
+def run_main(root, argv, stdin=""):
+    out, err, old = io.StringIO(), io.StringIO(), sys.stdin
+    sys.stdin = io.StringIO(stdin)
+    try:
+        with redirect_stdout(out), redirect_stderr(err):
+            code = check_slice.main(argv + ["--root", str(root)])
+    finally:
+        sys.stdin = old
+    return code, out.getvalue(), err.getvalue()
+
+
+class NetResultTest(unittest.TestCase):
+    """I1: a slip that a later commit undoes is not a problem for the life of the branch; only the net result counts."""
+
+    def test_an_assertion_removed_then_restored_verbatim_is_clean(self):
+        r = Repo(bundle())
+        r.commit("c1", {"tests/test_app.py": BASE_TEST.replace("    assert total(1, 2) == 3\n", "    pass\n")})
+        r.commit("c2", {"tests/test_app.py": BASE_TEST, "src/app.py": SWAPPED})
+        self.assertEqual(r.check(), ([], []))
+
+    def test_an_assertion_removed_and_restored_only_in_the_working_tree_is_clean(self):
+        r = Repo(bundle())
+        r.commit("c1", {"tests/test_app.py": BASE_TEST.replace("    assert total(1, 2) == 3\n", "    pass\n")})
+        r.write({"tests/test_app.py": BASE_TEST, "src/app.py": SWAPPED})
+        self.assertEqual(run_main(r.root, ["--hook"], stdin="{}")[0], 0)
+
+    def test_an_assertion_removed_and_not_restored_is_still_a_problem(self):
+        r = Repo(bundle())
+        r.commit("c1", {"tests/test_app.py": BASE_TEST.replace("    assert total(1, 2) == 3\n", "    pass\n")})
+        r.commit("c2", {"tests/test_app.py": BASE_TEST.replace("== 3", "> 0")})
+        self.assertEqual(r.check()[0], ["an existing test or assertion is removed or changed: "
+                                        "tests/test_app.py: assert total(1, 2) == 3"])
+
+    def test_a_noqa_added_then_removed_is_clean(self):
+        r = Repo(bundle())
+        r.commit("c1", {"src/app.py": "import os  # noqa: F401\n" + APP})
+        r.commit("c2", {"src/app.py": SWAPPED})
+        self.assertEqual(r.check(), ([], []))
+
+    def test_a_noqa_given_an_exception_on_the_line_above_later_is_clean(self):
+        r = Repo(bundle())
+        r.commit("c1", {"src/app.py": "import os  # noqa: F401\n" + APP})
+        r.commit("c2", {"src/app.py": EXCEPTION_LINE + "import os  # noqa: F401\n" + APP})
+        self.assertEqual(r.check(), ([], []))
+
+    def test_a_noqa_that_survives_without_an_exception_is_reported_once(self):
+        r = Repo(bundle())
+        r.commit("c1", {"src/app.py": "import os  # noqa: F401\n" + APP})
+        r.commit("c2", {"src/app.py": "import os  # noqa: F401\n" + APP + "x = 1\n"})
+        self.assertEqual(len(r.check()[0]), 1)
+
+
+class RecipeTrailerTest(unittest.TestCase):
+    """I2: a `Recipe:` trailer exempts a commit only when an approved bundle's RECIPE names that recipe."""
+
+    def forge(self, bundle_text):
+        r = Repo(bundle_text)
+        r.commit("tidy\n\nRecipe: x@1", {
+            "tests/test_app.py": BASE_TEST.replace("    assert total(1, 2) == 3\n", "    pass\n"),
+            "src/app.py": "import os  # noqa: F401\n" + APP})
+        return r.check()[0]
+
+    def test_a_forged_trailer_with_no_approved_recipe_exempts_nothing(self):
+        problems = self.forge(with_recipe(bundle(), "RECIPE      none\n"))
+        self.assertIn("an existing test or assertion is removed or changed: tests/test_app.py: assert total(1, 2) == 3",
+                      problems)
+        self.assertTrue(any("a suppression or skip without a valid aidlc-exception" in p for p in problems), problems)
+
+    def test_a_trailer_naming_another_recipe_exempts_nothing(self):
+        problems = self.forge(with_recipe(bundle()))
+        self.assertIn("an existing test or assertion is removed or changed: tests/test_app.py: assert total(1, 2) == 3",
+                      problems)
+
+    def test_an_approved_recipe_commit_still_answers_for_its_markers(self):
+        r = Repo(with_recipe(bundle()))
+        r.commit("mechanical\n\nRecipe: pyupgrade@3.19.0", {"src/app.py": "import os  # noqa: F401\n" + APP})
+        problems = r.check()[0]
+        self.assertEqual(len(problems), 1)
+        self.assertIn("a suppression or skip without a valid aidlc-exception", problems[0])
+
+    def test_the_reviewer_is_told_which_recipe_commit_was_exempted(self):
+        r = Repo(with_recipe(bundle()))
+        r.commit("mechanical\n\nRecipe: pyupgrade@3.19.0",
+                 {"tests/test_app.py": BASE_TEST.replace("assert total(1, 2) == 3", "assert (total(1, 2) == 3)")})
+        sha = r.git("rev-parse", "--short=12", "HEAD").strip()
+        code, out, _ = run_main(r.root, ["--base", "main"])
+        self.assertEqual(code, 0)
+        self.assertIn(f"for the reviewer: recipe commit {sha} (Recipe: pyupgrade@3.19.0)", out)
+        self.assertIn("exempt from the assertion check", out)
+
+
+class PartFromTheBranchTest(unittest.TestCase):
+    """I3: CI and the hook pass no --part; the part comes from the one part folder the branch changes."""
+
+    def part_repo(self, extra=None):
+        files = {"plans/SHIP-7/part-2/bundle-1.md": bundle(may="web/**")}
+        files.update(extra or {})
+        r = Repo(None, files)
+        r.git("switch", "-q", "-c", "feat/SHIP-7-2")
+        return r
+
+    def test_ci_finds_the_part_from_the_folder_the_branch_changes(self):
+        r = self.part_repo()
+        r.commit("s1", {"web/w.ts": "export {}\n", "plans/SHIP-7/part-2/progress-1.md": "STATUS      doing\n"})
+        code, out, _ = run_main(r.root, ["--base", "main", "--branch", "feat/SHIP-7-2"])
+        self.assertEqual(code, 0, out)
+
+    def test_the_inferred_part_still_scopes_the_work(self):
+        r = self.part_repo()
+        r.commit("s1", {"src/app.py": "x = 1\n", "plans/SHIP-7/part-2/progress-1.md": "STATUS      doing\n"})
+        self.assertEqual(r.check()[0], ["src/app.py: outside every bundle's MAY CHANGE"])
+
+    def test_several_parts_on_one_branch_is_a_problem(self):
+        r = self.part_repo({"plans/SHIP-7/part-1/bundle-1.md": bundle(may="src/**")})
+        r.commit("s1", {"web/w.ts": "export {}\n", "plans/SHIP-7/part-1/progress-1.md": "STATUS      doing\n",
+                        "plans/SHIP-7/part-2/progress-1.md": "STATUS      doing\n"})
+        problems = r.check()[0]
+        self.assertTrue(any("this branch changes several parts; one part per branch" in p for p in problems), problems)
+
+
+class SuppressedLineTest(unittest.TestCase):
+    """I4: a line that already carried a suppression is not a new one when it is edited or moved."""
+
+    def test_an_edited_suppressed_line_is_clean(self):
+        r = Repo(bundle(), {"src/calc.py": "value = compute(1)  # type: ignore\n"})
+        r.commit("s1", {"src/calc.py": "value = compute(2)  # type: ignore\n"})
+        self.assertEqual(r.check(), ([], []))
+
+    def test_a_second_suppression_is_still_reported(self):
+        r = Repo(bundle(), {"src/calc.py": "value = compute(1)  # type: ignore\n"})
+        r.commit("s1", {"src/calc.py": "value = compute(2)  # type: ignore\nother = compute(3)  # type: ignore\n"})
+        problems = r.check()[0]
+        self.assertEqual(len(problems), 1)
+        self.assertIn("type: ignore", problems[0])
+
+    def test_a_moved_file_keeps_its_suppression(self):
+        body = "".join(f"line_{i} = {i}\n" for i in range(10)) + "value = compute(1)  # type: ignore\n"
+        r = Repo(bundle(), {"src/calc.py": body})
+        r.git("mv", "src/calc.py", "src/calculate.py")
+        r.commit("move", {"src/calculate.py": body.replace("line_0", "first")})
+        self.assertEqual(r.check(), ([], []))
+
+    def test_another_kind_of_marker_is_not_covered(self):
+        r = Repo(bundle(), {"src/calc.py": "value = compute(1)  # type: ignore\n"})
+        r.commit("s1", {"src/calc.py": "value = compute(2)  # noqa: E501\n"})
+        self.assertEqual(len(r.check()[0]), 1)
+
+
+class HookOnAnyTurnTest(unittest.TestCase):
+    """T1: the Stop hook runs on every turn; with nothing approved to check it notes it and lets the session stop."""
+
+    def test_the_hook_lets_a_turn_with_no_bundle_stop(self):
+        r = Repo(None)
+        r.write({"src/app.py": "x = 1\n"})
+        code, _, err = run_main(r.root, ["--hook"], stdin="{}")
+        self.assertEqual(code, 0)
+        self.assertIn("no bundle or brief found", err)
+
+    def test_ci_still_fails_with_no_bundle(self):
+        r = Repo(None)
+        r.commit("s1", {"src/app.py": "x = 1\n"})
+        self.assertEqual(run_main(r.root, ["--base", "main"])[0], 1)
+
+    def test_the_block_message_speaks_to_any_role(self):
+        r = Repo(bundle())
+        r.write({"web/page.ts": "x\n"})
+        code, _, err = run_main(r.root, ["--hook"], stdin="{}")
+        self.assertEqual(code, 2)
+        self.assertIn("check_slice: if you are building this slice, fix these or stop it (STATUS stopped); "
+                      "otherwise report them.", err)
 
 
 if __name__ == "__main__":

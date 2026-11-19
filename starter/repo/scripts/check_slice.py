@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 """Checks a story branch against its approved task bundles, mechanically, so the rules hold whoever wrote the code
 (aidlc ADR 0019). It reports: a changed path outside every bundle's MAY CHANGE, or inside a MUST NOT; an existing test
-or assertion removed or changed, outside AMENDED ASSERTIONS and recipe commits; a dependency manifest that MAY CHANGE
-does not name; a suppression or skip added without a valid `aidlc-exception: reason=...; owner=...;
-expires=YYYY-MM-DD`; and a Tier 2 or 3 plan or bundle added or changed in a code pull request (ADR 0020).
+or assertion removed or changed and not restored later on the branch, outside AMENDED ASSERTIONS and approved recipe
+commits; a dependency manifest that MAY CHANGE does not name; a suppression or skip in the branch's net result without
+a valid `aidlc-exception: reason=...; owner=...; expires=YYYY-MM-DD`; and a Tier 2 or 3 plan or bundle added or
+changed in a code pull request (ADR 0020).
 
     python3 scripts/check_slice.py [--key KEY] [--part N] [--base REF] [--branch NAME] [--root DIR]
     python3 scripts/check_slice.py --hook        (as a Stop hook: reads the hook's JSON on stdin)
 
 The key comes from --key or the branch name (feat/SHIP-12-api gives SHIP-12). A branch that names no key is not an
-aidlc story and is not checked. `plans/<KEY>/**` is exempt from the scope check. Exit 0 clean, 1 problems; as a Stop
-hook, 2 on problems so the session continues and reads them, and 0 on its second run or when it cannot check.
+aidlc story and is not checked. Without --part, a branch that changes one `plans/<KEY>/part-<n>/` folder is checked
+against that part's bundles. `plans/<KEY>/**` is exempt from the scope check. A commit's `Recipe: <tool>@<version>`
+trailer exempts it from the assertion check only when an approved bundle's RECIPE names that tool and version.
+Exit 0 clean, 1 problems; as a Stop hook, 2 on problems so the session continues and reads them, and 0 on its second
+run, when it cannot check, or when no bundle or brief exists yet (a planning, verify or review turn).
 Standard library only; copied into a repository from aidlc's starter/repo/scripts/."""
 from __future__ import annotations
 
@@ -50,6 +54,7 @@ SUPPRESS = re.compile(r"eslint-disable|@ts-ignore|@ts-expect-error|#\s*noqa\b|#\
 SKIP = re.compile(r"\b(?:it|test|describe)\.(?:skip|only|todo)\s*\(|\bx(?:it|describe|test)\s*\("
                   r"|@pytest\.mark\.(?:skip|skipif|xfail)\b|@unittest\.skip|\bpytest\.skip\(|\[Ignore\b"
                   r"|\bSkip\s*=\s*\"|@Disabled\b|@Ignore\b|\bt\.Skip\(")
+RECIPE_TRAILER = re.compile(r"^Recipe: (\S+@\S+)", re.MULTILINE)
 EXCEPTION = re.compile(r"aidlc-exception:\s*reason=[^;]+;\s*owner=[^;]+;\s*expires=(\d{4}-\d{2}-\d{2})")
 PROSE_SUFFIXES = (".md", ".txt", ".rst")
 
@@ -61,16 +66,33 @@ class Bundle:
     may_change: list[str]
     must_not: list[str]
     amended: str
+    recipe: str = ""               # the approved RECIPE value; empty when it is none
+
+
+@dataclass
+class Patch:
+    text: str                      # a unified diff
+    commit: str = ""               # the commit it comes from; empty for the working tree
+    trailer: str = ""              # the commit's `Recipe:` trailer (tool@version), if it has one
 
 
 @dataclass
 class Branch:
     changed: dict[str, str]        # path -> A, M or D, against the merge base
-    patches: list[str]             # the diffs of the non-merge, non-recipe commits (and the working tree as a hook)
+    patches: list[Patch]           # each non-merge commit's diff, in order (and the working tree's, as a hook)
     at_base: set[str]              # files that exist at the merge base
     base_docs: dict[str, str]      # the story folder's plan, bundles and briefs at the merge base
     head_docs: dict[str, str]      # the same documents now
+    net: str = ""                  # the branch's net diff against the merge base, renames detected
     folder: str = ""               # the folder whose bundles scope the work (the story folder, or a part's)
+
+
+@dataclass
+class Review:
+    problems: list[str]
+    notes: list[str]               # for the reviewer: amended assertions
+    recipe_notes: list[str]        # for the reviewer: the recipe commits exempted from the assertion check, or not
+    no_bundle: bool = False        # code changed, but nothing approved to check it against
 
 
 def field_of(line: str) -> tuple[str, str] | None:
@@ -154,8 +176,15 @@ def tier_of(text: str | None) -> int | None:
 def parse_bundle(name: str, text: str) -> Bundle:
     f = fields(text)
     amended = f.get("AMENDED ASSERTIONS", "none").strip()
+    recipe = f.get("RECIPE", "none").strip()
     return Bundle(name, tier_of(text), path_tokens(f.get("MAY CHANGE", "")), path_tokens(f.get("MUST NOT", "")),
-                  "" if amended.lower().startswith("none") else amended)
+                  "" if amended.lower().startswith("none") else amended,
+                  "" if recipe.lower().startswith("none") or recipe.startswith("<") else recipe)
+
+
+def approved_recipes(bundles: list[Bundle]) -> set[str]:
+    """The tool@version tokens the approved bundles' RECIPE values name."""
+    return {t.strip("`'\",;:()") for b in bundles for t in b.recipe.split() if "@" in t}
 
 
 def git(repo: Path, *args: str, check: bool = True) -> str:
@@ -178,17 +207,22 @@ def collect(repo: Path, base: str, folder: str, worktree: bool) -> Branch:
         changed[path] = "A"
     patches = []
     for commit in git(repo, "rev-list", "--reverse", "--no-merges", f"{mb}..HEAD").split():
-        if re.search(r"^Recipe: \S+@\S+", git(repo, "log", "-1", "--format=%B", commit), re.M):
-            continue
-        patches.append(git(repo, "-c", "core.quotepath=off", "show", "--format=", "--no-renames", "-U1", commit))
+        trailer = RECIPE_TRAILER.search(git(repo, "log", "-1", "--format=%B", commit))
+        patches.append(Patch(git(repo, "-c", "core.quotepath=off", "show", "--format=", "--no-renames", "-U1", commit),
+                             commit, trailer.group(1) if trailer else ""))
+    new_files = []
+    for path in untracked:
+        file = repo / path
+        if file.is_file() and file.stat().st_size < 1_000_000:
+            lines = file.read_text(encoding="utf-8", errors="replace").splitlines()
+            new_files.append(f"diff --git a/{path} b/{path}\n--- /dev/null\n+++ b/{path}\n@@ -0,0 +1 @@\n"
+                             + "".join(f"+{line}\n" for line in lines))
     if worktree:
-        patches.append(git(repo, "-c", "core.quotepath=off", "diff", "--no-renames", "-U1", "HEAD"))
-        for path in untracked:
-            file = repo / path
-            if file.is_file() and file.stat().st_size < 1_000_000:
-                lines = file.read_text(encoding="utf-8", errors="replace").splitlines()
-                patches.append(f"diff --git a/{path} b/{path}\n--- /dev/null\n+++ b/{path}\n@@ -0,0 +1 @@\n"
-                               + "".join(f"+{line}\n" for line in lines))
+        patches.append(Patch(git(repo, "-c", "core.quotepath=off", "diff", "--no-renames", "-U1", "HEAD")))
+        patches += [Patch(text) for text in new_files]
+    # The net result: only what survives counts for markers (a slip undone later is gone), and a moved file keeps
+    # its suppressions (renames detected)
+    net = "\n".join([git(repo, "-c", "core.quotepath=off", "diff", "-M", "-U1", mb, *target)] + new_files)
     at_base = set(git(repo, "ls-tree", "-r", "--name-only", "-z", mb).split("\0")[:-1])
 
     story = "/".join(folder.split("/")[:2])     # plans/<KEY>: the plan lives here even when the work is a part
@@ -203,7 +237,7 @@ def collect(repo: Path, base: str, folder: str, worktree: bool) -> Branch:
     else:
         now = git(repo, "ls-tree", "-r", "--name-only", "-z", "HEAD").split("\0")[:-1]
         head_docs = {p: git(repo, "show", f"HEAD:{p}") for p in docs_in(now)}
-    return Branch(changed, patches, at_base, base_docs, head_docs, folder)
+    return Branch(changed, patches, at_base, base_docs, head_docs, net, folder)
 
 
 def approved_bundles(branch: Branch) -> list[Bundle]:
@@ -312,24 +346,29 @@ def amended_paths(bundles: list[Bundle]) -> set[str]:
     return {t for b in bundles for t in path_tokens(re.sub(r"::\S*", "", b.amended))}
 
 
-def test_problems(branch: Branch, bundles: list[Bundle]) -> tuple[list[str], list[str]]:
+def test_problems(branch: Branch, bundles: list[Bundle], exempt: set[str]) -> tuple[list[str], list[str]]:
+    """Removals are found commit by commit, so an exempt recipe commit's own changes stay out. A removal is dropped
+    when another counted commit (or the working tree) in the same file adds the same line: earlier means the line was
+    added on this branch, later means it was restored. Each added line covers one removal, no more."""
     amended = amended_paths(bundles)
-    problems, notes, added_before = [], [], collections.Counter()
-    for patch in branch.patches:
-        for path, text in removed_tests(patch):
+    patches = [p for p in branch.patches if not p.commit or p.commit not in exempt]
+    added = [collections.Counter((path, text.strip()) for path, kind, text in hunks(p.text) if kind == "+")
+             for p in patches]
+    problems, notes = [], []
+    for i, patch in enumerate(patches):
+        for path, text in removed_tests(patch.text):
             if path not in branch.at_base or not TEST_PATH.search(path):
                 continue
-            if added_before[(path, text.strip())] > 0:     # added earlier on this branch, in this same file
-                added_before[(path, text.strip())] -= 1
+            line = (path, text.strip())
+            cover = next((j for j in [*range(i), *range(i + 1, len(patches))] if added[j][line] > 0), None)
+            if cover is not None:
+                added[cover][line] -= 1
                 continue
             where = f"{path}: {text.strip()[:120]}"
             if path in amended:
                 notes.append(f"amended assertion, listed under AMENDED ASSERTIONS: {where}")
             else:
                 problems.append(f"an existing test or assertion is removed or changed: {where}")
-        for path, kind, text in hunks(patch):
-            if kind == "+":
-                added_before[(path, text.strip())] += 1
     return problems, notes
 
 
@@ -343,14 +382,29 @@ def valid_exception(text: str, today: dt.date) -> bool:
         return False
 
 
+def marker_of(text: str) -> str | None:
+    """The suppression or skip a line carries, spaces dropped ("#type:ignore"), or None."""
+    m = SUPPRESS.search(text) or SKIP.search(text)
+    return re.sub(r"\s+", "", m.group(0)) if m else None
+
+
 def marker_problems(patch: str, today: dt.date) -> list[str]:
+    """Judged on the net diff. A `+` marker line is not a new suppression when the same file loses a `-` line with
+    the same marker (an edited or moved suppressed line); a marker beyond those removed still needs its exception."""
+    removed = collections.Counter((path, marker_of(text)) for path, kind, text in hunks(patch)
+                                  if kind == "-" and marker_of(text))
     problems, previous = [], ""
     for path, kind, text in hunks(patch):
         if kind == "@":
             previous = ""
             continue
-        if kind == "+" and not path.endswith(PROSE_SUFFIXES) and (SUPPRESS.search(text) or SKIP.search(text)):
-            if not (valid_exception(text, today) or valid_exception(previous, today)):
+        marker = marker_of(text)
+        if kind == "+" and not path.endswith(PROSE_SUFFIXES) and marker:
+            if valid_exception(text, today) or valid_exception(previous, today):
+                pass
+            elif removed[(path, marker)] > 0:
+                removed[(path, marker)] -= 1
+            else:
                 problems.append(f"{path}: a suppression or skip without a valid aidlc-exception (reason, owner and an "
                                 f"expiry date not past): {text.strip()[:120]}")
         if SUPPRESS.search(text) or SKIP.search(text):
@@ -389,23 +443,49 @@ def approval_problems(branch: Branch, key_folder: str) -> list[str]:
     return problems
 
 
-def check(repo: Path, base: str, key: str, part: int | None = None, worktree: bool = False,
-          today: dt.date | None = None) -> tuple[list[str], list[str]]:
+def review(repo: Path, base: str, key: str, part: int | None = None, worktree: bool = False,
+           today: dt.date | None = None) -> Review:
     key_folder = f"plans/{key}"
-    folder = key_folder if part is None else f"{key_folder}/part-{part}"
-    branch = collect(repo, base, folder, worktree)
+    branch = collect(repo, base, key_folder if part is None else f"{key_folder}/part-{part}", worktree)
     if all(path.startswith(key_folder + "/") for path in branch.changed):
-        return [], []     # a documents-only branch (spec, design or plan pull request, or a planning session)
+        return Review([], [], [])     # a documents-only branch (spec, design or plan pull request, or a planning session)
+    if part is None:     # CI and the hook pass no --part: the part is the one part folder the branch changes
+        parts = sorted({m.group(1) for path in branch.changed
+                        if (m := re.match(re.escape(key_folder) + r"/(part-\d+)/", path))})
+        if len(parts) > 1:
+            return Review([f"{key_folder}: this branch changes several parts; one part per branch "
+                           f"({', '.join(parts)})"], [], [])
+        if parts:
+            branch.folder = f"{key_folder}/{parts[0]}"
     bundles = approved_bundles(branch)
     if not bundles:
-        return [f"{folder}: no bundle or brief found; there is nothing approved to check this branch against"], []
-    problems = scope_problems(branch.changed, key_folder, bundles) + manifest_problems(branch.changed, bundles)
-    found, notes = test_problems(branch, bundles)
-    problems += found
+        return Review([f"{branch.folder}: no bundle or brief found; there is nothing approved to check this branch "
+                       f"against"], [], [], no_bundle=True)
+    recipes = approved_recipes(bundles)
+    exempt, recipe_notes = set(), []
     for patch in branch.patches:
-        problems += marker_problems(patch, today or dt.date.today())
+        if not patch.trailer:
+            continue
+        if patch.trailer in recipes:
+            exempt.add(patch.commit)
+            recipe_notes.append(f"recipe commit {patch.commit[:12]} (Recipe: {patch.trailer}) is exempt from the "
+                                f"assertion check; read its recipe check output")
+        else:
+            recipe_notes.append(f"commit {patch.commit[:12]} carries the trailer 'Recipe: {patch.trailer}', which no "
+                                f"approved bundle's RECIPE names; it was checked as an ordinary commit")
+    problems = scope_problems(branch.changed, key_folder, bundles) + manifest_problems(branch.changed, bundles)
+    found, notes = test_problems(branch, bundles, exempt)
+    problems += found
+    problems += marker_problems(branch.net, today or dt.date.today())
     problems += approval_problems(branch, key_folder)
-    return problems, notes
+    return Review(problems, notes, recipe_notes)
+
+
+def check(repo: Path, base: str, key: str, part: int | None = None, worktree: bool = False,
+          today: dt.date | None = None) -> tuple[list[str], list[str]]:
+    """(problems, notes on amended assertions); `review` also gives the recipe notes."""
+    result = review(repo, base, key, part, worktree, today)
+    return result.problems, result.notes
 
 
 def default_base(repo: Path) -> str:
@@ -439,17 +519,22 @@ def main(argv: list[str] | None = None) -> int:
         if not key:
             print(f"check_slice: the branch '{branch}' names no story key; nothing to check", file=out)
             return 0
-        problems, notes = check(repo, args.base or default_base(repo), key, args.part, worktree=args.hook)
+        result = review(repo, args.base or default_base(repo), key, args.part, worktree=args.hook)
     except RuntimeError as error:
         print(f"check_slice: cannot check: {error}", file=sys.stderr)
         return 0 if args.hook else 1
+    problems, notes = result.problems, result.notes + result.recipe_notes
+    if args.hook and result.no_bundle:     # a planning, verify or review turn: nothing approved to check yet
+        print(f"check_slice: note: {problems[0]}; not checked on this turn (CI fails it)", file=out)
+        return 0
     for note in notes:
         print(f"for the reviewer: {note}", file=out)
     for problem in problems:
         print(problem, file=out)
     if problems:
         if args.hook:
-            print("check_slice: fix these before you stop, or stop the slice and report them (STATUS stopped).", file=out)
+            print("check_slice: if you are building this slice, fix these or stop it (STATUS stopped); "
+                  "otherwise report them.", file=out)
         return 2 if args.hook else 1
     print(f"check_slice: {key}: scope, tests, manifests, markers and approved documents hold "
           f"({len(notes)} note(s) for the reviewer)", file=out)
