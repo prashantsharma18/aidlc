@@ -25,6 +25,7 @@ import json
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -52,12 +53,15 @@ SUPPRESS = re.compile(r"eslint-disable|@ts-ignore|@ts-expect-error|@ts-nocheck|(
                       r"|(?i:#\s*(?:flake8|ruff)\s*:\s*noqa\b)|#\s*type:\s*ignore|#\s*mypy:\s*ignore-errors"
                       r"|pylint:\s*(?:disable|skip-file)"
                       r"|#pragma\s+warning\s+disable|\[SuppressMessage|//\s*nolint|@SuppressWarnings|NOSONAR"
-                      r"|istanbul ignore|c8 ignore")
+                      r"|(?:istanbul|c8|v8) ignore\b(?!\s+stop\b)")
 SKIP = re.compile(r"\b(?:it|test|describe)\.(?:skip|only|todo)\s*\(|\bx(?:it|describe|test)\s*\("
                   r"|@pytest\.mark\.(?:skip|skipif|xfail)\b|@unittest\.skip|\bpytest\.skip\(|\[Ignore\b"
                   r"|\bSkip\s*=\s*\"|@Disabled\b|@Ignore\b|\bt\.Skip\("
                   r"|\bpytestmark\b.*?\bpytest\.mark\.(?:skip|skipif|xfail)\b")
 MARKER = re.compile(f"{SUPPRESS.pattern}|{SKIP.pattern}")
+# A closing directive ends a suppression its family opened earlier in the file; it is never a marker itself
+CLOSER = re.compile(r"(?P<eslint>eslint-enable)\b|(?P<csharp_pragma>#pragma\s+warning\s+restore)\b"
+                    r"|(?P<pylint>pylint:\s*enable)\s*=|(?P<coverage>(?:istanbul|c8|v8) ignore\s+stop)\b")
 # How far a marker reaches, smallest first. A skip reads the same ranks as test < suite < file (`.only` skips the rest
 # of the file).
 SCOPE_LINE = 1                     # one line or statement
@@ -98,6 +102,8 @@ class Branch:
     head_docs: dict[str, str]      # the same documents now
     net: str = ""                  # the branch's net diff against the merge base, renames detected
     folder: str = ""               # the folder whose bundles scope the work (the story folder, or a part's)
+    base: str = ""                 # the merge base commit
+    worktree: bool = False         # the head is the working tree (the Stop hook), not HEAD (CI)
 
 
 @dataclass(frozen=True)
@@ -107,25 +113,35 @@ class Marker:
                                    # sonar, coverage or skip
     scope: int                     # SCOPE_LINE < SCOPE_BLOCK < SCOPE_FILE (a skip: SCOPE_TEST < SCOPE_SUITE)
     rules: frozenset[str] | None   # the rules or codes it names; None when it names none, so it silences every rule
+    self_checking: bool = False    # it fails once it silences nothing (`@ts-expect-error`), so it is narrower
 
     @property
     def scope_name(self) -> str:
         return (SKIP_SCOPE_NAMES if self.family == "skip" else SCOPE_NAMES)[self.scope]
 
     @property
-    def width(self) -> tuple[int, bool, int]:
+    def width(self) -> tuple[int, bool, int, bool]:
         """Orders markers of one family from narrowest to widest."""
-        return self.scope, self.rules is None, len(self.rules or ())
+        return self.scope, self.rules is None, len(self.rules or ()), not self.self_checking
 
     def covers(self, added: Marker) -> bool:
-        """A removed marker covers an added one that is no wider: same family, scope no larger, and every rule the
-        added one names named here too (a marker that names no rule is covered only by another that names none)."""
+        """A removed marker covers an added one that is no wider: same family, scope no larger, every rule the added
+        one names named here too (a marker that names no rule is covered only by another that names none), and not
+        self-checking where this one was."""
         return (self.family == added.family and added.scope <= self.scope
-                and (self.rules is None or (added.rules is not None and added.rules <= self.rules)))
+                and (self.rules is None or (added.rules is not None and added.rules <= self.rules))
+                and (added.self_checking or not self.self_checking))
+
+    def wider_than(self, removed: Marker) -> bool:
+        """Reaches further than a removed marker of its family: a larger scope, more rules, or no longer self-checking.
+        Rules that differ without one list holding the other are another suppression, not a wider one."""
+        more_rules = removed.rules is not None and (self.rules is None or self.rules > removed.rules)
+        return self.family == removed.family and (self.scope > removed.scope or more_rules
+                                                  or (removed.self_checking and not self.self_checking))
 
     def __str__(self) -> str:
         rules = ",".join(sorted(self.rules)) if self.rules is not None else "all rules"
-        return f"{self.family}, {self.scope_name}, {rules}"
+        return f"{self.family}, {self.scope_name}, {rules}" + (", self-checking" if self.self_checking else "")
 
 
 @dataclass
@@ -278,7 +294,7 @@ def collect(repo: Path, base: str, folder: str, worktree: bool) -> Branch:
     else:
         now = git(repo, "ls-tree", "-r", "--name-only", "-z", "HEAD").split("\0")[:-1]
         head_docs = {p: git(repo, "show", f"HEAD:{p}") for p in docs_in(now)}
-    return Branch(changed, patches, at_base, base_docs, head_docs, net, folder)
+    return Branch(changed, patches, at_base, base_docs, head_docs, net, folder, mb, worktree)
 
 
 def approved_bundles(branch: Branch) -> list[Bundle]:
@@ -345,23 +361,43 @@ def unquote(path: str) -> str:
     return out.decode("utf-8", errors="replace")
 
 
-def hunks(patch: str):
-    """Yield (path, kind, text) for each body line of a unified diff: kind is '-', '+' or ' '; '@' starts a hunk."""
-    path, in_header = None, False
+@dataclass
+class DiffLine:
+    path: str | None               # the file's path after the change (its old path when it was deleted)
+    old_path: str | None           # its path before the change; None for a new file
+    kind: str                      # '-', '+' or ' '; '@' starts a hunk
+    text: str
+    number: int = 0                # its line number in its own version: the old file for '-', the new one otherwise
+
+
+def diff_lines(patch: str):
+    """Yield a DiffLine for each hunk start and body line of a unified diff."""
+    path, old_path, in_header, old_no, new_no = None, None, False, 0, 0
     for line in patch.splitlines():
         if line.startswith("diff --git "):
-            path, in_header = None, True
+            path, old_path, in_header = None, None, True
         elif in_header and line.startswith("--- "):
             old = unquote(line[4:].split("\t", 1)[0])     # git adds a trailing tab after a path with a space
-            path = old[2:] if old.startswith("a/") else None
+            path = old_path = old[2:] if old.startswith("a/") else None
         elif in_header and line.startswith("+++ "):
             new = unquote(line[4:].split("\t", 1)[0])
             path = new[2:] if new.startswith("b/") else path
         elif line.startswith("@@"):
             in_header = False
-            yield path, "@", ""
+            start = re.match(r"@@ -(\d+)(?:,\d+)? \+(\d+)", line)
+            old_no, new_no = (int(start.group(1)), int(start.group(2))) if start else (0, 0)
+            yield DiffLine(path, old_path, "@", "")
         elif not in_header and path and line[:1] in ("-", "+", " "):
-            yield path, line[0], line[1:]
+            number = old_no if line[0] == "-" else new_no
+            old_no += line[0] != "+"
+            new_no += line[0] != "-"
+            yield DiffLine(path, old_path, line[0], line[1:], number)
+
+
+def hunks(patch: str):
+    """Yield (path, kind, text) for each body line of a unified diff: kind is '-', '+' or ' '; '@' starts a hunk."""
+    for d in diff_lines(patch):
+        yield d.path, d.kind, d.text
 
 
 def removed_tests(patch: str) -> list[tuple[str, str]]:
@@ -428,10 +464,18 @@ def rule_set(listed: str) -> frozenset[str]:
     return frozenset(name for name in re.split(r"[,\s]+", listed) if name)
 
 
-# Each reader takes the line from the marker on (`rest`), whether the marker stands on a line of its own, and whether
-# it sits on a class; it returns the Marker, or None when it cannot read the details (the caller treats that as new).
+@dataclass(frozen=True)
+class Place:
+    """Where a marker stands, which some families need to read its scope."""
+    own_line: bool                 # nothing but comment openers before it on its line
+    on_class: bool                 # the next code line below it declares a class
+    on_header: bool = False        # it trails a Python `def` or `class` line, so it covers that block
 
-def read_eslint(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+
+# Each reader takes the line from the marker on (`rest`) and its Place; it returns the Marker, or None when it cannot
+# read the details (the caller treats that as new).
+
+def read_eslint(rest: str, at: Place) -> Marker | None:
     m = re.match(r"eslint-disable(-next-line|-line)?(?=\s|\*/|--|$)(.*)", rest)
     if not m:
         return None
@@ -441,14 +485,17 @@ def read_eslint(rest: str, own_line: bool, on_class: bool) -> Marker | None:
     return Marker("eslint", SCOPE_LINE if m.group(1) else SCOPE_BLOCK, rules or None)
 
 
-def read_ts(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+def read_ts(rest: str, at: Place) -> Marker | None:
+    """`@ts-expect-error` fails once the line has no error, so `@ts-ignore` is wider than it."""
     m = re.match(r"@ts-(ignore|expect-error|nocheck)\b", rest)
     if not m:
         return None
-    return Marker("ts", SCOPE_FILE if m.group(1) == "nocheck" else SCOPE_LINE, None)
+    if m.group(1) == "nocheck":
+        return Marker("ts", SCOPE_FILE, None)
+    return Marker("ts", SCOPE_LINE, None, self_checking=m.group(1) == "expect-error")
 
 
-def read_noqa(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+def read_noqa(rest: str, at: Place) -> Marker | None:
     """flake8 and Ruff: `# noqa`, `# noqa: E501,F401`, and the file-level `# ruff: noqa` / `# flake8: noqa`. A colon
     followed by anything but codes is not read (flake8 would silence everything)."""
     m = re.match(r"#\s*(?:(flake8|ruff)\s*:\s*)?noqa\b(.*)", rest, re.IGNORECASE)
@@ -461,7 +508,7 @@ def read_noqa(rest: str, own_line: bool, on_class: bool) -> Marker | None:
     return None if m.group(2).lstrip().startswith(":") else Marker("noqa", scope, None)
 
 
-def read_mypy(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+def read_mypy(rest: str, at: Place) -> Marker | None:
     """`# type: ignore[code, ...]`; on a line of its own at the top of a file it silences the whole file, so a
     `# type: ignore` on its own line ranks as file."""
     if re.match(r"#\s*mypy:\s*ignore-errors\b", rest):
@@ -469,7 +516,7 @@ def read_mypy(rest: str, own_line: bool, on_class: bool) -> Marker | None:
     m = re.match(r"#\s*type:\s*ignore(.*)", rest)
     if not m:
         return None
-    tail, scope = m.group(1), SCOPE_FILE if own_line else SCOPE_LINE
+    tail, scope = m.group(1), SCOPE_FILE if at.own_line else SCOPE_LINE
     if tail.startswith("["):
         codes = re.match(r"\[\s*([\w-]+(?:\s*,\s*[\w-]+)*)\s*\]", tail)
         return Marker("mypy", scope, rule_set(codes.group(1))) if codes else None
@@ -478,18 +525,19 @@ def read_mypy(rest: str, own_line: bool, on_class: bool) -> Marker | None:
     return Marker("mypy", scope, None)
 
 
-def read_pylint(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+def read_pylint(rest: str, at: Place) -> Marker | None:
     if re.match(r"pylint:\s*skip-file\b", rest):
         return Marker("pylint", SCOPE_FILE, None)
     m = re.match(r"pylint:\s*disable(-next)?\s*=\s*([\w-]+(?:\s*,\s*[\w-]+)*)", rest)
     if not m:
         return None
     rules = rule_set(m.group(2))
-    scope = SCOPE_LINE if m.group(1) or not own_line else SCOPE_BLOCK     # on its own line: to the end of the block
+    # On its own line it reaches the end of the block; trailing a `def` or `class` line, it covers that block
+    scope = SCOPE_LINE if m.group(1) or not (at.own_line or at.on_header) else SCOPE_BLOCK
     return Marker("pylint", scope, None if "all" in rules else rules)
 
 
-def read_pragma(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+def read_pragma(rest: str, at: Place) -> Marker | None:
     m = re.match(r"#pragma\s+warning\s+disable\b(.*)", rest)
     if not m:
         return None
@@ -499,16 +547,16 @@ def read_pragma(rest: str, own_line: bool, on_class: bool) -> Marker | None:
     return Marker("csharp-pragma", SCOPE_BLOCK, rules or None)
 
 
-def read_suppress_message(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+def read_suppress_message(rest: str, at: Place) -> Marker | None:
     """`[SuppressMessage("Category", "CA1062:Title")]`: the rule is the check id before the colon."""
     m = re.match(r'\[SuppressMessage(?:Attribute)?\s*\(\s*@?"[^"]*"\s*,\s*@?"([^":]*)(?::[^"]*)?"', rest)
     if not m or not m.group(1).strip():
         return None
-    scope = SCOPE_FILE if on_class or re.search(r"\bScope\s*=", rest) else SCOPE_BLOCK
+    scope = SCOPE_FILE if at.on_class or re.search(r"\bScope\s*=", rest) else SCOPE_BLOCK
     return Marker("csharp-attr", scope, frozenset({m.group(1).strip()}))
 
 
-def read_nolint(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+def read_nolint(rest: str, at: Place) -> Marker | None:
     """golangci-lint: `//nolint` or `//nolint:a,b`, then nothing or a `// explanation`. On a line of its own it covers
     the declaration below it."""
     m = re.match(r"//\s*nolint\b(.*)", rest)
@@ -523,25 +571,25 @@ def read_nolint(rest: str, own_line: bool, on_class: bool) -> Marker | None:
         rules = None if "all" in rules else rules
     elif tail and not tail[0].isspace():
         return None
-    return Marker("go-nolint", SCOPE_BLOCK if own_line else SCOPE_LINE, rules)
+    return Marker("go-nolint", SCOPE_BLOCK if at.own_line else SCOPE_LINE, rules)
 
 
-def read_java(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+def read_java(rest: str, at: Place) -> Marker | None:
     m = re.match(r"@SuppressWarnings\s*\(([^)]*)\)", rest)
     names = re.findall(r'"([^"]*)"', m.group(1)) if m else []
     if not names:
         return None
     rules = frozenset(name.strip() for name in names)
-    return Marker("java", SCOPE_FILE if on_class else SCOPE_BLOCK, None if "all" in rules else rules)
+    return Marker("java", SCOPE_FILE if at.on_class else SCOPE_BLOCK, None if "all" in rules else rules)
 
 
-def read_sonar(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+def read_sonar(rest: str, at: Place) -> Marker | None:
     return Marker("sonar", SCOPE_LINE, None)
 
 
-def read_coverage(rest: str, own_line: bool, on_class: bool) -> Marker | None:
-    """istanbul and c8: `ignore next [n]`, `if`, `else`, `start`, `stop`, `file`."""
-    m = re.match(r"(?:istanbul|c8) ignore\s+(next|if|else|start|stop|file)\b(?:\s+(\d+))?", rest)
+def read_coverage(rest: str, at: Place) -> Marker | None:
+    """istanbul, c8 and v8: `ignore next [n]`, `if`, `else`, `start`, `file` (`stop` is a closing directive)."""
+    m = re.match(r"(?:istanbul|c8|v8) ignore\s+(next|if|else|start|file)\b(?:\s+(\d+))?", rest)
     if not m:
         return None
     word, count = m.group(1), int(m.group(2) or 1)
@@ -551,7 +599,7 @@ def read_coverage(rest: str, own_line: bool, on_class: bool) -> Marker | None:
     return Marker("coverage", SCOPE_BLOCK if wide else SCOPE_LINE, None)
 
 
-def read_skip(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+def read_skip(rest: str, at: Place) -> Marker | None:
     js = re.match(r"(?:(it|test|describe)\.(skip|only|todo)|x(it|describe|test))\s*\(", rest)
     if js:
         if js.group(2) == "only":
@@ -564,7 +612,7 @@ def read_skip(rest: str, own_line: bool, on_class: bool) -> Marker | None:
         module = re.search(r"allow_module_level\s*=\s*True", rest)
         return Marker("skip", SCOPE_SUITE if module else SCOPE_TEST, None)
     if re.match(r"@pytest\.mark\.|@unittest\.skip|\[Ignore\b|@Disabled\b|@Ignore\b", rest):
-        return Marker("skip", SCOPE_SUITE if on_class else SCOPE_TEST, None)     # on a class: the whole suite
+        return Marker("skip", SCOPE_SUITE if at.on_class else SCOPE_TEST, None)     # on a class: the whole suite
     if re.match(r"Skip\s*=|t\.Skip\(", rest):
         return Marker("skip", SCOPE_TEST, None)
     return None
@@ -580,20 +628,23 @@ READERS = [(re.compile(r"eslint-disable"), read_eslint),
            (re.compile(r"//\s*nolint"), read_nolint),
            (re.compile(r"@SuppressWarnings"), read_java),
            (re.compile(r"NOSONAR"), read_sonar),
-           (re.compile(r"istanbul|c8"), read_coverage)]
+           (re.compile(r"istanbul|c8|v8"), read_coverage)]
 CLASS_LINE = re.compile(r"\s*(?:[\w@]+\s+)*class\s+\w")     # `class T(...)`, `public final class OrderTest {`
+BLOCK_HEADER = re.compile(r"\s*(?:async\s+)?(?:def|class)\s")    # a Python `def` or `class` line
 
 
-def markers_of(text: str, following: str = "") -> list[Marker | None]:
+def markers_of(text: str, following: str | None = "", added: bool = True) -> list[Marker | None]:
     """Every suppression or skip on a line, in order, each read as a Marker, or None where the details cannot be read.
-    `following` is the next code line below it, which tells whether a decorator or attribute sits on a class."""
-    on_class = bool(CLASS_LINE.match(following))
+    `following` is the next code line below it, which tells whether a decorator or attribute sits on a class. When it
+    is unknown (None), an added marker is read as on a class (its widest) and a removed one as not (its narrowest)."""
+    on_class = CLASS_LINE.match(following) is not None if following is not None else added
     found = []
     for m in MARKER.finditer(text):
         rest = text[m.start():].split("aidlc-exception", 1)[0]     # an exception's text is not part of the marker
-        own_line = re.fullmatch(r"[\s#/*{<!-]*", text[:m.start()]) is not None
+        before = text[:m.start()]
+        at = Place(re.fullmatch(r"[\s#/*{<!-]*", before) is not None, on_class, BLOCK_HEADER.match(before) is not None)
         reader = next((read for head, read in READERS if head.match(rest)), read_skip)
-        found.append(reader(rest, own_line, on_class))
+        found.append(reader(rest, at))
     return found
 
 
@@ -603,41 +654,88 @@ def parse_marker(text: str, following: str = "") -> Marker | None:
     return found[0] if found else None
 
 
-def next_code_line(lines: list[tuple[str, str, str]], i: int, side: str) -> str:
-    """The next line on the same side of the hunk ('-' old, '+' new) past decorators, attributes and blank lines."""
-    for _, kind, text in lines[i + 1:]:
-        if kind == "@":
-            break
-        if kind in (side, " ") and text.strip() and not text.strip().startswith(("@", "[")):
+# A file's lines in one version: side '-' is the merge base, '+' the head (the working tree for the hook, HEAD in CI);
+# None when that version cannot be read
+Source = Callable[[str, str], list[str] | None]
+NOT_CODE = ("@", "[", "#", "//", "/*", "*")     # decorators, attributes and comments
+
+
+def following_code(file_lines: list[str], number: int) -> str | None:
+    """The first code line below line `number` (1-based), past decorators, attributes (with their continuation
+    lines), comments and blank lines; None when the file ends first."""
+    def opened(text: str) -> int:
+        return text.count("(") + text.count("[") - text.count(")") - text.count("]")
+
+    depth = max(0, opened(file_lines[number - 1])) if 0 < number <= len(file_lines) else 0     # a multi-line decorator
+    for text in file_lines[number:]:
+        stripped = text.strip()
+        if depth or stripped.startswith(("@", "[")):
+            depth = max(0, depth + opened(stripped))
+        elif stripped and not stripped.startswith(NOT_CODE):
             return text
-    return ""
+    return None
 
 
-def marker_problems(patch: str, today: dt.date) -> list[str]:
+def following_line(d: DiffLine, source: Source | None) -> str | None:
+    """The code line below a diff line, read from its own version of the file; None when it cannot be read."""
+    path = d.old_path if d.kind == "-" else d.path
+    file_lines = source(d.kind, path) if source and path and d.number else None
+    return following_code(file_lines, d.number) if file_lines is not None else None
+
+
+def closer_problems(lines: list[DiffLine], source: Source | None, today: dt.date) -> list[str]:
+    """A closing directive removed (and not added back the same in that file) extends its family's suppression to the
+    rest of the file. It is not a problem when the head file has no opener of that family left, or when an opener
+    there carries a valid exception (on its line or the line above); when the head cannot be read, it is reported."""
+    added = collections.Counter((d.path, d.text.strip()) for d in lines if d.kind == "+")
+    problems = []
+    for d in lines:
+        closer = CLOSER.search(d.text) if d.kind == "-" and not d.path.endswith(PROSE_SUFFIXES) else None
+        if not closer:
+            continue
+        if added[(d.path, d.text.strip())] > 0:
+            added[(d.path, d.text.strip())] -= 1     # moved within the file
+            continue
+        family = closer.lastgroup.replace("_", "-")
+        head = source("+", d.path) if source else None
+        if head is not None:
+            openers = [i for i, text in enumerate(head)
+                       if any(m is not None and m.family == family for m in markers_of(text))]
+            if not openers or any(valid_exception(head[i], today) or (i and valid_exception(head[i - 1], today))
+                                  for i in openers):
+                continue
+        directive = re.sub(r"\s+", " ", closer.group(closer.lastgroup))
+        problems.append(f"{d.path}: a suppression got wider (its closing {directive} was removed) without a valid "
+                        f"aidlc-exception: {d.text.strip()[:120]}")
+    return problems
+
+
+def marker_problems(patch: str, today: dt.date, source: Source | None = None) -> list[str]:
     """Judged on the net diff. An added marker is not a new suppression when the same file loses a marker of the same
     family that covers it: no wider in scope and naming every rule it names (an edited, moved or narrowed suppression).
     Each removed marker covers one added marker. A wider marker, one beyond those removed, or one whose details cannot
-    be read (fail safe) still needs its exception."""
-    lines = list(hunks(patch))
+    be read (fail safe) still needs its exception; so does a removed closing directive. `source` reads each version of
+    a file, to tell whether a decorator sits on a class; without it, the fail-safe reading applies."""
+    lines = list(diff_lines(patch))
     unused = collections.defaultdict(list)     # (path, family) -> removed markers not yet spent as a cover
-    for i, (path, kind, text) in enumerate(lines):
-        if kind == "-" and MARKER.search(text):
-            for marker in markers_of(text, next_code_line(lines, i, "-")):
+    for d in lines:
+        if d.kind == "-" and MARKER.search(d.text):
+            for marker in markers_of(d.text, following_line(d, source), added=False):
                 if marker:
-                    unused[(path, marker.family)].append(marker)
+                    unused[(d.path, marker.family)].append(marker)
     needed, previous = [], ""     # (path, text, markers) for each added marker line without a valid exception
-    for i, (path, kind, text) in enumerate(lines):
-        if kind == "@":
+    for d in lines:
+        if d.kind == "@":
             previous = ""
             continue
-        is_marker = bool(MARKER.search(text))
-        if kind == "+" and is_marker and not path.endswith(PROSE_SUFFIXES):
-            if not (valid_exception(text, today) or valid_exception(previous, today)):
-                needed.append((path, text, markers_of(text, next_code_line(lines, i, "+"))))
+        is_marker = bool(MARKER.search(d.text))
+        if d.kind == "+" and is_marker and not d.path.endswith(PROSE_SUFFIXES):
+            if not (valid_exception(d.text, today) or valid_exception(previous, today)):
+                needed.append((d.path, d.text, markers_of(d.text, following_line(d, source), added=True)))
         if is_marker:
             previous = ""     # a marker line never lends its exception to the next line
-        elif kind in ("+", " "):
-            previous = text
+        elif d.kind in ("+", " "):
+            previous = d.text
     # Widest first, each taking the narrowest removed marker that covers it, so a broad cover is not spent on a
     # narrow marker that a narrower one could cover
     readable = [(n, m) for n, (_, _, markers) in enumerate(needed) if None not in markers for m in markers]
@@ -654,15 +752,38 @@ def marker_problems(patch: str, today: dt.date) -> list[str]:
         line = text.strip()[:120]
         if None not in markers and not uncovered[n]:
             continue
-        wider = uncovered[n][0] if None not in markers else None
-        pool = unused[(path, wider.family)] if wider else []
-        if pool:
-            problems.append(f"{path}: a suppression or skip got wider ({pool.pop(0)} → {wider}) without a valid "
+        # "got wider" only when a removed marker of the family is one this added marker widens
+        pair = next(((old, new) for new in uncovered[n] for old in unused[(path, new.family)] if new.wider_than(old)),
+                    None)
+        if pair:
+            unused[(path, pair[1].family)].remove(pair[0])
+            problems.append(f"{path}: a suppression or skip got wider ({pair[0]} \u2192 {pair[1]}) without a valid "
                             f"aidlc-exception: {line}")
         else:
             problems.append(f"{path}: a suppression or skip without a valid aidlc-exception (reason, owner and an "
                             f"expiry date not past): {line}")
-    return problems
+    return problems + closer_problems(lines, source, today)
+
+
+def file_source(repo: Path, branch: Branch) -> Source:
+    """Reads a file at the merge base ('-') or at the head ('+'), once each."""
+    cache: dict[tuple[str, str], list[str] | None] = {}
+
+    def read(side: str, path: str) -> list[str] | None:
+        if (side, path) not in cache:
+            text = None
+            if side == "+" and branch.worktree:
+                file = repo / path
+                if file.is_file():
+                    text = file.read_text(encoding="utf-8", errors="replace")
+            else:
+                rev = branch.base if side == "-" else "HEAD"
+                shown = subprocess.run(["git", "-C", str(repo), "show", f"{rev}:{path}"], capture_output=True)
+                if shown.returncode == 0:
+                    text = shown.stdout.decode("utf-8", errors="replace")
+            cache[(side, path)] = None if text is None else text.splitlines()
+        return cache[(side, path)]
+    return read
 
 
 def approval_problems(branch: Branch, key_folder: str) -> list[str]:
@@ -727,7 +848,7 @@ def review(repo: Path, base: str, key: str, part: int | None = None, worktree: b
     problems = scope_problems(branch.changed, key_folder, bundles) + manifest_problems(branch.changed, bundles)
     found, notes = test_problems(branch, bundles, exempt)
     problems += found
-    problems += marker_problems(branch.net, today or dt.date.today())
+    problems += marker_problems(branch.net, today or dt.date.today(), file_source(repo, branch))
     problems += approval_problems(branch, key_folder)
     return Review(problems, notes, recipe_notes)
 

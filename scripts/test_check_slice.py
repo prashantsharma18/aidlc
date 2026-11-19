@@ -774,6 +774,129 @@ class ParseMarkerTest(unittest.TestCase):
                 self.assertIsNone(check_slice.parse_marker(text))
 
 
+def edit_one(path, before, after):
+    r = Repo(bundle(), {path: before})
+    r.commit("s1", {path: after})
+    return r.check()[0]
+
+
+class ClassScopeTest(unittest.TestCase):
+    """Item 2 fix 1: whether a marker sits on a class is read from the file, past decorators; unknown is fail safe."""
+
+    def test_a_skip_moved_onto_a_decorated_class_is_reported(self):
+        methods = "".join(f"    def test_{i}(self, m):\n        pass\n\n" for i in range(4))
+        before = ("import unittest\nfrom unittest import mock\n\n\n@mock.patch('x')\nclass T(unittest.TestCase):\n"
+                  + methods + "    @unittest.skip('f')\n    def test_a(self, m):\n        pass\n")
+        after = ("import unittest\nfrom unittest import mock\n\n\n@unittest.skip('f')\n@mock.patch('x')\n"
+                 "class T(unittest.TestCase):\n" + methods + "    def test_a(self, m):\n        pass\n")
+        problems = edit_one("tests/test_patched.py", before, after)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("(skip, test, all rules → skip, suite, all rules)", problems[0])
+
+    def test_a_suppression_moved_onto_an_annotated_class_is_reported(self):
+        methods = "".join(f"    void g{i}() {{}}\n\n" for i in range(4))
+        before = '@Entity\npublic class A {\n' + methods + '    @SuppressWarnings("unchecked")\n    void f() {}\n}\n'
+        after = '@SuppressWarnings("unchecked")\n@Entity\npublic class A {\n' + methods + '    void f() {}\n}\n'
+        problems = edit_one("src/A.java", before, after)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("(java, block, unchecked → java, file, unchecked)", problems[0])
+
+    def test_a_skip_moved_between_two_methods_is_clean(self):
+        before = ("import unittest\n\n\nclass T(unittest.TestCase):\n    @unittest.skip('f')\n"
+                  "    def test_a(self):\n        pass\n\n    def test_b(self):\n        pass\n")
+        after = ("import unittest\n\n\nclass T(unittest.TestCase):\n    def test_a(self):\n        pass\n\n"
+                 "    @unittest.skip('f')\n    def test_b(self):\n        pass\n")
+        self.assertEqual(edit_one("tests/test_moved.py", before, after), [])
+
+    def test_a_multi_line_decorator_is_skipped_to_reach_the_class(self):
+        self.assertEqual(check_slice.following_code(["@unittest.skip(", "    'f',", ")", "@mock.patch('x')",
+                                                     "# a note", "class T(unittest.TestCase):"], 1),
+                         "class T(unittest.TestCase):")
+
+    def test_an_unknown_following_line_reads_widest_when_added_and_narrowest_when_removed(self):
+        added = check_slice.markers_of("@unittest.skip('f')", None, added=True)
+        removed = check_slice.markers_of("@unittest.skip('f')", None, added=False)
+        self.assertEqual((added[0].scope_name, removed[0].scope_name), ("suite", "test"))
+        self.assertIsNone(check_slice.following_code(["@unittest.skip('f')"], 1))
+
+
+class ClosingDirectiveTest(unittest.TestCase):
+    """Item 2 fix 2: removing a closing directive extends its suppression; adding one only narrows it."""
+
+    def assert_closer_removed(self, problems, directive):
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn(f"a suppression got wider (its closing {directive} was removed) without a valid "
+                      f"aidlc-exception", problems[0])
+
+    def test_a_removed_eslint_enable_is_reported(self):
+        before = "/* eslint-disable no-console */\nconsole.log(1)\n/* eslint-enable no-console */\nconsole.log(2)\n"
+        after = "/* eslint-disable no-console */\nconsole.log(1)\nconsole.log(2)\n"
+        self.assert_closer_removed(edit_one("src/log.js", before, after), "eslint-enable")
+
+    def test_a_removed_pragma_restore_is_reported(self):
+        before = ("class A {\n#pragma warning disable CS0168\n    void F() { int x; }\n"
+                  "#pragma warning restore CS0168\n    void G() { int y; }\n}\n")
+        after = "class A {\n#pragma warning disable CS0168\n    void F() { int x; }\n    void G() { int y; }\n}\n"
+        self.assert_closer_removed(edit_one("src/A.cs", before, after), "#pragma warning restore")
+
+    def test_a_removed_pylint_enable_is_reported(self):
+        before = "# pylint: disable=no-member\nx = a.b\n# pylint: enable=no-member\ny = c.d\n"
+        after = "# pylint: disable=no-member\nx = a.b\ny = c.d\n"
+        self.assert_closer_removed(edit_one("src/calc.py", before, after), "pylint: enable")
+
+    def test_a_removed_c8_stop_is_reported(self):
+        before = "/* c8 ignore start */\nfoo()\n/* c8 ignore stop */\nbar()\n"
+        after = "/* c8 ignore start */\nfoo()\nbar()\n"
+        self.assert_closer_removed(edit_one("src/run.js", before, after), "c8 ignore stop")
+
+    def test_an_added_c8_stop_is_clean(self):
+        self.assertEqual(edit_one("src/run.js", "/* c8 ignore start */\nfoo()\nbar()\n",
+                                  "/* c8 ignore start */\nfoo()\n/* c8 ignore stop */\nbar()\n"), [])
+
+    def test_removing_an_opener_with_its_closer_is_clean(self):
+        before = "/* eslint-disable no-console */\nconsole.log(1)\n/* eslint-enable no-console */\nconsole.log(2)\n"
+        self.assertEqual(edit_one("src/log.js", before, "console.log(1)\nconsole.log(2)\n"), [])
+
+    def test_a_removed_closer_is_allowed_when_its_opener_carries_a_valid_exception(self):
+        before = "/* eslint-disable no-console */\nconsole.log(1)\n/* eslint-enable no-console */\nconsole.log(2)\n"
+        after = ("// aidlc-exception: reason=legacy logger; owner=Bo; expires=2026-12-31\n"
+                 "/* eslint-disable no-console */\nconsole.log(1)\nconsole.log(2)\n")
+        self.assertEqual(edit_one("src/log.js", before, after), [])
+
+    def test_a_closer_moved_within_the_file_is_reported_only_when_removed(self):
+        before = "/* eslint-disable no-console */\nconsole.log(1)\n/* eslint-enable no-console */\nconsole.log(2)\n"
+        after = "/* eslint-disable no-console */\n/* eslint-enable no-console */\nconsole.log(1)\nconsole.log(2)\n"
+        self.assertEqual(edit_one("src/log.js", before, after), [])
+
+
+class WideningRanksTest(unittest.TestCase):
+    """Item 2 fixes 3 to 5: "got wider" only when the added marker widens a removed one; ts and pylint ranks."""
+
+    def test_an_unrelated_removed_marker_does_not_make_a_new_one_wider(self):
+        problems = edit_one("src/calc.py", "x = 'long'  # noqa: E501\nimport os\n",
+                            "x = 'long'\nimport os  # noqa: F401\n")
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn(NEW, problems[0])
+        self.assertNotIn(WIDER, problems[0])
+
+    def test_ts_expect_error_to_ts_ignore_is_wider(self):
+        problems = edit_one("src/page.ts", "// @ts-expect-error\nexport const x: number = 'a'\n",
+                            "// @ts-ignore\nexport const x: number = 'a'\n")
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn(WIDER, problems[0])
+
+    def test_ts_ignore_to_ts_expect_error_is_clean(self):
+        self.assertEqual(edit_one("src/page.ts", "// @ts-ignore\nexport const x: number = 'a'\n",
+                                  "// @ts-expect-error\nexport const x: number = 'a'\n"), [])
+
+    def test_a_pylint_disable_moved_onto_a_def_line_is_wider(self):
+        before = "def total(a, b):\n    result = a + b  # pylint: disable=invalid-name\n    return result\n"
+        after = "def total(a, b):  # pylint: disable=invalid-name\n    result = a + b\n    return result\n"
+        problems = edit_one("src/calc.py", before, after)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("(pylint, line, invalid-name → pylint, block, invalid-name)", problems[0])
+
+
 class HookOnAnyTurnTest(unittest.TestCase):
     """T1: the Stop hook runs on every turn; with nothing approved to check it notes it and lets the session stop."""
 

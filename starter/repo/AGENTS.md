@@ -49,7 +49,7 @@ Full map: `docs/codebase-map.md`. Read it before planning a change.
   threshold), and a person approves it in the pull request; without all of these, or past its expiry date, it is
   a violation.
 - Exception format, next to the code: `aidlc-exception: reason=...; owner=...; expires=YYYY-MM-DD`, on the line or
-  the line above. The slice check rejects a suppression or skip without one, or past its date.
+  the line above. The slice check rejects a suppression or skip, or one made wider, without one or past its date.
 - Enforced: <dimension>: <threshold>, checked by `<command>`
 - Measured, not yet enforced: <dimension>: <value> on <date>
 
