@@ -330,5 +330,16 @@ class RecordTest(unittest.TestCase):
         self.assertTrue((ROOT / "docs/verification/2026-11-19-plan-20.md").is_file())
 
 
+class VerificationRecordTest(unittest.TestCase):
+    """T8: the record shows the hook blocking on a keyed branch and names what claude-code-action may load."""
+
+    def test_the_record_has_a_blocking_hook_probe_and_the_open_question(self):
+        record = read("docs/verification/2026-11-19-plan-20.md")
+        self.assertIn("feat/SHIP-7-probe", record)
+        self.assertIn("    exit 2", record)
+        self.assertIn("claude-code-action loads project settings and hooks from the pull request's checkout",
+                      " ".join(record.split()))
+
+
 if __name__ == "__main__":
     unittest.main()
