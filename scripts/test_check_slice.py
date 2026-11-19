@@ -605,6 +605,175 @@ class SuppressedLineTest(unittest.TestCase):
         self.assertEqual(len(r.check()[0]), 1)
 
 
+WIDER = "a suppression or skip got wider"
+NEW = "a suppression or skip without a valid aidlc-exception"
+
+
+class NeverWiderTest(unittest.TestCase):
+    """Item 2: an added marker is covered by a removed one of the same family only when it is no wider: its scope
+    no larger, its rules a subset. Narrowing and equal are allowed; widening, or a marker the parser cannot read, is
+    not."""
+
+    def edit(self, path, before, after):
+        r = Repo(bundle(), {path: before})
+        r.commit("s1", {path: after})
+        return r.check()[0]
+
+    def assert_widened(self, problems, old, new):
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn(WIDER, problems[0])
+        self.assertIn(f"({old} → {new})", problems[0])
+
+    def test_an_eslint_line_rule_widened_to_a_blanket_block_is_reported(self):
+        problems = self.edit("src/log.js", "// eslint-disable-next-line no-console\nconsole.log(1)\n",
+                             "/* eslint-disable */\nconsole.log(1)\n")
+        self.assert_widened(problems, "eslint, line, no-console", "eslint, block, all rules")
+
+    def test_a_noqa_code_widened_to_a_blanket_noqa_is_reported(self):
+        problems = self.edit("src/calc.py", "import os  # noqa: F401\n", "import os  # noqa\n")
+        self.assert_widened(problems, "noqa, line, F401", "noqa, line, all rules")
+
+    def test_a_type_ignore_code_widened_to_a_blanket_ignore_is_reported(self):
+        problems = self.edit("src/calc.py", "value = compute(1)  # type: ignore[arg-type]\n",
+                             "value = compute(2)  # type: ignore\n")
+        self.assert_widened(problems, "mypy, line, arg-type", "mypy, line, all rules")
+
+    def test_a_narrower_noqa_is_clean(self):
+        self.assertEqual(self.edit("src/calc.py", "import os  # noqa: F401,E501\n", "import os  # noqa: F401\n"), [])
+
+    def test_reordered_and_respaced_codes_are_clean(self):
+        self.assertEqual(self.edit("src/calc.py", "import os  # noqa: E501, F401\n",
+                                   "import os  # noqa: F401,E501\n"), [])
+
+    def test_the_same_scope_rank_is_clean(self):
+        self.assertEqual(self.edit("src/log.js", "// eslint-disable-next-line no-console\nconsole.log(1)\n",
+                                   "console.log(1) // eslint-disable-line no-console\n"), [])
+
+    def test_a_test_skip_widened_to_a_suite_skip_is_reported(self):
+        problems = self.edit("tests/total.test.ts", "it.skip('adds', () => {})\n",
+                             "describe.skip('adds', () => {})\n")
+        self.assert_widened(problems, "skip, test, all rules", "skip, suite, all rules")
+
+    def test_an_added_ts_nocheck_is_reported(self):
+        problems = self.edit("src/page.ts", "export const x = 1\n", "// @ts-nocheck\nexport const x = 1\n")
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn(NEW, problems[0])
+        self.assertIn("@ts-nocheck", problems[0])
+
+    def test_a_ts_ignore_widened_to_ts_nocheck_is_reported(self):
+        problems = self.edit("src/page.ts", "// @ts-ignore\nexport const x: number = 'a'\n",
+                             "// @ts-nocheck\nexport const x: number = 'a'\n")
+        self.assert_widened(problems, "ts, line, all rules", "ts, file, all rules")
+
+    def test_a_marker_the_parser_cannot_read_is_treated_as_new(self):
+        problems = self.edit("src/calc.py", "value = compute(1)  # type: ignore[arg-type]\n",
+                             "value = compute(2)  # type: ignore[arg-type\n")
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn(NEW, problems[0])
+        self.assertIn("# type: ignore[arg-type", problems[0])
+
+    def test_a_widened_marker_with_a_valid_exception_is_allowed(self):
+        self.assertEqual(self.edit("src/calc.py", "import os  # noqa: F401\n",
+                                   EXCEPTION_LINE + "import os  # noqa\n"), [])
+
+    def test_a_moved_file_keeps_its_parsed_markers(self):
+        body = "".join(f"line_{i} = {i}\n" for i in range(10)) + "import os  # noqa: F401, E501\n"
+        r = Repo(bundle(), {"src/calc.py": body})
+        r.git("mv", "src/calc.py", "src/calculate.py")
+        r.commit("move", {"src/calculate.py": body.replace("line_0", "first").replace("F401, E501", "E501,F401")})
+        self.assertEqual(r.check(), ([], []))
+
+    def test_a_second_added_marker_is_still_reported(self):
+        problems = self.edit("src/calc.py", "import os  # noqa: F401,E501\n",
+                             "import os  # noqa: F401\nimport sys  # noqa: E501\n")
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn(NEW, problems[0])
+        self.assertIn("import sys", problems[0])
+
+    def test_each_marker_on_a_line_needs_its_own_cover(self):
+        problems = self.edit("src/calc.py", "import os  # type: ignore[import]\n",
+                             "import os  # type: ignore[import]  # noqa\n")
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn(NEW, problems[0])
+
+    def test_a_skip_moved_from_a_test_to_its_class_is_reported(self):
+        before = ("import unittest\n\n\nclass T(unittest.TestCase):\n    @unittest.skip('flaky')\n"
+                  "    def test_a(self):\n        pass\n")
+        after = ("import unittest\n\n\n@unittest.skip('flaky')\nclass T(unittest.TestCase):\n"
+                 "    def test_a(self):\n        pass\n")
+        self.assert_widened(self.edit("tests/test_flaky.py", before, after), "skip, test, all rules",
+                            "skip, suite, all rules")
+
+    def test_a_file_level_noqa_is_wider_than_a_line_noqa(self):
+        problems = self.edit("src/calc.py", "import os  # noqa: F401\n", "# ruff: noqa: F401\nimport os\n")
+        self.assert_widened(problems, "noqa, line, F401", "noqa, file, F401")
+
+
+class ParseMarkerTest(unittest.TestCase):
+    """Item 2: each marker reads as (family, scope, rules); rules None means every rule; None means unreadable."""
+
+    def read(self, text, following=""):
+        m = check_slice.parse_marker(text, following)
+        return None if m is None else (m.family, m.scope_name, m.rules)
+
+    def test_markers_read_as_family_scope_and_rules(self):
+        line, block, file = check_slice.SCOPE_LINE, check_slice.SCOPE_BLOCK, check_slice.SCOPE_FILE
+        self.assertEqual((check_slice.SCOPE_TEST, check_slice.SCOPE_SUITE), (line, block))
+        self.assertLess(line, block)
+        self.assertLess(block, file)
+        cases = {
+            "foo() // eslint-disable-line no-console, no-alert -- legacy": ("eslint", "line",
+                                                                             {"no-console", "no-alert"}),
+            "/* eslint-disable react/no-danger */": ("eslint", "block", {"react/no-danger"}),
+            "/* eslint-disable */": ("eslint", "block", None),
+            "import os  # noqa": ("noqa", "line", None),
+            "import os  # NOQA:F401 E501": ("noqa", "line", {"F401", "E501"}),
+            "# flake8: noqa": ("noqa", "file", None),
+            "x = f()  # type: ignore[arg-type, union-attr]": ("mypy", "line", {"arg-type", "union-attr"}),
+            "# type: ignore": ("mypy", "file", None),
+            "# mypy: ignore-errors": ("mypy", "file", None),
+            "x = 1  # pylint: disable=invalid-name": ("pylint", "line", {"invalid-name"}),
+            "# pylint: disable=invalid-name,too-many-locals": ("pylint", "block",
+                                                               {"invalid-name", "too-many-locals"}),
+            "# pylint: disable=all": ("pylint", "block", None),
+            "# pylint: skip-file": ("pylint", "file", None),
+            "// @ts-expect-error: the API returns a string": ("ts", "line", None),
+            "// @ts-nocheck": ("ts", "file", None),
+            "#pragma warning disable CS0168, CA1062 // legacy": ("csharp-pragma", "block", {"CS0168", "CA1062"}),
+            "#pragma warning disable": ("csharp-pragma", "block", None),
+            '[SuppressMessage("Design", "CA1062:Validate arguments")]': ("csharp-attr", "block", {"CA1062"}),
+            "x, _ := f() //nolint:errcheck,gosec // checked above": ("go-nolint", "line", {"errcheck", "gosec"}),
+            "return err //nolint": ("go-nolint", "line", None),
+            '@SuppressWarnings({"unchecked", "rawtypes"})': ("java", "block", {"unchecked", "rawtypes"}),
+            '@SuppressWarnings("all")': ("java", "block", None),
+            "String s = q; // NOSONAR": ("sonar", "line", None),
+            "/* istanbul ignore next */": ("coverage", "line", None),
+            "/* c8 ignore start */": ("coverage", "block", None),
+            "/* istanbul ignore file */": ("coverage", "file", None),
+            "it.skip('adds', () => {})": ("skip", "test", None),
+            "xdescribe('totals', () => {})": ("skip", "suite", None),
+            "it.only('adds', () => {})": ("skip", "file", None),
+            "@pytest.mark.skip(reason='slow')": ("skip", "test", None),
+            "pytestmark = pytest.mark.skip(reason='slow')": ("skip", "suite", None),
+            'pytest.skip("no db", allow_module_level=True)': ("skip", "suite", None),
+            '[Fact(Skip = "flaky")]': ("skip", "test", None),
+            "t.Skip(\"needs docker\")": ("skip", "test", None),
+        }
+        for text, (family, scope, rules) in cases.items():
+            with self.subTest(text=text):
+                self.assertEqual(self.read(text), (family, scope, None if rules is None else frozenset(rules)))
+
+    def test_a_skip_on_a_class_is_a_suite(self):
+        self.assertEqual(self.read("@Disabled", "public class OrderTest {"), ("skip", "suite", None))
+        self.assertEqual(self.read("@Disabled", "void totals() {"), ("skip", "test", None))
+
+    def test_unreadable_details_are_none(self):
+        for text in ("x = f()  # type: ignore[arg-type", "import os  # noqa : E501", "import os  # noqa: bad",
+                     "# pylint: disable", "// eslint-disabled", "/* c8 ignore sometimes */", "@SuppressWarnings("):
+            with self.subTest(text=text):
+                self.assertIsNone(check_slice.parse_marker(text))
+
+
 class HookOnAnyTurnTest(unittest.TestCase):
     """T1: the Stop hook runs on every turn; with nothing approved to check it notes it and lets the session stop."""
 

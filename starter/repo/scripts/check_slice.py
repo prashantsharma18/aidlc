@@ -2,9 +2,9 @@
 """Checks a story branch against its approved task bundles, mechanically, so the rules hold whoever wrote the code
 (aidlc ADR 0019). It reports: a changed path outside every bundle's MAY CHANGE, or inside a MUST NOT; an existing test
 or assertion removed or changed and not restored later on the branch, outside AMENDED ASSERTIONS and approved recipe
-commits; a dependency manifest that MAY CHANGE does not name; a suppression or skip in the branch's net result without
-a valid `aidlc-exception: reason=...; owner=...; expires=YYYY-MM-DD`; and a Tier 2 or 3 plan or bundle added or
-changed in a code pull request (ADR 0020).
+commits; a dependency manifest that MAY CHANGE does not name; a suppression or skip in the branch's net result, new or
+wider than the one it replaces, without a valid `aidlc-exception: reason=...; owner=...; expires=YYYY-MM-DD`; and a
+Tier 2 or 3 plan or bundle added or changed in a code pull request (ADR 0020).
 
     python3 scripts/check_slice.py [--key KEY] [--part N] [--base REF] [--branch NAME] [--root DIR]
     python3 scripts/check_slice.py --hook        (as a Stop hook: reads the hook's JSON on stdin)
@@ -48,12 +48,25 @@ ASSERTION = re.compile(r"\bassert\b|\bassert[A-Z]\w*\s*\(|\bAssert\.|\bexpect\(|
                        r"|\.to(?:Be|Equal|Have|Throw|Match|Contain)\w*\(")
 TEST_DEF = re.compile(r"^\s*(?:async\s+)?def\s+test_\w*|\b(?:it|test)\s*\(\s*['\"`]"
                       r"|\[(?:Fact|Theory|Test|TestMethod|TestCase)\b|@Test\b")
-SUPPRESS = re.compile(r"eslint-disable|@ts-ignore|@ts-expect-error|#\s*noqa\b|#\s*type:\s*ignore|pylint:\s*disable"
+SUPPRESS = re.compile(r"eslint-disable|@ts-ignore|@ts-expect-error|@ts-nocheck|(?i:#\s*noqa\b)"
+                      r"|(?i:#\s*(?:flake8|ruff)\s*:\s*noqa\b)|#\s*type:\s*ignore|#\s*mypy:\s*ignore-errors"
+                      r"|pylint:\s*(?:disable|skip-file)"
                       r"|#pragma\s+warning\s+disable|\[SuppressMessage|//\s*nolint|@SuppressWarnings|NOSONAR"
                       r"|istanbul ignore|c8 ignore")
 SKIP = re.compile(r"\b(?:it|test|describe)\.(?:skip|only|todo)\s*\(|\bx(?:it|describe|test)\s*\("
                   r"|@pytest\.mark\.(?:skip|skipif|xfail)\b|@unittest\.skip|\bpytest\.skip\(|\[Ignore\b"
-                  r"|\bSkip\s*=\s*\"|@Disabled\b|@Ignore\b|\bt\.Skip\(")
+                  r"|\bSkip\s*=\s*\"|@Disabled\b|@Ignore\b|\bt\.Skip\("
+                  r"|\bpytestmark\b.*?\bpytest\.mark\.(?:skip|skipif|xfail)\b")
+MARKER = re.compile(f"{SUPPRESS.pattern}|{SKIP.pattern}")
+# How far a marker reaches, smallest first. A skip reads the same ranks as test < suite < file (`.only` skips the rest
+# of the file).
+SCOPE_LINE = 1                     # one line or statement
+SCOPE_BLOCK = 2                    # a block, a declaration or a class
+SCOPE_FILE = 3                     # the whole file
+SCOPE_TEST = SCOPE_LINE            # one test
+SCOPE_SUITE = SCOPE_BLOCK          # a suite, a test class or a test module
+SCOPE_NAMES = {SCOPE_LINE: "line", SCOPE_BLOCK: "block", SCOPE_FILE: "file"}
+SKIP_SCOPE_NAMES = {SCOPE_TEST: "test", SCOPE_SUITE: "suite", SCOPE_FILE: "file"}
 RECIPE_TRAILER = re.compile(r"^Recipe: (\S+@\S+)", re.MULTILINE)
 EXCEPTION = re.compile(r"aidlc-exception:\s*reason=[^;]+;\s*owner=[^;]+;\s*expires=(\d{4}-\d{2}-\d{2})")
 PROSE_SUFFIXES = (".md", ".txt", ".rst")
@@ -85,6 +98,34 @@ class Branch:
     head_docs: dict[str, str]      # the same documents now
     net: str = ""                  # the branch's net diff against the merge base, renames detected
     folder: str = ""               # the folder whose bundles scope the work (the story folder, or a part's)
+
+
+@dataclass(frozen=True)
+class Marker:
+    """A suppression or skip, read: which tool's mechanism, how far it reaches, and which rules it names."""
+    family: str                    # eslint, noqa, mypy, pylint, ts, csharp-pragma, csharp-attr, go-nolint, java,
+                                   # sonar, coverage or skip
+    scope: int                     # SCOPE_LINE < SCOPE_BLOCK < SCOPE_FILE (a skip: SCOPE_TEST < SCOPE_SUITE)
+    rules: frozenset[str] | None   # the rules or codes it names; None when it names none, so it silences every rule
+
+    @property
+    def scope_name(self) -> str:
+        return (SKIP_SCOPE_NAMES if self.family == "skip" else SCOPE_NAMES)[self.scope]
+
+    @property
+    def width(self) -> tuple[int, bool, int]:
+        """Orders markers of one family from narrowest to widest."""
+        return self.scope, self.rules is None, len(self.rules or ())
+
+    def covers(self, added: Marker) -> bool:
+        """A removed marker covers an added one that is no wider: same family, scope no larger, and every rule the
+        added one names named here too (a marker that names no rule is covered only by another that names none)."""
+        return (self.family == added.family and added.scope <= self.scope
+                and (self.rules is None or (added.rules is not None and added.rules <= self.rules)))
+
+    def __str__(self) -> str:
+        rules = ",".join(sorted(self.rules)) if self.rules is not None else "all rules"
+        return f"{self.family}, {self.scope_name}, {rules}"
 
 
 @dataclass
@@ -382,35 +423,245 @@ def valid_exception(text: str, today: dt.date) -> bool:
         return False
 
 
-def marker_of(text: str) -> str | None:
-    """The suppression or skip a line carries, spaces dropped ("#type:ignore"), or None."""
-    m = SUPPRESS.search(text) or SKIP.search(text)
-    return re.sub(r"\s+", "", m.group(0)) if m else None
+def rule_set(listed: str) -> frozenset[str]:
+    """The rule names in a list: split on commas and whitespace, order and duplicates dropped."""
+    return frozenset(name for name in re.split(r"[,\s]+", listed) if name)
+
+
+# Each reader takes the line from the marker on (`rest`), whether the marker stands on a line of its own, and whether
+# it sits on a class; it returns the Marker, or None when it cannot read the details (the caller treats that as new).
+
+def read_eslint(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+    m = re.match(r"eslint-disable(-next-line|-line)?(?=\s|\*/|--|$)(.*)", rest)
+    if not m:
+        return None
+    rules = rule_set(re.split(r"\*/|--", m.group(2), maxsplit=1)[0])     # the list ends at a description or the */
+    if any(not re.fullmatch(r"[\w@/.-]+", name) for name in rules):
+        return None
+    return Marker("eslint", SCOPE_LINE if m.group(1) else SCOPE_BLOCK, rules or None)
+
+
+def read_ts(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+    m = re.match(r"@ts-(ignore|expect-error|nocheck)\b", rest)
+    if not m:
+        return None
+    return Marker("ts", SCOPE_FILE if m.group(1) == "nocheck" else SCOPE_LINE, None)
+
+
+def read_noqa(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+    """flake8 and Ruff: `# noqa`, `# noqa: E501,F401`, and the file-level `# ruff: noqa` / `# flake8: noqa`. A colon
+    followed by anything but codes is not read (flake8 would silence everything)."""
+    m = re.match(r"#\s*(?:(flake8|ruff)\s*:\s*)?noqa\b(.*)", rest, re.IGNORECASE)
+    if not m:
+        return None
+    scope = SCOPE_FILE if m.group(1) else SCOPE_LINE
+    codes = re.match(r":\s?([A-Z]+[0-9]+(?:[,\s]+[A-Z]+[0-9]+)*)", m.group(2), re.IGNORECASE)
+    if codes:
+        return Marker("noqa", scope, rule_set(codes.group(1).upper()))
+    return None if m.group(2).lstrip().startswith(":") else Marker("noqa", scope, None)
+
+
+def read_mypy(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+    """`# type: ignore[code, ...]`; on a line of its own at the top of a file it silences the whole file, so a
+    `# type: ignore` on its own line ranks as file."""
+    if re.match(r"#\s*mypy:\s*ignore-errors\b", rest):
+        return Marker("mypy", SCOPE_FILE, None)
+    m = re.match(r"#\s*type:\s*ignore(.*)", rest)
+    if not m:
+        return None
+    tail, scope = m.group(1), SCOPE_FILE if own_line else SCOPE_LINE
+    if tail.startswith("["):
+        codes = re.match(r"\[\s*([\w-]+(?:\s*,\s*[\w-]+)*)\s*\]", tail)
+        return Marker("mypy", scope, rule_set(codes.group(1))) if codes else None
+    if tail and not tail[0].isspace() and tail[0] != "#":
+        return None
+    return Marker("mypy", scope, None)
+
+
+def read_pylint(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+    if re.match(r"pylint:\s*skip-file\b", rest):
+        return Marker("pylint", SCOPE_FILE, None)
+    m = re.match(r"pylint:\s*disable(-next)?\s*=\s*([\w-]+(?:\s*,\s*[\w-]+)*)", rest)
+    if not m:
+        return None
+    rules = rule_set(m.group(2))
+    scope = SCOPE_LINE if m.group(1) or not own_line else SCOPE_BLOCK     # on its own line: to the end of the block
+    return Marker("pylint", scope, None if "all" in rules else rules)
+
+
+def read_pragma(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+    m = re.match(r"#pragma\s+warning\s+disable\b(.*)", rest)
+    if not m:
+        return None
+    rules = rule_set(m.group(1).split("//", 1)[0])
+    if any(not re.fullmatch(r"\w+", code) for code in rules):
+        return None
+    return Marker("csharp-pragma", SCOPE_BLOCK, rules or None)
+
+
+def read_suppress_message(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+    """`[SuppressMessage("Category", "CA1062:Title")]`: the rule is the check id before the colon."""
+    m = re.match(r'\[SuppressMessage(?:Attribute)?\s*\(\s*@?"[^"]*"\s*,\s*@?"([^":]*)(?::[^"]*)?"', rest)
+    if not m or not m.group(1).strip():
+        return None
+    scope = SCOPE_FILE if on_class or re.search(r"\bScope\s*=", rest) else SCOPE_BLOCK
+    return Marker("csharp-attr", scope, frozenset({m.group(1).strip()}))
+
+
+def read_nolint(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+    """golangci-lint: `//nolint` or `//nolint:a,b`, then nothing or a `// explanation`. On a line of its own it covers
+    the declaration below it."""
+    m = re.match(r"//\s*nolint\b(.*)", rest)
+    if not m:
+        return None
+    tail, rules = m.group(1), None
+    if tail.startswith(":"):
+        listed = re.match(r":([\w-]+(?:,[\w-]+)*)(?=\s*(?://|$))", tail)
+        if not listed:
+            return None
+        rules = rule_set(listed.group(1))
+        rules = None if "all" in rules else rules
+    elif tail and not tail[0].isspace():
+        return None
+    return Marker("go-nolint", SCOPE_BLOCK if own_line else SCOPE_LINE, rules)
+
+
+def read_java(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+    m = re.match(r"@SuppressWarnings\s*\(([^)]*)\)", rest)
+    names = re.findall(r'"([^"]*)"', m.group(1)) if m else []
+    if not names:
+        return None
+    rules = frozenset(name.strip() for name in names)
+    return Marker("java", SCOPE_FILE if on_class else SCOPE_BLOCK, None if "all" in rules else rules)
+
+
+def read_sonar(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+    return Marker("sonar", SCOPE_LINE, None)
+
+
+def read_coverage(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+    """istanbul and c8: `ignore next [n]`, `if`, `else`, `start`, `stop`, `file`."""
+    m = re.match(r"(?:istanbul|c8) ignore\s+(next|if|else|start|stop|file)\b(?:\s+(\d+))?", rest)
+    if not m:
+        return None
+    word, count = m.group(1), int(m.group(2) or 1)
+    if word == "file":
+        return Marker("coverage", SCOPE_FILE, None)
+    wide = word == "start" or (word == "next" and count > 1)
+    return Marker("coverage", SCOPE_BLOCK if wide else SCOPE_LINE, None)
+
+
+def read_skip(rest: str, own_line: bool, on_class: bool) -> Marker | None:
+    js = re.match(r"(?:(it|test|describe)\.(skip|only|todo)|x(it|describe|test))\s*\(", rest)
+    if js:
+        if js.group(2) == "only":
+            return Marker("skip", SCOPE_FILE, None)     # every other test in the file stops running
+        suite = "describe" in (js.group(1), js.group(3))
+        return Marker("skip", SCOPE_SUITE if suite else SCOPE_TEST, None)
+    if re.match(r"pytestmark\b", rest):
+        return Marker("skip", SCOPE_SUITE, None)
+    if re.match(r"pytest\.skip\(", rest):
+        module = re.search(r"allow_module_level\s*=\s*True", rest)
+        return Marker("skip", SCOPE_SUITE if module else SCOPE_TEST, None)
+    if re.match(r"@pytest\.mark\.|@unittest\.skip|\[Ignore\b|@Disabled\b|@Ignore\b", rest):
+        return Marker("skip", SCOPE_SUITE if on_class else SCOPE_TEST, None)     # on a class: the whole suite
+    if re.match(r"Skip\s*=|t\.Skip\(", rest):
+        return Marker("skip", SCOPE_TEST, None)
+    return None
+
+
+READERS = [(re.compile(r"eslint-disable"), read_eslint),
+           (re.compile(r"@ts-"), read_ts),
+           (re.compile(r"#\s*(?:(?:flake8|ruff)\s*:\s*)?noqa", re.IGNORECASE), read_noqa),
+           (re.compile(r"#\s*(?:type|mypy):"), read_mypy),
+           (re.compile(r"pylint:"), read_pylint),
+           (re.compile(r"#pragma"), read_pragma),
+           (re.compile(r"\[SuppressMessage"), read_suppress_message),
+           (re.compile(r"//\s*nolint"), read_nolint),
+           (re.compile(r"@SuppressWarnings"), read_java),
+           (re.compile(r"NOSONAR"), read_sonar),
+           (re.compile(r"istanbul|c8"), read_coverage)]
+CLASS_LINE = re.compile(r"\s*(?:[\w@]+\s+)*class\s+\w")     # `class T(...)`, `public final class OrderTest {`
+
+
+def markers_of(text: str, following: str = "") -> list[Marker | None]:
+    """Every suppression or skip on a line, in order, each read as a Marker, or None where the details cannot be read.
+    `following` is the next code line below it, which tells whether a decorator or attribute sits on a class."""
+    on_class = bool(CLASS_LINE.match(following))
+    found = []
+    for m in MARKER.finditer(text):
+        rest = text[m.start():].split("aidlc-exception", 1)[0]     # an exception's text is not part of the marker
+        own_line = re.fullmatch(r"[\s#/*{<!-]*", text[:m.start()]) is not None
+        reader = next((read for head, read in READERS if head.match(rest)), read_skip)
+        found.append(reader(rest, own_line, on_class))
+    return found
+
+
+def parse_marker(text: str, following: str = "") -> Marker | None:
+    """The first suppression or skip on a line, read; None when the line has none or its details cannot be read."""
+    found = markers_of(text, following)
+    return found[0] if found else None
+
+
+def next_code_line(lines: list[tuple[str, str, str]], i: int, side: str) -> str:
+    """The next line on the same side of the hunk ('-' old, '+' new) past decorators, attributes and blank lines."""
+    for _, kind, text in lines[i + 1:]:
+        if kind == "@":
+            break
+        if kind in (side, " ") and text.strip() and not text.strip().startswith(("@", "[")):
+            return text
+    return ""
 
 
 def marker_problems(patch: str, today: dt.date) -> list[str]:
-    """Judged on the net diff. A `+` marker line is not a new suppression when the same file loses a `-` line with
-    the same marker (an edited or moved suppressed line); a marker beyond those removed still needs its exception."""
-    removed = collections.Counter((path, marker_of(text)) for path, kind, text in hunks(patch)
-                                  if kind == "-" and marker_of(text))
-    problems, previous = [], ""
-    for path, kind, text in hunks(patch):
+    """Judged on the net diff. An added marker is not a new suppression when the same file loses a marker of the same
+    family that covers it: no wider in scope and naming every rule it names (an edited, moved or narrowed suppression).
+    Each removed marker covers one added marker. A wider marker, one beyond those removed, or one whose details cannot
+    be read (fail safe) still needs its exception."""
+    lines = list(hunks(patch))
+    unused = collections.defaultdict(list)     # (path, family) -> removed markers not yet spent as a cover
+    for i, (path, kind, text) in enumerate(lines):
+        if kind == "-" and MARKER.search(text):
+            for marker in markers_of(text, next_code_line(lines, i, "-")):
+                if marker:
+                    unused[(path, marker.family)].append(marker)
+    needed, previous = [], ""     # (path, text, markers) for each added marker line without a valid exception
+    for i, (path, kind, text) in enumerate(lines):
         if kind == "@":
             previous = ""
             continue
-        marker = marker_of(text)
-        if kind == "+" and not path.endswith(PROSE_SUFFIXES) and marker:
-            if valid_exception(text, today) or valid_exception(previous, today):
-                pass
-            elif removed[(path, marker)] > 0:
-                removed[(path, marker)] -= 1
-            else:
-                problems.append(f"{path}: a suppression or skip without a valid aidlc-exception (reason, owner and an "
-                                f"expiry date not past): {text.strip()[:120]}")
-        if SUPPRESS.search(text) or SKIP.search(text):
+        is_marker = bool(MARKER.search(text))
+        if kind == "+" and is_marker and not path.endswith(PROSE_SUFFIXES):
+            if not (valid_exception(text, today) or valid_exception(previous, today)):
+                needed.append((path, text, markers_of(text, next_code_line(lines, i, "+"))))
+        if is_marker:
             previous = ""     # a marker line never lends its exception to the next line
         elif kind in ("+", " "):
             previous = text
+    # Widest first, each taking the narrowest removed marker that covers it, so a broad cover is not spent on a
+    # narrow marker that a narrower one could cover
+    readable = [(n, m) for n, (_, _, markers) in enumerate(needed) if None not in markers for m in markers]
+    uncovered = collections.defaultdict(list)
+    for n, marker in sorted(readable, key=lambda item: item[1].width, reverse=True):
+        pool = unused[(needed[n][0], marker.family)]
+        covers = [removed for removed in pool if removed.covers(marker)]
+        if covers:
+            pool.remove(min(covers, key=lambda removed: removed.width))
+        else:
+            uncovered[n].append(marker)
+    problems = []
+    for n, (path, text, markers) in enumerate(needed):
+        line = text.strip()[:120]
+        if None not in markers and not uncovered[n]:
+            continue
+        wider = uncovered[n][0] if None not in markers else None
+        pool = unused[(path, wider.family)] if wider else []
+        if pool:
+            problems.append(f"{path}: a suppression or skip got wider ({pool.pop(0)} → {wider}) without a valid "
+                            f"aidlc-exception: {line}")
+        else:
+            problems.append(f"{path}: a suppression or skip without a valid aidlc-exception (reason, owner and an "
+                            f"expiry date not past): {line}")
     return problems
 
 
