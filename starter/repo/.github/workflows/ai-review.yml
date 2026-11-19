@@ -4,8 +4,9 @@
 # jobs fail on them (fail closed). Make the job "ai-review" a required check in branch protection: on GitHub
 # Free that works on public repositories only; a private repository needs Pro or Team.
 #
-# The review reads AGENTS.md and CLAUDE.md from the BASE branch, so a pull request that loosens the rules is
-# reviewed under the rules it would loosen. Its token can comment but cannot push or approve.
+# The review reads AGENTS.md, CLAUDE.md, .claude/ and .mcp.json from the BASE branch, so a pull request that loosens
+# the rules is reviewed under the rules it would loosen, and its own settings, hooks and servers never load in the
+# review. Its token can comment but cannot push or approve.
 name: ai-review
 on:
   pull_request:
@@ -25,10 +26,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with: {fetch-depth: 0, persist-credentials: false}
+      # Each path is first removed (so a file the pull request added is gone), then restored when the base has it.
       - name: Review under the base branch's rules
         env: {BASE_REF: "${{ github.base_ref }}"}
         run: |
-          for f in AGENTS.md CLAUDE.md; do
+          for f in AGENTS.md CLAUDE.md .claude .mcp.json; do
+            git rm -r -q --cached --ignore-unmatch -- "$f"
+            rm -rf -- "$f"
             if git cat-file -e "origin/$BASE_REF:$f" 2>/dev/null; then git checkout "origin/$BASE_REF" -- "$f"; fi
           done
       # Claude Code's sandbox (CLAUDE_CODE_SUBPROCESS_ENV_SCRUB isolation) needs bubblewrap and socat.

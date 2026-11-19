@@ -48,7 +48,7 @@
     "Stop": [
       {
         "hooks": [
-          {"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/check_slice.py\" --hook --root \"$CLAUDE_PROJECT_DIR\""}
+          {"type": "command", "command": "test -f \"$CLAUDE_PROJECT_DIR/scripts/check_slice.py\" || exit 0; python3 \"$CLAUDE_PROJECT_DIR/scripts/check_slice.py\" --hook --root \"$CLAUDE_PROJECT_DIR\"", "timeout": 60}
         ]
       }
     ]

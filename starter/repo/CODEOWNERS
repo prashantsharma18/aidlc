@@ -1,6 +1,7 @@
 # Every change needs a review from its owners. Put this file at .github/CODEOWNERS and replace the teams.
 *                 @your-org/your-team
 AGENTS.md         @your-org/your-team-leads
+CLAUDE.md         @your-org/your-team-leads
 docs/codebase-map.md @your-org/your-team-leads
 plans/            @your-org/your-team-leads
 # Tests: owners must approve any change to an existing test.

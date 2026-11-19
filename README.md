@@ -49,6 +49,10 @@ The skills say what must hold. These controls make it hold:
 | Deny rules: secrets, settings, check scripts | yes | the tool's own settings, or prose only |
 | Read-only reviewer agents | yes | the tool's own agents, or prose only |
 
+CI runs the base branch's copy of the slice check, so a pull request cannot weaken the script. A pull request can
+still edit `ci.yml` itself: that edit is held by `CODEOWNERS` (`.github/` belongs to the leads) and a required
+code-owner review.
+
 On GitHub Free, branch protection, rulesets and required checks work only on public repositories. A private
 repository needs GitHub Pro (personal account) or Team (organisation). Never turn on auto-merge without required
 checks: it would merge whatever is pushed.

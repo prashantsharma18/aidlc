@@ -72,6 +72,14 @@ class StarterReviewTest(unittest.TestCase):
         self.assertIn(".github/           @your-org/your-team-leads", owners)
         self.assertIn("scripts/           @your-org/your-team-leads", owners)
 
+    def test_the_review_restores_the_base_branchs_session_settings(self):
+        step = self.review.split("- name: Review under the base branch's rules", 1)[1].split("- name:", 1)[0]
+        for name in (".claude", ".mcp.json", "AGENTS.md", "CLAUDE.md"):
+            self.assertIn(name, step)
+        self.assertIn("git rm -r -q --cached --ignore-unmatch", step)
+        owners = read("starter/repo/CODEOWNERS")
+        self.assertRegex(owners, r"(?m)^CLAUDE\.md\s+@your-org/your-team-leads$")
+
 
 REPO_DENIES = ["Edit(/.claude/**)", "Edit(/scripts/check_*.py)", "Edit(/scripts/run_slices.py)",
                "Edit(/.github/workflows/ai-review.yml)", "Edit(/CODEOWNERS)", "Edit(/.github/CODEOWNERS)"]
@@ -166,6 +174,38 @@ class WiringTest(unittest.TestCase):
         build = " ".join(read("skills/aidlc-build/SKILL.md").split())
         self.assertIn("Run the slice check named in AGENTS.md", build)
         self.assertIn("slice check", read("agents/reviewer-compliance.md"))
+
+
+class FinalReviewFixesTest(unittest.TestCase):
+    """Plan 20's final review: the CI comment tells the truth, CI falls back only when the base has no script, and the
+    Stop hook tolerates a repository without the script and cannot hang the session."""
+
+    def setUp(self):
+        self.ci = read("starter/repo/.github/workflows/ci.yml")
+
+    def test_the_ci_comment_says_who_holds_the_workflow(self):
+        self.assertNotIn("cannot weaken its own check", " ".join(self.ci.split()))
+        self.assertIn("CODEOWNERS", self.ci)
+        section = read("README.md").split("## Where the gates hold", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("ci.yml", section)
+        self.assertIn("CODEOWNERS", section)
+
+    def test_ci_falls_back_only_when_the_base_has_no_script(self):
+        self.assertIn('git cat-file -e "origin/$BASE_REF:scripts/check_slice.py"', self.ci)
+        self.assertNotIn('if ! git show "origin/$BASE_REF:scripts/check_slice.py"', self.ci)
+
+    def test_the_stop_hook_skips_a_missing_script_and_times_out(self):
+        hooks = json.loads(read("starter/repo/.claude/settings.json"))["hooks"]["Stop"]
+        entries = [h for group in hooks for h in group["hooks"] if "check_slice.py" in h["command"]]
+        self.assertEqual(len(entries), 1)
+        self.assertTrue(entries[0]["command"].startswith(
+            'test -f "$CLAUDE_PROJECT_DIR/scripts/check_slice.py" || exit 0; '), entries[0]["command"])
+        self.assertEqual(entries[0].get("timeout"), 60)
+
+    def test_compliance_reads_the_check_wherever_it_is_given(self):
+        text = read("agents/reviewer-compliance.md")
+        self.assertIn("When the slice check's output is given to you (CI or the session's Stop hook), read it first",
+                      " ".join(text.split()))
 
 
 class MergeFirstTest(unittest.TestCase):

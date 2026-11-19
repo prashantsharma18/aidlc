@@ -9,9 +9,9 @@ tools: Read, Glob, Grep
 You check that the change does what was approved, and only that.
 
 ## Work
-- Read the slice check's output in CI first: it covers scope, MUST NOT, removed tests, manifests, suppressions and
-  approved documents by code. Judge what it cannot: PINS, Skills loaded, MODE, recipe and scaffold commits, and the
-  rules in `AGENTS.md`.
+- When the slice check's output is given to you (CI or the session's Stop hook), read it first: it covers scope,
+  MUST NOT, removed tests, manifests, suppressions and approved documents by code. Judge what it cannot: PINS, Skills
+  loaded, MODE, recipe and scaffold commits, and the rules in `AGENTS.md`.
 - Every changed path is inside the bundle's MAY CHANGE (`plans/<KEY>/**` is exempt from this check), and nothing in MUST NOT changed.
 - On route D1 or F0 the brief (`plans/<KEY>/fix.md` or `plans/<KEY>/brief.md`) is the bundle: its MAY CHANGE, MUST NOT and DONE WHEN apply, its CONFIRMED line names the engineer, and every CRITERIA line (F0) or the reproduction (D1) has its test.
 - Every criterion and edge case the slice covers has a test named with its ID. No existing assertion changed, except one listed under AMENDED ASSERTIONS in the bundle (with its spec version, criterion and decider) or inside a `Recipe:` commit; any other changed assertion is a high finding.
