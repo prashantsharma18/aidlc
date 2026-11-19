@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import weakref
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
@@ -32,6 +33,7 @@ class Repo:
 
     def __init__(self, bundle_text=None, extra=None):
         self.tmp = tempfile.TemporaryDirectory()
+        weakref.finalize(self, self.tmp.cleanup)
         self.root = Path(self.tmp.name)
         files = {"src/app.py": APP, "tests/test_app.py": BASE_TEST, "AGENTS.md": "# rules\n"}
         if bundle_text is not None:
@@ -113,8 +115,13 @@ class ScopeTest(unittest.TestCase):
 
     def test_the_story_folder_is_exempt(self):
         r = Repo(bundle())
-        r.commit("note", {"plans/SHIP-7/progress-1.md": "STATUS      doing\n"})
+        r.commit("note", {"src/app.py": "x = 1\n", "plans/SHIP-7/progress-1.md": "STATUS      doing\n"})
         self.assertEqual(r.check(), ([], []))
+
+    def test_code_with_a_plan_note_is_not_documents_only(self):
+        r = Repo(bundle())
+        r.commit("mixed", {"web/page.ts": "export {}\n", "plans/SHIP-7/progress-1.md": "STATUS      doing\n"})
+        self.assertEqual(r.check()[0], ["web/page.ts: outside every bundle's MAY CHANGE"])
 
     def test_no_bundle_is_a_problem(self):
         r = Repo(None)
@@ -156,6 +163,49 @@ class ScopeTest(unittest.TestCase):
         r.git("switch", "-q", "feat/SHIP-7-x")
         r.git("merge", "-q", "--no-edit", "main")
         self.assertEqual(r.check(), ([], []))
+
+    def test_a_non_ascii_path_in_must_not_is_reported(self):
+        r = Repo(bundle(may="**"))
+        r.commit("s1", {"api/caf\u00e9.py": "x = 1\n"})
+        self.assertEqual(r.check()[0], ["api/caf\u00e9.py: changed, but a bundle's MUST NOT names it"])
+
+    def test_a_path_with_a_tab_outside_may_change_is_reported(self):
+        r = Repo(bundle())
+        r.commit("s1", {"web/a\tb.ts": "export {}\n"})
+        self.assertEqual(r.check()[0], ["web/a\tb.ts: outside every bundle's MAY CHANGE"])
+
+
+class ApprovedCopyTest(unittest.TestCase):
+    def test_a_tier_2_bundle_on_main_wins_over_the_branch_copy(self):
+        r = Repo(bundle(tier="2"))
+        r.commit("widen", {"plans/SHIP-7/bundle-1.md": bundle(tier="2", may="src/**, tests/**, web/**"),
+                           "web/page.ts": "export {}\n"})
+        self.assertEqual(r.check()[0], ["web/page.ts: outside every bundle's MAY CHANGE"])
+
+    def test_a_tier_1_bundle_travels_with_the_branch(self):
+        r = Repo(bundle(tier="1"))
+        r.commit("widen", {"plans/SHIP-7/bundle-1.md": bundle(tier="1", may="src/**, web/**"),
+                           "web/page.ts": "export {}\n"})
+        self.assertEqual(r.check(), ([], []))
+
+    def test_a_bundle_added_only_on_the_branch_is_used(self):
+        r = Repo(None)
+        r.commit("add", {"plans/SHIP-7/bundle-1.md": bundle(may="web/**"), "web/page.ts": "export {}\n",
+                         "src/app.py": "x = 1\n"})
+        self.assertEqual(r.check()[0], ["src/app.py: outside every bundle's MAY CHANGE"])
+
+    def test_a_bundle_deleted_on_the_branch_falls_back_to_main(self):
+        r = Repo(bundle())
+        (r.root / "plans/SHIP-7/bundle-1.md").unlink()
+        r.commit("drop", {"web/page.ts": "export {}\n"})
+        self.assertEqual(r.check()[0], ["web/page.ts: outside every bundle's MAY CHANGE"])
+
+    def test_a_tier_line_with_a_reason_reads_as_its_number(self):
+        self.assertEqual(check_slice.tier_of("TIER        2 (touches payments)\n"), 2)
+
+    def test_path_tokens_keep_bare_file_names(self):
+        self.assertEqual(check_slice.path_tokens("Gemfile, Dockerfile, e.g. src/**, existing assertions"),
+                         ["Gemfile", "Dockerfile", "src/**"])
 
 
 if __name__ == "__main__":

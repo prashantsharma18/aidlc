@@ -35,6 +35,7 @@ MANIFESTS = {"package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-l
              "pyproject.toml", "poetry.lock", "uv.lock", "Pipfile", "Pipfile.lock", "packages.lock.json",
              "Directory.Packages.props", "go.mod", "go.sum", "pom.xml", "build.gradle", "build.gradle.kts",
              "Cargo.toml", "Cargo.lock", "Gemfile", "Gemfile.lock"}
+PROSE = {"e.g", "i.e", "etc", "none"}     # abbreviations and words that are not paths
 MANIFEST_SUFFIXES = (".csproj", ".fsproj", ".vbproj")
 
 
@@ -87,9 +88,10 @@ def path_tokens(value: str) -> list[str]:
     tokens = []
     for raw in re.split(r"[,\s]+", value):
         token = raw.strip("`'\"").rstrip(".;:")
-        if not token or "<" in token or "{" in token:
+        if not token or "<" in token or "{" in token or token.lower() in PROSE:
             continue
-        if "/" in token or "*" in token or re.search(r"\.[A-Za-z0-9]+$", token):
+        if ("/" in token or "*" in token or re.search(r"\.[A-Za-z0-9]+$", token)
+                or token in MANIFESTS or token[0].isupper()):
             token = token.removeprefix("./").lstrip("/")
             if token:
                 tokens.append(token)
@@ -116,7 +118,7 @@ def glob_regex(glob: str) -> re.Pattern:
             out.append(re.escape(glob[i]))
             i += 1
     pattern = "".join(out) + (".*" if glob.endswith("/") else "")
-    return re.compile(pattern + r"\Z")
+    return re.compile(pattern + r"\Z", re.DOTALL)     # a file name may hold a newline
 
 
 def matches(path: str, globs: list[str]) -> bool:
@@ -151,10 +153,11 @@ def collect(repo: Path, base: str, folder: str, worktree: bool) -> Branch:
     mb = git(repo, "merge-base", base, "HEAD").strip()
     target = [] if worktree else ["HEAD"]
     changed = {}
-    for line in git(repo, "diff", "--name-status", "--no-renames", mb, *target).splitlines():
-        status, path = line.split("\t", 1)
+    # -z: git quotes non-ASCII, tab, quote and newline in paths otherwise, and a quoted path would slip past every glob
+    parts = git(repo, "diff", "--name-status", "--no-renames", "-z", mb, *target).split("\0")
+    for status, path in zip(parts[0::2], parts[1::2]):
         changed[path] = status[0]
-    untracked = git(repo, "ls-files", "--others", "--exclude-standard").splitlines() if worktree else []
+    untracked = git(repo, "ls-files", "--others", "--exclude-standard", "-z").split("\0")[:-1] if worktree else []
     for path in untracked:
         changed[path] = "A"
     patches = []
@@ -170,7 +173,7 @@ def collect(repo: Path, base: str, folder: str, worktree: bool) -> Branch:
                 lines = file.read_text(encoding="utf-8", errors="replace").splitlines()
                 patches.append(f"diff --git a/{path} b/{path}\n--- /dev/null\n+++ b/{path}\n@@ -0,0 +1 @@\n"
                                + "".join(f"+{line}\n" for line in lines))
-    at_base = set(git(repo, "ls-tree", "-r", "--name-only", mb).splitlines())
+    at_base = set(git(repo, "ls-tree", "-r", "--name-only", "-z", mb).split("\0")[:-1])
 
     def docs_in(names: list[str]) -> list[str]:
         return [p for p in names if p.startswith(folder + "/") and DOC.match(p[len(folder) + 1:])]
@@ -178,9 +181,9 @@ def collect(repo: Path, base: str, folder: str, worktree: bool) -> Branch:
     base_docs = {p: git(repo, "show", f"{mb}:{p}") for p in docs_in(sorted(at_base))}
     if worktree:
         here = [p.relative_to(repo).as_posix() for p in (repo / folder).glob("*.md")] if (repo / folder).is_dir() else []
-        head_docs = {p: (repo / p).read_text(encoding="utf-8") for p in docs_in(sorted(here))}
+        head_docs = {p: (repo / p).read_text(encoding="utf-8", errors="replace") for p in docs_in(sorted(here))}
     else:
-        now = git(repo, "ls-tree", "-r", "--name-only", "HEAD").splitlines()
+        now = git(repo, "ls-tree", "-r", "--name-only", "-z", "HEAD").split("\0")[:-1]
         head_docs = {p: git(repo, "show", f"HEAD:{p}") for p in docs_in(now)}
     return Branch(changed, patches, at_base, base_docs, head_docs)
 
