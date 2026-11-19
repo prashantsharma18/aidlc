@@ -10,8 +10,8 @@ folders into Copilot, Codex or Cursor.
 `skills/<practice>/`   engineering-practice skills (`skills/NOTICE` covers parts of the eight earlier ones)
 `skills/using-aidlc/`   the map: stages in order and the practice for each kind of work
 `agents/`   agent roles the core skills call (Claude Code subagent format)
-`evals/`   behaviour eval cases, run with `claude plugin eval .`
-`starter/repo/`, `starter/workspace/`   files a team copies once; `starter/repo/scripts/` holds `check_recipe_commit.py` and
+`evals/`   behaviour eval cases, run with `claude plugin eval .`, or on demand in CI by `.github/workflows/evals.yml`
+`starter/repo/`, `starter/workspace/`   files a team copies once; `starter/repo/scripts/` holds `check_recipe_commit.py`, `check_slice.py` (the slice check, run in CI and as a Stop hook), `check_plan.py` (the plan check) and
 `run_slices.py`
 `.claude-plugin/`   `plugin.json`, and `marketplace.json` whose one entry has the source `./`
 `scripts/validate.py`   the plugin check; `scripts/test_*.py` test it and every script above

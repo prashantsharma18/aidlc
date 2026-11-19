@@ -267,5 +267,16 @@ class EvalsWorkflowTest(unittest.TestCase):
         self.assertIn("## In CI", read("evals/README.md"))
 
 
+class RecordTest(unittest.TestCase):
+    def test_the_map_names_the_new_scripts(self):
+        mapping = read("docs/codebase-map.md")
+        for name in ("check_slice.py", "check_plan.py", "evals.yml"):
+            self.assertIn(name, mapping)
+
+    def test_the_plan_is_recorded(self):
+        self.assertIn("Plan 20", read("docs/design/2026-11-19-aidlc-6-change-list.md"))
+        self.assertTrue((ROOT / "docs/verification/2026-11-19-plan-20.md").is_file())
+
+
 if __name__ == "__main__":
     unittest.main()
