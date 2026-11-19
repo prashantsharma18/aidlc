@@ -37,6 +37,20 @@ MANIFESTS = {"package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-l
              "Cargo.toml", "Cargo.lock", "Gemfile", "Gemfile.lock"}
 PROSE = {"e.g", "i.e", "etc", "none"}     # abbreviations and words that are not paths
 MANIFEST_SUFFIXES = (".csproj", ".fsproj", ".vbproj")
+TEST_PATH = re.compile(r"(^|/)(tests?|Tests?|__tests__|specs?)/|(^|/)test_[^/]+$|_test\.\w+$|\.(test|spec)\.\w+$"
+                       r"|[a-z0-9]Tests?\.\w+$")
+ASSERTION = re.compile(r"\bassert\b|\bassert[A-Z]\w*\s*\(|\bAssert\.|\bexpect\(|\.Should\(|\bShould\.|\bassertThat\("
+                       r"|\.to(?:Be|Equal|Have|Throw|Match|Contain)\w*\(")
+TEST_DEF = re.compile(r"^\s*(?:async\s+)?def\s+test_\w*|\b(?:it|test)\s*\(\s*['\"`]"
+                      r"|\[(?:Fact|Theory|Test|TestMethod|TestCase)\b|@Test\b")
+SUPPRESS = re.compile(r"eslint-disable|@ts-ignore|@ts-expect-error|#\s*noqa\b|#\s*type:\s*ignore|pylint:\s*disable"
+                      r"|#pragma\s+warning\s+disable|\[SuppressMessage|//\s*nolint|@SuppressWarnings|NOSONAR"
+                      r"|istanbul ignore|c8 ignore")
+SKIP = re.compile(r"\b(?:it|test|describe)\.(?:skip|only|todo)\s*\(|\bx(?:it|describe|test)\s*\("
+                  r"|@pytest\.mark\.(?:skip|skipif|xfail)\b|@unittest\.skip|\bpytest\.skip\(|\[Ignore\b"
+                  r"|\bSkip\s*=\s*\"|@Disabled\b|@Ignore\b|\bt\.Skip\(")
+EXCEPTION = re.compile(r"aidlc-exception:\s*reason=[^;]+;\s*owner=[^;]+;\s*expires=(\d{4}-\d{2}-\d{2})")
+PROSE_SUFFIXES = (".md", ".txt", ".rst")
 
 
 @dataclass
@@ -164,9 +178,9 @@ def collect(repo: Path, base: str, folder: str, worktree: bool) -> Branch:
     for commit in git(repo, "rev-list", "--reverse", "--no-merges", f"{mb}..HEAD").split():
         if re.search(r"^Recipe: \S+@\S+", git(repo, "log", "-1", "--format=%B", commit), re.M):
             continue
-        patches.append(git(repo, "show", "--format=", "--no-renames", "-U1", commit))
+        patches.append(git(repo, "-c", "core.quotepath=off", "show", "--format=", "--no-renames", "-U1", commit))
     if worktree:
-        patches.append(git(repo, "diff", "--no-renames", "-U1", "HEAD"))
+        patches.append(git(repo, "-c", "core.quotepath=off", "diff", "--no-renames", "-U1", "HEAD"))
         for path in untracked:
             file = repo / path
             if file.is_file() and file.stat().st_size < 1_000_000:
@@ -229,6 +243,123 @@ def manifest_problems(changed: dict[str, str], bundles: list[Bundle]) -> list[st
             for path in sorted(changed) if is_manifest(path) and path not in named]
 
 
+def unquote(path: str) -> str:
+    """Decode a C-quoted path from a diff header ("a/caf\\303\\251.py"); an unquoted path comes back unchanged."""
+    if not (len(path) >= 2 and path.startswith('"') and path.endswith('"')):
+        return path
+    simple = {"t": b"\t", "n": b"\n", "r": b"\r", "a": b"\a", "b": b"\b", "f": b"\f", "v": b"\v",
+              '"': b'"', "\\": b"\\"}
+    inner, out, i = path[1:-1], bytearray(), 0
+    while i < len(inner):
+        c = inner[i]
+        if c == "\\" and i + 1 < len(inner):
+            octal = re.match(r"[0-7]{1,3}", inner[i + 1:])
+            if octal:
+                out.append(int(octal.group(), 8) & 0xFF)
+                i += 1 + len(octal.group())
+                continue
+            out += simple.get(inner[i + 1], inner[i + 1].encode())
+            i += 2
+        else:
+            out += c.encode()
+            i += 1
+    return out.decode("utf-8", errors="replace")
+
+
+def hunks(patch: str):
+    """Yield (path, kind, text) for each body line of a unified diff: kind is '-', '+' or ' '; '@' starts a hunk."""
+    path, in_header = None, False
+    for line in patch.splitlines():
+        if line.startswith("diff --git "):
+            path, in_header = None, True
+        elif in_header and line.startswith("--- "):
+            old = unquote(line[4:])
+            path = old[2:] if old.startswith("a/") else None
+        elif in_header and line.startswith("+++ "):
+            new = unquote(line[4:])
+            path = new[2:] if new.startswith("b/") else path
+        elif line.startswith("@@"):
+            in_header = False
+            yield path, "@", ""
+        elif not in_header and path and line[:1] in ("-", "+", " "):
+            yield path, line[0], line[1:]
+
+
+def removed_tests(patch: str) -> list[tuple[str, str]]:
+    """(file, line) for each test definition or assertion the patch removes that the same patch does not add back
+    (a moved or renamed test is not a removed one)."""
+    removed, added = [], set()
+    for path, kind, text in hunks(patch):
+        if kind == "-" and (ASSERTION.search(text) or TEST_DEF.search(text)):
+            removed.append((path, text))
+        elif kind == "+":
+            added.add(text.strip())
+    return [(p, t) for p, t in removed if t.strip() not in added]
+
+
+def test_problems(branch: Branch, bundles: list[Bundle]) -> tuple[list[str], list[str]]:
+    amended = " ".join(b.amended for b in bundles)
+    problems, notes, added_here = [], [], set()
+    for patch in branch.patches:
+        for path, text in removed_tests(patch):
+            if path not in branch.at_base or not TEST_PATH.search(path) or text.strip() in added_here:
+                continue
+            where = f"{path}: {text.strip()[:120]}"
+            if amended and (path in amended or path.rsplit("/", 1)[-1] in amended):
+                notes.append(f"amended assertion, listed under AMENDED ASSERTIONS: {where}")
+            else:
+                problems.append(f"an existing test or assertion is removed or changed: {where}")
+        added_here |= {text.strip() for _, kind, text in hunks(patch) if kind == "+"}
+    return problems, notes
+
+
+def valid_exception(text: str, today: dt.date) -> bool:
+    m = EXCEPTION.search(text)
+    if not m:
+        return False
+    try:
+        return dt.date.fromisoformat(m.group(1)) >= today
+    except ValueError:
+        return False
+
+
+def marker_problems(patch: str, today: dt.date) -> list[str]:
+    problems, previous = [], ""
+    for path, kind, text in hunks(patch):
+        if kind == "@":
+            previous = ""
+            continue
+        if kind == "+" and not path.endswith(PROSE_SUFFIXES) and (SUPPRESS.search(text) or SKIP.search(text)):
+            if not (valid_exception(text, today) or valid_exception(previous, today)):
+                problems.append(f"{path}: a suppression or skip without a valid aidlc-exception (reason, owner and an "
+                                f"expiry date not past): {text.strip()[:120]}")
+        if kind in ("+", " "):
+            previous = text
+    return problems
+
+
+def approval_problems(branch: Branch, key_folder: str) -> list[str]:
+    """ADR 0020: at Tier 2 and 3 a code pull request never adds or changes the plan or a bundle."""
+    if all(path.startswith(key_folder + "/") for path in branch.changed):
+        return []
+    tiers = [tier_of(t) or 1 for t in list(branch.base_docs.values()) + list(branch.head_docs.values())]
+    highest = max(tiers, default=1)
+    problems = []
+    for path in sorted(branch.changed):
+        if branch.changed[path] not in ("A", "M") or path not in branch.head_docs:
+            continue
+        name = path.rsplit("/", 1)[1]
+        if name in ("fix.md", "brief.md"):
+            continue
+        level = highest if name == "plan.md" else max(tier_of(branch.head_docs[path]) or 1,
+                                                      tier_of(branch.base_docs.get(path)) or 1)
+        if level >= 2:
+            verb = "added" if branch.changed[path] == "A" else "changed"
+            problems.append(f"{path}: a Tier {level} plan or bundle is {verb} in a code pull request; it merges first "
+                            f"in its own pull request, approved by the tech lead (ADR 0020)")
+    return problems
+
+
 def check(repo: Path, base: str, key: str, part: int | None = None, worktree: bool = False,
           today: dt.date | None = None) -> tuple[list[str], list[str]]:
     key_folder = f"plans/{key}"
@@ -240,4 +371,9 @@ def check(repo: Path, base: str, key: str, part: int | None = None, worktree: bo
     if not bundles:
         return [f"{folder}: no bundle or brief found; there is nothing approved to check this branch against"], []
     problems = scope_problems(branch.changed, key_folder, bundles) + manifest_problems(branch.changed, bundles)
-    return problems, []
+    found, notes = test_problems(branch, bundles)
+    problems += found
+    for patch in branch.patches:
+        problems += marker_problems(patch, today or dt.date.today())
+    problems += approval_problems(branch, key_folder)
+    return problems, notes
