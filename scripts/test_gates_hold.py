@@ -188,5 +188,26 @@ class MergeFirstTest(unittest.TestCase):
         self.assertIn("At Tier 2 and 3, the bundle is the copy merged on the default branch", build)
 
 
+TIER_TABLES = ["docs/operating-model/tiers-table.md"] + [
+    f"skills/{s}/assets/tiers.md" for s in
+    ("aidlc-start", "aidlc-intent", "aidlc-specify", "aidlc-discover", "aidlc-plan", "aidlc-review")]
+SEVERAL = ("A story that changes two or more repositories is at least Tier 2 (ADR 0021): its parts never merge on "
+           "their own, and its release has a release approver.")
+
+
+class SeveralRepositoriesTierTest(unittest.TestCase):
+    """F12 (ADR 0021): a story across several repositories is at least Tier 2."""
+
+    def test_every_tier_table_says_it(self):
+        for rel in TIER_TABLES:
+            self.assertIn(SEVERAL, " ".join(read(rel).split()), rel)
+
+    def test_start_and_plan_apply_it(self):
+        start = " ".join(read("skills/aidlc-start/SKILL.md").split())
+        plan = " ".join(read("skills/aidlc-plan/SKILL.md").split())
+        self.assertIn("A story across several repositories is at least Tier 2", start)
+        self.assertIn("A part of a story across several repositories is at least Tier 2 (ADR 0021)", plan)
+
+
 if __name__ == "__main__":
     unittest.main()

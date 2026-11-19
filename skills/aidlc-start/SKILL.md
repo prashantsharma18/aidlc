@@ -65,7 +65,7 @@ route, keeps every row already done, and names the next stage.
      to a repository: name that repository and stop.
    - One repository, started inside it: the story runs entirely here, with its documents in `plans/<KEY>/`.
    - Several repositories, or unsure (unsure counts as several): the story runs at the workspace root, with its
-     documents in `stories/<KEY>/`; each repository's part runs inside that repository.
+     documents in `stories/<KEY>/`; each repository's part runs inside that repository. A story across several repositories is at least Tier 2 (`assets/tiers.md`).
    Name the route in the index's ROUTE line: F0 (a feature, fast path), F1 (a feature in one repository), F2 (a feature across several), C (a
    change request), D1 or D2 (a defect), G (a new system).
 7. **Write the story's index** where this session runs, from `assets/story-index.md`: `plans/<KEY>/README.md` inside a

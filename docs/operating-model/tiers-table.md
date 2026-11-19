@@ -1,7 +1,7 @@
 <!-- The same table as skills/aidlc-plan/assets/tiers.md (copied into aidlc-start and aidlc-discover): change all four together. -->
 # Risk tiers
 
-Rate each dial. The tier is the highest any dial reaches. When uncertain, go up a tier: unknown owners, unknown consumers or untested behaviour count as the next tier until someone resolves them. Scope alone never makes Tier 3; it raises coordination. A higher tier adds enforcement, checkpoints and approvers, never extra stages.
+Rate each dial. The tier is the highest any dial reaches. When uncertain, go up a tier: unknown owners, unknown consumers or untested behaviour count as the next tier until someone resolves them. Scope alone never makes Tier 3; it raises coordination. A higher tier adds enforcement, checkpoints and approvers, never extra stages. A story that changes two or more repositories is at least Tier 2 (ADR 0021): its parts never merge on their own, and its release has a release approver.
 
 | | Tier 1 · routine | Tier 2 · crosses a boundary or moderate risk | Tier 3 · high risk |
 |---|---|---|---|
