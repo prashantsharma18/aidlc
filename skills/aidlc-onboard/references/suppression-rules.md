@@ -20,6 +20,7 @@ you propose it. Names and defaults change between major versions.
 | mypy | `enable_error_code = ["ignore-without-code"]` | a `# type: ignore` with no error code |
 | mypy | `warn_unused_ignores = true` | a `# type: ignore` that silences nothing |
 | pylint | `useless-suppression` | a `# pylint: disable=` that silences nothing |
+| pylint | `use-symbolic-message-instead` | a numeric message id (`E1101`) where the name (`no-member`) exists |
 
 In `pyproject.toml`:
 
@@ -32,8 +33,9 @@ enable_error_code = ["ignore-without-code"]
 warn_unused_ignores = true
 ```
 
-pylint reports `useless-suppression` only when it is enabled, and it is an informational message, so it fails the
-run only when named in `--fail-on`: `pylint --enable=useless-suppression --fail-on=useless-suppression`.
+pylint reports `useless-suppression` and `use-symbolic-message-instead` only when enabled. Both are informational
+messages, off by default, so they fail the run only when enabled and named in `--fail-on`:
+`pylint --enable=useless-suppression,use-symbolic-message-instead --fail-on=useless-suppression,use-symbolic-message-instead`.
 
 ## JavaScript and TypeScript
 
@@ -72,17 +74,19 @@ one widened from a named code, in the diff; one already in the code stays until 
 ## What the slice check does not model
 
 The slice check judges a removed closing directive (`eslint-enable`, `# pylint: enable=`, `#pragma warning restore`,
-`c8 ignore stop`) by reading the file from the top, in order. It does not know each tool's scoping rules, so two pylint
-cases slip past it unreported:
+`c8 ignore stop`) by reading the file from the top, in order. It does not know each tool's scoping rules, so some pylint
+cases slip past it unreported. For example:
 
 - **Block scope.** pylint ends an own-line `disable` or `enable` inside a function or class at the end of that block.
   The slice check lets it run on to the end of the file. So an `enable` inside a function can read as closing a
   module-level `disable`, and removing the module-level `enable` below it is missed.
 - **Names and ids.** `no-member` and `E1101` are one message to pylint but two rules to the slice check. Removing
   `enable=no-member` below `disable=E1101` is missed.
+- **Trailing pragma.** pylint applies a pragma trailing code to that line only. The slice check counts a trailing
+  `x = os.a  # pylint: enable=no-member` as a closer, so removing an own-line `enable` below it can be missed.
 
-The linters' own rules narrow the gap. pylint's `use-symbolic-message-instead` rejects the numeric ids, so every
-suppression uses one name. `useless-suppression` (above) removes a `disable` that silences nothing. Prefer a trailing
+The linters' own rules narrow the gap. pylint's `use-symbolic-message-instead` reports numeric ids, so every
+suppression can use one name. `useless-suppression` (above) reports a `disable` that silences nothing. Prefer a trailing
 `disable` or `disable-next` on the one line that needs it: the slice check reads those exactly. A reviewer still reads
 any removed `enable` in the diff.
 

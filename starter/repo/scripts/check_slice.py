@@ -816,12 +816,14 @@ def closer_problems(lines: list[DiffLine], source: Source | None, today: dt.date
     that cannot be read is reported (fail safe).
 
     The simulation reads directives in order down the file; it does not model each tool's scoping. Known limits, which
-    the linters' own rules against unused suppressions cover (the onboard skill's suppression-rules reference):
+    the linters' own rules against unused suppressions narrow (the onboard skill's suppression-rules reference):
     - pylint ends an own-line `disable` or `enable` inside a function or class at the end of that block. Here it runs
       to the end of the file, so an `enable` inside a function can close a module-level `disable` early, and removing
       the module-level `enable` below it is then missed. A `disable` inside a block can likewise read as still open.
     - pylint's symbolic names and message ids (`no-member`, `E1101`) are different rules here, so removing
       `enable=no-member` below `disable=E1101` is missed.
+    - pylint applies a pragma trailing code to that line only. A trailing `x = os.a  # pylint: enable=no-member` counts
+      as a closer here, so removing an own-line `enable` below it can be missed.
     - `c8 ignore next N` (N > 1) counts as an opener and a file-wide marker as always open: extra reports only."""
     problems = []
     for d in lines:
