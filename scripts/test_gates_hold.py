@@ -208,6 +208,18 @@ class FinalReviewFixesTest(unittest.TestCase):
                       " ".join(text.split()))
 
 
+class WorkspaceDenyRulesTest(unittest.TestCase):
+    """T7: the workspace settings deny edits to .claude/, so the per-repository rules go in before the copy, and a
+    repository added later gets its rule from the person."""
+
+    def test_the_rules_are_written_before_the_settings_are_copied(self):
+        onboard = " ".join(read("skills/aidlc-onboard/SKILL.md").split())
+        self.assertIn("add one deny rule per repository, `Edit(/<repository>/**)`, to the settings before you copy "
+                      "them in", onboard)
+        self.assertIn("ask the person to add its deny rule to `.claude/settings.json`", onboard)
+        self.assertNotIn("give it its deny rule", onboard)
+
+
 class MergeFirstTest(unittest.TestCase):
     """A2 (ADR 0020): the approval is still recorded on the work item, and at Tier 2 and 3 it is also a merge."""
 
