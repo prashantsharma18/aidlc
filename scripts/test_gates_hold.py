@@ -123,5 +123,20 @@ class WhereGatesHoldTest(unittest.TestCase):
         self.assertIn("Say which controls hold in the team's tool and on its GitHub plan", onboard)
 
 
+class AdrTest(unittest.TestCase):
+    """ADRs 0019 to 0021 record the Plan 20 decisions as Proposed, each with a decider."""
+
+    ADRS = ("0019-gates-enforced-by-code.md", "0020-approved-documents-merge-first.md",
+            "0021-several-repositories-at-least-tier-2.md")
+
+    def test_each_decision_is_recorded_with_a_decider(self):
+        for name in self.ADRS:
+            text = read(f"docs/adr/{name}")
+            self.assertRegex(text, r"Status: (Proposed|Accepted)")
+            self.assertIn("Decider: Prashant Sharma", text)
+            for heading in ("## Context", "## Decision", "## Consequences"):
+                self.assertIn(heading, text, name)
+
+
 if __name__ == "__main__":
     unittest.main()
