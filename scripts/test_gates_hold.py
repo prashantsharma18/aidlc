@@ -209,5 +209,11 @@ class SeveralRepositoriesTierTest(unittest.TestCase):
         self.assertIn("A part of a story across several repositories is at least Tier 2 (ADR 0021)", plan)
 
 
+class PlanCheckTest(unittest.TestCase):
+    def test_plan_runs_the_plan_check(self):
+        plan = " ".join(read("skills/aidlc-plan/SKILL.md").split())
+        self.assertIn("run the plan check named in AGENTS.md and fix every problem it reports", plan)
+
+
 if __name__ == "__main__":
     unittest.main()

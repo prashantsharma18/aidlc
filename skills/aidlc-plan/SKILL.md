@@ -71,7 +71,8 @@ The approved spec and its version, the approved design note (always), the eviden
    - fill RECIPE only for a deterministic tool (or, in slice 0 of route G, the approved scaffold, marked `(scaffold)`, one `Recipe:` trailer line per tool), as its own slice before any hand change (the recipe-commit rule in `aidlc-build`); the tool and its version are a dependency decision for the person.
 
    Every field is filled or marked "none".
-8. Write the plan and every bundle to `plans/<KEY>/`, never over an existing file, except the part index's rows and its PINS line. For a re-plan or a revision, raise the
+8. Write the plan and every bundle to `plans/<KEY>/`, never over an existing file, except the part index's rows and its PINS line. Before asking for approval, run the plan check named in AGENTS.md and fix every problem it reports. Its output goes in
+   the plan's pull request; the tech lead then judges the approach and the risk, not the fields. For a re-plan or a revision, raise the
    version, say what changed, and reset the `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged` rows of the part
    index to "to do". For a part of a story across several repositories, also write the part index
    `plans/<KEY>/README.md` from `assets/story-index.md`: LEVEL `part <n> of <m> in <repository>`, the PINS line of the
