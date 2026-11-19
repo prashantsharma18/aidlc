@@ -215,5 +215,30 @@ class PlanCheckTest(unittest.TestCase):
         self.assertIn("run the plan check named in AGENTS.md and fix every problem it reports", plan)
 
 
+class FeedbackTest(unittest.TestCase):
+    """A6: the /correct ranking, proof on a past mistake, and the rule table."""
+
+    def setUp(self):
+        self.feedback = " ".join(read("skills/aidlc-feedback/SKILL.md").split())
+
+    def test_the_layers_are_ranked_highest_first(self):
+        order = ["make the mistake impossible to write", "A type, or a lint rule whose error names the fix",
+                 "A test of the behaviour", "The context or the review checklist, only for what needs judgement"]
+        positions = [self.feedback.index(step) for step in order]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_each_check_is_proved_on_the_past_mistake(self):
+        self.assertIn("Prove each new check fails on the real past mistake", self.feedback)
+
+    def test_a_repeat_goes_higher(self):
+        self.assertIn("A lesson whose rule is already in the table with no enforcer is a repeat", self.feedback)
+
+    def test_the_guide_keeps_the_rule_table(self):
+        for rel in ("starter/repo/AGENTS.md", "skills/aidlc-onboard/assets/agents-md.md"):
+            text = read(rel)
+            self.assertIn("## Rules and what enforces them", text, rel)
+            self.assertIn("| Rule | Enforced by | Seen failing on |", text, rel)
+
+
 if __name__ == "__main__":
     unittest.main()

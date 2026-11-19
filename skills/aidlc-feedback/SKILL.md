@@ -26,10 +26,20 @@ The incident record (its Prevention section) or the repeated findings, and the o
 
 ## Steps
 1. List the lessons, one per line, each with its evidence.
-2. Choose each lesson's layer by its kind: behaviour that can regress goes to a test; an agent mistake that could recur goes to an eval case; missing knowledge goes to the context (rules file or map); something that must never happen, or an unsafe action, goes to a guardrail (permission, hook, CI check); something only a person can judge goes to the review checklist; a signal nobody saw goes to a measure (an alert or dashboard). Always add a regression test for every fix, and an eval case wherever an agent mistake could recur. When two layers fit, prefer the enforced one.
+2. Choose each lesson's layer, highest first, and stop at the first that works: a rule nobody can break beats a rule
+   somebody must remember.
+   1. Architecture: make the mistake impossible to write (one owner for each piece of state, one supported way,
+      internals hidden, the old way deleted).
+   2. A type, or a lint rule whose error names the fix, or a CI check; a guardrail (permission, hook) for an unsafe
+      action.
+   3. A test of the behaviour; an eval case wherever an agent mistake could recur; a measure (an alert or dashboard)
+      for a signal nobody saw.
+   4. The context or the review checklist, only for what needs judgement.
+   Always add a regression test for every fix. Prove each new check fails on the real past mistake before you propose
+   it: a check never seen failing proves nothing.
 3. Draft the change for that layer, for the owner of that source to review: load the `writing-tests` skill for a test, load the `building-ci-pipelines` skill for a CI guardrail, load the `adding-observability` skill for a signal or alert, and load the `writing-documentation` skill for the context.
 4. Fill the incident record's Prevention section from `assets/incident.md`: the lesson, the layer and where it went. Lessons from repeated review findings have no incident: write them to `feedback/<YYYY-MM-DD>-<topic>/feedback.md`.
-5. Record each change as merged or declined, with who declined it and why.
+5. Record each change as merged or declined, with who declined it and why. Add each rule and what enforces it to the rules table in `AGENTS.md`, as a draft for its owner. A lesson whose rule is already in the table with no enforcer is a repeat: route it to a higher layer in the same change.
 
 ## Produces
 `feedback.md` in `incidents/<ID>/` or `feedback/<YYYY-MM-DD>-<topic>/`: the routing table, one drafted change per lesson,
@@ -54,6 +64,7 @@ A person chooses each layer, and the owner of each source reviews its change. Th
 ## Red flags
 - A lesson routed to "be careful".
 - A prevention change with no owner.
+- A new rule with no enforcer, when a type, lint rule, check or test could hold it.
 - You are editing a guardrail or rules file directly instead of drafting it.
 
 ## Rules
