@@ -7,8 +7,8 @@ and the risk only.
 
     python3 scripts/check_plan.py <KEY> [--part N] [--spec PATH] [--root DIR]
 
-The spec is read from --spec, else plans/<KEY>/spec.md, else ../stories/<KEY>/spec.md (a workspace). Exit 0 clean,
-1 problems. Standard library only; copied into a repository from aidlc's starter/repo/scripts/, beside check_slice.py."""
+The spec is read from --spec, else plans/<KEY>/spec.md, else ../stories/<KEY>/spec.md (a workspace); a plan with no
+spec found is a problem (a brief needs none). Exit 0 clean, 1 problems. Standard library only; copied into a repository from aidlc's starter/repo/scripts/, beside check_slice.py."""
 from __future__ import annotations
 
 import argparse
@@ -79,11 +79,14 @@ def criteria_problems(name: str, found: dict[str, str]) -> list[str]:
     return problems
 
 
-def find_spec(root: Path, key: str, folder: Path, spec: Path | None) -> str:
-    for path in (spec, folder / "spec.md", root / "plans" / key / "spec.md", root.parent / "stories" / key / "spec.md"):
-        if path is not None and path.is_file():
+def find_spec(root: Path, key: str, folder: Path, spec: Path | None) -> str | None:
+    """The spec's text, or None when there is none: --spec when given (only it), else the usual places."""
+    places = [spec] if spec is not None else [folder / "spec.md", root / "plans" / key / "spec.md",
+                                              root.parent / "stories" / key / "spec.md"]
+    for path in places:
+        if path.is_file():
             return path.read_text(encoding="utf-8")
-    return ""
+    return None
 
 
 def check(root: Path, key: str, part: int | None = None, spec: Path | None = None) -> list[str]:
@@ -107,6 +110,9 @@ def check(root: Path, key: str, part: int | None = None, spec: Path | None = Non
     if not bundles:
         problems.append("plan.md: no bundle-<slice>.md beside it")
     spec_text = find_spec(root, key, folder, spec)
+    if spec_text is None:     # a plan maps the spec's criteria; with no spec read, nothing was mapped
+        problems.append(f"no spec found for {key}: pass --spec, or put spec.md in plans/{key}/ or ../stories/{key}/")
+        spec_text = ""
     version = re.search(r"Version:\s*v(\d+)", spec_text)
     texts = []
     for path in bundles:

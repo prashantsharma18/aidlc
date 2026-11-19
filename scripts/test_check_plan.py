@@ -123,5 +123,35 @@ class BriefTest(unittest.TestCase):
         self.assertEqual(problems, ["brief.md: the test for AC1 does not carry its ID: test test_total"])
 
 
+class NoSpecTest(unittest.TestCase):
+    """T2: a plan checked against no spec says so; it never passes as 'criteria mapped'."""
+
+    NO_SPEC = "no spec found for SHIP-7: pass --spec, or put spec.md in plans/SHIP-7/ or ../stories/SHIP-7/"
+
+    def test_a_plan_with_no_spec_is_a_problem(self):
+        files = full()
+        del files["repo/plans/SHIP-7/spec.md"]
+        self.assertEqual(Story(files).check(), [self.NO_SPEC])
+
+    def test_the_command_never_says_criteria_mapped_without_a_spec(self):
+        import io
+        from contextlib import redirect_stdout
+        files = full()
+        del files["repo/plans/SHIP-7/spec.md"]
+        story, out = Story(files), io.StringIO()
+        with redirect_stdout(out):
+            code = check_plan.main(["SHIP-7", "--root", str(story.root)])
+        self.assertEqual(code, 1)
+        self.assertNotIn("criteria mapped", out.getvalue())
+        self.assertIn(self.NO_SPEC, out.getvalue())
+
+    def test_a_spec_named_with_spec_that_does_not_exist_is_not_found(self):
+        story = Story(full())
+        self.assertEqual(story.check(spec=story.root / "missing.md"), [self.NO_SPEC])
+
+    def test_a_brief_needs_no_spec(self):
+        self.assertEqual(Story({"repo/plans/SHIP-7/fix.md": FIX}).check(), [])
+
+
 if __name__ == "__main__":
     unittest.main()

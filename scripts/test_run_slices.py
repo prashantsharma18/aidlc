@@ -343,5 +343,20 @@ class ApprovedOnDefaultTest(unittest.TestCase):
         self.assertEqual(code, 0)
 
 
+class LoweredTierTest(unittest.TestCase):
+    """T6: the check is decided by the higher of the merged copy's tier and the working copy's, so lowering TIER on
+    the branch does not skip it."""
+
+    def test_a_tier_2_bundle_on_main_lowered_to_tier_1_on_the_branch_cannot_start(self):
+        repo = Repo({"plans/SHIP-7/bundle-1.md": bundle("delegate with checkpoints", "2")})
+        (repo.root / "plans/SHIP-7/bundle-1.md").write_text(bundle("delegate", "1"), encoding="utf-8")
+        repo.commit("lower the tier")
+        invoke, calls = repo.agent([("done", 0, False)])
+        code, lines = repo.run(["1"], invoke)
+        self.assertEqual(code, 2)
+        self.assertIn("differs from the copy merged on main", "\n".join(lines))
+        self.assertEqual(calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()

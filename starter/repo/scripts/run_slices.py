@@ -129,18 +129,20 @@ def tree_problems(root: Path, key: str) -> list[str]:
 
 
 def approval_problems(root: Path, plans: Path, slices: list[str]) -> list[str]:
-    """ADR 0020: a Tier 2 or 3 bundle is built only from the copy merged on the default branch."""
+    """ADR 0020: a Tier 2 or 3 bundle is built only from the copy merged on the default branch. The tier is the higher
+    of the merged copy's and the working copy's, so lowering TIER on the branch does not skip the check."""
     problems, base = [], default_branch(root)
     for name in slices:
         path = document(plans, name)
         if name in BRIEFS or not path.is_file():
             continue
         text = path.read_text(encoding="utf-8")
-        level = tier(text)
-        if level is None or level < 2:
-            continue
         rel = path.relative_to(root).as_posix()
         merged = subprocess.run(["git", "show", f"{base}:{rel}"], cwd=root, capture_output=True, text=True)
+        merged_level = tier(merged.stdout) if merged.returncode == 0 else None
+        level = max(tier(text) or 1, merged_level or 1)
+        if level < 2:
+            continue
         if merged.returncode != 0:
             problems.append(f"{name}: a Tier {level} bundle is built only from the copy merged on {base}; "
                             f"it is not there yet (ADR 0020)")
