@@ -105,8 +105,8 @@ For each commit with a `Recipe:` trailer (`git log --format=%H --grep='^Recipe:'
    Then `git -C <folder> clean -fd`, so the test run leaves no stray file.
 2. Run the bundle's RECIPE there, then `git -C <folder> add -A`.
 3. `git -C <folder> diff --cached --stat <commit>` prints nothing when the commit holds exactly the tool's output.
-4. Run the test command there again, for the commit's count: the worktree now holds the commit's files. The two counts
-   must match.
+4. Run the test command there again, for the commit's count: when step 3 printed nothing, the worktree now holds
+   the commit's files. The two counts must match.
 5. Add the changed assertion lines: `git diff <commit>^ <commit> -- ':(top)<test path>'` (quote each pattern). Then
    `git worktree remove --force <folder>`.
 

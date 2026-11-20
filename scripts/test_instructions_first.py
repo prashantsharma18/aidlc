@@ -679,8 +679,9 @@ class FinalReviewTest(unittest.TestCase):
 
     def test_m5_the_build_may_edit_the_evidence_file(self):
         rule = section(skill("aidlc-build"), "## Rules").split("- You edit only inside MAY CHANGE.", 1)[1]
-        self.assertIn("your progress note and your row in the index, and the evidence file "
-                      "`plans/<KEY>/review-evidence.md`", rule)
+        self.assertIn("Of the `plans/` documents, edit only your progress note and your row in the index, plus the "
+                      "evidence file (`plans/<KEY>/review-evidence.md`, or `plans/<KEY>/part-<n>/review-evidence.md` "
+                      "for a second part), which step 9 writes.", rule)
 
     def test_m6_verify_uses_the_evidence_file_by_the_void_rule(self):
         verify = skill("aidlc-verify")

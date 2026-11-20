@@ -28,7 +28,7 @@ self-review is weak, and that an outside reviewer helps. The design records the 
 - The reviewer agents read an evidence file the session writes with plain git commands,
   `plans/<KEY>/review-evidence.md`. They keep Read, Grep and Glob, and never run a command.
 - A person decides at each gate, from evidence that git can confirm, not from claims.
-- aidlc depends on git and on no code-host feature. A team that has branch protection or required checks may use
+- aidlc depends on git and on no code-host feature, other than a pull request (a review request). A team that has branch protection or required checks may use
   them; aidlc never needs them. "Pull request" stays the common word for a pull or merge request, defined once in
   `using-aidlc`. "Change request" stays the name of route C, so it never means a pull request.
 - A skill may name plain git commands and the standard tools this table names (oasdiff, sha256sum); it never names a
