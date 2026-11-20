@@ -549,5 +549,24 @@ class NoShippedCodeTest(unittest.TestCase):
             self.assertIn("aidlc ships none", read(rel), rel)
 
 
+class RecordTest(unittest.TestCase):
+    """Task 10: the plan is recorded."""
+
+    def test_the_verification_record_exists(self):
+        record = read("docs/verification/2026-11-20-plan-22.md")
+        for heading in ("## What changed", "## How it was checked", "## Evidence", "## Not verified here",
+                        "## For the owner"):
+            self.assertIn(heading, record, heading)
+        for phrase in ("checks-v1", "ADR 0024", "python3 scripts/validate.py", "claude plugin validate ."):
+            self.assertIn(phrase, record, phrase)
+
+    def test_the_record_has_no_open_slot(self):
+        self.assertNotIn("{{", read("docs/verification/2026-11-20-plan-22.md"))
+
+    def test_the_evidence_file_has_nine_section_headings(self):
+        for rel in ("skills/aidlc-build/assets/review-evidence.md", "skills/aidlc-review/assets/review-evidence.md"):
+            self.assertEqual(len(re.findall(r"(?m)^## ", read(rel))), 9, rel)
+
+
 if __name__ == "__main__":
     unittest.main()
