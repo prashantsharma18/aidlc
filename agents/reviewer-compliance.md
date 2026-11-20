@@ -21,6 +21,10 @@ You check that the change does what was approved, and only that.
   before a step that touches a contract or another owner's code is a high finding. A note written before aidlc 4.3 has
   no STATUS or MODE line: that is not a finding.
 - The bundle's PINS match the spec, plan and contract versions the change builds on.
+- For a part of a story across several repositories, the spec pin names a home commit (`spec v<n> @ <commit>`),
+  `plans/<KEY>/criteria.md` names the same commit on its SOURCE line, and the criteria you check come from that
+  copy. A copy under `contracts/<provider>/` changes only in a slice whose MAY CHANGE names it, together with its
+  SOURCE.
 - Each assertion listed under AMENDED ASSERTIONS has its line under "Amended assertions seen red" in the progress note,
   and the cited spec version has an Amendments line.
 - A commit with a `Recipe:` trailer holds only what the bundle's RECIPE approved; the recipe check's output is in the pull request; every assertion line it lists still checks the same thing.

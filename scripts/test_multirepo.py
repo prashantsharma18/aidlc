@@ -225,5 +225,28 @@ class TemplateTest(unittest.TestCase):
         self.assertIn("nothing under `stories/<KEY>/` is moved or renamed", text)
 
 
+class PlacementTest(unittest.TestCase):
+    """F2, F3, F4, F5: the stages place each fact with its owner and read the criteria copy."""
+
+    def test_design_places_each_fact_and_files_adrs_by_scope(self):
+        design = skill("aidlc-design")
+        self.assertIn("Each fact has one owner, and only the owner changes it (ADR 0022)", design)
+        self.assertIn("Name the draft `<KEY>-adr-<n>.md` and fill its Scope", design)
+        self.assertIn("each affected repository gets a one-line ADR that links it at the home commit", design)
+        self.assertNotIn("adr-draft", design)
+
+    def test_plan_pins_the_home_commit_and_writes_the_copy(self):
+        plan = skill("aidlc-plan")
+        self.assertIn("`spec v<n> @ <commit>`", plan)
+        self.assertIn("nothing under `stories/<KEY>/` is moved or renamed", plan)
+        self.assertIn("write `plans/<KEY>/criteria.md` from `assets/criteria.md`", plan)
+
+    def test_verify_review_build_and_compliance_read_the_copy(self):
+        for rel in ("skills/aidlc-verify/SKILL.md", "skills/aidlc-review/SKILL.md", "skills/aidlc-build/SKILL.md",
+                    "agents/reviewer-compliance.md"):
+            self.assertIn("`plans/<KEY>/criteria.md`", flat(rel), rel)
+        self.assertIn("names the same commit on its SOURCE line", flat("agents/reviewer-compliance.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

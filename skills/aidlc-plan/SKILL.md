@@ -62,7 +62,10 @@ The approved spec and its version, the approved design note (always), the eviden
 5. Slice the work so each slice is testable, reviewable and reversible. The usual slices are: map (read-only); core change (tests first, behind a flag if needed); edge cases and hardening; refactor and evidence. When in doubt, split along the acceptance criteria. Isolate open questions so they block as few slices as possible. Every slice starts and ends with the repository's tests green, because `aidlc-build` stops when a slice starts red: tests written first for a change go in the slice that makes them pass, and a recipe commit goes in the same slice as the fixes its build errors force. The part's slices share one branch and one pull request, so keep the whole part within the pull-request size `reviewing-code` gives. When it would exceed it, stop and propose the split to `aidlc-design` (in one repository, to the tech lead), which may split it into two parts, each with its own branch and pull request, the second waiting for the first. A second part in the same repository keeps its plan, bundles, progress notes and index in `plans/<KEY>/part-<n>/`. A part already merged when its spec changed gets a revision: branch `<type>/<KEY>-<part>-r<n>`, pull request title `[<KEY>] part <n> of <m>, revision <r>: <what>`, and a bundle pinned to the new spec that covers only the change between the two versions.
 6. Rate the tier with `assets/tiers.md` and propose a MODE per slice within what the tier allows: hands-on (every tier), delegate with checkpoints (Tiers 1 and 2) or delegate (Tier 1). A part of a story across several repositories is at least Tier 2 (ADR 0021); the plan check reports a Tier 1 part. Write them in each bundle's TIER and MODE lines; the tech lead decides with the bundle. If unsure, choose the more hands-on mode. At Tier 2, delegate with checkpoints puts a CHECKPOINT in DO before each step that touches a contract or another owner's code. A slice with a RECIPE stops for the person's review of the recipe commit in every mode.
 7. Draft one bundle per slice, `plans/<KEY>/bundle-<slice>.md`, by filling `assets/task-bundle.md`:
-   - pin the spec, plan and contract versions in PINS, and copy that line into the part index;
+   - pin the spec, plan and contract versions in PINS, and copy that line into the part index. For a part of a story
+     across several repositories, the spec pin also names the home repository's commit where the approved spec
+     merged: `spec v<n> @ <commit>`. Once a part pins it, nothing under `stories/<KEY>/` is moved or renamed; a
+     change is a new version (ADR 0022);
    - give pointers, never pasted copies;
    - fill MAY CHANGE globs, MUST NOT, and DONE WHEN with a scope test. MAY CHANGE holds only paths and globs, separated by commas or line breaks; put a note on its own line in parentheses. A protected path (`AGENTS.md`, a published contract such as `api/**`, another team's files, and any path AGENTS.md protects) is never edited by the agent: when a slice changes one, say in the bundle's DO steps that a person applies that change, from the approved design. The story has one branch, and `aidlc-build`, `aidlc-verify` and the compliance reviewer check the whole branch's diff against the latest approved bundle, so each later bundle's MAY CHANGE also lists every path an earlier slice may change;
    - fill AMENDED ASSERTIONS with each test whose assertion the amendment changes, citing the spec version, the criterion and its decider, or `none`. These are the only assertions the slice may change;
@@ -77,7 +80,11 @@ The approved spec and its version, the approved design note (always), the eviden
    version, say what changed, and reset the `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged` rows of the part
    index to "to do". For a part of a story across several repositories, also write the part index
    `plans/<KEY>/README.md` from `assets/story-index.md`: LEVEL `part <n> of <m> in <repository>`, the PINS line of the
-   latest bundle, and the rows `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged`.
+   latest bundle, and the rows `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged`. Beside it,
+   write `plans/<KEY>/criteria.md` from `assets/criteria.md`: the part's own criteria, edge cases and non-goals,
+   copied word for word from the spec at the pinned commit, under a SOURCE line naming the home repository, the
+   spec's path and that commit. The copy is read-only: the part's CI and reviewers read it instead of the home
+   repository, and the story status command reports a copy that differs from the spec (ADR 0022).
 9. Mark this stage's row in the index (`plans/<KEY>/README.md`) as done, or as stopped with the reason.
 
 Slice 0 (route G), the first slice of each new repository, on branch `feat/<KEY>-slice-0`:

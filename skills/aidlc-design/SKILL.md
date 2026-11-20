@@ -48,7 +48,7 @@ The approved spec, the evidence pack (if any), the architecture contract (codeba
    system and needs no new reference.
 3. For each yes, draft a decision frame from `assets/decision-frame.md`: one question, one owner, checkable drivers, at least two real options (including the cheapest workaround), and the unknowns with their owners. When the change touches a trust boundary, or at Tier 3, load the `securing-code` skill and add its threat model to the frame. When it changes data or a schema, or deprecates something, load the `migrating-safely` skill.
 4. For each option, draft the impact, labelled FACT, INFERENCE or UNKNOWN, and add the strongest argument against your recommendation. At Tier 2 and above, load the `stress-testing-decisions` skill and challenge the recommended option; where an option depends on a framework's or vendor's behaviour, load the `checking-official-docs` skill and cite the official documentation.
-5. Draft the ADR from `assets/adr.md` with status Proposed, the named decider, and the consumers who must agree.
+5. Draft the ADR from `assets/adr.md` with status Proposed, the named decider, and the consumers who must agree. Name the draft `<KEY>-adr-<n>.md` and fill its Scope: a decision that governs one repository moves into that repository's `docs/adr/` once accepted; a decision across repositories stays in the home repository's `docs/adr/`, and each affected repository gets a one-line ADR that links it at the home commit (ADR 0022).
 6. Work contract first: draft the contract change and the failing provider and consumer tests before any code. The consumer tests are drafts for the consumer team, which owns them. Load the `designing-apis` skill for the contract, and load the `writing-tests` skill for its tests. The consumer tests run in the provider's CI, so a provider change that would break a consumer fails the provider's own pull request.
 7. For each consequence that must always hold, propose its enforcement (a boundary rule or a check), and show the check failing once. Advisory consequences get one line each. When the enforcement is a CI check, load the `building-ci-pipelines` skill.
 8. For a story that spans several repositories, fill the coordination plan from `assets/coordination-plan.md`: one PARTS row per repository that changes (owner, change, flag, what it waits for, undo, status), the read-only repositories, the order (contract first, then the provider behind a flag that is off, then the consumers) and the rollback of each part. Write it to `stories/<KEY>/coordination-plan.md`.
@@ -78,9 +78,15 @@ workspace root) as done, or as stopped with the reason.
 
 ## Produces
 In the story's folder (`plans/<KEY>/` in a repository, `stories/<KEY>/` at a workspace root): `design-note.md` with
-its decision frames; one `adr-draft-<n>.md` per decision, which its owner moves into the governed repository's ADR
-folder once it is accepted; `contract/` holding the drafted contract change and its failing provider and consumer
+its decision frames; one `<KEY>-adr-<n>.md` per decision, which its owner files by its Scope once it is accepted
+(step 5); `contract/` holding the drafted contract change and its failing provider and consumer
 tests, which the contract's owner applies; and, for a story across several repositories, `coordination-plan.md`.
+
+Each fact has one owner, and only the owner changes it (ADR 0022). For a story across several repositories, the
+home repository (the workspace root) holds the index, intent, spec, design note, ADR drafts, contract draft,
+coordination plan, status, release records and incidents. Each part's repository holds its plan, bundles, criteria
+copy, progress notes, evidence, pull request description, review record, its own ADRs and its code; the provider
+holds the published contract.
 
 ## Gate
 The tech lead or architect approves the design, and the consumers approve a contract change; Tier 3 adds the specialists. The ADR becomes Accepted when the design is approved, and the APPROVED line of the design note records it; the approval is recorded on the work item with its version and commit. A "none needed" note is decided and recorded by the tech lead or architect too. At Tier 2 and 3 the design (its note, ADR drafts and contract change) merges to the default branch first, in its own pull request, which the tech lead or architect approves (ADR 0020). You draft; you never approve.
