@@ -6,6 +6,9 @@
 # A published version never changes. Protect the tags with a ruleset on "api-v*" that blocks updates and deletions
 # (rulesets need a public repository on GitHub Free, or a Pro or Team plan); the consumers' online pin check reports
 # a tag that moved either way.
+#
+# With the concurrency group, GitHub keeps one pending run. When pushes land quickly, a middle version may never be
+# tagged. No tag is ever wrong. If a consumer needs that exact version, a person can tag the skipped commit by hand.
 name: contract-publish
 on:
   push:

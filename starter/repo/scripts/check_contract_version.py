@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -94,9 +95,16 @@ def run_oasdiff(oasdiff: str, base: str, revision: str, suffix: str) -> tuple[in
         old, new = Path(tmp) / f"base{suffix}", Path(tmp) / f"revision{suffix}"
         old.write_text(base, encoding="utf-8")
         new.write_text(revision, encoding="utf-8")
+        # oasdiff reads .oasdiff.* from its working directory and OASDIFF_CONFIG from its environment. Both could
+        # come from the pull request and lower a breaking change's severity, so it runs in the private temp
+        # directory with an empty config file and without the variable.
+        config = Path(tmp) / "empty-config.yaml"
+        config.write_text("", encoding="utf-8")
+        env = {k: v for k, v in os.environ.items() if k != "OASDIFF_CONFIG"}
         try:
             result = subprocess.run([oasdiff, "breaking", "--fail-on", "ERR", "--allow-external-refs=false",
-                                     str(old), str(new)], capture_output=True, text=True, timeout=300)
+                                     "--config", str(config), str(old), str(new)],
+                                    capture_output=True, text=True, timeout=300, cwd=tmp, env=env)
         except (OSError, subprocess.TimeoutExpired) as error:
             return 127, f"cannot run {oasdiff}: {error}"
     return result.returncode, (result.stdout + result.stderr).strip()

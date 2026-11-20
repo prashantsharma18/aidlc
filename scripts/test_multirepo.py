@@ -128,5 +128,63 @@ class ContractWorkflowTest(unittest.TestCase):
         self.assertIn("Edit(/scripts/check_*.py)", deny)
 
 
+def job_text(yaml_text: str, job: str) -> str:
+    """The lines of one job under `jobs:` (two-space indent), up to the next job."""
+    lines, out, on = yaml_text.splitlines(), [], False
+    for line in lines:
+        if re.match(r"^  [\w-]+:", line):
+            on = line.strip() == f"{job}:"
+        if on:
+            out.append(line)
+    return "\n".join(out)
+
+
+class ContractWorkflowHardeningTest(unittest.TestCase):
+    """Fix round 1: least privilege, no manual or privileged triggers, the base branch's scripts, full history."""
+
+    def setUp(self):
+        self.check = read("starter/repo/.github/workflows/contract-check.yml")
+        self.publish = read("starter/repo/.github/workflows/contract-publish.yml")
+        self.ci = read("starter/repo/.github/workflows/ci.yml")
+
+    def test_publish_writes_on_the_job_only_and_serialises(self):
+        top = self.publish.split("\njobs:")[0]
+        self.assertIn("permissions:\n  contents: read", top)
+        self.assertNotIn("contents: write", top)
+        self.assertIn("contents: write", job_text(self.publish, "contract-publish"))
+        self.assertIn("concurrency:", top)
+
+    def test_no_privileged_or_manual_trigger(self):
+        for name, text in (("check", self.check), ("publish", self.publish)):
+            self.assertNotIn("pull_request_target", text, name)
+            self.assertNotIn("workflow_dispatch", text, name)
+        self.assertNotIn("workflow_dispatch", self.ci)
+
+    def test_every_job_that_runs_a_contract_script_fetches_all_history(self):
+        for name, text in (("check", job_text(self.check, "contract-check")),
+                           ("publish", job_text(self.publish, "contract-publish")),
+                           ("pin", job_text(self.ci, "contract-pin"))):
+            self.assertIn("fetch-depth: 0", text, name)
+
+    def test_the_checksum_is_verified_before_the_archive_is_extracted(self):
+        block = run_blocks(self.check)[0]
+        self.assertLess(block.index("sha256sum -c -"), block.index("tar -xzf"))
+
+    def test_the_pin_job_runs_the_base_branchs_scripts(self):
+        job = job_text(self.ci, "contract-pin")
+        block = "\n".join(run_blocks(job))
+        self.assertIn("BASE_REF: ${{ github.base_ref }}", job)
+        self.assertIn("github.event_name", job)
+        for script in ("check_contract_pin.py", "check_contract_version.py"):
+            self.assertIn(f'git show "origin/$BASE_REF:scripts/{script}"', block)
+        self.assertIn('python3 "$RUNNER_TEMP/aidlc/check_contract_pin.py"', block)
+        self.assertIn("python3 scripts/check_contract_pin.py", block)
+
+    def test_publish_documents_the_skipped_middle_version(self):
+        text = " ".join(self.publish.replace("# ", " ").split())
+        self.assertIn("one pending run", text)
+        self.assertIn("tag the skipped commit by hand", text)
+
+
 if __name__ == "__main__":
     unittest.main()

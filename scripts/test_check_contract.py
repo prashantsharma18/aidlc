@@ -565,5 +565,41 @@ class ConsumerHardeningTest(unittest.TestCase):
         self.assertEqual(self.main("--online")[0], 0)
 
 
+class OasdiffIsolationTest(unittest.TestCase):
+    """The pull request's own config must not reach oasdiff: it could lower the severity of a breaking change."""
+
+    def run_it(self):
+        seen = {}
+
+        def fake(cmd, **kwargs):
+            seen["cmd"], seen["kwargs"] = cmd, kwargs
+            seen["cwd_files"] = sorted(p.name for p in Path(kwargs["cwd"]).iterdir()) if kwargs.get("cwd") else None
+            seen["config_text"] = Path(cmd[cmd.index("--config") + 1]).read_text() if "--config" in cmd else None
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+        with tempfile.TemporaryDirectory() as caller, mock.patch.dict(os.environ, {"OASDIFF_CONFIG": "/evil.yaml"}):
+            (Path(caller) / ".oasdiff.yaml").write_text("severity-levels: x\n")
+            old = os.getcwd()
+            os.chdir(caller)
+            try:
+                with mock.patch.object(check_contract_version.subprocess, "run", fake):
+                    check_contract_version.run_oasdiff("oasdiff", "a", "b", ".yaml")
+            finally:
+                os.chdir(old)
+            seen["caller"] = os.path.realpath(caller)
+        return seen
+
+    def test_oasdiff_gets_an_empty_config_and_a_private_cwd(self):
+        seen = self.run_it()
+        self.assertIn("--config", seen["cmd"])
+        self.assertEqual(seen["config_text"], "")
+        self.assertIsNotNone(seen["kwargs"].get("cwd"))
+        self.assertNotEqual(os.path.realpath(seen["kwargs"]["cwd"]), seen["caller"])
+        self.assertNotIn(".oasdiff.yaml", seen["cwd_files"])
+
+    def test_oasdiff_does_not_inherit_the_config_variable(self):
+        seen = self.run_it()
+        self.assertNotIn("OASDIFF_CONFIG", seen["kwargs"]["env"])
+
+
 if __name__ == "__main__":
     unittest.main()
