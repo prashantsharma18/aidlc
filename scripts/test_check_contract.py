@@ -9,6 +9,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "starter" / "repo" / "scripts"))
+import check_contract_pin  # noqa: E402
 import check_contract_version  # noqa: E402
 
 GIT = ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false",
@@ -211,6 +212,191 @@ class FailClosedTest(unittest.TestCase):
         (self.provider.root / "openapi.yaml").write_text(contract("1.1.0", ("/shipments",)), encoding="utf-8")
         _, notes = check_contract_version.check(self.provider.root, "openapi.yaml", str(self.tmp / "none"))
         self.assertTrue(any("pinned oasdiff" in n and "--oasdiff" in n for n in notes))
+
+
+class ConsumerTest(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.provider = Provider(Path(tmp.name))
+        self.root = Path(tmp.name) / "web-portal"
+        self.root.mkdir()
+        self.folder = self.root / "contracts" / "shipments-api"
+
+    def main(self, *argv):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = check_contract_pin.main([*argv, "--root", str(self.root)])
+        return code, out.getvalue() + err.getvalue()
+
+    def vendor(self, tag="api-v1.0.0"):
+        return self.main("--update", "shipments-api", tag, "--repository", str(self.provider.root),
+                         "--path", "openapi.yaml")
+
+    def test_no_contracts_is_clean(self):
+        self.assertEqual(self.main(), (0, "check_contract_pin: no vendored contracts\n"))
+
+    def test_update_writes_the_copy_and_its_source(self):
+        code, out = self.vendor()
+        self.assertEqual(code, 0, out)
+        source = check_contract_pin.read_source((self.folder / "SOURCE").read_text(encoding="utf-8"))
+        self.assertEqual(source["tag"], "api-v1.0.0")
+        self.assertEqual(source["commit"], git(self.provider.root, "rev-parse", "api-v1.0.0^{commit}"))
+        self.assertEqual((self.folder / "openapi.yaml").read_text(encoding="utf-8"), contract("1.0.0"))
+        self.assertEqual(self.main()[0], 0)
+        self.assertEqual(self.main("--online")[0], 0)
+
+    def test_an_edited_copy_is_a_problem(self):
+        self.vendor()
+        (self.folder / "openapi.yaml").write_text(contract("1.0.0", ("/shipments",)), encoding="utf-8")
+        code, out = self.main()
+        self.assertEqual(code, 1)
+        self.assertIn("contracts/shipments-api/openapi.yaml: differs from the copy SOURCE names (sha256)", out)
+
+    def test_a_source_missing_a_field_is_a_problem(self):
+        self.vendor()
+        text = (self.folder / "SOURCE").read_text(encoding="utf-8")
+        (self.folder / "SOURCE").write_text("\n".join(line for line in text.splitlines() if not line.startswith("commit:")),
+                                            encoding="utf-8")
+        self.assertIn("contracts/shipments-api/SOURCE: commit missing", self.main()[1])
+
+    def test_a_copy_whose_version_is_not_the_tags_is_a_problem(self):
+        self.vendor()
+        text = contract("1.1.0")
+        (self.folder / "openapi.yaml").write_text(text, encoding="utf-8")
+        source = (self.folder / "SOURCE").read_text(encoding="utf-8")
+        old = check_contract_pin.read_source(source)["sha256"]
+        (self.folder / "SOURCE").write_text(source.replace(old, check_contract_pin.sha256(text.encode())),
+                                            encoding="utf-8")
+        self.assertIn("info.version is '1.1.0', but SOURCE pins api-v1.0.0", self.main()[1])
+
+    def test_a_moved_tag_is_found_online(self):
+        self.vendor()
+        self.provider.commit(contract("1.0.0", ("/moved",)))
+        git(self.provider.root, "tag", "-f", "api-v1.0.0")
+        code, out = self.main("--online")
+        self.assertEqual(code, 1)
+        self.assertIn("a published version moved; ask the provider", out)
+
+    def test_update_moves_the_pin_to_a_named_version(self):
+        self.vendor()
+        self.provider.commit(contract("1.1.0", ("/shipments/{id}", "/shipments")))
+        git(self.provider.root, "tag", "api-v1.1.0")
+        self.assertEqual(self.main("--update", "shipments-api", "api-v1.1.0")[0], 0)
+        self.assertEqual(check_contract_pin.read_source((self.folder / "SOURCE").read_text(encoding="utf-8"))["tag"],
+                         "api-v1.1.0")
+        self.assertEqual(self.main("--online")[0], 0)
+
+    def test_update_never_follows_latest(self):
+        code, out = self.main("--update", "shipments-api", "latest", "--repository", str(self.provider.root),
+                              "--path", "openapi.yaml")
+        self.assertEqual(code, 2)
+        self.assertIn("never latest", out)
+
+    def test_an_unpublished_tag_cannot_be_fetched(self):
+        code, out = self.vendor("api-v9.0.0")
+        self.assertEqual(code, 1)
+        self.assertIn("cannot fetch api-v9.0.0", out)
+
+
+class ConsumerFailClosedTest(unittest.TestCase):
+    """A check never passes silently: a missing, unreadable or malformed pin, or an unreachable provider, is a problem."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.provider = Provider(Path(tmp.name))
+        self.root = Path(tmp.name) / "web-portal"
+        self.root.mkdir()
+        self.folder = self.root / "contracts" / "shipments-api"
+
+    main = ConsumerTest.main
+    vendor = ConsumerTest.vendor
+
+    def source_edit(self, old: str, new: str):
+        text = (self.folder / "SOURCE").read_text(encoding="utf-8")
+        (self.folder / "SOURCE").write_text(text.replace(old, new), encoding="utf-8")
+
+    def test_a_folder_without_a_source_is_a_problem(self):
+        self.folder.mkdir(parents=True)
+        code, out = self.main()
+        self.assertEqual(code, 1)
+        self.assertIn("contracts/shipments-api: no SOURCE", out)
+
+    def test_a_source_that_cannot_be_read_is_a_problem(self):
+        self.folder.mkdir(parents=True)
+        (self.folder / "SOURCE").write_bytes(b"\xff\xfe\x00 not utf-8")
+        code, out = self.main()
+        self.assertEqual(code, 1)
+        self.assertIn("contracts/shipments-api/SOURCE: cannot be read", out)
+
+    def test_a_missing_copy_is_a_problem(self):
+        self.vendor()
+        (self.folder / "openapi.yaml").unlink()
+        code, out = self.main()
+        self.assertEqual(code, 1)
+        self.assertIn("no openapi.yaml beside SOURCE", out)
+
+    def test_a_tag_that_is_not_strict_semver_is_a_problem(self):
+        self.vendor()
+        for bad in ("api-v01.0.0", "api-v1.0", "latest", "api-v1.0.0-rc1"):
+            self.source_edit("api-v1.0.0", bad)
+            code, out = self.main()
+            self.assertEqual(code, 1, bad)
+            self.assertIn("is not a published version", out)
+            self.source_edit(bad, "api-v1.0.0")
+
+    def test_an_abbreviated_commit_is_a_problem(self):
+        self.vendor()
+        commit = check_contract_pin.read_source((self.folder / "SOURCE").read_text(encoding="utf-8"))["commit"]
+        self.source_edit(commit, commit[:12])
+        self.assertIn("commit must be the full 40-character commit", self.main()[1])
+
+    def test_online_with_an_unreachable_provider_is_a_problem(self):
+        self.vendor()
+        repository = check_contract_pin.read_source((self.folder / "SOURCE").read_text(encoding="utf-8"))["repository"]
+        self.source_edit(repository, str(self.root / "no-such-repository"))
+        self.assertEqual(self.main()[0], 0)
+        code, out = self.main("--online")
+        self.assertEqual(code, 1)
+        self.assertIn("cannot fetch api-v1.0.0", out)
+
+    def test_online_when_the_tag_no_longer_has_the_path_is_a_problem(self):
+        self.vendor()
+        self.source_edit("openapi.yaml", "docs/openapi.yaml")
+        code, out = self.main("--online")
+        self.assertEqual(code, 1)
+
+    def test_update_needs_a_repository_and_path_the_first_time(self):
+        code, out = self.main("--update", "shipments-api", "api-v1.0.0")
+        self.assertEqual(code, 2)
+        self.assertIn("pass --repository and --path", out)
+
+    def test_update_refuses_a_tag_that_is_not_strict_semver(self):
+        for bad in ("api-v01.0.0", "api-v1.0", "api-v1.0.0\n"):
+            code, out = self.main("--update", "shipments-api", bad, "--repository", str(self.provider.root),
+                                  "--path", "openapi.yaml")
+            self.assertEqual(code, 2, repr(bad))
+        self.assertFalse(self.folder.exists())
+
+    def test_update_refuses_a_provider_name_that_leaves_contracts(self):
+        code, _ = self.main("--update", "../escape", "api-v1.0.0", "--repository", str(self.provider.root),
+                            "--path", "openapi.yaml")
+        self.assertEqual(code, 2)
+
+    def test_update_refuses_a_copy_whose_version_is_not_the_tags(self):
+        self.provider.commit(contract("2.0.0"))
+        git(self.provider.root, "tag", "api-v1.5.0")
+        code, out = self.main("--update", "shipments-api", "api-v1.5.0", "--repository", str(self.provider.root),
+                              "--path", "openapi.yaml")
+        self.assertEqual(code, 1)
+        self.assertIn("info.version is '2.0.0', but the tag is api-v1.5.0", out)
+        self.assertFalse(self.folder.exists())
+
+    def test_update_refuses_a_path_with_no_file_name(self):
+        code, _ = self.main("--update", "shipments-api", "api-v1.0.0", "--repository", str(self.provider.root),
+                            "--path", "docs/")
+        self.assertEqual(code, 2)
 
 
 if __name__ == "__main__":
