@@ -66,7 +66,7 @@ Full map: `docs/codebase-map.md`. Read it before planning a change.
 ## Rules and what enforces them
 Kept by `aidlc-feedback`. Every check named here lives in this repository (its tests, linters, type checks,
 CI or AI tool settings), never in aidlc (ADR 0024). A rule held only by prose is a candidate for a check; a
-check is listed only after it was seen failing on a real past mistake.
+check is listed only after it was seen failing on a real past mistake, with the failing run's command and output recorded in `feedback.md`.
 
 | Rule | Enforced by | Seen failing on |
 |---|---|---|

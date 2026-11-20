@@ -378,6 +378,17 @@ class FeedbackInStructureTest(unittest.TestCase):
             text = flat(rel)
             self.assertIn("Every check named here lives in this repository", text, rel)
             self.assertIn("a check is listed only after it was seen failing on a real past mistake", text, rel)
+            self.assertIn("with the failing run's command and output recorded in `feedback.md`", text, rel)
+
+    def test_the_proof_fails_on_the_mistake_passes_on_the_fix_and_asks_before_a_new_tool(self):
+        feedback = skill("aidlc-feedback")
+        for phrase in ("copy the new check into that folder and see it fail there",
+                       "then run it on the fixed code and see it pass",
+                       "A check that fails in both places, or passes in both, is not proven.",
+                       "A check that needs a new tool, lint plugin, dependency or CI step is proposed to its owner and "
+                       "waits for the answer.",
+                       "record the failing run's command and output in `feedback.md`"):
+            self.assertIn(phrase, feedback, phrase)
 
 
 if __name__ == "__main__":
