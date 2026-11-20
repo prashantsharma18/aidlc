@@ -1182,5 +1182,27 @@ class HookOnAnyTurnTest(unittest.TestCase):
                       "otherwise report them.", err)
 
 
+class ContractPinScopeTest(unittest.TestCase):
+    """Plan 21 (F9): moving a vendored contract pin is planned work, inside a bundle whose MAY CHANGE names it."""
+
+    PIN = {"contracts/orders-api/openapi.yaml": "openapi: 3.0.3\n", "contracts/orders-api/SOURCE": "tag: api-v1.1.0\n"}
+
+    def test_a_pin_moved_outside_may_change_is_a_problem(self):
+        r = Repo(bundle())
+        r.commit("move the pin", self.PIN)
+        self.assertEqual(r.check()[0], ["contracts/orders-api/SOURCE: outside every bundle's MAY CHANGE",
+                                        "contracts/orders-api/openapi.yaml: outside every bundle's MAY CHANGE"])
+
+    def test_a_pin_moved_in_its_own_slice_is_clean(self):
+        r = Repo(bundle(may="src/**, tests/**, contracts/orders-api/**"))
+        r.commit("move the pin", self.PIN)
+        self.assertEqual(r.check(), ([], []))
+
+    def test_a_pin_named_in_must_not_stays_out(self):
+        r = Repo(bundle(may="**", must_not="AGENTS.md, contracts/**"))
+        r.commit("move the pin", self.PIN)
+        self.assertIn("contracts/orders-api/SOURCE: changed, but a bundle's MUST NOT names it", r.check()[0])
+
+
 if __name__ == "__main__":
     unittest.main()

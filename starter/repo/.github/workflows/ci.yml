@@ -44,3 +44,20 @@ jobs:
             cp scripts/check_slice.py "$RUNNER_TEMP/aidlc/check_slice.py"
           fi
           python3 "$RUNNER_TEMP/aidlc/check_slice.py" --base "origin/$BASE_REF" --branch "$HEAD_REF"
+  # A consumer's vendored contracts (contracts/<provider>/) match their SOURCE: the published tag, its commit and the
+  # copy's sha256 (aidlc ADR 0022). Offline, so the check never needs the provider. A repository with no contracts/
+  # passes. Make "contract-pin" a required check where the repository consumes a contract.
+  contract-pin:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Vendored contracts match their SOURCE
+        run: |
+          if [ -f scripts/check_contract_pin.py ]; then
+            python3 scripts/check_contract_pin.py
+          else
+            echo "no contract pin check in this repository"
+          fi

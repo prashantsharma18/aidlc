@@ -36,6 +36,10 @@ Full map: `docs/codebase-map.md`. Read it before planning a change.
   it stops at the first slice that does not end done, and never pushes
 - Slice check, on the story's branch (CI and the session's Stop hook run it too): `python3 scripts/check_slice.py`
 - Plan check, before asking for the plan's approval: `python3 scripts/check_plan.py <KEY> [--part <n>]`
+- Contract pin, a consumer's vendored contracts match their SOURCE (CI runs it too): `python3 scripts/check_contract_pin.py`;
+  move a pin only to a published tag, in its own slice: `python3 scripts/check_contract_pin.py --update <provider> api-v<version>`
+- Contract check, a provider's contract against its last published tag (CI runs it with oasdiff):
+  `python3 scripts/check_contract_version.py --contract <path> --oasdiff <oasdiff binary>`
 - {{run one test file}}: {{exact command}}
 
 ## Legacy
@@ -79,3 +83,5 @@ Kept by `aidlc-feedback`. A rule held only by prose is a candidate for a check.
 ## Where to look
 - Decisions: {{decision record folder}}
 - Owners: {{CODEOWNERS path}}
+- Contract: {{path of the OpenAPI file this repository owns, or none}}, published as tags `api-v{{version}}`; copies
+  of other repositories' contracts: `contracts/{{provider}}/`, read-only, each with its SOURCE

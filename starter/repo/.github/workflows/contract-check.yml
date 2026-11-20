@@ -1,0 +1,44 @@
+# The provider's contract check (aidlc ADR 0022; change list F9, decision D9). Keep this file in a repository that
+# owns a contract; a consumer deletes it. Set CONTRACT to the path AGENTS.md names, and make "contract-check" a
+# required check in branch protection (GitHub Free: public repositories only).
+#
+# It compares the pull request's contract with the last published version (the highest api-v* tag): a changed
+# contract must raise info.version, and a breaking change must raise its MAJOR, with each consumer's agreement
+# recorded in the pull request description, which the code owner checks. oasdiff is the release binary at a pinned
+# version, checked against its published sha256 before it runs, and it never follows external $refs.
+name: contract-check
+on:
+  pull_request:
+permissions:
+  contents: read
+env:
+  CONTRACT: openapi.yaml
+  OASDIFF_VERSION: 1.35.0
+  OASDIFF_SHA256: a8023002fcb2eaa7f5758148a9303cb63d33b939886df312268bc0fc7b939140
+jobs:
+  contract-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: oasdiff, at a pinned version and checksum
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/oasdiff.tar.gz" \
+            "https://github.com/oasdiff/oasdiff/releases/download/v${OASDIFF_VERSION}/oasdiff_${OASDIFF_VERSION}_linux_amd64.tar.gz"
+          echo "${OASDIFF_SHA256}  $RUNNER_TEMP/oasdiff.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/oasdiff.tar.gz" -C "$RUNNER_TEMP" oasdiff
+      - name: A changed contract raises its version; a breaking change raises MAJOR
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/aidlc"
+          if git cat-file -e "origin/$BASE_REF:scripts/check_contract_version.py" 2>/dev/null; then
+            git show "origin/$BASE_REF:scripts/check_contract_version.py" > "$RUNNER_TEMP/aidlc/check_contract_version.py"
+          else
+            cp scripts/check_contract_version.py "$RUNNER_TEMP/aidlc/check_contract_version.py"
+          fi
+          python3 "$RUNNER_TEMP/aidlc/check_contract_version.py" --contract "$CONTRACT" --oasdiff "$RUNNER_TEMP/oasdiff"

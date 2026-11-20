@@ -1,0 +1,37 @@
+# Publishes the provider's contract (aidlc ADR 0022; change list F9). On every push to the default branch, it tags
+# the commit api-v<info.version> when that version is not published yet, so a version exists only once it passed
+# review and the contract-check on its pull request. A consumer pins that tag. Set CONTRACT to the path AGENTS.md
+# names; a consumer deletes this file. Only this job may write, and only tags.
+#
+# A published version never changes. Protect the tags with a ruleset on "api-v*" that blocks updates and deletions
+# (rulesets need a public repository on GitHub Free, or a Pro or Team plan); the consumers' online pin check reports
+# a tag that moved either way.
+name: contract-publish
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency: {group: contract-publish, cancel-in-progress: false}
+env:
+  CONTRACT: openapi.yaml
+jobs:
+  contract-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Tag a new contract version
+        run: |
+          TAG="$(python3 scripts/check_contract_version.py --contract "$CONTRACT" --publish-tag)"
+          if [ -z "$TAG" ]; then
+            echo "no new contract version to publish"
+            exit 0
+          fi
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
+          echo "published $TAG"

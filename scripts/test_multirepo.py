@@ -81,5 +81,52 @@ class HygieneTest(unittest.TestCase):
         self.assertEqual(VANISHING.findall(re.sub(r"`[^`\n]*`", "", read("skills/aidlc-onboard/assets/workspace.md"))), [])
 
 
+class ContractWorkflowTest(unittest.TestCase):
+    """F9: the provider publishes from its default branch and checks every change; the consumer checks its copy."""
+
+    def setUp(self):
+        self.check = read("starter/repo/.github/workflows/contract-check.yml")
+        self.publish = read("starter/repo/.github/workflows/contract-publish.yml")
+        self.ci = read("starter/repo/.github/workflows/ci.yml")
+
+    def test_every_action_is_pinned_and_no_run_block_interpolates(self):
+        for name, text in (("contract-check", self.check), ("contract-publish", self.publish), ("ci", self.ci)):
+            self.assertEqual(pinned_uses(text), [], name)
+            for block in run_blocks(text):
+                self.assertNotIn("${{", block, name)
+
+    def test_oasdiff_is_pinned_by_version_and_checksum(self):
+        self.assertIn("OASDIFF_VERSION: 1.35.0", self.check)
+        self.assertIn("OASDIFF_SHA256: a8023002fcb2eaa7f5758148a9303cb63d33b939886df312268bc0fc7b939140", self.check)
+        self.assertIn("sha256sum -c -", self.check)
+        script = read("starter/repo/scripts/check_contract_version.py")
+        self.assertIn('"breaking", "--fail-on", "ERR", "--allow-external-refs=false"', script)
+
+    def test_the_check_runs_the_base_branchs_script_read_only(self):
+        self.assertIn('git show "origin/$BASE_REF:scripts/check_contract_version.py"', self.check)
+        self.assertIn("ref: ${{ github.event.pull_request.head.sha }}", self.check)
+        self.assertNotIn("contents: write", self.check)
+
+    def test_only_the_publish_job_writes_and_only_from_main(self):
+        self.assertEqual(self.publish.count("contents: write"), 1)
+        self.assertIn("branches: [main]", self.publish)
+        self.assertIn("--publish-tag", self.publish)
+        self.assertIn("rulesets need a public repository on GitHub Free", " ".join(self.publish.split()))
+
+    def test_ci_checks_the_vendored_contracts(self):
+        self.assertIn("contract-pin:", self.ci)
+        self.assertIn("python3 scripts/check_contract_pin.py", self.ci)
+
+    def test_the_guide_names_the_commands(self):
+        for rel in ("starter/repo/AGENTS.md", "skills/aidlc-onboard/assets/agents-md.md"):
+            text = read(rel)
+            self.assertIn("python3 scripts/check_contract_pin.py --update <provider> api-v<version>", text, rel)
+            self.assertIn("python3 scripts/check_contract_version.py --contract <path>", text, rel)
+
+    def test_the_session_cannot_edit_the_contract_scripts(self):
+        deny = json.loads(read("starter/repo/.claude/settings.json"))["permissions"]["deny"]
+        self.assertIn("Edit(/scripts/check_*.py)", deny)
+
+
 if __name__ == "__main__":
     unittest.main()
