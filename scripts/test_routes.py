@@ -168,8 +168,7 @@ class RoutesTest(unittest.TestCase):
 
     def test_the_workspace_names_the_status_command(self):
         for rel in ("starter/workspace/WORKSPACE.md", "skills/aidlc-onboard/assets/workspace.md"):
-            self.assertIn("`python3 scripts/story_status.py <KEY> --write`", read(rel), rel)
-        self.assertIn("story_status.py", skill("aidlc-onboard"))
+            self.assertIn("writes `stories/<KEY>/status.md`", read(rel), rel)
         self.assertIn("Status is derived", read("skills/aidlc-design/assets/coordination-plan.md"))
 
     def test_design_amends_a_contract_at_the_story_level(self):
@@ -193,7 +192,7 @@ class RoutesTest(unittest.TestCase):
     def test_release_checks_every_part_and_runs_the_integration_check(self):
         text = skill("aidlc-release")
         self.assertIn("When the story spans several repositories", text)
-        self.assertIn("--check-release", text)
+        self.assertIn("fill the Parts table in `assets/readiness.md`", text)
         self.assertIn("integration check", text)
         self.assertIn("provider first", text)
 

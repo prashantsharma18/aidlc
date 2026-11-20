@@ -74,7 +74,7 @@ class HygieneTest(unittest.TestCase):
     def test_the_workspace_guide_names_the_command_and_the_owner(self):
         for rel in ("starter/workspace/WORKSPACE.md", "skills/aidlc-onboard/assets/workspace.md"):
             text = flat(rel)
-            self.assertIn("`python3 scripts/story_status.py --write-gitignore`", text, rel)
+            self.assertIn("a person adds or removes the repository's line in the root's `.gitignore`", text, rel)
             self.assertIn("## Runtime environment", read(rel), rel)
             self.assertIn("Each fact has one owner, and only the owner changes it (ADR 0022)", text, rel)
             self.assertNotIn("never by copy", text, rel)
@@ -267,7 +267,7 @@ class DecisionsTest(unittest.TestCase):
         self.assertIn("Link the spec by its GitHub permalink at the commit where it merged", skill("aidlc-specify"))
 
     def test_release_reads_the_real_merge_state(self):
-        self.assertIn("takes each part's merge state from its pull request on GitHub when it can", skill("aidlc-release"))
+        self.assertIn("its `merged` row reads done", skill("aidlc-release"))
 
     def test_onboard_sets_up_the_home_repository(self):
         onboard = skill("aidlc-onboard")
@@ -361,7 +361,7 @@ class OnlinePinCheckTest(unittest.TestCase):
 
     def test_release_runs_the_online_check(self):
         release = skill("aidlc-release")
-        self.assertIn("runs the contract pin command's online check (named in its AGENTS.md) before release", release)
+        self.assertIn("checks its copy before release with the commands in `designing-apis`", release)
         self.assertIn("a moved tag stops the release", release)
 
     def test_the_reviewer_checks_a_pin_move_and_its_pins_item(self):

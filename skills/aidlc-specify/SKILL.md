@@ -60,8 +60,8 @@ Amendment mode:
    | Unaffected | The tech lead decides and tells you why; you record it as an `UNAFFECTED <repository> spec v<n>: <why>, <who>, <date>` line in the story index, with how it was confirmed |
    | Released | Not a change request: a new story with its own key |
 
-   For a story across several repositories, raise the CURRENT line in the story index; the story status command then
-   marks every part pinned to the old spec "re-plan". In the original story's index, add an `aidlc-specify (amendment)` row that
+   For a story across several repositories, raise the CURRENT line in the story index; the next `status.md` the AI derives
+   then marks every part pinned to the old spec "re-plan". In the original story's index, add an `aidlc-specify (amendment)` row that
    links the change request.
 
 Last: Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a

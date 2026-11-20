@@ -23,13 +23,16 @@
 ## Tools
 - Tracker: <site, project>; read issues with <tool>; never transition an issue; creating or commenting asks first.
 
-## Commands
-- Story status, after any part moves: `python3 scripts/story_status.py <KEY> --write` (writes `stories/<KEY>/status.md`).
-- Before release, with every repository on its default branch after `git pull`:
-  `python3 scripts/story_status.py <KEY> --check-release` (fails unless every part is merged at the current versions).
-- After the repository table above changes, a person runs `python3 scripts/story_status.py --write-gitignore` (the
-  session at this root may write only under `stories/`, `incidents/` and `feedback/`). The root's `.gitignore` then
-  lists every repository, so this home repository never tracks their files.
+## Status and release
+- Story status, after any part moves: the AI at this root runs `git -C <repository> fetch`, reads each part's
+  index on its default branch (`git -C <repository> show origin/<default branch>:plans/<KEY>/README.md`) and
+  writes `stories/<KEY>/status.md`. Nobody edits that file by hand.
+- Before release, `aidlc-release` fills one row per part in `stories/<KEY>/readiness.md` from git: merged on the
+  default branch, pinned to the current spec at a home commit on this repository's default branch, and a
+  criteria copy that matches the spec. A person confirms each row.
+- When the repository table above changes, a person adds or removes the repository's line in the root's
+  `.gitignore` (`/<repository>/`), so this home repository never tracks its files. The session at this root may
+  write only under `stories/`, `incidents/` and `feedback/`.
 
 ## Rules
 - A repository's own rules apply to its code. Read its AGENTS.md before reasoning about it, and say when two

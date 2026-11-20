@@ -73,11 +73,12 @@ Amendment mode:
    published tag) must agree with that classification.
 3. The consumers approve the new version on the tracker. Record it in the ADR and in the story index's CURRENT line.
    Once the provider's pull request merges, its default branch publishes the tag `api-v<version>`. Each consumer
-   moves its copy to that tag with the contract pin command named in its AGENTS.md, in a slice whose MAY CHANGE
-   names `contracts/<provider>/**`. Never point a consumer at an unpublished version.
-4. Run the story status command named in WORKSPACE.md: every part pinned to the old version shows "re-plan". Those
-   parts return to `aidlc-plan`; their bundles are approved again. In one repository there is no coordination plan or
-   status command: list the bundles that pin the old version and mark them for re-plan.
+   moves its copy to that tag, with the commands in `designing-apis`, in a slice whose MAY CHANGE names
+   `contracts/<provider>/**`. Never point a consumer at an unpublished version.
+4. Read each part's PINS line on its repository's default branch, with
+   `git -C <repository> show origin/<default branch>:plans/<KEY>/README.md`, and mark every part pinned to the old
+   version "re-plan" in `status.md`. Those parts return to `aidlc-plan`; their bundles are approved again. In one
+   repository there is no coordination plan: list the bundles that pin the old version and mark them for re-plan.
 
 Last: Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
 workspace root) as done, or as stopped with the reason.

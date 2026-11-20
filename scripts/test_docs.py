@@ -113,9 +113,6 @@ class ReviewFixesTest(unittest.TestCase):
         self.assertIn("`UNAFFECTED <repository> spec v<n>: <why>, <who>, <date>` line in the story index", self.routes)
         self.assertIn("The story index (an `UNAFFECTED` line)", self.sheet)
 
-    def test_i2_the_status_command_writes_with_write(self):
-        self.assertIn("python3 scripts/story_status.py <KEY> --write", self.routes)
-
     def test_i3_a_defect_without_a_reproduction_stops(self):
         self.assertIn('ask["Ask the reporter, and stop"]', read(ROUTES))
 

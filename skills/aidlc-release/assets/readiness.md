@@ -29,6 +29,14 @@ The worst of the five decides.
 - [ ] Rollback: {{fastest route}}, pre-approved for on-call, rehearsed in staging on {{YYYY-MM-DD}}
 - [ ] Runbook: {{path}}
 
+## Parts (a story across several repositories)
+One row per part, filled by the AI from git (`aidlc-release`, step 1) and confirmed by a person. Any "no" blocks the
+release. Leave this section out for a story in one repository.
+
+| Repository | Part | Merged on its default branch | Pins the current spec at a home commit on the home default branch | Criteria copy matches the spec | Contract copy matches its SOURCE and tag | Confirmed by |
+|---|---|---|---|---|---|---|
+| {{repository}} | {{n of m}} | {{yes, at commit, or no}} | {{yes: spec version and home commit, or no}} | {{yes, or the lines that differ}} | {{yes, no, or no contract}} | {{who, YYYY-MM-DD, how it was confirmed}} |
+
 ## Decision
 Owning team's confirmation of monitoring and rollback: {{who}}, {{YYYY-MM-DD}}, {{how it was confirmed: in the session, or where it was checked}}
 

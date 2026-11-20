@@ -8,8 +8,8 @@
 - **Changed since the last version:** {{what changed, or "first version"}}
 
 This is a copy. The spec in the home repository is the original, and only its owner changes it. The part's CI, its
-reviewers and its AI review read this copy, so they never need the home repository. The story status command reports
-any line here that is not in the spec at the commit below.
+reviewers and its AI review read this copy, so they never need the home repository. Before release,
+`aidlc-release` compares each line here with the spec at the commit below; a line that differs blocks the release.
 
 ```text
 SOURCE     {{home repository}} stories/{{KEY}}/spec.md @ {{home commit}} (spec v{{n}})

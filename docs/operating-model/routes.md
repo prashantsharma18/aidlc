@@ -120,8 +120,8 @@ flowchart TB
 
 The story stays one tracker item. Each repository's share is a part: a row in `stories/<KEY>/coordination-plan.md`,
 its own branch `feat/<KEY>-<part>` and its own pull request, titled `[<KEY>] part <n> of <m>: <what>`. At the root,
-`python3 scripts/story_status.py <KEY> --write` reads every part's index and writes `stories/<KEY>/status.md`;
-with `--check-release` it is the check `aidlc-release` runs.
+the AI reads every part's index on its repository's default branch with git and writes `stories/<KEY>/status.md`;
+before release, `aidlc-release` fills one row per part from the same reads, and a person confirms each row.
 
 ### C · change request
 
@@ -230,7 +230,7 @@ A review finding in one part is one of two kinds:
 
 ## A criterion changes after code exists (C)
 
-The tech lead classifies each part by its state; the status script flags every part whose bundle pins the old spec.
+The tech lead classifies each part by its state; `status.md` flags every part whose bundle pins the old spec.
 
 | Part's state | Action |
 |---|---|

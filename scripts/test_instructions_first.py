@@ -250,5 +250,52 @@ class BuildAndPlanTest(unittest.TestCase):
                       flat("skills/aidlc-plan/assets/plan.md"))
 
 
+class StoryLevelTest(unittest.TestCase):
+    """Task 4: a story's status and its release come from git and a person's confirmation; the contract checks are
+    commands the team runs in its own CI."""
+
+    FILES = ("skills/aidlc-start/assets/story-index.md", "skills/aidlc-plan/assets/story-index.md",
+             "skills/aidlc-plan/assets/criteria.md", "skills/aidlc-design/assets/coordination-plan.md",
+             "starter/workspace/stories/README.md", "starter/workspace/WORKSPACE.md",
+             "skills/aidlc-onboard/assets/workspace.md", "skills/aidlc-specify/SKILL.md",
+             "skills/aidlc-design/SKILL.md", "skills/aidlc-release/SKILL.md", "skills/designing-apis/SKILL.md",
+             "docs/operating-model/routes.md", "docs/operating-model/workspace-and-repositories.md")
+
+    def test_no_story_level_file_names_the_status_or_contract_scripts(self):
+        for rel in self.FILES:
+            text = flat(rel)
+            for name in ("story_status", "story status command", "status script", "check_contract_",
+                         "contract pin command", "contract-publish.yml", "contract-check", "--check-release"):
+                self.assertNotIn(name, text, f"{rel}: {name}")
+
+    def test_status_is_derived_from_git(self):
+        for rel in ("starter/workspace/WORKSPACE.md", "skills/aidlc-onboard/assets/workspace.md"):
+            text = flat(rel)
+            self.assertIn("`git -C <repository> show origin/<default branch>:plans/<KEY>/README.md`", text, rel)
+            self.assertIn("Nobody edits that file by hand.", text, rel)
+            self.assertIn("a person adds or removes the repository's line in the root's `.gitignore`", text, rel)
+        self.assertIn("the AI at the workspace root reads each part's index on its repository's default branch with git",
+                      flat("skills/aidlc-design/assets/coordination-plan.md"))
+
+    def test_release_fills_one_row_per_part_and_a_person_confirms(self):
+        release = skill("aidlc-release")
+        for phrase in ("fill the Parts table in `assets/readiness.md`", "The person confirms each row.",
+                       "`git merge-base --is-ancestor <commit> origin/<default branch>`",
+                       "The table is the release check. Any mismatch it reports blocks the release."):
+            self.assertIn(phrase, release, phrase)
+        readiness = read("skills/aidlc-release/assets/readiness.md")
+        self.assertIn("## Parts (a story across several repositories)", readiness)
+        self.assertEqual(readiness.count("- [ ] "), 10)
+
+    def test_designing_apis_gives_the_contract_commands(self):
+        text = flat("skills/designing-apis/SKILL.md")
+        for command in ("oasdiff breaking <last copy> <path> --fail-on ERR --allow-external-refs=false",
+                        "sha256sum -c -", "git ls-remote --tags <repository> 'refs/tags/api-v<version>*'",
+                        "git tag api-v<version> <merge commit>",
+                        "git clone --depth 1 --branch api-v<version> <repository> <folder>"):
+            self.assertIn(command, text, command)
+        self.assertIn("with the commands in `designing-apis` (`sha256sum -c` against its SOURCE", skill("aidlc-release"))
+
+
 if __name__ == "__main__":
     unittest.main()

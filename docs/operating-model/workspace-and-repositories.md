@@ -46,7 +46,7 @@ workspace root ── release (flags on in the plan's order) ─► the story is
 | Level | Defined by | Tracked by |
 |---|---|---|
 | Story | the tracker | its status; its development panel lists every branch and PR named with its key |
-| Part | a row of `stories/<KEY>/coordination-plan.md` | its index in the repository; the story status command at the root derives `stories/<KEY>/status.md` (routes: see [routes.md](routes.md)) |
+| Part | a row of `stories/<KEY>/coordination-plan.md` | its index in the repository; the AI at the root derives `stories/<KEY>/status.md` from it with git (routes: see [routes.md](routes.md)) |
 | Slice | a task bundle `plans/<KEY>/bundle-<slice>.md` from `aidlc-plan` | its approval in the pull request; its commits |
 | Step | the numbered checklist `aidlc-build` proposes | one commit per green step |
 
