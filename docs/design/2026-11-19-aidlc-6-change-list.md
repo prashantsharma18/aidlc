@@ -1,7 +1,8 @@
 # aidlc 6: the full change list
 
 Status: draft for planning, 2026-11-19. Nothing here is built yet, except phases 0 and 1, built in Plan 20
-(`docs/plans/2026-11-19-plan-20-gates-that-hold.md`); ADRs 0019–0021 proposed. Gate changes (marked **ADR**) need a design
+(`docs/plans/2026-11-19-plan-20-gates-that-hold.md`); ADRs 0019–0021 proposed. Phase 2a is planned in Plan 21
+(`docs/plans/2026-11-20-plan-21-multirepo-foundations.md`); ADRs 0022 and 0023 proposed. Gate changes (marked **ADR**) need a design
 decision first, because AGENTS.md forbids weakening a gate without one.
 
 This list gathers everything found and agreed in the review of 2026-11-17 to 2026-11-19:

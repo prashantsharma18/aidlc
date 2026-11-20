@@ -293,5 +293,18 @@ class ContractGuidanceTest(unittest.TestCase):
         self.assertIn("The provider's contract check (oasdiff against the last published tag) must agree", design)
 
 
+class RecordTest(unittest.TestCase):
+    def test_the_map_names_the_new_scripts_and_workflows(self):
+        mapping = read("docs/codebase-map.md")
+        for name in ("check_contract_version.py", "check_contract_pin.py", "contract-check.yml", "contract-publish.yml"):
+            self.assertIn(name, mapping, name)
+
+    def test_the_plan_is_recorded(self):
+        changes = read("docs/design/2026-11-19-aidlc-6-change-list.md")
+        self.assertIn("Plan 20", changes)
+        self.assertIn("Plan 21", changes)
+        self.assertTrue((ROOT / "docs/verification/2026-11-20-plan-21.md").is_file())
+
+
 if __name__ == "__main__":
     unittest.main()

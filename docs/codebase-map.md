@@ -11,8 +11,10 @@ folders into Copilot, Codex or Cursor.
 `skills/using-aidlc/`   the map: stages in order and the practice for each kind of work
 `agents/`   agent roles the core skills call (Claude Code subagent format)
 `evals/`   behaviour eval cases, run with `claude plugin eval .`, or on demand in CI by `.github/workflows/evals.yml`
-`starter/repo/`, `starter/workspace/`   files a team copies once; `starter/repo/scripts/` holds `check_recipe_commit.py`, `check_slice.py` (the slice check, run in CI and as a Stop hook), `check_plan.py` (the plan check) and
-`run_slices.py`
+`starter/repo/`, `starter/workspace/`   files a team copies once; `starter/repo/scripts/` holds `check_recipe_commit.py`, `check_slice.py` (the slice check, run in CI and as a Stop hook), `check_plan.py` (the plan check),
+`check_contract_version.py` (a provider's contract check, which `contract-check.yml` runs with oasdiff;
+`contract-publish.yml` tags each new version), `check_contract_pin.py` (a consumer's vendored contracts) and
+`run_slices.py`; `starter/workspace/scripts/story_status.py` derives each part's status, merge state and drift
 `.claude-plugin/`   `plugin.json`, and `marketplace.json` whose one entry has the source `./`
 `scripts/validate.py`   the plugin check; `scripts/test_*.py` test it and every script above
 `docs/`   quickstarts, operating model, ADRs, designs, plans, verification records
