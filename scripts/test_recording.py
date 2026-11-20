@@ -185,5 +185,15 @@ class TemplateRecordTest(unittest.TestCase):
         self.assertIn("who accepted, and how it was confirmed", read("skills/aidlc-verify/assets/evidence-table.md"))
 
 
+class DocsRecordTest(unittest.TestCase):
+    """Task 15: the operating model and the README say the same."""
+
+    def test_the_docs_say_people_decide_and_the_ai_records(self):
+        self.assertIn("it never writes a name it was not given (ADR 0023)", flat("docs/operating-model/adoption.md"))
+        self.assertIn("The tech lead decides why; the AI records it", flat("docs/operating-model/routes.md"))
+        self.assertIn("A person tells the agent each decision", flat("docs/operating-model/workspace-and-repositories.md"))
+        self.assertIn("or tell the AI, which records each decision after checking it (ADR 0023)", flat("README.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

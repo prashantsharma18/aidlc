@@ -61,6 +61,8 @@ workspace root ── release (flags on in the plan's order) ─► the story is
 
 ## Who decides
 
-Agents draft; people decide. The product owner owns the story and its criteria; the tech lead approves designs and
+Agents draft; people decide. A person tells the agent each decision, or makes it where the agent can check it (a
+pull request approval on GitHub, the tracker); the agent then writes the record and says how it was confirmed
+(ADR 0023). The product owner owns the story and its criteria; the tech lead approves designs and
 plans; each repository's code owner approves its pull request; a release approver turns flags on. AI review is evidence
 for the reviewer, never the approval.

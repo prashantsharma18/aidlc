@@ -33,7 +33,8 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
 - **Several repositories:** story-level stages run at the workspace root and keep their documents in `stories/<KEY>/`;
   each repository's part (plan, build, verify, review) runs inside that repository, on branch `feat/<KEY>-<part>`.
   The story stays one tracker item; its parts are rows of the coordination plan.
-- **Gates:** each skill drafts and stops; people approve in the pull request and the tracker. Tests come first; an
+- **Gates:** each skill drafts and stops; people approve in the pull request and the tracker, or tell the AI, which
+  records each decision after checking it (ADR 0023). Tests come first; an
   existing test assertion is never changed to make a test pass.
 
 ## Where the gates hold

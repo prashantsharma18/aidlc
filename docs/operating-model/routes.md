@@ -237,7 +237,7 @@ The tech lead classifies each part by its state; the status script flags every p
 | Not started | Plans against the new version |
 | Building or in review | Plans again on the same branch; the same pull request continues |
 | Merged, flag off | A revision pull request, `[<KEY>] part <n> of <m>, revision <r>: <what>`, with a bundle pinned to the new version and its AMENDED ASSERTIONS; or a revert, if the code owner chooses |
-| Unaffected | The tech lead records why, as an `UNAFFECTED <repository> spec v<n>: <why>, <who>, <date>` line in the story index |
+| Unaffected | The tech lead decides why; the AI records it, as an `UNAFFECTED <repository> spec v<n>: <why>, <who>, <date>` line in the story index, with how it was confirmed |
 | Released | Not a change request: a new story |
 
 AMENDED ASSERTIONS are the only assertions a slice may change. Each one cites the spec version, the criterion and the

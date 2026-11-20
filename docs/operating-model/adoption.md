@@ -102,7 +102,9 @@ Tier 3 stays hands-on at every phase.
 
 ## Who approves what
 
-The agent drafts every document and decides nothing on this sheet. Nobody approves what they wrote: never the
+The agent drafts every document and decides nothing on this sheet. When the person who decides tells it, or
+when it has checked the decision (a pull request approval on GitHub, the tracker), it writes the record in the
+last column and says how it was confirmed; it never writes a name it was not given (ADR 0023). Nobody approves what they wrote: never the
 author, never the author's agent, never an AI reviewer.
 
 | Decision | Who | Where it is recorded |
