@@ -4,6 +4,8 @@ AGENTS.md         @your-org/your-team-leads
 CLAUDE.md         @your-org/your-team-leads
 docs/codebase-map.md @your-org/your-team-leads
 plans/            @your-org/your-team-leads
+# Vendored contracts and their SOURCE: a pin moves only with a lead's review.
+contracts/        @your-org/your-team-leads
 # Tests: owners must approve any change to an existing test.
 tests/            @your-org/your-team-leads
 # Scripts and settings that enforce the rules.

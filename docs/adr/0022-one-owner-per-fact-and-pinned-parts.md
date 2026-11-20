@@ -54,3 +54,5 @@ and AI review could not see the criteria, which lived in another repository (P10
   restricts creation, updates and deletions, and only the identity the publish job pushes with bypasses it. Without
   it, anyone with write access can create a version that consumers will pin, from a commit that was never reviewed.
   The consumers' online pin check still reports a tag that moved.
+- No job runs the online pin check yet: a person or the release stage runs it in each consumer before a release, and
+  before a pin moves. A moved tag stops the release. Automating it is phase 2b.

@@ -38,6 +38,8 @@ Full map: `docs/codebase-map.md`. Read it before planning a change.
 - Plan check, before asking for the plan's approval: `python3 scripts/check_plan.py <KEY> [--part <n>]`
 - Contract pin, a consumer's vendored contracts match their SOURCE (CI runs it too): `python3 scripts/check_contract_pin.py`;
   move a pin only to a published tag, in its own slice: `python3 scripts/check_contract_pin.py --update <provider> api-v<version>`
+- Contract pin, online, before a pin moves and before a release (no job runs it yet):
+  `python3 scripts/check_contract_pin.py --online`; it reports a provider tag that moved, which stops the release
 - Contract check, a provider's contract against its last published tag (CI runs it with oasdiff):
   `python3 scripts/check_contract_version.py --contract <path> --oasdiff <oasdiff binary>`
 - {{run one test file}}: {{exact command}}

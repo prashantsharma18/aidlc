@@ -6,8 +6,8 @@ SOURCE     <work item link>
 KIND       <new feature | change request | defect | incident follow-up | new system>
 ROUTE      <F0 | F1 | F2 | C | D1 | D2 | G>
 LEVEL      <repository | workspace root | part <n> of <m> in <repository>>
-CURRENT    spec v<n> · contract <name> v<n>        (the story's approved versions; a part leaves this line out)
-PINS       spec v<n> @ <home commit> · plan v<n> · contract <name> v<n>        (a part: what its latest bundle builds on, the spec at the home repository's commit; a story leaves this line out)
+CURRENT    spec v<n> · contract <provider> v<MAJOR.MINOR.PATCH>        (the story's approved versions; a part leaves this line out)
+PINS       spec v<n> @ <home commit> · plan v<n> · contract <provider> v<MAJOR.MINOR.PATCH>        (a part: what its latest bundle builds on, the spec at the home repository's commit; a contract's version is its published tag's, the tag in contracts/<provider>/SOURCE; a story leaves this line out)
 UNAFFECTED <repository> spec v<n>: <why>, <tech lead>, <YYYY-MM-DD>, <how it was confirmed>        (one line per part recorded as unaffected, written by the AI when the tech lead decides; delete when none)
 ```
 

@@ -7,7 +7,9 @@
 # deletions, and let only the identity this job pushes with bypass it
 # (rulesets need a public repository on GitHub Free, or a Pro or Team plan).
 # Without it, anyone with write access can create a version that consumers will pin, from any commit, reviewed or
-# not. The consumers' online pin check reports a tag that moved either way.
+# not. The consumers' online pin check reports a tag that moved either way. No job runs the online pin check yet:
+# a person or the release stage runs it in each consumer before a release, and before a pin moves. Automating it
+# is phase 2b.
 #
 # With the concurrency group, GitHub keeps one pending run. When pushes land quickly, a middle version may never be
 # tagged. No tag is ever wrong. If a consumer needs that exact version, a person can tag the skipped commit by hand.

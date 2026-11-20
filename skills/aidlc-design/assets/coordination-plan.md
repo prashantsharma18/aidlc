@@ -15,7 +15,8 @@ fields: [KEY, TITLE]
 
 ```text
 OUTCOME    <...>. Tier <n> (<reason; unknown consumers raise it>)
-CONTRACTS  <contract> v<n> <from> -> <to> (<minor, additive | major via expand and contract>)
+CONTRACTS  <contract> v<n> <from> -> <to> (<minor, additive | major via expand and contract>; each version written
+           as its published tag's, v<MAJOR.MINOR.PATCH>)
 PINS       Each part pins spec v<n> @ <home commit>; each consumer pins the provider's published tag
            api-v<version> in contracts/<provider>/SOURCE (ADR 0022)
 PARTS      #  Repository     Owner    Change                 Flag          Waits for     Undo       Status

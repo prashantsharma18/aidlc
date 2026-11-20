@@ -341,5 +341,47 @@ class ContractWorkflowFinalReviewTest(unittest.TestCase):
             self.assertIn("anyone with write access can create a version that consumers will pin", text, name)
 
 
+class OnlinePinCheckTest(unittest.TestCase):
+    """The final review: someone runs the online pin check, a pin move is reviewed, and a contract pin has one
+    format."""
+
+    def test_the_guide_names_the_online_check_and_when_it_runs(self):
+        for rel in ("starter/repo/AGENTS.md", "skills/aidlc-onboard/assets/agents-md.md"):
+            text = flat(rel)
+            self.assertIn("`python3 scripts/check_contract_pin.py --online`", text, rel)
+            self.assertIn("before a pin moves and before a release", text, rel)
+            self.assertIn("reports a provider tag that moved", text, rel)
+
+    def test_the_adr_and_the_publish_job_say_who_runs_it(self):
+        publish = ContractWorkflowFinalReviewTest.header(read("starter/repo/.github/workflows/contract-publish.yml"))
+        for name, text in (("adr", flat("docs/adr/0022-one-owner-per-fact-and-pinned-parts.md")), ("publish", publish)):
+            self.assertIn("No job runs the online pin check yet", text, name)
+            self.assertIn("a person or the release stage runs it in each consumer before a release", text, name)
+            self.assertIn("phase 2b", text, name)
+
+    def test_release_runs_the_online_check(self):
+        release = skill("aidlc-release")
+        self.assertIn("runs the contract pin command's online check (named in its AGENTS.md) before release", release)
+        self.assertIn("a moved tag stops the release", release)
+
+    def test_the_reviewer_checks_a_pin_move_and_its_pins_item(self):
+        text = flat("agents/reviewer-compliance.md")
+        self.assertIn("the new tag's commit is on the provider's default branch", text)
+        self.assertIn("matches the tag in `contracts/<provider>/SOURCE`", text)
+
+    def test_the_leads_own_the_vendored_contracts(self):
+        self.assertRegex(read("starter/repo/CODEOWNERS"), r"(?m)^contracts/\s+@your-org/your-team-leads$")
+
+    def test_a_contract_pin_is_the_tags_version(self):
+        start, plan = read("skills/aidlc-start/assets/story-index.md"), read("skills/aidlc-plan/assets/story-index.md")
+        self.assertEqual(start, plan)
+        for rel in ("skills/aidlc-plan/assets/task-bundle.md", "skills/aidlc-start/assets/story-index.md"):
+            text = read(rel)
+            self.assertIn("contract <provider> v<MAJOR.MINOR.PATCH>", text, rel)
+            self.assertNotIn("contract <name> v<n>", text, rel)
+        self.assertIn("the tag in contracts/<provider>/SOURCE", flat("skills/aidlc-plan/assets/task-bundle.md"))
+        self.assertIn("as its published tag's, v<MAJOR.MINOR.PATCH>", flat("skills/aidlc-design/assets/coordination-plan.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

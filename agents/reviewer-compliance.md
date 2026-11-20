@@ -20,7 +20,9 @@ You check that the change does what was approved, and only that.
   finding. In a delegate mode, the note's Restatement is there. A Tier 2 bundle in delegate with checkpoints with no CHECKPOINT
   before a step that touches a contract or another owner's code is a high finding. A note written before aidlc 4.3 has
   no STATUS or MODE line: that is not a finding.
-- The bundle's PINS match the spec, plan and contract versions the change builds on.
+- The bundle's PINS match the spec, plan and contract versions the change builds on. A contract PINS item
+  (`contract <provider> v<MAJOR.MINOR.PATCH>`) matches the tag in `contracts/<provider>/SOURCE`; a mismatch is a high
+  finding.
 - Each recorded decision (the CONFIRMED line, each "confirmed by" line, the plan's APPROVAL line) names a person
   and says how it was confirmed: in the session, or checked on GitHub or the tracker (ADR 0023). A record with no
   name, a placeholder, or no way it was confirmed is a medium finding.
@@ -28,6 +30,9 @@ You check that the change does what was approved, and only that.
   `plans/<KEY>/criteria.md` names the same commit on its SOURCE line, and the criteria you check come from that
   copy. A copy under `contracts/<provider>/` changes only in a slice whose MAY CHANGE names it, together with its
   SOURCE.
+- A pin move (a changed `contracts/<provider>/SOURCE`): the new tag's commit is on the provider's default branch,
+  shown in the pull request (for example a link to that commit in the provider's history). When you cannot see it,
+  raise a `question`: a tag on an unmerged commit was never reviewed.
 - Each assertion listed under AMENDED ASSERTIONS has its line under "Amended assertions seen red" in the progress note,
   and the cited spec version has an Amendments line.
 - A commit with a `Recipe:` trailer holds only what the bundle's RECIPE approved; the recipe check's output is in the pull request; every assertion line it lists still checks the same thing.
