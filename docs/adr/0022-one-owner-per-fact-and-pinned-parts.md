@@ -50,5 +50,7 @@ and AI review could not see the criteria, which lived in another repository (P10
 - A consumer's copy is a file in its own repository: its CI never needs the provider or the home repository.
 - Not yet: a required story-gate status on child pull requests, the integration check before the last part merges,
   and GitHub App tokens per role (change list F7, F8, F10: phase 2b).
-- Protecting `api-v*` tags needs a ruleset: a public repository on GitHub Free, or a paid plan. Without one, the
-  consumers' online pin check still reports a tag that moved.
+- Protecting `api-v*` tags needs a ruleset: a public repository on GitHub Free, or a paid plan. The ruleset
+  restricts creation, updates and deletions, and only the identity the publish job pushes with bypasses it. Without
+  it, anyone with write access can create a version that consumers will pin, from a commit that was never reviewed.
+  The consumers' online pin check still reports a tag that moved.

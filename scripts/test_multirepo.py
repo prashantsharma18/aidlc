@@ -306,5 +306,40 @@ class RecordTest(unittest.TestCase):
         self.assertTrue((ROOT / "docs/verification/2026-11-20-plan-21.md").is_file())
 
 
+class ContractWorkflowFinalReviewTest(unittest.TestCase):
+    """The final review: the check decides from the base, every job is bounded, and the headers say what protects a
+    published version."""
+
+    def setUp(self):
+        self.check = read("starter/repo/.github/workflows/contract-check.yml")
+        self.publish = read("starter/repo/.github/workflows/contract-publish.yml")
+        self.ci = read("starter/repo/.github/workflows/ci.yml")
+
+    @staticmethod
+    def header(text: str) -> str:
+        return " ".join(line.lstrip("# ") for line in text.split("\nname:", 1)[0].splitlines()).strip()
+
+    def test_the_check_decides_from_the_base_on_a_pull_request(self):
+        block = "\n".join(run_blocks(job_text(self.check, "contract-check")))
+        self.assertIn('git cat-file -e "origin/$BASE_REF:scripts/check_contract_version.py"', block)
+        self.assertNotIn("cp scripts/", block)
+        self.assertNotIn("python3 scripts/check_contract_version.py", block)
+        found, missing = block.split("else", 1)
+        self.assertIn('python3 "$RUNNER_TEMP/aidlc/check_contract_version.py"', found)
+        self.assertIn("no contract check in this repository", missing)
+
+    def test_the_pin_job_has_a_timeout(self):
+        self.assertRegex(job_text(self.ci, "contract-pin"), r"(?m)^    timeout-minutes: [0-9]+$")
+
+    def test_the_check_asks_for_up_to_date_branches(self):
+        self.assertIn("require branches to be up to date before merging", self.header(self.check))
+
+    def test_the_tag_ruleset_restricts_creation_too(self):
+        adr = flat("docs/adr/0022-one-owner-per-fact-and-pinned-parts.md")
+        for name, text in (("publish", self.header(self.publish)), ("adr", adr)):
+            self.assertIn("restricts creation, updates and deletions", text, name)
+            self.assertIn("anyone with write access can create a version that consumers will pin", text, name)
+
+
 if __name__ == "__main__":
     unittest.main()

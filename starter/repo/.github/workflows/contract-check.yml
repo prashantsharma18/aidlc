@@ -6,6 +6,13 @@
 # contract must raise info.version, and a breaking change must raise its MAJOR, with each consumer's agreement
 # recorded in the pull request description, which the code owner checks. oasdiff is the release binary at a pinned
 # version, checked against its published sha256 before it runs, and it never follows external $refs.
+#
+# Turn on "require branches to be up to date before merging" too. Two pull requests that each raise 1.0.0 to 1.1.0
+# both pass against the same base; after the second merges, the default branch holds a changed contract under a
+# published version, and it cannot publish until someone raises the version again.
+#
+# Like contract-pin in ci.yml, it runs the base branch's copy of the script, so a pull request cannot rewrite the
+# check and the contract together. A pull request whose base has no check skips it.
 name: contract-check
 on:
   pull_request:
@@ -35,10 +42,11 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          mkdir -p "$RUNNER_TEMP/aidlc"
+          # The base branch decides whether a check exists, never the pull request's own tree.
           if git cat-file -e "origin/$BASE_REF:scripts/check_contract_version.py" 2>/dev/null; then
+            mkdir -p "$RUNNER_TEMP/aidlc"
             git show "origin/$BASE_REF:scripts/check_contract_version.py" > "$RUNNER_TEMP/aidlc/check_contract_version.py"
+            python3 "$RUNNER_TEMP/aidlc/check_contract_version.py" --contract "$CONTRACT" --oasdiff "$RUNNER_TEMP/oasdiff"
           else
-            cp scripts/check_contract_version.py "$RUNNER_TEMP/aidlc/check_contract_version.py"
+            echo "no contract check in this repository"
           fi
-          python3 "$RUNNER_TEMP/aidlc/check_contract_version.py" --contract "$CONTRACT" --oasdiff "$RUNNER_TEMP/oasdiff"
