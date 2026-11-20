@@ -8,6 +8,7 @@ compliance reviewer and the slice runner read it.
 ```text
 STATUS      doing   (doing | paused: {{checkpoint n | recipe review}} | stopped: {{reason}} | done)
 MODE        {{the bundle's MODE; hands-on when the bundle has none}}
+TESTS BEFORE {{passed}} passed, {{failed}} failed, {{skipped}} skipped at {{commit}}, before any change
 ```
 
 ## Restatement (delegate modes)

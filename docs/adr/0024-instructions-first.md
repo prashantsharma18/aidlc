@@ -65,3 +65,4 @@ The checks, rule by rule:
 - aidlc's own validator and its own CI stay: they check aidlc, not a team's project.
 - ADRs 0012, 0015, 0016, 0017, 0020, 0021, 0022 and 0023 keep their decisions; each carries a dated note saying which
   of its enforcement lines no longer hold. ADR 0019 is superseded.
+- The session writes the evidence file the reviewers read, so the evidence is only as honest as that session; the code owner can re-run any command in it against git.

@@ -192,11 +192,6 @@ class WiringTest(unittest.TestCase):
             self.assertIn("python3 scripts/check_plan.py", text, rel)
             self.assertIn("aidlc-exception: reason=...; owner=...; expires=YYYY-MM-DD", text, rel)
 
-    def test_build_and_compliance_use_it(self):
-        build = " ".join(read("skills/aidlc-build/SKILL.md").split())
-        self.assertIn("Run the slice check named in AGENTS.md", build)
-        self.assertIn("slice check", read("agents/reviewer-compliance.md"))
-
 
 class FinalReviewFixesTest(unittest.TestCase):
     """Plan 20's final review: the CI comment tells the truth, CI falls back only when the base has no script, and the
@@ -223,11 +218,6 @@ class FinalReviewFixesTest(unittest.TestCase):
         self.assertTrue(entries[0]["command"].startswith(
             'test -f "$CLAUDE_PROJECT_DIR/scripts/check_slice.py" || exit 0; '), entries[0]["command"])
         self.assertEqual(entries[0].get("timeout"), 60)
-
-    def test_compliance_reads_the_check_wherever_it_is_given(self):
-        text = read("agents/reviewer-compliance.md")
-        self.assertIn("When the slice check's output is given to you (CI or the session's Stop hook), read it first",
-                      " ".join(text.split()))
 
 
 class WorkspaceDenyRulesTest(unittest.TestCase):

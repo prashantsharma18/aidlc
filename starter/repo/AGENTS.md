@@ -83,5 +83,7 @@ Kept by `aidlc-feedback`. A rule held only by prose is a candidate for a check.
 ## Where to look
 - Decisions: <decision record folder>
 - Owners: <CODEOWNERS path>
+- Test paths, for the review evidence: <test folders and file patterns>
+- Dependency manifests, for the review evidence: <manifest and lock files>
 - Contract: <path of the OpenAPI file this repository owns, published as tags api-v<version>> | <none>; copies of
   other repositories' contracts: `contracts/<provider>/`, read-only, each with its SOURCE

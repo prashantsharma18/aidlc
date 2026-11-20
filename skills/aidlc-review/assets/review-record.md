@@ -26,5 +26,10 @@ Findings (high and medium block the merge until fixed or dismissed with a reason
 
 Specialist reviews required by the tier: {{role}} — reviewed {{what}} — {{outcome}}
 ```text
-DECISION  {{approve | revise (back to build) | reject (back to plan or spec owner)}}  {{date}}  {{reviewer, and how it was confirmed}}
+DECISION  {{approve | revise (back to build) | reject (back to plan or spec owner)}} at {{commit}}  {{date}}  {{reviewer, and how it was confirmed}}
 ```
+
+## Reviewer verdicts
+Each verdict counts only from a reviewer agent in a fresh context, or a person who did not write the change, at the
+commit it names. A later commit that changes a path outside `plans/<KEY>/` voids it.
+- {{reviewer-bug | reviewer-security | reviewer-compliance | reviewer-tests | person}}: {{no findings | the number of findings}} at {{commit}}
