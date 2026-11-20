@@ -12,9 +12,6 @@
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
       "Edit(/.claude/**)",
-      "Edit(/scripts/check_*.py)",
-      "Edit(/scripts/run_slices.py)",
-      "Edit(/.github/workflows/ai-review.yml)",
       "Edit(/CODEOWNERS)",
       "Edit(/.github/CODEOWNERS)"
     ],
@@ -43,15 +40,6 @@
         "~/.aws"
       ]
     }
-  },
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {"type": "command", "command": "test -f \"$CLAUDE_PROJECT_DIR/scripts/check_slice.py\" || exit 0; python3 \"$CLAUDE_PROJECT_DIR/scripts/check_slice.py\" --hook --root \"$CLAUDE_PROJECT_DIR\"", "timeout": 60}
-        ]
-      }
-    ]
   },
   "enabledPlugins": {
     "aidlc@aidlc": true

@@ -490,5 +490,64 @@ class DocsTest(unittest.TestCase):
             self.assertNotIn("story_status.py", read(rel), rel)
 
 
+REMOVED_NAMES = ("check_slice.py", "check_plan.py", "check_recipe_commit.py", "check_contract_version.py",
+                 "check_contract_pin.py", "run_slices.py", "story_status.py", "ai-review.yml", "contract-check.yml",
+                 "contract-publish.yml", "slice check", "plan check", "story status command", "slice runner",
+                 "Stop hook", "contract pin command", "--write-gitignore", "--check-release")
+
+
+def live_text_files() -> list[Path]:
+    """The files a team reads or copies: skills, agents, starters, the operating model, the quickstarts, the README,
+    AGENTS.md, CLAUDE.md and the plugin manifest. History (ADRs, designs, plans, verification records, the archive)
+    and the eval fixtures are left out."""
+    roots = [ROOT / "skills", ROOT / "agents", ROOT / "starter", ROOT / "docs/operating-model", ROOT / "docs/quickstart"]
+    files = [p for r in roots for p in r.rglob("*") if p.is_file() and "__pycache__" not in p.parts]
+    return files + [ROOT / "README.md", ROOT / "AGENTS.md", ROOT / "CLAUDE.md", ROOT / ".claude-plugin/plugin.json"]
+
+
+class NoShippedCodeTest(unittest.TestCase):
+    """Task 9: the starters hold no script and no workflow; the example settings keep what protects secrets and the
+    settings themselves; nothing a team reads names the removed code."""
+
+    def test_the_starters_hold_no_script_and_no_workflow(self):
+        for kind in ("repo", "workspace"):
+            base = ROOT / "starter" / kind
+            self.assertFalse((base / "scripts").exists(), kind)
+            self.assertFalse((base / ".github").exists(), kind)
+            self.assertEqual([p for p in base.rglob("*") if p.suffix in (".py", ".sh", ".yml", ".yaml")], [], kind)
+        for name in ("test_check_slice.py", "test_check_plan.py", "test_check_recipe_commit.py",
+                     "test_check_contract.py", "test_run_slices.py", "test_story_status.py"):
+            self.assertFalse((ROOT / "scripts" / name).exists(), name)
+
+    def test_the_example_settings_keep_the_secret_denies_and_drop_the_rest(self):
+        for kind in ("repo", "workspace"):
+            settings = json.loads(read(f"starter/{kind}/.claude/settings.json"))
+            self.assertNotIn("hooks", settings, kind)
+            deny = settings["permissions"]["deny"]
+            for rule in ("Read(**/.env)", "Read(**/*.pem)", "Read(~/.ssh/**)", "Edit(/.claude/**)", "Edit(/CODEOWNERS)"):
+                self.assertIn(rule, deny, f"{kind}: {rule}")
+            self.assertEqual([r for r in deny if "scripts/" in r or "workflows/" in r], [], kind)
+            self.assertTrue(settings["sandbox"]["enabled"], kind)
+        ask = json.loads(read("starter/repo/.claude/settings.json"))["permissions"]["ask"]
+        for rule in ("Bash(git push*)", "Bash(npm install*)", "Bash(pip install*)", "Bash(dotnet add package*)"):
+            self.assertIn(rule, ask, rule)
+
+    def test_no_file_a_team_reads_names_the_removed_code(self):
+        hits = []
+        for path in live_text_files():
+            text = " ".join(path.read_text(encoding="utf-8").split())
+            hits += [f"{path.relative_to(ROOT)}: {name}" for name in REMOVED_NAMES if name in text]
+        self.assertEqual(hits, [])
+
+    def test_the_owners_still_hold_the_teams_own_checks(self):
+        owners = read("starter/repo/CODEOWNERS")
+        for line in (r"(?m)^scripts/\s+@your-org/your-team-leads$", r"(?m)^\.github/\s+@your-org/your-team-leads$",
+                     r"(?m)^\.claude/\s+@your-org/your-team-leads$", r"(?m)^CLAUDE\.md\s+@your-org/your-team-leads$",
+                     r"(?m)^\.mcp\.json\s+@your-org/your-team-leads$"):
+            self.assertRegex(owners, line)
+        for rel in ("starter/repo/CODEOWNERS", "starter/workspace/CODEOWNERS"):
+            self.assertIn("aidlc ships none", read(rel), rel)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -89,9 +89,6 @@ class OnePluginTest(unittest.TestCase):
         self.assertEqual(numbers, list(range(1, len(numbers) + 1)))
         self.assertNotIn("**Packs.**", steps)
 
-    def test_the_starter_ci_runs_no_pack_check(self):
-        self.assertNotIn("check_packs", read("starter/repo/.github/workflows/ci.yml"))
-
     def test_adr_0011_is_superseded(self):
         self.assertIn("Superseded by ADR 0018", read("docs/adr/0011-plugins-and-packs.md"))
 

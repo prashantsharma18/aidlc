@@ -38,73 +38,7 @@ def pinned_uses(yaml_text: str) -> list[str]:
             if re.search(r"\buses:", line) and not SHA_PIN.search(line)]
 
 
-class StarterReviewTest(unittest.TestCase):
-    """A3: adopters get the same hardened AI review the framework runs on itself."""
-
-    def setUp(self):
-        self.review = read("starter/repo/.github/workflows/ai-review.yml")
-
-    def test_every_action_is_pinned_to_a_commit(self):
-        self.assertEqual(pinned_uses(self.review), [])
-
-    def test_the_key_lives_in_an_approved_environment_and_is_scrubbed(self):
-        self.assertIn("environment: ai-gates", self.review)
-        self.assertIn('CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"', self.review)
-
-    def test_the_required_check_fails_closed(self):
-        self.assertIn("ai-review:", self.review)
-        self.assertIn("needs: ai-review-passes", self.review)
-        self.assertIn("if: always()", self.review)
-        self.assertIn('report.get("reviewed") is True', self.review)
-
-    def test_the_review_reads_the_base_branchs_rules(self):
-        self.assertIn('git checkout "origin/$BASE_REF" -- "$f"', self.review)
-
-    def test_no_run_block_interpolates_a_ref(self):
-        for block in run_blocks(self.review):
-            self.assertNotRegex(block, r"\$\{\{\s*github\.(head_ref|base_ref|event)", block)
-
-    def test_it_never_approves(self):
-        self.assertIn("never approve", self.review.lower())
-
-    def test_code_owners_own_the_workflows_and_scripts(self):
-        owners = read("starter/repo/CODEOWNERS")
-        self.assertIn(".github/           @your-org/your-team-leads", owners)
-        self.assertIn("scripts/           @your-org/your-team-leads", owners)
-
-    def test_the_review_restores_the_base_branchs_session_settings(self):
-        step = self.review.split("- name: Review under the base branch's rules", 1)[1].split("- name:", 1)[0]
-        for name in (".claude", ".mcp.json", "AGENTS.md", "CLAUDE.md"):
-            self.assertIn(name, step)
-        self.assertIn("git rm -r -q --cached --ignore-unmatch", step)
-        owners = read("starter/repo/CODEOWNERS")
-        self.assertRegex(owners, r"(?m)^CLAUDE\.md\s+@your-org/your-team-leads$")
-
-    def test_both_passes_load_no_repository_settings_or_hooks(self):
-        self.assertEqual(self.review.count("--setting-sources user"), 2)
-        self.assertEqual(self.review.count("""--settings '{"disableAllHooks": true}'"""), 2)
-
-    def test_the_restore_loop_names_every_path_the_action_restores(self):
-        step = self.review.split("- name: Review under the base branch's rules", 1)[1].split("- name:", 1)[0]
-        loop = re.search(r"for f in ([^;]+); do", step).group(1).split()
-        for name in ("AGENTS.md", "CLAUDE.md", "CLAUDE.local.md", ".claude", ".claude.json", ".mcp.json",
-                     ".gitmodules", ".ripgreprc", ".husky"):
-            self.assertIn(name, loop)
-
-    def test_no_run_block_interpolates_any_expression(self):
-        for block in run_blocks(self.review):
-            self.assertNotIn("${{", block)
-
-    def test_code_owners_own_the_mcp_config(self):
-        self.assertRegex(read("starter/repo/CODEOWNERS"), r"(?m)^\.mcp\.json\s+@your-org/your-team-leads$")
-
-    def test_strict_mcp_config_is_not_used(self):
-        # Unverified: it may also drop the action's own inline-comment tool.
-        self.assertNotIn("--strict-mcp-config", self.review)
-
-
-REPO_DENIES = ["Edit(/.claude/**)", "Edit(/scripts/check_*.py)", "Edit(/scripts/run_slices.py)",
-               "Edit(/.github/workflows/ai-review.yml)", "Edit(/CODEOWNERS)", "Edit(/.github/CODEOWNERS)"]
+REPO_DENIES = ["Edit(/.claude/**)", "Edit(/CODEOWNERS)", "Edit(/.github/CODEOWNERS)"]
 
 
 class DenyTest(unittest.TestCase):
@@ -126,7 +60,6 @@ class DenyTest(unittest.TestCase):
     def test_the_workspace_denies_edits_to_its_controls(self):
         deny = self.settings("workspace")["deny"]
         self.assertIn("Edit(/.claude/**)", deny)
-        self.assertIn("Edit(/scripts/story_status.py)", deny)
 
     def test_onboard_copies_the_settings_last(self):
         onboard = " ".join(read("skills/aidlc-onboard/SKILL.md").split())
@@ -171,44 +104,10 @@ class AdrTest(unittest.TestCase):
 class WiringTest(unittest.TestCase):
     """A1 and A5: CI and the session run the slice check; the guide and the skills name it."""
 
-    def test_the_stop_hook_runs_the_slice_check(self):
-        hooks = json.loads(read("starter/repo/.claude/settings.json"))["hooks"]["Stop"]
-        commands = [h["command"] for group in hooks for h in group["hooks"]]
-        self.assertTrue(any("scripts/check_slice.py" in c and "--hook" in c for c in commands), commands)
-
-    def test_ci_runs_the_base_branchs_copy_on_the_head_commit(self):
-        ci = read("starter/repo/.github/workflows/ci.yml")
-        self.assertIn("slice-check:", ci)
-        self.assertIn("ref: ${{ github.event.pull_request.head.sha }}", ci)
-        self.assertIn('git show "origin/$BASE_REF:scripts/check_slice.py"', ci)
-        self.assertEqual(pinned_uses(ci), [])
-        for block in run_blocks(ci):
-            self.assertNotRegex(block, r"\$\{\{\s*github\.(head_ref|base_ref|event)", block)
-
     def test_the_guide_names_the_commands_and_the_exception_format(self):
         for rel in ("starter/repo/AGENTS.md", "skills/aidlc-onboard/assets/agents-md.md"):
             text = read(rel)
             self.assertIn("aidlc-exception: reason=...; owner=...; expires=YYYY-MM-DD", text, rel)
-
-
-class FinalReviewFixesTest(unittest.TestCase):
-    """Plan 20's final review: the CI comment tells the truth, CI falls back only when the base has no script, and the
-    Stop hook tolerates a repository without the script and cannot hang the session."""
-
-    def setUp(self):
-        self.ci = read("starter/repo/.github/workflows/ci.yml")
-
-    def test_ci_falls_back_only_when_the_base_has_no_script(self):
-        self.assertIn('git cat-file -e "origin/$BASE_REF:scripts/check_slice.py"', self.ci)
-        self.assertNotIn('if ! git show "origin/$BASE_REF:scripts/check_slice.py"', self.ci)
-
-    def test_the_stop_hook_skips_a_missing_script_and_times_out(self):
-        hooks = json.loads(read("starter/repo/.claude/settings.json"))["hooks"]["Stop"]
-        entries = [h for group in hooks for h in group["hooks"] if "check_slice.py" in h["command"]]
-        self.assertEqual(len(entries), 1)
-        self.assertTrue(entries[0]["command"].startswith(
-            'test -f "$CLAUDE_PROJECT_DIR/scripts/check_slice.py" || exit 0; '), entries[0]["command"])
-        self.assertEqual(entries[0].get("timeout"), 60)
 
 
 class WorkspaceDenyRulesTest(unittest.TestCase):

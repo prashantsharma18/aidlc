@@ -9,7 +9,7 @@ plans/            @your-org/your-team-leads
 contracts/        @your-org/your-team-leads
 # Tests: owners must approve any change to an existing test.
 tests/            @your-org/your-team-leads
-# Scripts and settings that enforce the rules.
+# The team's own checks and settings: its scripts, CI and AI tool settings (aidlc ships none, ADR 0024).
 scripts/           @your-org/your-team-leads
 .claude/           @your-org/your-team-leads
 .mcp.json          @your-org/your-team-leads

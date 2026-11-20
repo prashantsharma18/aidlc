@@ -1,13 +1,9 @@
 """Plan 21: people decide; the AI records the decision after checking it (ADR 0023). Each place that once told a
 person to write a record now tells them to tell the AI, and every record says how it was confirmed."""
-import sys
-import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "starter" / "repo" / "scripts"))
-import run_slices  # noqa: E402
 
 RECORDING_SKILLS = ("aidlc-intent", "aidlc-specify", "aidlc-discover", "aidlc-design", "aidlc-plan", "aidlc-build",
                     "aidlc-verify", "aidlc-review", "aidlc-release", "aidlc-operate", "aidlc-feedback", "aidlc-onboard")
@@ -133,22 +129,6 @@ class ParsedRecordTest(unittest.TestCase):
         for name in ("fix-brief", "feature-brief"):
             self.assertIn("written by the AI when the engineer confirms", read(f"skills/aidlc-plan/assets/{name}.md"))
 
-    def test_the_runner_tells_the_person_to_tell_the_ai(self):
-        source = read("starter/repo/scripts/run_slices.py")
-        self.assertNotIn("the person adds", source)
-        self.assertIn("confirm it to an AI session in this repository", source)
-
-    def test_a_pause_line_with_how_it_was_confirmed_still_parses(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            note = Path(tmp) / "progress-1.md"
-            for line, ok in (("- checkpoint 1 confirmed by Ana, 2026-11-20 (in the session)", True),
-                             ("- checkpoint 1 confirmed by @ana on PR #12, checked on GitHub, 2026-11-20", True),
-                             ("- checkpoint 1 confirmed by <name>, <date> (<how>)", False),
-                             ("- checkpoint 1 confirmed by {{name}}, {{YYYY-MM-DD}} ({{in the session}})", False)):
-                note.write_text(f"STATUS      paused: checkpoint 1\n\n## Pauses confirmed (by the person)\n{line}\n",
-                                encoding="utf-8")
-                self.assertEqual(run_slices.pause_confirmed(note, "paused: checkpoint 1"), ok, line)
-
     def test_compliance_checks_each_record(self):
         self.assertIn("names a person and says how it was confirmed", flat("agents/reviewer-compliance.md"))
 
@@ -200,8 +180,7 @@ class FinalReviewRecordTest(unittest.TestCase):
     record."""
 
     def test_no_record_is_marked_by_hand(self):
-        for rel in ("docs/adr/0022-one-owner-per-fact-and-pinned-parts.md", "skills/aidlc-release/SKILL.md",
-                    "starter/workspace/scripts/story_status.py"):
+        for rel in ("docs/adr/0022-one-owner-per-fact-and-pinned-parts.md", "skills/aidlc-release/SKILL.md"):
             text = flat(rel).split("## Decision", 1)[-1]  # the ADR's Context tells how it was before
             self.assertNotIn("hand-marked", text, rel)
             self.assertNotIn("marked by hand", text, rel)
