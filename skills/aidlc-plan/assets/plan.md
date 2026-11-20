@@ -23,6 +23,7 @@ Checklist: every criterion maps to a check; every file has a reason; every risk 
 accepted; no architecture decision hidden; rollback concrete; slices safe in order; each brief
 has a scope test and concrete stop conditions.
 Fields (check each against the files before asking for approval):
+- the plan's own fields (SPEC, APPROACH, FILES, TESTS, ORDER, RISKS, ROLLBACK, OPEN) are filled, or "none"
 - every bundle field filled, or "none"; no placeholder left
 - each MODE allowed at its TIER (delegate with checkpoints: Tiers 1 and 2; delegate: Tier 1)
 - a part of a story across several repositories is at Tier 2 or above (ADR 0021)

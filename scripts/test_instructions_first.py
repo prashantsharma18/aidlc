@@ -232,5 +232,23 @@ class BuildAndPlanTest(unittest.TestCase):
         self.assertIn("the team's CI configuration (`.github/workflows/ci.yml` on GitHub, `.gitlab-ci.yml` on GitLab)", plan)
 
 
+    def test_the_recipe_result_reaches_the_evidence_file(self):
+        build = skill("aidlc-build")
+        step5 = build.split("5. **When the bundle has a RECIPE", 1)[1].split("\n6.", 1)[0]
+        self.assertIn("Recipe commits section of the evidence file", " ".join(step5.split()))
+        self.assertIn("run the repository's test command (named in `AGENTS.md`) in the worktree at `<commit>^` and at the "
+                      "commit, and record both counts", " ".join(step5.split()))
+        step9 = build.split("9. Check the boundary", 1)[1].split("\n10.", 1)[0]
+        self.assertIn("Recipe commits section", step9)
+        self.assertIn("git status --porcelain", build.split("5. **When", 1)[0])
+        for rel in ("skills/aidlc-build/assets/review-evidence.md", "skills/aidlc-review/assets/review-evidence.md"):
+            recipe = flat(rel).split("## Recipe commits", 1)[1]
+            self.assertIn("git diff <commit>^ <commit> -- '<test paths>'", recipe, rel)
+
+    def test_the_plan_checklist_covers_the_plans_own_fields(self):
+        self.assertIn("the plan's own fields (SPEC, APPROACH, FILES, TESTS, ORDER, RISKS, ROLLBACK, OPEN) are filled",
+                      flat("skills/aidlc-plan/assets/plan.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

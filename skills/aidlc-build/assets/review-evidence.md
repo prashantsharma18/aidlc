@@ -95,9 +95,10 @@ xit(  xdescribe(  @Ignore  @SuppressWarnings  #[ignore]  <NoWarn>
 For each commit with a `Recipe:` trailer (`git log --format=%H --grep='^Recipe:' <base>..HEAD`), except one marked
 `(scaffold)`: `git worktree add <folder> <commit>^`; run the bundle's RECIPE there; `git -C <folder> add -A`; then
 `git -C <folder> diff --cached --stat <commit>`, which prints nothing when the commit holds exactly the tool's
-output. Run the test command at `<commit>^` and at `<commit>`: the counts must match. Then
+output. Run the test command at `<commit>^` and at `<commit>`: the counts must match. Add the changed assertion
+lines: `git diff <commit>^ <commit> -- '<test paths>'` (quote each pattern). Then
 `git worktree remove --force <folder>`.
 
 ```text
-{{commit, tool@version: the re-run matches, or the files that differ; tests before and after}}, or none
+{{commit, tool@version: the re-run matches, or the files that differ; tests before and after; the changed assertion lines}}, or none
 ```
