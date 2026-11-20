@@ -31,7 +31,8 @@ The worst of the five decides.
 
 ## Parts (a story across several repositories)
 One row per part, filled by the AI from git (`aidlc-release`, step 1) and confirmed by a person. Any "no" blocks the
-release. Leave this section out for a story in one repository.
+release. An unconfirmed row (a blank "Confirmed by") or a row that lists differing lines also blocks the release.
+Leave this section out for a story in one repository.
 
 | Repository | Part | Merged on its default branch | Pins the current spec at a home commit on the home default branch | Criteria copy matches the spec | Contract copy matches its SOURCE and tag | Confirmed by |
 |---|---|---|---|---|---|---|

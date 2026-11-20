@@ -238,7 +238,9 @@ it. Every consumer reads an exact published version.
 - **Every change raises the version.** An additive change raises MINOR. A breaking change raises MAJOR, only with every
   consumer's agreement, done by expand and contract. The provider's own CI runs the contract check on each pull
   request that changes the contract, against the last published tag
-  (`git tag --list 'api-v*' --sort=-v:refname | head -n 1`): `git show <tag>:<path> > <last copy>`, then
+  (`git tag --list 'api-v*' --sort=-v:refname | head -n 1`). If there is no tag yet, this is the first publish: skip
+  the oasdiff step and the version comparison, and check only that `info.version` is set. Otherwise
+  `git show <tag>:<path> > <last copy>`, then
   `oasdiff breaking <last copy> <path> --fail-on ERR --allow-external-refs=false`, and a comparison of `info.version`
   in the two files. It fails a breaking change without a new MAJOR, and any change without a new version. Pin
   oasdiff's version, and check its download with `sha256sum -c` before you run it.
@@ -246,8 +248,9 @@ it. Every consumer reads an exact published version.
   naming the repository, tag, commit, path and sha256. Its CI checks the copy offline, so it never needs the
   provider: `echo "<sha256>  contracts/<provider>/<file>" | sha256sum -c -`, with the hash from `SOURCE`. Before a
   pin moves and before a release, it also checks that the tag still names that commit:
-  `git ls-remote --tags <repository> 'refs/tags/api-v<version>*'` (for an annotated tag, the commit is on the line
-  ending `^{}`); a moved tag stops the release. It moves the pin only to a named version, never "latest", in a
+  `git ls-remote --tags <repository> 'refs/tags/api-v<version>' 'refs/tags/api-v<version>^{}'` (for an annotated tag,
+  the commit is on the `^{}` line). Empty output, an error, or a commit different from the one in `SOURCE` stops the
+  release. It moves the pin only to a named version, never "latest", in a
   slice of its own: `git clone --depth 1 --branch api-v<version> <repository> <folder>`, copy the file, and write
   `SOURCE` from `git -C <folder> rev-parse HEAD` and `sha256sum`.
 - **Test against the copy.** The consumer's client types and test fakes come from the vendored copy: generate the

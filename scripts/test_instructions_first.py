@@ -290,11 +290,25 @@ class StoryLevelTest(unittest.TestCase):
     def test_designing_apis_gives_the_contract_commands(self):
         text = flat("skills/designing-apis/SKILL.md")
         for command in ("oasdiff breaking <last copy> <path> --fail-on ERR --allow-external-refs=false",
-                        "sha256sum -c -", "git ls-remote --tags <repository> 'refs/tags/api-v<version>*'",
+                        "sha256sum -c -", "git ls-remote --tags <repository> 'refs/tags/api-v<version>'",
                         "git tag api-v<version> <merge commit>",
                         "git clone --depth 1 --branch api-v<version> <repository> <folder>"):
             self.assertIn(command, text, command)
         self.assertIn("with the commands in `designing-apis` (`sha256sum -c` against its SOURCE", skill("aidlc-release"))
+
+    def test_commands_fetch_first_and_a_missing_result_stops(self):
+        release = skill("aidlc-release")
+        self.assertIn("run `git fetch` at the root, then check ancestry", release)
+        self.assertIn("equals the story's CURRENT spec version, and the spec file's own version at that commit", release)
+        self.assertIn("run `git -C <repository> fetch`, then read each part's PINS line", skill("aidlc-design"))
+        apis = flat("skills/designing-apis/SKILL.md")
+        for phrase in ("Empty output, an error, or a commit different from the one in `SOURCE` stops the release.",
+                       "If there is no tag yet, this is the first publish: skip the oasdiff step and the version comparison",
+                       "'refs/tags/api-v<version>' 'refs/tags/api-v<version>^{}'"):
+            self.assertIn(phrase, apis, phrase)
+        self.assertNotIn("api-v<version>*'", apis)
+        self.assertIn("An unconfirmed row (a blank \"Confirmed by\") or a row that lists differing lines also blocks",
+                      flat("skills/aidlc-release/assets/readiness.md"))
 
 
 if __name__ == "__main__":

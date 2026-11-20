@@ -75,7 +75,7 @@ Amendment mode:
    Once the provider's pull request merges, its default branch publishes the tag `api-v<version>`. Each consumer
    moves its copy to that tag, with the commands in `designing-apis`, in a slice whose MAY CHANGE names
    `contracts/<provider>/**`. Never point a consumer at an unpublished version.
-4. Read each part's PINS line on its repository's default branch, with
+4. For each part, run `git -C <repository> fetch`, then read each part's PINS line on its default branch, with
    `git -C <repository> show origin/<default branch>:plans/<KEY>/README.md`, and mark every part pinned to the old
    version "re-plan" in `status.md`. Those parts return to `aidlc-plan`; their bundles are approved again. In one
    repository there is no coordination plan: list the bundles that pin the old version and mark them for re-plan.
