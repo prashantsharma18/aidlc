@@ -276,5 +276,22 @@ class DecisionsTest(unittest.TestCase):
         self.assertIn("propose `check_contract_pin.py` with `check_contract_version.py`, which it imports", onboard)
 
 
+class ContractGuidanceTest(unittest.TestCase):
+    """F9: designing-apis teaches the rule; design's amendment mode follows the tags and pins."""
+
+    def test_designing_apis_teaches_the_spec_kit_rule(self):
+        text = flat("skills/designing-apis/SKILL.md")
+        self.assertIn("## A Contract Across Repositories", read("skills/designing-apis/SKILL.md"))
+        for phrase in ("`api-v<info.version>`", "Consumers pin a copy", "never \"latest\"", "Propose changes at the source",
+                       "Pact and its `can-i-deploy` check"):
+            self.assertIn(phrase, text, phrase)
+
+    def test_the_amendment_follows_tags_and_pins(self):
+        design = skill("aidlc-design")
+        self.assertIn("its default branch publishes the tag `api-v<version>`", design)
+        self.assertIn("Never point a consumer at an unpublished version", design)
+        self.assertIn("The provider's contract check (oasdiff against the last published tag) must agree", design)
+
+
 if __name__ == "__main__":
     unittest.main()
