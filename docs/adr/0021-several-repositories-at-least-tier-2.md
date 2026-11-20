@@ -1,6 +1,6 @@
 # 0021 · A story across several repositories is at least Tier 2
 
-Status: Proposed (2026-11-19). · Decider: Prashant Sharma (framework owner)
+Status: Accepted (2026-11-20; confirmed by the framework owner in the session). · Decider: Prashant Sharma (framework owner)
 Plan: `docs/plans/2026-11-19-plan-20-gates-that-hold.md` · Change list: F12
 
 ## Context

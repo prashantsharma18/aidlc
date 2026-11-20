@@ -1,6 +1,6 @@
 # 0022 · A story's facts have one owner; parts pin by version and commit
 
-Status: Proposed (2026-11-20). · Decider: Prashant Sharma (framework owner)
+Status: Accepted (2026-11-20; confirmed by the framework owner in the session). · Decider: Prashant Sharma (framework owner)
 Plan: `docs/plans/2026-11-20-plan-21-multirepo-foundations.md` · Change list: F1–F6, F9, F11, F13, F14; D5, D9 ·
 Amends: ADR 0015 (where a story's documents live; how parts pin), ADR 0020 (Decision 2 across repositories)
 

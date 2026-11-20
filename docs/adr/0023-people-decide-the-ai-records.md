@@ -1,6 +1,6 @@
 # 0023 · People decide; the AI records the decision after checking it
 
-Status: Proposed (2026-11-20). · Decider: Prashant Sharma (framework owner)
+Status: Accepted (2026-11-20; confirmed by the framework owner in the session). · Decider: Prashant Sharma (framework owner)
 Plan: `docs/plans/2026-11-20-plan-21-multirepo-foundations.md` · Amends: ADR 0015 (who marks the merged row), ADR
 0020 (who records an approval)
 

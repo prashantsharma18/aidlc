@@ -1,6 +1,6 @@
 # 0020 · At Tier 2 and 3, approved documents merge first
 
-Status: Proposed (2026-11-19). · Decider: Prashant Sharma (framework owner)
+Status: Accepted (2026-11-20; confirmed by the framework owner in the session). · Decider: Prashant Sharma (framework owner)
 Plan: `docs/plans/2026-11-19-plan-20-gates-that-hold.md` · Change list: A2 · Amends: ADR 0015 (where approvals live)
 
 ## Context
