@@ -12,7 +12,8 @@ plans/<KEY>/bundle-<slice>.md (plans/<KEY>/part-<n>/ with --part). Each must say
 with checkpoints (Tiers 1 and 2); a hands-on slice is built with a person. A Tier 2 or 3 bundle must be identical to the copy merged on the
 default branch (ADR 0020). After each session the slice's progress
 note must read STATUS done, the session must exit 0 and the tree must be clean; anything else ends the run. A paused
-slice runs again only after the person adds "- <pause> confirmed by <name>, <date>" to its progress note. The
+slice runs again only after the person confirms the pause to an AI session, which adds "- <pause> confirmed by
+<name>, <date> (<how>)" to its progress note (aidlc ADR 0023). The
 default command denies `git push` to the session, whatever the repository's settings say.
 Exit codes: 0 every slice done; 1 a slice did not end done; 2 the run could not start."""
 from __future__ import annotations
@@ -60,7 +61,8 @@ def status(note: Path) -> str:
 
 
 def pause_confirmed(note: Path, state: str) -> bool:
-    """A paused note may run again only when the person recorded "- <pause> confirmed by <name>, <date>"; a
+    """A paused note may run again only when it holds "- <pause> confirmed by <name>, <date>", which an AI session
+    writes when the person confirms (anything may follow the name, such as ", 2026-11-20 (in the session)"); a
     placeholder (<name> or {{name}}) is not a confirmation."""
     pause = state.split(":", 1)[1].strip()
     line = rf"^-[ \t]+{re.escape(pause)}[ \t]+confirmed by[ \t]+[^<{{\s]"
@@ -95,8 +97,9 @@ def preflight(plans: Path, slices: list[str]) -> list[str]:
         if state == "done":
             problems.append(f"{name}: already done; leave it out")
         elif state.startswith("paused:") and not pause_confirmed(note, state):
-            problems.append(f"{name}: {state} is not confirmed: the person adds "
-                            f"'- {state.split(':', 1)[1].strip()} confirmed by <name>, <date>' to the progress note")
+            problems.append(f"{name}: {state} is not confirmed: confirm it to an AI session in this repository, "
+                            f"which writes '- {state.split(':', 1)[1].strip()} confirmed by <name>, <date> (<how>)' "
+                            f"in the progress note")
     return problems
 
 

@@ -109,7 +109,8 @@ Brief mode:
 4. Fill `assets/fix-brief.md` and write it to `plans/<KEY>/fix.md`. Choose USE SKILLS from the practice map
    (`debugging-failures` and `writing-tests` at least). Propose MODE; the engineer chooses it when
    confirming.
-5. The engineer confirms the brief and the CONFIRMED line records it. Build starts only from a confirmed brief. Mark
+5. The engineer confirms the brief by telling you; you write the CONFIRMED line with the name they give, the date
+   and how it was confirmed (ADR 0023). Build starts only from a confirmed brief. Mark
    this stage's row in the index as done.
 
 Feature brief mode (route F0):
@@ -126,7 +127,8 @@ Feature brief mode (route F0):
    - the work needs more than one slice, or more than the pull-request size `reviewing-code` gives.
 4. Fill `assets/feature-brief.md` and write it to `plans/<KEY>/brief.md`. Map each criterion to a test named with
    its ID. Choose USE SKILLS from the practice map (`writing-tests` at least). Propose MODE; the engineer chooses it when confirming.
-5. The engineer confirms the brief and the CONFIRMED line records it. Build starts only from a confirmed brief. Mark
+5. The engineer confirms the brief by telling you; you write the CONFIRMED line with the name they give, the date
+   and how it was confirmed (ADR 0023). Build starts only from a confirmed brief. Mark
    this stage's row in the index as done, or as stopped with the reason.
 
 ## Produces

@@ -14,7 +14,8 @@ MODE        {{the bundle's MODE; hands-on when the bundle has none}}
 - {{goal, criteria covered, MAY CHANGE and STOP IF, with file references}}
 
 ## Pauses confirmed (by the person)
-- {{checkpoint n | recipe review}} confirmed by {{name}}, {{YYYY-MM-DD}}
+The person confirms each pause by telling the AI, which writes the line with the name given (ADR 0023).
+- {{checkpoint n | recipe review}} confirmed by {{name}}, {{YYYY-MM-DD}} ({{in the session}})
 
 ## Session plan
 - [ ] 1 {{step}} — files: {{...}} — check: {{...}}

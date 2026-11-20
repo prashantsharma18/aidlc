@@ -21,6 +21,9 @@ You check that the change does what was approved, and only that.
   before a step that touches a contract or another owner's code is a high finding. A note written before aidlc 4.3 has
   no STATUS or MODE line: that is not a finding.
 - The bundle's PINS match the spec, plan and contract versions the change builds on.
+- Each recorded decision (the CONFIRMED line, each "confirmed by" line, the plan's APPROVAL line) names a person
+  and says how it was confirmed: in the session, or checked on GitHub or the tracker (ADR 0023). A record with no
+  name, a placeholder, or no way it was confirmed is a medium finding.
 - For a part of a story across several repositories, the spec pin names a home commit (`spec v<n> @ <commit>`),
   `plans/<KEY>/criteria.md` names the same commit on its SOURCE line, and the criteria you check come from that
   copy. A copy under `contracts/<provider>/` changes only in a slice whose MAY CHANGE names it, together with its

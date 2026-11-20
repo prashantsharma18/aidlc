@@ -111,5 +111,47 @@ class FixRoundTest(unittest.TestCase):
         self.assertIn("decided by the tech lead or architect and recorded by you after they tell you", skill("aidlc-design"))
 
 
+class ParsedRecordTest(unittest.TestCase):
+    """Task 13: the merged row, the pauses and the brief confirmations are written by the AI, in the formats the
+    scripts read."""
+
+    def test_the_merged_row_is_marked_after_the_check_and_never_merged(self):
+        review = skill("aidlc-review")
+        self.assertIn("check the approval and the required checks on GitHub; then this session marks the `merged` row "
+                      "done in its final commit", review)
+        self.assertIn("tells the person the pull request is ready to merge; you never merge (ADR 0023)", review)
+        self.assertIn("The row's status stays `done`", review)
+        for rel in ("skills/aidlc-start/assets/story-index.md", "skills/aidlc-plan/assets/story-index.md"):
+            self.assertIn("the AI checks the approval and the required checks on GitHub, marks the merged row", flat(rel))
+            self.assertNotIn("the person marks", flat(rel))
+
+    def test_pauses_and_briefs_are_written_by_the_ai(self):
+        self.assertIn("The person confirms the pause by telling you; you write that line", skill("aidlc-build"))
+        self.assertEqual(skill("aidlc-plan").count("The engineer confirms the brief by telling you; you write the "
+                                                   "CONFIRMED line"), 2)
+        self.assertIn("The person confirms each pause by telling the AI", read("skills/aidlc-build/assets/progress-note.md"))
+        for name in ("fix-brief", "feature-brief"):
+            self.assertIn("written by the AI when the engineer confirms", read(f"skills/aidlc-plan/assets/{name}.md"))
+
+    def test_the_runner_tells_the_person_to_tell_the_ai(self):
+        source = read("starter/repo/scripts/run_slices.py")
+        self.assertNotIn("the person adds", source)
+        self.assertIn("confirm it to an AI session in this repository", source)
+
+    def test_a_pause_line_with_how_it_was_confirmed_still_parses(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            note = Path(tmp) / "progress-1.md"
+            for line, ok in (("- checkpoint 1 confirmed by Ana, 2026-11-20 (in the session)", True),
+                             ("- checkpoint 1 confirmed by @ana on PR #12, checked on GitHub, 2026-11-20", True),
+                             ("- checkpoint 1 confirmed by <name>, <date> (<how>)", False),
+                             ("- checkpoint 1 confirmed by {{name}}, {{YYYY-MM-DD}} ({{in the session}})", False)):
+                note.write_text(f"STATUS      paused: checkpoint 1\n\n## Pauses confirmed (by the person)\n{line}\n",
+                                encoding="utf-8")
+                self.assertEqual(run_slices.pause_confirmed(note, "paused: checkpoint 1"), ok, line)
+
+    def test_compliance_checks_each_record(self):
+        self.assertIn("names a person and says how it was confirmed", flat("agents/reviewer-compliance.md"))
+
+
 if __name__ == "__main__":
     unittest.main()
