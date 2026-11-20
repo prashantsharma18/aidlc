@@ -1477,8 +1477,8 @@ git commit -m "feat(starter): the home repository's gitignore comes from WORKSPA
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `scripts/test_check_contract.py`. The fake oasdiff reports a breaking change when a path of the base is gone,
-and records its arguments beside itself:
+The fake oasdiff in this file reports a breaking change when a path of the base is gone, and records its arguments
+beside itself. Create `scripts/test_check_contract.py`:
 
 ```python
 """Tests for starter/repo/scripts/check_contract_version.py (the provider) and check_contract_pin.py (the consumer).
