@@ -21,10 +21,12 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import re
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path, PurePosixPath
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -32,13 +34,21 @@ from check_contract_version import TAG, info_version, semver  # noqa: E402
 
 KEYS = ("repository", "tag", "commit", "path", "sha256")
 PROVIDER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+HOST_PATH = r"[A-Za-z0-9][A-Za-z0-9._~%@:+/-]*"
+REPOSITORY = re.compile(rf"(https|ssh)://{HOST_PATH}|git@[A-Za-z0-9][A-Za-z0-9.-]*:[A-Za-z0-9._~%+/][A-Za-z0-9._~%+/-]*"
+                        rf"|/[A-Za-z0-9._~%+@:/-]+")
+GIT_TIMEOUT = 120
+RUN_TIMEOUT = 300
 
 
 def read_source(text: str) -> dict[str, str]:
+    """The key: value lines of a SOURCE file; a key written twice raises ValueError."""
     found = {}
     for line in text.splitlines():
         m = re.match(r"^([a-z0-9]+):\s*(\S.*?)\s*$", line)
         if m:
+            if m.group(1) in found:
+                raise ValueError(f"{m.group(1)} appears twice")
             found[m.group(1)] = m.group(2)
     return found
 
@@ -59,8 +69,24 @@ def load_source(folder: Path) -> dict[str, str] | str:
     """The fields of folder/SOURCE, or why it cannot be read."""
     try:
         return read_source((folder / "SOURCE").read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError) as error:
+    except ValueError as error:  # includes UnicodeDecodeError
+        if isinstance(error, UnicodeDecodeError):
+            return f"contracts/{folder.name}/SOURCE: cannot be read (UnicodeDecodeError); restore it or run --update"
+        return f"contracts/{folder.name}/SOURCE: {error}; one line per key"
+    except OSError as error:
         return f"contracts/{folder.name}/SOURCE: cannot be read ({type(error).__name__}); restore it or run --update"
+
+
+def repository_problem(repository: str) -> str | None:
+    """Why a repository value is not safe to hand to git, or None. It comes from SOURCE or the command line, so it
+    is data: only https, ssh, scp-like git@host:path and an absolute local path are allowed, with no whitespace or
+    control character, and nothing git could read as an option."""
+    if repository.startswith("-") or re.search(r"[\s\x00-\x1f\x7f]", repository) or "::" in repository:
+        return f"repository {repository!r} is not a plain git URL or absolute path"
+    if not REPOSITORY.fullmatch(repository):
+        return (f"repository {repository!r} must be https://..., ssh://..., git@host:path or an absolute local "
+                f"path")
+    return None
 
 
 def offline_problems(folder: Path) -> list[str]:
@@ -75,6 +101,9 @@ def offline_problems(folder: Path) -> list[str]:
     if missing:
         return [f"{rel}/SOURCE: {', '.join(missing)} missing"]
     problems = []
+    unsafe = repository_problem(fields["repository"])
+    if unsafe:
+        problems.append(f"{rel}/SOURCE: {unsafe}")
     tag = TAG.match(fields["tag"])
     if not tag:
         problems.append(f"{rel}/SOURCE: {fields['tag']} is not a published version (api-v<MAJOR.MINOR.PATCH>)")
@@ -93,35 +122,48 @@ def offline_problems(folder: Path) -> list[str]:
     return problems
 
 
-def fetch(repository: str, tag: str, path: str) -> tuple[str, bytes] | str:
-    """(the commit the tag names, the contract's bytes there), or why they cannot be read."""
+def fetch(repository: str, tag: str, path: str, deadline: float | None = None) -> tuple[str, bytes] | str:
+    """(the commit the tag names, the contract's bytes there), or why they cannot be read. Git runs without a
+    credential prompt and with only the https, ssh and file transports, and every git call shares one deadline
+    (a time.monotonic() value; two minutes from now when none is given)."""
+    unsafe = repository_problem(repository)
+    if unsafe or not TAG.match(tag):
+        return f"cannot fetch {tag}: {unsafe or 'not a published version'}"
+    deadline = time.monotonic() + GIT_TIMEOUT if deadline is None else deadline
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ALLOW_PROTOCOL": "https:ssh:file"}
     with tempfile.TemporaryDirectory() as tmp:
         def run(*args: str, text: bool = True) -> subprocess.CompletedProcess:
-            return subprocess.run(["git", "-C", tmp, *args], capture_output=True, text=text, timeout=120)
+            left = deadline - time.monotonic()
+            if left <= 0:
+                raise subprocess.TimeoutExpired("git", 0)
+            return subprocess.run(["git", "-C", tmp, *args], capture_output=True, text=text, env=env,
+                                  stdin=subprocess.DEVNULL, timeout=min(left, GIT_TIMEOUT))
         try:
             run("init", "-q")
-            got = run("fetch", "-q", "--depth", "1", "--no-tags", repository, f"refs/tags/{tag}:refs/tags/{tag}")
+            got = run("fetch", "-q", "--depth", "1", "--no-tags", "--", repository, f"refs/tags/{tag}:refs/tags/{tag}")
             if got.returncode != 0:
                 return f"cannot fetch {tag} from {repository}: {got.stderr.strip()[:200]}"
-            named = run("rev-parse", f"refs/tags/{tag}^{{commit}}")
+            named = run("rev-parse", "--verify", f"refs/tags/{tag}^{{commit}}")
             commit = named.stdout.strip()
             if named.returncode != 0 or not re.fullmatch(r"[0-9a-f]{40}", commit):
                 return f"cannot fetch {tag} from {repository}: the tag names no commit"
             blob = run("show", f"refs/tags/{tag}:{path}", text=False)
-        except (OSError, subprocess.TimeoutExpired) as error:
+        except subprocess.TimeoutExpired:
+            return f"cannot fetch {tag} from {repository}: timed out"
+        except OSError as error:
             return f"cannot fetch {tag} from {repository}: {error}"
         if blob.returncode != 0:
             return f"{tag} in {repository} has no {path}"
         return commit, blob.stdout
 
 
-def online_problems(folder: Path) -> list[str]:
+def online_problems(folder: Path, deadline: float | None = None) -> list[str]:
     """The tag still names the commit SOURCE recorded, and the file there is the copy: a published version never
     changes."""
     fields = load_source(folder)
     if isinstance(fields, str):
         return [fields]
-    got = fetch(fields["repository"], fields["tag"], fields["path"])
+    got = fetch(fields["repository"], fields["tag"], fields["path"], deadline)
     if isinstance(got, str):
         return [f"contracts/{folder.name}: {got}"]
     commit, data = got
@@ -131,6 +173,37 @@ def online_problems(folder: Path) -> list[str]:
     if sha256(data) != fields["sha256"].lower():
         return [f"contracts/{folder.name}: {fields['path']} at {fields['tag']} does not hash to SOURCE's sha256"]
     return []
+
+
+def write_pair(folder: Path, copy: Path, data: bytes, source: bytes) -> None:
+    """Writes the copy and SOURCE as one unit: both go to temporary files first, then the copy and SOURCE are
+    renamed into place. When anything fails, the previous copy and SOURCE are restored and the temporaries removed."""
+    made = not folder.exists()
+    folder.mkdir(parents=True, exist_ok=True)
+    temps, previous = [], copy.read_bytes() if copy.is_file() else None
+    try:
+        for target, content in ((copy, data), (folder / "SOURCE", source)):
+            handle, name = tempfile.mkstemp(dir=folder, prefix=".pin-")
+            temps.append(Path(name))
+            with os.fdopen(handle, "wb") as out:
+                out.write(content)
+        os.replace(temps[0], copy)
+        try:
+            os.replace(temps[1], folder / "SOURCE")
+        except OSError:
+            if previous is None:
+                copy.unlink(missing_ok=True)
+            else:
+                copy.write_bytes(previous)
+            raise
+    except OSError:
+        for temp in temps:
+            temp.unlink(missing_ok=True)
+        if made:
+            for leftover in folder.glob("*"):
+                leftover.unlink(missing_ok=True)
+            folder.rmdir()
+        raise
 
 
 def update(root: Path, provider: str, tag: str, repository: str | None = None,
@@ -151,6 +224,9 @@ def update(root: Path, provider: str, tag: str, repository: str | None = None,
         return 2, [f"contracts/{provider} has no SOURCE yet: pass --repository and --path"]
     if not PurePosixPath(path).name or path.endswith("/"):
         return 2, [f"{path}: --path names a file, not a folder"]
+    unsafe = repository_problem(repository)
+    if unsafe:
+        return 2, [unsafe]
     got = fetch(repository, tag, path)
     if isinstance(got, str):
         return 1, [got]
@@ -158,12 +234,13 @@ def update(root: Path, provider: str, tag: str, repository: str | None = None,
     found = info_version(data.decode("utf-8", errors="replace"))
     if found != TAG.match(tag).group(1):
         return 1, [f"{path} at {tag}: info.version is {found!r}, but the tag is {tag}; nothing written, ask the provider"]
-    folder.mkdir(parents=True, exist_ok=True)
+    fields = {"repository": repository, "tag": tag, "commit": commit, "path": path, "sha256": sha256(data)}
+    try:
+        write_pair(folder, copy_of(folder, path), data, source_text(fields).encode("utf-8"))
+    except OSError as error:
+        return 1, [f"contracts/{provider}: cannot write the copy and SOURCE ({error}); the previous files are kept"]
     if old.get("path") and copy_of(folder, old["path"]).name != copy_of(folder, path).name:
         copy_of(folder, old["path"]).unlink(missing_ok=True)
-    copy_of(folder, path).write_bytes(data)
-    fields = {"repository": repository, "tag": tag, "commit": commit, "path": path, "sha256": sha256(data)}
-    (folder / "SOURCE").write_text(source_text(fields), encoding="utf-8")
     messages = [f"contracts/{provider}: now {tag} ({commit[:12]}); commit the copy and SOURCE together, in a slice "
                 f"whose MAY CHANGE names contracts/{provider}/**"]
     before = TAG.match(old.get("tag", ""))
@@ -191,10 +268,10 @@ def main(argv: list[str] | None = None) -> int:
     if not folders:
         print("check_contract_pin: no vendored contracts")
         return 0
-    problems = []
+    problems, deadline = [], time.monotonic() + RUN_TIMEOUT
     for folder in folders:
         found = offline_problems(folder)
-        problems += found if found or not args.online else online_problems(folder)
+        problems += found if found or not args.online else online_problems(folder, deadline)
     for problem in problems:
         print(problem)
     if not problems:

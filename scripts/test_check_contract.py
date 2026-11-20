@@ -1,10 +1,13 @@
 """Tests for starter/repo/scripts/check_contract_version.py (the provider) and check_contract_pin.py (the consumer).
 A fake oasdiff stands in for the real one: it reports a breaking change when a path of the base is gone."""
 import io
+import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
+from unittest import mock
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
@@ -397,6 +400,109 @@ class ConsumerFailClosedTest(unittest.TestCase):
         code, _ = self.main("--update", "shipments-api", "api-v1.0.0", "--repository", str(self.provider.root),
                             "--path", "docs/")
         self.assertEqual(code, 2)
+
+
+class ConsumerSecurityTest(unittest.TestCase):
+    """The repository value is external input: it is never an option, a helper command or a transport git runs."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+        self.provider = Provider(self.tmp)
+        self.root = self.tmp / "web-portal"
+        self.root.mkdir()
+        self.folder = self.root / "contracts" / "shipments-api"
+        self.marker = self.tmp / "pwned"
+
+    main = ConsumerTest.main
+    vendor = ConsumerTest.vendor
+
+    def evil(self):
+        return [f"--upload-pack=touch {self.marker};", f"--upload-pack=touch {self.marker}",
+                f"ext::sh -c touch% {self.marker}", "-oProxyCommand=x", "git@-host:path", "ftp://host/x",
+                "relative/path", "https://host/a b", "https://host/a\tb", "git@host:-x", "file:///tmp/x"]
+
+    def test_update_refuses_an_unsafe_repository_and_runs_nothing(self):
+        for repository in self.evil():
+            code, out = self.main("--update", "shipments-api", "api-v1.0.0", f"--repository={repository}",
+                                  "--path", "openapi.yaml")
+            self.assertEqual(code, 2, repository)
+            self.assertIn("repository", out)
+        self.assertFalse(self.marker.exists())
+        self.assertFalse(self.folder.exists())
+
+    def test_an_edited_source_with_an_unsafe_repository_is_refused_offline_and_online(self):
+        ConsumerTest.vendor(self)
+        source = (self.folder / "SOURCE").read_text(encoding="utf-8")
+        good = check_contract_pin.read_source(source)["repository"]
+        for repository in self.evil():
+            (self.folder / "SOURCE").write_text(source.replace(good, repository), encoding="utf-8")
+            for flag in ((), ("--online",)):
+                code, out = self.main(*flag)
+                self.assertEqual(code, 1, (repository, flag))
+                self.assertIn("SOURCE: repository", out)
+        self.assertFalse(self.marker.exists())
+
+    def test_safe_repository_forms_are_accepted(self):
+        for repository in (str(self.provider.root), "https://example.com/org/shipments-api.git",
+                           "ssh://git@example.com/org/shipments-api.git", "git@example.com:org/shipments-api.git"):
+            self.assertIsNone(check_contract_pin.repository_problem(repository), repository)
+
+    def test_git_gets_a_locked_down_environment_and_the_separator(self):
+        calls = []
+
+        def fake(cmd, **kwargs):
+            calls.append((cmd, kwargs))
+            return subprocess.CompletedProcess(cmd, 1, "", "no")
+        with mock.patch.object(check_contract_pin.subprocess, "run", fake):
+            check_contract_pin.fetch(str(self.provider.root), "api-v1.0.0", "openapi.yaml")
+        self.assertTrue(calls)
+        for cmd, kwargs in calls:
+            self.assertEqual(kwargs["env"]["GIT_TERMINAL_PROMPT"], "0")
+            self.assertEqual(kwargs["env"]["GIT_ALLOW_PROTOCOL"], "https:ssh:file")
+            self.assertLessEqual(kwargs["timeout"], 120)
+        fetch = next(cmd for cmd, _ in calls if "fetch" in cmd)
+        self.assertEqual(fetch[fetch.index("--") + 1], str(self.provider.root))
+
+    def test_one_deadline_covers_every_git_call_of_a_run(self):
+        timeouts = []
+
+        def fake(cmd, **kwargs):
+            timeouts.append(kwargs["timeout"])
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+        with mock.patch.object(check_contract_pin.subprocess, "run", fake):
+            result = check_contract_pin.fetch(str(self.provider.root), "api-v1.0.0", "openapi.yaml",
+                                              deadline=time.monotonic() - 1)
+        self.assertIsInstance(result, str)
+        self.assertIn("timed out", result)
+        self.assertEqual(timeouts, [])
+
+    def test_a_failure_between_the_writes_leaves_the_previous_copy_and_source(self):
+        ConsumerTest.vendor(self)
+        before = {n: (self.folder / n).read_bytes() for n in ("openapi.yaml", "SOURCE")}
+        self.provider.commit(contract("1.1.0", ("/shipments/{id}", "/shipments")))
+        git(self.provider.root, "tag", "api-v1.1.0")
+        real, count = os.replace, []
+
+        def flaky(src, dst):
+            count.append(dst)
+            if len(count) == 2:
+                raise OSError("disk full")
+            return real(src, dst)
+        with mock.patch.object(check_contract_pin.os, "replace", flaky):
+            code, out = self.main("--update", "shipments-api", "api-v1.1.0")
+        self.assertEqual(code, 1, out)
+        self.assertEqual({n: (self.folder / n).read_bytes() for n in before}, before)
+        self.assertEqual(sorted(p.name for p in self.folder.iterdir()), ["SOURCE", "openapi.yaml"])
+
+    def test_a_duplicate_key_in_source_is_a_problem(self):
+        ConsumerTest.vendor(self)
+        with (self.folder / "SOURCE").open("a", encoding="utf-8") as handle:
+            handle.write("tag:        api-v0.0.1\n")
+        code, out = self.main()
+        self.assertEqual(code, 1)
+        self.assertIn("SOURCE: tag appears twice", out)
 
 
 if __name__ == "__main__":
