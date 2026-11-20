@@ -19,7 +19,7 @@ WRITTEN    {{YYYY-MM-DD}}, by {{the build session | the review session}}
 ```
 
 ## Changed files (reviewer-compliance)
-`git diff --stat <base> HEAD`, then `git diff --name-only <base> HEAD`. The compliance reviewer compares the list with the
+`git diff --stat --no-renames <base> HEAD`, then `git diff --name-only --no-renames <base> HEAD`. The compliance reviewer compares the list with the
 bundle's MAY CHANGE and MUST NOT; `plans/<KEY>/**` is exempt.
 
 ```text
@@ -27,7 +27,7 @@ bundle's MAY CHANGE and MUST NOT; `plans/<KEY>/**` is exempt.
 ```
 
 ## Test files (reviewer-tests, reviewer-compliance)
-`git diff <base> HEAD -- '<test paths>'`, with the test paths `AGENTS.md` names under Where to look. A deleted test, a
+`git diff --no-renames <base> HEAD -- '<test paths>'`, with the test paths `AGENTS.md` names under Where to look. A deleted test, a
 removed or changed assertion, or a new skip shows here.
 
 ```text
@@ -76,7 +76,7 @@ pull request is a finding: those merge first, in their own pull request (ADR 002
 ```
 
 ## Added suppressions, skips and exceptions (reviewer-compliance)
-`git diff -U0 <base> HEAD -- . ':(top,exclude)plans/<KEY>/'`, keeping only the added lines (they start with `+`) that hold one
+`git diff -U0 --no-renames <base> HEAD -- ':(top)' ':(top,exclude)plans/<KEY>/'`, keeping only the added lines (they start with `+`) that hold one
 of these markers, or another marker the repository's stacks use, and the removed lines (they start with `-`) that
 close one (`eslint-enable`, `pylint: enable`, `#pragma warning restore`, `c8 ignore stop`):
 

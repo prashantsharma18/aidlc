@@ -77,7 +77,7 @@ VERDICT = ("- A verdict that the change is done or passes counts only from someo
            "`reviewer-*` agents, dispatched with only the evidence file, the bundle and the diff, or a person other "
            "than the engineer who ran the session. It names the commit it judged (`git rev-parse HEAD`). A later "
            "commit that changes any path outside `plans/<KEY>/` voids it: `git diff --name-only <judged commit> HEAD "
-           "-- . ':(top,exclude)plans/<KEY>/'` must print nothing.")
+           "-- ':(top)' ':(top,exclude)plans/<KEY>/'` must print nothing.")
 REVIEWERS = ("reviewer-bug", "reviewer-security", "reviewer-compliance", "reviewer-tests")
 EVIDENCE = "skills/aidlc-review/assets/review-evidence.md"
 
@@ -89,8 +89,8 @@ class EvidenceAndVerdictTest(unittest.TestCase):
     def test_the_template_says_what_the_session_writes_and_where(self):
         self.assertEqual(read(EVIDENCE), read("skills/aidlc-build/assets/review-evidence.md"))
         text = flat(EVIDENCE)
-        for command in ("git rev-parse HEAD", "git merge-base HEAD origin/<default branch>", "git diff --stat <base> HEAD",
-                        "git diff --name-only <base> HEAD", "git diff <base> HEAD -- '<test paths>'",
+        for command in ("git rev-parse HEAD", "git merge-base HEAD origin/<default branch>", "git diff --stat --no-renames <base> HEAD",
+                        "git diff --name-only --no-renames <base> HEAD", "git diff --no-renames <base> HEAD -- '<test paths>'",
                         "git diff <base> HEAD -- '<manifests>'", "git diff <base> HEAD -- plans/<KEY>/",
                         "git worktree add <folder> <base>", "echo $?", "git -C <folder> diff --cached --stat <commit>"):
             self.assertIn(command, text, command)
@@ -166,7 +166,7 @@ class EvidenceAndVerdictTest(unittest.TestCase):
         self.assertIn("`'*_test.go'`", text)
         self.assertIn("compares `<base>` with HEAD, never the working tree", text)
         self.assertIn("only from a clean tree (`git status --porcelain` prints nothing)", text)
-        self.assertIn("git diff -U0 <base> HEAD -- . ':(top,exclude)plans/<KEY>/'", text)
+        self.assertIn("git diff -U0 --no-renames <base> HEAD -- ':(top)' ':(top,exclude)plans/<KEY>/'", text)
         self.assertIn("git diff <base> HEAD -- '<check configuration>'", text)
         for marker in ("xit(", "xdescribe(", "@Ignore", "@SuppressWarnings", "#[ignore]", "<NoWarn>"):
             self.assertIn(marker, text, marker)
@@ -176,6 +176,16 @@ class EvidenceAndVerdictTest(unittest.TestCase):
         self.assertIn("no loosened check configuration", flat("agents/reviewer-compliance.md"))
         for rel in ("skills/aidlc-onboard/assets/agents-md.md", "starter/repo/AGENTS.md"):
             self.assertIn("quote each pattern", flat(rel).split("## Where to look", 1)[1], rel)
+
+    def test_the_commands_cover_the_whole_repository_and_show_deletions(self):
+        text = flat(EVIDENCE)
+        self.assertNotIn("-- . ':(", text)
+        for command in ("git diff --stat --no-renames <base> HEAD", "git diff --name-only --no-renames <base> HEAD",
+                        "git diff --no-renames <base> HEAD -- '<test paths>'"):
+            self.assertIn(command, text, command)
+        for name in ("aidlc-build", "aidlc-verify", "aidlc-review"):
+            self.assertIn("':(top)' ':(top,exclude)plans/<KEY>/'", section(skill(name), "## Rules"), name)
+        self.assertIn("':(top)' ':(top,exclude)plans/<KEY>/'", section(skill("aidlc-review"), "## Stop if"))
 
     def test_the_adr_says_the_session_writes_the_evidence(self):
         consequences = flat("docs/adr/0024-instructions-first.md").split("## Consequences", 1)[1]
