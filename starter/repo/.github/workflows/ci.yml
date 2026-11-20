@@ -48,7 +48,7 @@ jobs:
   # copy's sha256 (aidlc ADR 0022). Offline, so the check never needs the provider. A repository with no contracts/
   # passes. Make "contract-pin" a required check where the repository consumes a contract. Like slice-check, it runs
   # the base branch's copy of the scripts on a pull request, so a pull request cannot rewrite the check and the
-  # vendored contract together; the tree's own copy runs on a push, or when the base branch has none yet.
+  # vendored contract together; the tree's own copy runs on a push only. A pull request whose base has no check skips it.
   contract-pin:
     runs-on: ubuntu-24.04
     steps:
@@ -61,17 +61,18 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
         run: |
-          if [ ! -f scripts/check_contract_pin.py ]; then
-            echo "no contract pin check in this repository"
-            exit 0
-          fi
-          if [ "$EVENT_NAME" = "pull_request" ] \
-            && git cat-file -e "origin/$BASE_REF:scripts/check_contract_pin.py" 2>/dev/null \
-            && git cat-file -e "origin/$BASE_REF:scripts/check_contract_version.py" 2>/dev/null; then
-            mkdir -p "$RUNNER_TEMP/aidlc"
-            git show "origin/$BASE_REF:scripts/check_contract_pin.py" > "$RUNNER_TEMP/aidlc/check_contract_pin.py"
-            git show "origin/$BASE_REF:scripts/check_contract_version.py" > "$RUNNER_TEMP/aidlc/check_contract_version.py"
-            python3 "$RUNNER_TEMP/aidlc/check_contract_pin.py"
-          else
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            # The base branch decides whether a check exists, never the pull request's own tree.
+            if git cat-file -e "origin/$BASE_REF:scripts/check_contract_pin.py" 2>/dev/null; then
+              mkdir -p "$RUNNER_TEMP/aidlc"
+              git show "origin/$BASE_REF:scripts/check_contract_pin.py" > "$RUNNER_TEMP/aidlc/check_contract_pin.py"
+              git show "origin/$BASE_REF:scripts/check_contract_version.py" > "$RUNNER_TEMP/aidlc/check_contract_version.py"
+              python3 "$RUNNER_TEMP/aidlc/check_contract_pin.py"
+            else
+              echo "no contract pin check in this repository"
+            fi
+          elif [ -f scripts/check_contract_pin.py ]; then
             python3 scripts/check_contract_pin.py
+          else
+            echo "no contract pin check in this repository"
           fi

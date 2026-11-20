@@ -180,6 +180,14 @@ class ContractWorkflowHardeningTest(unittest.TestCase):
         self.assertIn('python3 "$RUNNER_TEMP/aidlc/check_contract_pin.py"', block)
         self.assertIn("python3 scripts/check_contract_pin.py", block)
 
+    def test_the_pin_job_decides_from_the_base_on_a_pull_request(self):
+        block = "\n".join(run_blocks(job_text(self.ci, "contract-pin")))
+        pr, push = block.split("elif", 1)
+        self.assertIn('[ "$EVENT_NAME" = "pull_request" ]', pr)
+        self.assertIn('git cat-file -e "origin/$BASE_REF:scripts/check_contract_pin.py"', pr)
+        self.assertNotIn("-f scripts/", pr)
+        self.assertIn("-f scripts/check_contract_pin.py", push)
+
     def test_publish_documents_the_skipped_middle_version(self):
         text = " ".join(self.publish.replace("# ", " ").split())
         self.assertIn("one pending run", text)
