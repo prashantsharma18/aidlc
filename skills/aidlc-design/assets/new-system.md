@@ -3,7 +3,7 @@
 
 ## For the reviewer
 - **Asked of:** The tech lead or architect, to approve the stack, every dependency and the scaffold commands
-- **Record it:** On the APPROVED line below, and on the work item with this file's version and commit
+- **Record it:** On the APPROVED line below, and on the work item with this file's version and commit (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 
@@ -23,5 +23,5 @@ COMMANDS     tests: <command> · lint: <command> · build: <command> · run: <co
 SCAFFOLD     <tool@version — the exact generator and install commands — the paths they create> | none: slice 0 writes the skeleton by hand, tests first
 CI           <each required check, running one of the COMMANDS>
 
-APPROVED     <tech lead or architect>, <YYYY-MM-DD>, recorded on the work item with this file's version and commit
+APPROVED     <tech lead or architect>, <YYYY-MM-DD>, <how it was confirmed>, recorded on the work item with this file's version and commit
 ```

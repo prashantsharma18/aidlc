@@ -26,4 +26,4 @@ SCANS      dependency, secrets, SAST                        -      <clean>
 - {{finding}}: {{fixed test-first, or dismissed: reason}}
 
 ## Unproved
-- {{criterion, why, who accepted}}, or none
+- {{criterion, why, who accepted, and how it was confirmed}}, or none

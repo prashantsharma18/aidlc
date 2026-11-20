@@ -3,7 +3,7 @@
 
 ## For the reviewer
 - **Asked of:** The release approver, to approve the change and its stop criteria
-- **Record it:** In change management
+- **Record it:** In change management (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 
@@ -26,7 +26,7 @@
 ## Roles
 - **Agent:** read-only: summaries and proposals; no flags, configuration or credentials
 - **Submitted by:** {{engineer}}, drafted with the agent
-- **Approved by:** {{release approver}}, in change management
+- **Approved by:** {{release approver}}, in change management, record {{change management record ID}} ({{how the AI confirmed it}})
 
 ## Follow-ups
 - Flag removal: {{owner, date, work item}}

@@ -5,7 +5,7 @@
 - **Severity:** {{severity}}
 - **Impact:** {{who, what, from and to}}
 - **Contained:** {{action}}. Undo: {{step and its trigger}}
-- **Cause:** {{confirmed cause}} (confirmed by {{person}}, {{time}})
+- **Cause:** {{confirmed cause}} (confirmed by {{person}}, {{time}}, {{in the session, or how it was checked}})
 
 ## Timeline
 - {{hh:mm}} {{event}}

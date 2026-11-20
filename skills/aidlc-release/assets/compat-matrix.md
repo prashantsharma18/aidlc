@@ -17,5 +17,5 @@ Cell: ✓ proved (evidence) · ✗ broken · ? unknown (owner, date).
 | New, no value (field absent) | | | | |
 | New, with value | | | | |
 
-Evidence per cell: {{test file:line, expectations file, owner confirmation with date}}
+Evidence per cell: {{test file:line, expectations file, owner confirmation with date and how it was confirmed}}
 Rows "old" and "flag off" are also the rollback states: every consumer must keep handling them.

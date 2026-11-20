@@ -5,7 +5,7 @@ The worst of the five decides.
 
 ## For the reviewer
 - **Asked of:** The release approver, to decide ship, limit or hold; the owning team confirms monitoring and rollback
-- **Record it:** In change management; the owning team's confirmation in this record
+- **Record it:** In change management; the owning team's confirmation in this record (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 
@@ -30,4 +30,4 @@ The worst of the five decides.
 - [ ] Runbook: {{path}}
 
 ## Decision
-{{ship, limit or hold}}. Release approver: {{name}}, {{YYYY-MM-DD}}
+{{ship, limit or hold}}. Release approver: {{name}}, {{YYYY-MM-DD}}, {{how it was confirmed: checked in change management, or in the session}}

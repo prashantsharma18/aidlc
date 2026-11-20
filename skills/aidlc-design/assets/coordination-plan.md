@@ -9,7 +9,7 @@ fields: [KEY, TITLE]
 
 ## For the reviewer
 - **Asked of:** The tech lead or architect, to approve the parts, their order and the contract versions with the design; each part's own code owners approve its pull request
-- **Record it:** On the work item with this plan's version and commit; each part in its own pull request
+- **Record it:** On the work item with this plan's version and commit; each part in its own pull request (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 

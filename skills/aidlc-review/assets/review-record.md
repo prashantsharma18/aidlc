@@ -3,7 +3,7 @@
 
 ## For the reviewer
 - **Asked of:** The engineer, to decide each finding (high and medium block the merge); the reviewer named below, to give the DECISION; then a code owner, to approve
-- **Record it:** Each finding's disposition under Findings; the reviewer's DECISION line below; the approval in the pull request
+- **Record it:** Each finding's disposition under Findings; the reviewer's DECISION line below; the approval in the pull request (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 
@@ -26,5 +26,5 @@ Findings (high and medium block the merge until fixed or dismissed with a reason
 
 Specialist reviews required by the tier: {{role}} — reviewed {{what}} — {{outcome}}
 ```text
-DECISION  {{approve | revise (back to build) | reject (back to plan or spec owner)}}  {{date}}
+DECISION  {{approve | revise (back to build) | reject (back to plan or spec owner)}}  {{date}}  {{reviewer, and how it was confirmed}}
 ```

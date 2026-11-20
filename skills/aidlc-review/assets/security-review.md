@@ -3,7 +3,7 @@
 
 ## For the reviewer
 - **Asked of:** The security champion (the required specialist), to clear or block the change; a code owner approves
-- **Record it:** On the GATE line below, and in the pull request
+- **Record it:** On the GATE line below, and in the pull request (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 
@@ -26,5 +26,5 @@ PACKAGE SUPPLY CHAIN    <dependencies real, verified, pinned, scanned?> <ok|find
 PROMPT AND CONTEXT      <context minimal? retrieved text acted as instruction?> <ok|finding>
 APPLICATION SECURITY    <authorisation, input handling>          <ok|finding>
 
-5 GATE     <intent, evidence and policy agree?> <reviewed, no open findings | revise | reject>
+5 GATE     <intent, evidence and policy agree?> <reviewed, no open findings | revise | reject> — <champion, date, how it was confirmed>
 ```

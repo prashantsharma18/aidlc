@@ -153,5 +153,37 @@ class ParsedRecordTest(unittest.TestCase):
         self.assertIn("names a person and says how it was confirmed", flat("agents/reviewer-compliance.md"))
 
 
+class TemplateRecordTest(unittest.TestCase):
+    """Task 14: each approval template says the AI writes its record, and each record says how it was confirmed."""
+
+    TELL = "(the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)"
+    RECORDS = {
+        "aidlc-plan/assets/plan.md": "<on PR #n, checked on GitHub | in the session>",
+        "aidlc-specify/assets/spec.md": "{{how it was confirmed: checked on the work item, or in the session}}",
+        "aidlc-design/assets/design-note.md": "RECORDED BY  <tech lead or architect>, <YYYY-MM-DD>, <how it was confirmed>",
+        "aidlc-design/assets/new-system.md": "<YYYY-MM-DD>, <how it was confirmed>",
+        "aidlc-design/assets/adr.md": "Accepted at design approval ({{who approved, and how it was confirmed}})",
+        "aidlc-discover/assets/evidence-pack.md": "<tech lead, date, how it was confirmed>",
+        "aidlc-review/assets/review-record.md": "{{reviewer, and how it was confirmed}}",
+        "aidlc-review/assets/security-review.md": "<champion, date, how it was confirmed>",
+        "aidlc-release/assets/readiness.md": "{{how it was confirmed: checked in change management, or in the session}}",
+        "aidlc-release/assets/change-record.md": "({{how the AI confirmed it}})",
+    }
+
+    def test_each_approval_template_says_who_writes_the_record(self):
+        for name in list(self.RECORDS) + ["aidlc-plan/assets/task-bundle.md", "aidlc-design/assets/coordination-plan.md",
+                                          "aidlc-intent/assets/intent.md"]:
+            block = read(f"skills/{name}").split("## For the reviewer", 1)[1].split("\n## ", 1)[0]
+            self.assertIn(self.TELL, block, name)
+
+    def test_each_record_line_says_how_it_was_confirmed(self):
+        for name, phrase in self.RECORDS.items():
+            self.assertIn(phrase, read(f"skills/{name}"), name)
+        for name in ("aidlc-operate/assets/incident.md", "aidlc-feedback/assets/incident.md"):
+            self.assertIn("{{in the session, or how it was checked}}", read(f"skills/{name}"), name)
+        self.assertIn("{{how it was confirmed}}", read("skills/aidlc-review/assets/pr-description.md"))
+        self.assertIn("who accepted, and how it was confirmed", read("skills/aidlc-verify/assets/evidence-table.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

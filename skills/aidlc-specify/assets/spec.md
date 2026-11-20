@@ -5,7 +5,7 @@ Spec owner: {{OWNER}} · Tier: {{TIER}} · Version: v1
 
 ## For the reviewer
 - **Asked of:** The spec owner, to approve the criteria and decide every edge case; a specialist reviews at Tier 3
-- **Record it:** On the work item: "Spec vN approved by name"
+- **Record it:** On the work item: "Spec vN approved by name" (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 
@@ -46,5 +46,5 @@ E1 {{condition}} -> {{decided behaviour}} (decided by {{who}})
 - [ ] Tier 3: specialist reviewed; every risk decision names its decider; data in the agent's context classified
 
 ## Approval record
-Spec {{version}} approved by {{owner}} on {{YYYY-MM-DD}}. Reviewed by {{specialist}}.
+Spec {{version}} approved by {{owner}} on {{YYYY-MM-DD}}, {{how it was confirmed: checked on the work item, or in the session}}. Reviewed by {{specialist}}.
 Amendments: {{date, criterion, reason, decider}}

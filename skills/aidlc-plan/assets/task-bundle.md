@@ -3,7 +3,7 @@
 
 ## For the reviewer
 - **Asked of:** The tech lead, to approve this slice, its MODE and its boundaries
-- **Record it:** On the work item with the plan's version and commit; a changed bundle is approved again
+- **Record it:** On the work item with the plan's version and commit; a changed bundle is approved again (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 
