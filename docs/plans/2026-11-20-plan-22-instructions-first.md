@@ -106,6 +106,11 @@ are a list, not a parser; a team that wants a hard block adds one to its own CI.
 
 ## Needs the owner's decision
 
+**Owner's approval, recorded 2026-11-20 (confirmed by the framework owner in the session):** the plan is approved,
+including items A to D (the test changes listed below, and no others), V1 (6.0.0), E1 option (b) (update the two
+eval fixture files in Task 8 with the new workspace guide text), E2 option (a) ("pull request" stays), E3 (the
+example settings keep the `.claude/**` and CODEOWNERS denies). Execution: subagent-driven.
+
 AGENTS.md says: never change an existing test assertion to make a test pass; stop and report. This plan removes code
 and rewords pinned text, so it must delete and change existing tests. **Approving this plan approves exactly the
 items below, and no other change to an existing test.** If an executor finds that any other existing assertion fails,
