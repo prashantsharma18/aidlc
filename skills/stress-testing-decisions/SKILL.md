@@ -29,7 +29,7 @@ Not for: Tier 1 changes with a rehearsed rollback, where the pass costs more tha
    - What does it cost to run and to keep?
    - What is the simplest option that would also work, and why not that one?
 4. Answer every objection in one of three ways: evidence that it does not apply (a file, a test, a document), a change to the plan, or a risk with an owner and a mitigation. Never wave one away without a reason.
-5. Add a short "Challenged" section to the plan or design: each objection, its answer, the risks accepted and who accepts them.
+5. Add a short "Challenged" section to the plan or design: each objection, its answer, the risks accepted and who accepts them. Write only the owner the person names for each accepted risk, and how they accepted it (ADR 0023).
 
 ## Checks
 - The reviewer had a fresh context and was briefed to oppose.
