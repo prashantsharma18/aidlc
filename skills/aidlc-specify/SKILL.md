@@ -42,7 +42,7 @@ Draft mode:
 4. Edge cases: for each input ask zero, minimum, maximum, missing, duplicate, expired and conflicting. Simulate timeouts, authorisation errors, downstream failure and concurrency. Sweep data shape, state and timing, permissions, integration failure, scale and limits, and human review. Propose a behaviour for each concern as E1 to En, and name who must decide it: the spec owner, or the risk's owner for a risk. Never decide it yourself.
 5. Readiness: check the Definition of Ready for the tier with `assets/tiers.md`, and report each gap.
 6. Fill `assets/spec.md`, replacing each `{{FIELD}}` and leaving every approval slot for the person who approves, and write it to `plans/<KEY>/spec.md` (or `stories/<KEY>/spec.md`). Nothing overwrites an existing spec: a change is a new version. Write the story index's CURRENT line as `CURRENT spec v1`, raised with each new version.
-7. Offer to post the criteria as a comment on the work item, for the product owner to put in the story. Posting asks the person first.
+7. Offer to post the criteria as a comment on the work item, for the product owner to put in the story. Posting asks the person first. Link the spec by its GitHub permalink at the commit where it merged, never by a branch path.
 
 Amendment mode:
 1. Raise it against the criterion ID: quote the criterion and say exactly what conflicts.

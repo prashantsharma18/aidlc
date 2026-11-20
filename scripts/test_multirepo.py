@@ -248,5 +248,33 @@ class PlacementTest(unittest.TestCase):
         self.assertIn("names the same commit on its SOURCE line", flat("agents/reviewer-compliance.md"))
 
 
+class DecisionsTest(unittest.TestCase):
+    """F1, F6, F11, F13, F14: one repository when code ships together, Decision 2, permalinks and status."""
+
+    def test_code_that_ships_together_goes_in_one_repository(self):
+        self.assertIn("Code that ships together goes in one repository (ADR 0022)", skill("aidlc-onboard"))
+        self.assertIn("Recommend one repository for code that ships together (ADR 0022)", skill("aidlc-design"))
+        self.assertIn("code that ships together belongs in one repository (ADR 0022)", skill("aidlc-start"))
+
+    def test_decision_2_across_repositories_is_two_pull_requests(self):
+        self.assertIn("Decision 2 (design and plan) is this design's pull request in the home repository, then each "
+                      "part's plan pull request in its own repository", gate("aidlc-design"))
+        self.assertIn("Decision 2 is the home design pull request plus this plan's pull request, titled "
+                      "`[<KEY>] part <n> of <m>, plan v<n>: <what>`", gate("aidlc-plan"))
+
+    def test_tracker_links_are_permalinks(self):
+        self.assertIn("GitHub permalink at a commit", skill("aidlc-start"))
+        self.assertIn("Link the spec by its GitHub permalink at the commit where it merged", skill("aidlc-specify"))
+
+    def test_release_reads_the_real_merge_state(self):
+        self.assertIn("takes each part's merge state from its pull request on GitHub when it can", skill("aidlc-release"))
+
+    def test_onboard_sets_up_the_home_repository(self):
+        onboard = skill("aidlc-onboard")
+        self.assertIn("copy `CODEOWNERS` from aidlc's `starter/workspace/` to `.github/CODEOWNERS`", onboard)
+        self.assertIn("run `python3 scripts/story_status.py --write-gitignore`", onboard)
+        self.assertIn("propose `check_contract_pin.py` with `check_contract_version.py`, which it imports", onboard)
+
+
 if __name__ == "__main__":
     unittest.main()

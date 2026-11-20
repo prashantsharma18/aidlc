@@ -65,12 +65,14 @@ route, keeps every row already done, and names the next stage.
      to a repository: name that repository and stop.
    - One repository, started inside it: the story runs entirely here, with its documents in `plans/<KEY>/`.
    - Several repositories, or unsure (unsure counts as several): the story runs at the workspace root, with its
-     documents in `stories/<KEY>/`; each repository's part runs inside that repository. A story across several repositories is at least Tier 2 (`assets/tiers.md`).
+     documents in `stories/<KEY>/`; each repository's part runs inside that repository. A story across several repositories is at least Tier 2 (`assets/tiers.md`). When those repositories always ship together, tell the tech lead: code that ships together belongs in one repository (ADR 0022).
    Name the route in the index's ROUTE line: F0 (a feature, fast path), F1 (a feature in one repository), F2 (a feature across several), C (a
    change request), D1 or D2 (a defect), G (a new system).
 7. **Write the story's index** where this session runs, from `assets/story-index.md`: `plans/<KEY>/README.md` inside a
    repository, `stories/<KEY>/README.md` at a workspace root. Fill SOURCE, KIND, ROUTE and LEVEL, and one row per stage
-   of the route with where it runs and the status "to do".
+   of the route with where it runs and the status "to do". A link to a story document that goes on the tracker is a
+   GitHub permalink at a commit (`https://github.com/<org>/<repository>/blob/<commit>/stories/<KEY>/spec.md`), never
+   a branch path, which moves.
 
    **One repository:** every stage runs inside that repository: `aidlc-intent` (only if the story needs it),
    `aidlc-specify`, `aidlc-discover` (only when the tier or an unknown asks), `aidlc-design` (always; at Tier 1 usually

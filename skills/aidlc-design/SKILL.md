@@ -60,6 +60,8 @@ New system (route G), after the draft steps:
    the approval to add them; the repository layout (one repository, or several, where the coordination plan holds one slice-0 part each; at a workspace root the coordination plan is written even for one repository); the contracts; a check for each non-functional requirement; the initial Quality bar targets,
    which the team sets; the commands for tests, lint, build and run; and the scaffold commands, at pinned versions,
    that slice 0 runs. Write one REPOSITORY block per repository: its stack, dependencies, paths, commands, scaffold and CI.
+   Recommend one repository for code that ships together (ADR 0022); choose several only for a stated reason
+   (different owners, release cycles or runtimes), recorded in an ADR draft.
 2. Load the `building-ci-pipelines` skill and design the CI: the required checks, each running one of the commands.
 3. The tech lead or architect approves the design and `new-system.md` together, on the work item. On route G, step 9 runs after
    these steps, and its "map and rules file" item is met by `new-system.md`, which onboard turns into them.
@@ -89,7 +91,7 @@ copy, progress notes, evidence, pull request description, review record, its own
 holds the published contract.
 
 ## Gate
-The tech lead or architect approves the design, and the consumers approve a contract change; Tier 3 adds the specialists. The ADR becomes Accepted when the design is approved, and the APPROVED line of the design note records it; the approval is recorded on the work item with its version and commit. A "none needed" note is decided and recorded by the tech lead or architect too. At Tier 2 and 3 the design (its note, ADR drafts and contract change) merges to the default branch first, in its own pull request, which the tech lead or architect approves (ADR 0020). You draft; you never approve.
+The tech lead or architect approves the design, and the consumers approve a contract change; Tier 3 adds the specialists. The ADR becomes Accepted when the design is approved, and the APPROVED line of the design note records it; the approval is recorded on the work item with its version and commit. A "none needed" note is decided and recorded by the tech lead or architect too. At Tier 2 and 3 the design (its note, ADR drafts and contract change) merges to the default branch first, in its own pull request, which the tech lead or architect approves (ADR 0020). For a story across several repositories, Decision 2 (design and plan) is this design's pull request in the home repository, then each part's plan pull request in its own repository; a part plans only from the merged design (ADR 0022). You draft; you never approve.
 
 ## Stop if
 - The evidence cannot support a choice: return to discovery, or to the spec owner.
