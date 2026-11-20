@@ -21,7 +21,8 @@ whose SOURCE line names the commit it copies; every copied line must be in the s
 
 Each part's merge state comes from its newest code pull request on GitHub, when its repository has a GitHub remote and
 gh answers (--no-github skips it), else from the default branch's copy of the part index, whose merged row reaches the
-default branch only through the part's merge. A hand-marked merged row that disagrees is reported.
+default branch only through the part's merge. A merged row that disagrees is reported: the AI writes that row in the
+part's final commit after checking the approval on GitHub (ADR 0023), and this check catches a row written too early.
 
 --write-gitignore writes the generated block of the root's .gitignore from the repository table in WORKSPACE.md, so
 the home repository never tracks a child repository's files; every other line of .gitignore is kept."""

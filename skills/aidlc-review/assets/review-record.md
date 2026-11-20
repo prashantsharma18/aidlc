@@ -3,7 +3,7 @@
 
 ## For the reviewer
 - **Asked of:** The engineer, to decide each finding (high and medium block the merge); the reviewer named below, to give the DECISION; then a code owner, to approve
-- **Record it:** Each finding's disposition under Findings; the reviewer's DECISION line below; the approval in the pull request (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
+- **Record it:** Each finding's disposition under Findings, and the reviewer's DECISION line below (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023). The approval itself is the code owner's, in GitHub; the AI writes only the DECISION line and the dispositions, never the approval
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 

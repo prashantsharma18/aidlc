@@ -33,7 +33,33 @@ A repository whose build and tests run with one command, the team's standards an
 ## Steps
 If you started this skill on your own (the person did not ask for it by name), do step 1 only, report the inventory, and ask before any draft.
 
-0. Where am I? At a workspace root (a folder holding several repositories): first ask whether these repositories must stay separate. Code that ships together goes in one repository (ADR 0022); a workspace is for repositories with different owners, release cycles or runtimes. The workspace root is a git repository of its own, the home repository: the story status command's pin and criteria checks read its history. Then write `WORKSPACE.md` from `assets/workspace.md` (the repositories, their owners, how work runs here, starting with `aidlc-start`), create `stories/README.md`, copy `story_status.py` from aidlc's `starter/workspace/scripts/` into the workspace's `scripts/` folder, copy `CODEOWNERS` from aidlc's `starter/workspace/` to `.github/CODEOWNERS` (the leads own `stories/**`; the runtime environment's owner owns its compose files and flags), run `python3 scripts/story_status.py --write-gitignore`, which writes the root's `.gitignore` from the repository table in `WORKSPACE.md`, and, in Claude Code, copy the settings from aidlc's `starter/workspace/` folder: add one deny rule per repository, `Edit(/<repository>/**)`, to the settings before you copy them in, so a session at the root can write only under `stories/`, `incidents/` and `feedback/` (the settings deny edits to `.claude/`, so no session can add a rule once they are in place; in another tool, use its own way to keep the root from editing the repositories, or say that it cannot); copy `.claude/settings.json` last: its deny rules then protect the files copied before it; then onboard each repository in its own session. In a repository that already has rules for other tools (`CLAUDE.md`, `.github/copilot-instructions.md`, `.cursor/rules/`, `.windsurfrules`), gather them first: their content moves into `AGENTS.md`, and each tool file becomes a one-line pointer to it. If anything looks like a secret, stop: it is rotated and removed before anything else. When repositories are added on route G, run this step again: add each to `WORKSPACE.md`, and ask the person to add its deny rule to `.claude/settings.json` (a session cannot edit it). Run `python3 scripts/story_status.py --write-gitignore` again whenever the repository table changes.
+0. Where am I?
+   - At a workspace root (a folder holding several repositories): first ask whether these repositories must stay
+     separate. Code that ships together goes in one repository (ADR 0022); a workspace is for repositories with
+     different owners, release cycles or runtimes.
+   - The workspace root is a git repository of its own, the home repository: the story status command's pin and
+     criteria checks read its history.
+   - Then write `WORKSPACE.md` from `assets/workspace.md` (the repositories, their owners, how work runs here,
+     starting with `aidlc-start`), and create `stories/README.md`.
+   - Next, copy `story_status.py` from aidlc's `starter/workspace/scripts/` into the workspace's `scripts/` folder.
+   - Then copy `CODEOWNERS` from aidlc's `starter/workspace/` to `.github/CODEOWNERS`. The leads own `stories/**`;
+     the runtime environment's owner owns its compose files and flags.
+   - Then run `python3 scripts/story_status.py --write-gitignore`, which writes the root's `.gitignore` from the
+     repository table in `WORKSPACE.md`.
+   - In Claude Code, copy the settings from aidlc's `starter/workspace/` folder. First add one deny rule per
+     repository, `Edit(/<repository>/**)`, to the settings before you copy them in. Then a session at the root can
+     write only under `stories/`, `incidents/` and `feedback/`. The settings deny edits to `.claude/`, so no session can add a rule once they are
+     in place. In another tool, use its own way to keep the root from editing the repositories, or say that it
+     cannot.
+   - Copy `.claude/settings.json` last: its deny rules then protect the files copied before it. Then onboard each
+     repository in its own session.
+   - In a repository that already has rules for other tools (`CLAUDE.md`, `.github/copilot-instructions.md`,
+     `.cursor/rules/`, `.windsurfrules`), gather them first: their content moves into `AGENTS.md`, and each tool file
+     becomes a one-line pointer to it.
+   - If anything looks like a secret, stop: it is rotated and removed before anything else.
+   - When repositories are added on route G, run this step again: add each to `WORKSPACE.md`, and ask the person to
+     add its deny rule to `.claude/settings.json` (a session cannot edit it). Run
+     `python3 scripts/story_status.py --write-gitignore` again whenever the repository table changes.
 1. Discover (A1): send the `explorer` agent the survey, briefed from `assets/explorer-brief.md`. Ask for frameworks, commands, areas, documents with their age and shared modules, each labelled FACT or INFERENCE with a file reference. Run every command it finds and record whether it works. Ask the person what reviewers repeatedly correct, and which documents are still true.
 2. Select (A2): for each item ask these questions in order, and stop at the first yes:
    - Is it sensitive? Then it never goes in context.

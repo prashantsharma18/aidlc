@@ -26,7 +26,7 @@ and AI review could not see the criteria, which lived in another repository (P10
 - Each part keeps a read-only copy of its own criteria, edge cases and non-goals in `plans/<KEY>/criteria.md`, under a
   SOURCE line naming the home repository, the spec's path and the commit. Its CI and its reviewers read the copy.
 - `story_status.py` takes a part's merge state from its newest code pull request on GitHub when it can, else from the
-  default branch's copy of the part index, and reports a hand-marked merged row that disagrees. It reports "re-plan"
+  default branch's copy of the part index, and reports a merged row that disagrees. It reports "re-plan"
   for a pin older than the story's spec, by version or by home commit, and reports a criteria copy that differs from
   the spec at its commit.
 - A contract is a versioned artifact (the Spec Kit rule, D5). The provider owns the OpenAPI file its AGENTS.md names,
@@ -40,8 +40,9 @@ and AI review could not see the criteria, which lived in another repository (P10
   to its named owner. Its `.gitignore` is generated from the repository table in `WORKSPACE.md`.
 
 ## Consequences
-- The merged row stays, marked by hand in the part's final commit (ADR 0015). The status command now checks it
-  against the real merge state instead of trusting it.
+- The merged row stays in the part's final commit (ADR 0015). The AI writes it after checking the code owner's
+  approval and the required checks on GitHub (ADR 0023). The status command checks it against the real merge state
+  instead of trusting it.
 - `git merge-base --is-ancestor` on the part's branch is not the merge signal: a branch with no commits of its own is
   an ancestor, and a squash or rebase merge never is. The default branch's copy of the part index holds for every merge
   method; the same check confirms that a pinned home commit is on the home repository's default branch.

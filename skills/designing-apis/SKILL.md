@@ -231,8 +231,9 @@ it. Every consumer reads an exact published version.
 - **One file, one owner.** The provider keeps one OpenAPI file and names its path in `AGENTS.md`. Only the provider's
   reviewed pull requests change it.
 - **Publish from the default branch only.** Each version is the git tag `api-v<info.version>`, created after the merge
-  (the starter's `contract-publish.yml`). Never tag a branch by hand: a consumer could build on a version nobody
-  reviewed.
+  (the starter's `contract-publish.yml`). Never tag an unmerged commit by hand: a consumer could build on a version
+  nobody reviewed. Only the publish job creates tags, or a person tagging a default-branch commit the job skipped, as
+  `contract-publish.yml` says.
 - **Every change raises the version.** An additive change raises MINOR. A breaking change raises MAJOR, only with every
   consumer's agreement, done by expand and contract. The provider's `contract-check` runs oasdiff against the last
   published tag. It fails a breaking change without a new MAJOR, and any change without a new version.

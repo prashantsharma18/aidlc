@@ -41,10 +41,14 @@ The pull request, its evidence table, on route D1 the fix brief `plans/<KEY>/fix
 6. Prepare each required specialist's questions, with pointers to the hunks. At Tier 3, and whenever the change touches secrets, permissions, tool calls, dependencies or prompts, load the `securing-code` skill and draft the security review from `assets/security-review.md`.
 7. Draft the review record from `assets/review-record.md`, with no approval part for you.
 8. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
-   workspace root) as done, or as stopped with the reason. Once the code owner approves, check the approval and the required checks on GitHub; then this session marks the `merged` row done in its final commit, says in that commit's message how it was confirmed (for example
-   `approved by @ana on PR #12, checked on GitHub, 2026-11-20`), and tells the person the pull request is ready to
-   merge; you never merge (ADR 0023). So the row reaches the default branch only through the merge. The row's
-   status stays `done`, because the story status command reads exactly that word. On slice 0 of route G, mark the `slice 0` row.
+   workspace root) as done, or as stopped with the reason. Once the code owner approves, check the approval and the
+   required checks on GitHub; then this session marks the `merged` row done in its final commit. That commit's
+   message says how it was confirmed, for example `approved by @ana on PR #12, checked on GitHub, 2026-11-20`.
+   Where the branch rules dismiss stale approvals or require approval of the last push, the code owner re-approves
+   after the final commit. Then check the approval again before you record it or call the pull request ready.
+   The session then tells the person the pull request is ready to merge; you never merge (ADR 0023). So the row
+   reaches the default branch only through the merge. The row's status stays `done`, because the story status
+   command reads exactly that word. On slice 0 of route G, mark the `slice 0` row.
 
 ## Produces
 In `plans/<KEY>/`, on the part's branch: `pr-description.md`, `review-record.md` (the dispositions and the reviewers'

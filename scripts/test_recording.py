@@ -195,5 +195,64 @@ class DocsRecordTest(unittest.TestCase):
         self.assertIn("or tell the AI, which records each decision after checking it (ADR 0023)", flat("README.md"))
 
 
+class FinalReviewRecordTest(unittest.TestCase):
+    """The final review of Plan 21: the last hand-marked wording, check first, and a how-confirmed slot on every
+    record."""
+
+    def test_no_record_is_marked_by_hand(self):
+        for rel in ("docs/adr/0022-one-owner-per-fact-and-pinned-parts.md", "skills/aidlc-release/SKILL.md",
+                    "starter/workspace/scripts/story_status.py"):
+            text = flat(rel).split("## Decision", 1)[-1]  # the ADR's Context tells how it was before
+            self.assertNotIn("hand-marked", text, rel)
+            self.assertNotIn("marked by hand", text, rel)
+        self.assertIn("The AI writes it after checking the code owner's approval",
+                      flat("docs/adr/0022-one-owner-per-fact-and-pinned-parts.md"))
+        self.assertIn("Any mismatch it reports blocks the release.", skill("aidlc-release"))
+
+    def test_plan_records_only_after_being_told_or_checking(self):
+        plan = skill("aidlc-plan")
+        self.assertIn("You record it only after the tech lead tells you or you check it on GitHub.", plan)
+        self.assertNotIn("You never record it.", plan)
+
+    def test_the_steps_that_write_a_record_check_first(self):
+        self.assertEqual(skill("aidlc-plan").count("Check first where you can (ADR 0023)"), 2)
+        self.assertIn("Check first where you can (ADR 0023)", skill("aidlc-build"))
+
+    def test_review_rechecks_a_dismissed_approval(self):
+        review = skill("aidlc-review")
+        self.assertIn("the code owner re-approves after the final commit", review)
+        self.assertIn("check the approval again before you record it", review)
+
+    def test_the_approval_itself_is_the_code_owners_on_github(self):
+        self.assertIn("The code owner's approval in the pull request, on GitHub, is the record",
+                      flat("skills/aidlc-review/assets/pr-description.md"))
+        self.assertIn("approval itself is the code owner's, in GitHub; the AI writes only the DECISION line",
+                      flat("skills/aidlc-review/assets/review-record.md"))
+        self.assertIn("Owning team's confirmation of monitoring and rollback: {{who}}, {{YYYY-MM-DD}}, "
+                      "{{how it was confirmed", read("skills/aidlc-release/assets/readiness.md"))
+
+    def test_design_and_spec_records_say_how_they_were_confirmed(self):
+        self.assertIn("approved by <product owner>, <how it was confirmed>", read("skills/aidlc-design/assets/design-note.md"))
+        self.assertIn("(decided by {{who}}, {{how it was confirmed}})", read("skills/aidlc-specify/assets/spec.md"))
+
+    def test_the_docs_say_a_disagreeing_check_records_nothing(self):
+        for rel in ("docs/operating-model/adoption.md", "docs/operating-model/workspace-and-repositories.md"):
+            text = flat(rel)
+            self.assertIn("checks when it can, even after being told", text, rel)
+            self.assertIn("When the check disagrees, it records nothing", text, rel)
+        self.assertEqual([n for n, line in enumerate(read("docs/operating-model/adoption.md").splitlines(), 1)
+                          if "it never writes a name it was not given" in line and len(line) > 120], [])
+
+    def test_onboard_step_0_is_short_sentences(self):
+        step = read("skills/aidlc-onboard/SKILL.md").split("\n0. ", 1)[1].split("\n1. ", 1)[0]
+        self.assertGreaterEqual(step.count("\n   - "), 5)
+        self.assertTrue(all(len(line) <= 400 for line in step.splitlines()))
+
+    def test_only_the_publish_job_tags_a_merged_commit(self):
+        text = skill("designing-apis")
+        self.assertIn("Never tag an unmerged commit by hand", text)
+        self.assertNotIn("Never tag a branch by hand", text)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -30,4 +30,6 @@ The worst of the five decides.
 - [ ] Runbook: {{path}}
 
 ## Decision
+Owning team's confirmation of monitoring and rollback: {{who}}, {{YYYY-MM-DD}}, {{how it was confirmed: in the session, or where it was checked}}
+
 {{ship, limit or hold}}. Release approver: {{name}}, {{YYYY-MM-DD}}, {{how it was confirmed: checked in change management, or in the session}}

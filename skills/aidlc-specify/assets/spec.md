@@ -29,7 +29,7 @@ AC1 {{one observable behaviour, with numbers, including the refusal}}
     Then  {{outcome}}
 
 ## Edge cases (each with a decided behaviour and its decider)
-E1 {{condition}} -> {{decided behaviour}} (decided by {{who}})
+E1 {{condition}} -> {{decided behaviour}} (decided by {{who}}, {{how it was confirmed}})
 
 ## Verification
 | Criterion | How it will be proved |

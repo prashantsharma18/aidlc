@@ -110,8 +110,9 @@ Brief mode:
    (`debugging-failures` and `writing-tests` at least). Propose MODE; the engineer chooses it when
    confirming.
 5. The engineer confirms the brief by telling you; you write the CONFIRMED line with the name they give, the date
-   and how it was confirmed (ADR 0023). Build starts only from a confirmed brief. Mark
-   this stage's row in the index as done.
+   and how it was confirmed. Check first where you can (ADR 0023): when the engineer approved on GitHub or the
+   tracker, read it there; when the check disagrees, write nothing and say so. Build starts only from a confirmed
+   brief. Mark this stage's row in the index as done.
 
 Feature brief mode (route F0):
 1. Restate the outcome and each acceptance criterion as the work item gives it, with its ID, and list every
@@ -128,8 +129,9 @@ Feature brief mode (route F0):
 4. Fill `assets/feature-brief.md` and write it to `plans/<KEY>/brief.md`. Map each criterion to a test named with
    its ID. Choose USE SKILLS from the practice map (`writing-tests` at least). Propose MODE; the engineer chooses it when confirming.
 5. The engineer confirms the brief by telling you; you write the CONFIRMED line with the name they give, the date
-   and how it was confirmed (ADR 0023). Build starts only from a confirmed brief. Mark
-   this stage's row in the index as done, or as stopped with the reason.
+   and how it was confirmed. Check first where you can (ADR 0023): when the engineer approved on GitHub or the
+   tracker, read it there; when the check disagrees, write nothing and say so. Build starts only from a confirmed
+   brief. Mark this stage's row in the index as done, or as stopped with the reason.
 
 ## Produces
 Drafts of `plans/<KEY>/plan.md` and one `plans/<KEY>/bundle-<slice>.md` per slice, on the story branch. Slices live only there, never as tracker sub-tasks. One branch per part: `<type>/<KEY>-<slug>` (`feat/<KEY>-<part>` for a story across several repositories), with `-r<n>` for a revision.
@@ -147,7 +149,7 @@ The tech lead reviews the plan against its checklist and decides; this session r
 |---|---|
 | "The spec is nearly approved, so I will start planning." | Above Tier 1, planning starts only from an approved spec with its version. Stop. |
 | "The restatement is obvious; I will skip the confirmation." | The restatement is where ambiguity shows. Wait for the person. |
-| "I will mark the plan approved to save time." | Approval is the tech lead's, in the pull request or on the work item. You never record it. |
+| "I will mark the plan approved to save time." | Approval is the tech lead's, in the pull request or on the work item. You record it only after the tech lead tells you or you check it on GitHub. |
 | "A small new dependency makes this simpler." | No new dependency without asking. Flag it as a decision. |
 
 ## Red flags
