@@ -20,6 +20,8 @@
       "Read(~/.aws/**)",
       "Edit(/.claude/**)",
       "Edit(/scripts/story_status.py)",
+      "Edit(/CODEOWNERS)",
+      "Edit(/.github/CODEOWNERS)",
       "Bash(git push*)"
     ],
     "disableBypassPermissionsMode": "disable"

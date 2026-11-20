@@ -60,5 +60,26 @@ class AdrTest(unittest.TestCase):
             self.assertIn(phrase, body, phrase)
 
 
+class HygieneTest(unittest.TestCase):
+    """F14: the home repository's owners, its .gitignore and the runtime environment's owner."""
+
+    def test_the_workspace_has_code_owners(self):
+        owners = read("starter/workspace/CODEOWNERS")
+        self.assertRegex(owners, r"(?m)^stories/\*\*\s+@your-org/your-team-leads$")
+        self.assertRegex(owners, r"(?m)^compose\*\.yaml\s+@your-org/your-runtime-owner$")
+        deny = json.loads(read("starter/workspace/.claude/settings.json"))["permissions"]["deny"]
+        for rule in ("Edit(/CODEOWNERS)", "Edit(/.github/CODEOWNERS)"):
+            self.assertIn(rule, deny)
+
+    def test_the_workspace_guide_names_the_command_and_the_owner(self):
+        for rel in ("starter/workspace/WORKSPACE.md", "skills/aidlc-onboard/assets/workspace.md"):
+            text = flat(rel)
+            self.assertIn("`python3 scripts/story_status.py --write-gitignore`", text, rel)
+            self.assertIn("## Runtime environment", read(rel), rel)
+            self.assertIn("Each fact has one owner, and only the owner changes it (ADR 0022)", text, rel)
+            self.assertNotIn("never by copy", text, rel)
+        self.assertEqual(VANISHING.findall(re.sub(r"`[^`\n]*`", "", read("skills/aidlc-onboard/assets/workspace.md"))), [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -670,5 +670,64 @@ class MergeStateTest(unittest.TestCase):
         self.assertIn("| merged (git) |", status)
 
 
+WORKSPACE = ("# Workspace: shipments\n\n## Repositories\n| Repository | Owner | What it is | Rules file |\n"
+             "|---|---|---|---|\n| shipments-api | core | the API | AGENTS.md |\n"
+             "| `web/portal/` | web | the portal | AGENTS.md |\n| <repo> | <team> | <one line> | AGENTS.md |\n\n"
+             "## How work runs here\n| not-a-repository | x |\n")
+
+
+class GitignoreTest(unittest.TestCase):
+    """F14: the home repository's .gitignore is generated from WORKSPACE.md's repository list."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+
+    def main(self, *argv):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = story_status.main([*argv, "--root", str(self.root)])
+        return code, out.getvalue() + err.getvalue()
+
+    def test_the_repositories_come_from_the_table(self):
+        self.assertEqual(story_status.workspace_repositories(WORKSPACE), ["shipments-api", "web/portal"])
+
+    def test_the_starter_lists_no_repository_yet(self):
+        starter = Path(__file__).resolve().parents[1] / "starter" / "workspace" / "WORKSPACE.md"
+        self.assertEqual(story_status.workspace_repositories(starter.read_text(encoding="utf-8")), [])
+
+    def test_the_block_is_written_and_other_lines_are_kept(self):
+        (self.root / "WORKSPACE.md").write_text(WORKSPACE, encoding="utf-8")
+        (self.root / ".gitignore").write_text("node_modules/\n", encoding="utf-8")
+        self.assertEqual(self.main("--write-gitignore")[0], 0)
+        self.assertEqual((self.root / ".gitignore").read_text(encoding="utf-8"),
+                         f"node_modules/\n\n{story_status.GITIGNORE_BEGIN}\n/shipments-api/\n/web/portal/\n"
+                         f"{story_status.GITIGNORE_END}\n")
+
+    def test_a_second_run_replaces_the_block(self):
+        (self.root / "WORKSPACE.md").write_text(WORKSPACE, encoding="utf-8")
+        self.main("--write-gitignore")
+        (self.root / "WORKSPACE.md").write_text(WORKSPACE.replace("| shipments-api |", "| carrier-rates |"),
+                                                encoding="utf-8")
+        self.main("--write-gitignore")
+        text = (self.root / ".gitignore").read_text(encoding="utf-8")
+        self.assertIn("/carrier-rates/\n", text)
+        self.assertNotIn("/shipments-api/", text)
+        self.assertEqual(text.count(story_status.GITIGNORE_BEGIN), 1)
+
+    def test_no_workspace_guide_exits_2_and_an_empty_table_exits_1(self):
+        self.assertEqual(self.main("--write-gitignore")[0], 2)
+        (self.root / "WORKSPACE.md").write_text("# Workspace\n\n## Repositories\n| Repository |\n|---|\n",
+                                                encoding="utf-8")
+        self.assertEqual(self.main("--write-gitignore")[0], 1)
+        self.assertFalse((self.root / ".gitignore").exists())
+
+    def test_without_a_key_or_the_flag_it_exits_2(self):
+        code, out = self.main()
+        self.assertEqual(code, 2)
+        self.assertIn("name the story's key", out)
+
+
 if __name__ == "__main__":
     unittest.main()

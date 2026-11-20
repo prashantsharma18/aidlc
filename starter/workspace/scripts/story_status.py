@@ -3,6 +3,7 @@
 the story without any session writing into another repository.
 
     python3 scripts/story_status.py <KEY> [--root <workspace>] [--write] [--check-release] [--no-github]
+    python3 scripts/story_status.py --write-gitignore [--root <workspace>]
 
 Reads stories/<KEY>/README.md (the story index: its CURRENT versions and UNAFFECTED records) and
 stories/<KEY>/coordination-plan.md (its PARTS rows), then, for each part, its index in the repository:
@@ -20,7 +21,10 @@ whose SOURCE line names the commit it copies; every copied line must be in the s
 
 Each part's merge state comes from its newest code pull request on GitHub, when its repository has a GitHub remote and
 gh answers (--no-github skips it), else from the default branch's copy of the part index, whose merged row reaches the
-default branch only through the part's merge. A hand-marked merged row that disagrees is reported."""
+default branch only through the part's merge. A hand-marked merged row that disagrees is reported.
+
+--write-gitignore writes the generated block of the root's .gitignore from the repository table in WORKSPACE.md, so
+the home repository never tracks a child repository's files; every other line of .gitignore is kept."""
 from __future__ import annotations
 
 import argparse
@@ -42,6 +46,9 @@ UNAFFECTED = re.compile(r"^UNAFFECTED\s+([A-Za-z0-9._/-]+)\s+spec\s+v(\d+)\s*:",
 AT_COMMIT = re.compile(r"\s*@\s*([0-9a-fA-F]{7,40})$")
 SOURCE_LINE = re.compile(r"^SOURCE\s+(\S+)\s+(\S+)\s+@\s+([0-9a-fA-F]{7,40})\b", re.M)
 GITHUB_REMOTE = re.compile(r"github\.com[:/]")
+GITIGNORE_BEGIN = "# aidlc: the workspace's repositories, from WORKSPACE.md (story_status.py --write-gitignore; do not edit)"
+GITIGNORE_END = "# aidlc: end of the repositories"
+REPOSITORY_NAME = re.compile(r"[A-Za-z0-9_][A-Za-z0-9._/-]*")
 
 Version = int | tuple[int, ...]
 
@@ -462,15 +469,64 @@ def render(key: str, rows: list[PartStatus], problems: list[str] | tuple[str, ..
     return "\n".join(lines)
 
 
+def workspace_repositories(text: str) -> list[str]:
+    """The repositories WORKSPACE.md lists in its '## Repositories' table; the header, the separator and placeholder
+    rows are skipped."""
+    table = text.split("## Repositories", 1)[1].split("\n## ", 1)[0] if "## Repositories" in text else ""
+    names = []
+    for line in table.splitlines():
+        if not line.strip().startswith("|"):
+            continue
+        name = line.strip().strip("|").split("|", 1)[0].strip().strip("`").strip().strip("/")
+        if name.lower() != "repository" and REPOSITORY_NAME.fullmatch(name) and ".." not in name.split("/"):
+            names.append(name)
+    return list(dict.fromkeys(names))
+
+
+def gitignore_text(existing: str, repositories: list[str]) -> str:
+    """The workspace's .gitignore with its generated block replaced, or added at the end: one line per repository,
+    so the home repository never tracks a child's files. Every line outside the block is kept as it is."""
+    block = [GITIGNORE_BEGIN] + [f"/{name}/" for name in repositories] + [GITIGNORE_END]
+    lines = existing.splitlines()
+    if GITIGNORE_BEGIN in lines and GITIGNORE_END in lines[lines.index(GITIGNORE_BEGIN):]:
+        start = lines.index(GITIGNORE_BEGIN)
+        lines[start:lines.index(GITIGNORE_END, start) + 1] = block
+    else:
+        lines += ([""] if lines and lines[-1].strip() else []) + block
+    return "\n".join(lines) + "\n"
+
+
+def write_gitignore(workspace: Path) -> tuple[int, str]:
+    """F14: (exit code, message) after writing the root's .gitignore from WORKSPACE.md's repository table."""
+    guide = workspace / "WORKSPACE.md"
+    if not guide.is_file():
+        return 2, f"story_status: {guide.as_posix()} not found"
+    repositories = workspace_repositories(read(guide))
+    if not repositories:
+        return 1, "story_status: WORKSPACE.md lists no repositories; .gitignore not written"
+    target = workspace / ".gitignore"
+    target.write_text(gitignore_text(read(target) if target.is_file() else "", repositories), encoding="utf-8")
+    return 0, f"story_status: .gitignore lists the {len(repositories)} repositories in WORKSPACE.md"
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Where every part of a story stands.")
-    parser.add_argument("key")
+    parser.add_argument("key", nargs="?")
     parser.add_argument("--root", default=".")
     parser.add_argument("--write", action="store_true")
     parser.add_argument("--check-release", action="store_true")
     parser.add_argument("--no-github", action="store_true")
+    parser.add_argument("--write-gitignore", action="store_true")
     args = parser.parse_args(argv)
     workspace = Path(args.root)
+    if args.write_gitignore:
+        code, message = write_gitignore(workspace)
+        print(message, file=sys.stderr if code else sys.stdout)
+        if code or not args.key:
+            return code
+    if not args.key:
+        print("story_status: name the story's key, or pass --write-gitignore", file=sys.stderr)
+        return 2
     story = workspace / "stories" / args.key
     for name in ("README.md", "coordination-plan.md"):
         if not (story / name).is_file():

@@ -1,0 +1,15 @@
+# The home repository (the workspace root): every change needs a review from its owners. Put this file at
+# .github/CODEOWNERS and replace the teams (aidlc ADR 0022).
+*                    @your-org/your-team-leads
+# The story documents: the spec, the design, the coordination plan, the release records.
+stories/**           @your-org/your-team-leads
+WORKSPACE.md         @your-org/your-team-leads
+CLAUDE.md            @your-org/your-team-leads
+# Scripts and settings that enforce the rules.
+scripts/             @your-org/your-team-leads
+.claude/             @your-org/your-team-leads
+.github/             @your-org/your-team-leads
+# The runtime environment the repositories run with together: its named owner (WORKSPACE.md).
+compose*.yaml        @your-org/your-runtime-owner
+compose*.yml         @your-org/your-runtime-owner
+flags/               @your-org/your-runtime-owner
