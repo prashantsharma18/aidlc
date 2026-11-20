@@ -66,7 +66,7 @@ class AdrTest(unittest.TestCase):
             self.assertIn(rule, text, rule)
 
     def test_adr_0019_is_superseded(self):
-        self.assertIn("Status: Superseded by ADR 0024 (2026-11-20)", read("docs/adr/0019-gates-enforced-by-code.md"))
+        self.assertIn("Status: Superseded by ADR 0024 (proposed, 2026-11-20)", read("docs/adr/0019-gates-enforced-by-code.md"))
 
     def test_each_amended_adr_carries_a_dated_note(self):
         for name in AMENDED:
@@ -689,6 +689,16 @@ class FinalReviewTest(unittest.TestCase):
                       "(`git diff --name-only <evidence HEAD> <tested commit> -- ':(top)' ':(top,exclude)plans/<KEY>/'` "
                       "prints nothing, the same command as the verdict rule)", verify)
 
+    def test_m7_the_recipe_row_names_where_the_rule_lives(self):
+        for rel in ("docs/adr/0024-instructions-first.md", "docs/design/2026-11-20-instructions-first.md"):
+            row = [line for line in read(rel).splitlines() if line.startswith("| Recipe commit is mechanical")][0]
+            self.assertNotIn("DONE WHEN", row, rel)
+            self.assertIn("`aidlc-build` step 5 and the evidence file's Recipe commits section", row, rel)
+
+    def test_m8_adr_0019_names_a_proposed_replacement(self):
+        self.assertIn("Status: Superseded by ADR 0024 (proposed, 2026-11-20)",
+                      read("docs/adr/0019-gates-enforced-by-code.md"))
+
     def test_m9_the_reviewers_know_the_second_part_path(self):
         for name in ("reviewer-tests", "reviewer-compliance"):
             self.assertIn("`plans/<KEY>/part-<n>/review-evidence.md` for a second part", flat(f"agents/{name}.md"), name)
@@ -703,12 +713,39 @@ class FinalReviewTest(unittest.TestCase):
         for rel in EVIDENCE_COPIES:
             self.assertIn("{{git fetch, then git merge-base HEAD origin/<default branch>}}", read(rel), rel)
 
+    def test_m12_the_archive_note_tells_5x_teams_how_to_upgrade(self):
+        note = flat("docs/archive/checks-v1.md")
+        self.assertIn("## Upgrading a repository onboarded on 5.x", read("docs/archive/checks-v1.md"))
+        self.assertIn("run `aidlc-onboard` again to add the \"Where to look\" lines the evidence file reads", note)
+        self.assertIn("The scripts and workflows you copied are yours to keep or delete", note)
+
     def test_m13_the_verdict_bullet_names_what_reviewers_are_given(self):
         self.assertIn("dispatched with the evidence file and the story documents it names, never the author's "
                       "conversation", VERDICT)
         self.assertNotIn("dispatched with only", flat("skills/aidlc-review/assets/review-record.md"))
         for name in ("aidlc-build", "aidlc-verify", "aidlc-review"):
             self.assertNotIn("dispatched with only", skill(name), name)
+
+    def test_m14_the_change_list_states_the_version(self):
+        changes = read("docs/design/2026-11-19-aidlc-6-change-list.md")
+        self.assertNotIn("Needs the owner's decision", changes)
+        self.assertNotIn("rises to 6.0.0 when phases 1 and 2 land", changes)
+        self.assertIn("6.0.0 (approved 2026-11-20)", changes)
+        table = changes.split("## 6. After ADR 0024 (2026-11-20)", 1)[1]
+        self.assertIn("items D1–D3", table)
+        self.assertIn("(item D2 without `run_slices.py`)", table)
+
+    def test_m15_the_copilot_cli_install_is_marked_untested(self):
+        self.assertIn("install the plugin with Copilot CLI (untested)", read("README.md"))
+        self.assertIn("(untested)", flat("docs/quickstart/copilot.md").split("Copilot CLI and the cloud agent", 1)[1][:200])
+
+    def test_m16_the_record_counts_the_fix_rounds_and_the_final_review(self):
+        record = flat("docs/verification/2026-11-20-plan-22.md")
+        self.assertNotIn("9 in Task 9 alone", record)
+        self.assertIn("9 from the fix rounds of Tasks 1 to 8", record)
+        self.assertIn("## Final review", read("docs/verification/2026-11-20-plan-22.md"))
+        self.assertNotIn("Final review: not done yet", record)
+        self.assertNotIn("The final whole-branch review and its fix wave are still to come", record)
 
 
 if __name__ == "__main__":

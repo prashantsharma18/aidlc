@@ -12,7 +12,7 @@ yet, and their adapters are a later plan.
 | Tool | How |
 |---|---|
 | Claude Code | `/plugin marketplace add prashantsharma18/aidlc`, then `/plugin install aidlc@aidlc` ([quickstart](docs/quickstart/claude-code.md)) |
-| GitHub Copilot | Copy `skills/*` into your repository's `.github/skills/`, or install the plugin with Copilot CLI ([quickstart](docs/quickstart/copilot.md)) |
+| GitHub Copilot | Copy `skills/*` into your repository's `.github/skills/`, or install the plugin with Copilot CLI (untested) ([quickstart](docs/quickstart/copilot.md)) |
 | Codex, Cursor | Copy `skills/*` into `.agents/skills/` (or `.cursor/skills/` for Cursor) ([quickstart](docs/quickstart/codex-cursor.md)) |
 
 Then copy the starter files that fit (`starter/repo/` into a repository, `starter/workspace/` into a workspace) and run

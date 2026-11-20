@@ -179,7 +179,7 @@ Each phase pays off on its own. A later phase depends on the one before it.
 | 5 · Fewer approvals | C1–C3, C5, C6, B5, F15 | Needs the hard checks from phases 1–3 underneath it |
 | 6 · Release reflexes | H1–H3 | Last, once releases come from the conveyor |
 
-The plugin's major version rises to 6.0.0 when phases 1 and 2 land, because routes, templates and gates change.
+The plugin's major version is 6.0.0 (approved 2026-11-20), because routes, templates and gates change.
 
 ## 5. Sources
 
@@ -216,14 +216,14 @@ dropped every item that adds shipped code or needs a code-host feature. The code
 | A1, A3, A4 (the denies on the scripts and workflows), A5, decision D3 | Built in Plan 20, then removed | Shipped code; it blocked a merge only through GitHub's required checks |
 | C4 | Built in Plan 20, then replaced by the plan's checklist | Shipped code |
 | F6, and F14's `.gitignore` generator | Built in Plan 21, then replaced: status from git, one release row per repository, a `.gitignore` line a person adds | Shipped code |
-| F9's scripts and workflows | Built in Plan 21, then replaced by the commands in `designing-apis` (oasdiff, `sha256sum -c`, `git ls-remote --tags`) | Shipped code; the contract rule (D5, D9) stays |
+| F9's scripts and workflows | Built in Plan 21, then replaced by the commands in `designing-apis` (oasdiff, `sha256sum -c`, `git ls-remote --tags`) | Shipped code; the contract rule (decisions D5 and D9) stays |
 | A2, A6, A8, F1–F5, F11, F12, F13, F14's owners | Kept as instructions; A8 and F13 reworded host-neutral | Process rules |
 | A7 | Kept | aidlc's own CI, not a team's |
 | B1, B2 | Done in part: reviewer agents in a fresh context read the evidence file, and a verdict names its commit | A verifier with its own token needs a code-host feature |
-| B3, B4, C1, C3, C6, D1, D2, D3, H1, H3 | Open, as instructions only (D2 without `run_slices.py`) | No shipped code needed |
+| B3, B4, C1, C3, C6, items D1–D3, H1, H3 | Open, as instructions only (item D2 without `run_slices.py`) | No shipped code needed |
 | B5, C5 | Dropped | Each adds a script |
-| C2, decision D2, G4, decision D8 | Dropped | Auto-merge needs required checks, a code-host feature (D6) |
+| C2, decision D2, G4, decision D8 | Dropped | Auto-merge needs required checks, a code-host feature (decision D6) |
 | E1–E5, decision D1, F15's `run_queue.py`, G1–G3, G5, G6, H2 | Dropped | A dispatcher, workflows, labels or tokens: shipped code or code-host features. Decision D7's rule (one session writes one repository) stays as guidance |
 | F7, F8's workflows, F10 | Dropped (they were phase 2b) | A home workflow, a GitHub App and required statuses; `aidlc-release` keeps its integration check |
 
-The plugin's major version: see Plan 22, "Needs the owner's decision".
+The plugin's major version: 6.0.0 (approved 2026-11-20).

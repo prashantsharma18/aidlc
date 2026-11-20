@@ -9,8 +9,8 @@ your own in `~/.copilot/skills/` (see GitHub's "Adding agent skills for GitHub C
    mkdir -p .github/skills && cp -r /path/to/aidlc/skills/* .github/skills/
    ```
    For yourself only: copy the same folders into `~/.copilot/skills/`.
-   Copilot CLI and the cloud agent can instead install the plugin from this repository's marketplace and switch it on
-   in `.github/copilot/settings.json` (`enabledPlugins`).
+   Copilot CLI and the cloud agent can instead install the plugin (untested) from this repository's marketplace and
+   switch it on in `.github/copilot/settings.json` (`enabledPlugins`).
 2. **Add the agents** as Copilot custom agents: copy each `agents/<name>.md` to `.github/agents/<name>.agent.md`. Keep
    the `tools:` line: Copilot reads Claude's names as aliases (`Read` is `read`, `Grep` and `Glob` are `search`, `Edit`
    and `Write` are `edit`, `Bash` is `execute`). Without it, a custom agent gets every tool, and the read-only

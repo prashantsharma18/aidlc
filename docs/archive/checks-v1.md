@@ -15,3 +15,10 @@ On 2026-11-20 aidlc stopped shipping scripts and CI workflows to teams (ADR 0024
 | `ai-review.yml`, `ci.yml`, `contract-check.yml`, `contract-publish.yml` | `starter/repo/.github/workflows/` | The reviewer agents in a fresh session; the team's own CI |
 | The deny rules on the scripts and on `ai-review.yml` | both starter `.claude/settings.json` | Nothing: the files they protected are gone |
 | `test_check_slice.py`, `test_check_plan.py`, `test_check_recipe_commit.py`, `test_check_contract.py`, `test_run_slices.py`, `test_story_status.py`, and the workflow tests in `test_gates_hold.py` and `test_multirepo.py` | `scripts/` | Removed with the code they tested |
+
+## Upgrading a repository onboarded on 5.x
+
+The 6.0.0 evidence file reads three "Where to look" lines in `AGENTS.md`: test paths, dependency manifests and check
+configuration. A repository onboarded on 5.x has none of them, so run `aidlc-onboard` again to add the "Where to look"
+lines the evidence file reads. The scripts and workflows you copied are yours to keep or delete: aidlc no longer
+names them, and nothing in 6.0.0 runs them. If you keep a workflow as a required check, keep its script too.

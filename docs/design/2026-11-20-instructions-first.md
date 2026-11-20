@@ -61,7 +61,7 @@ where they add shipped code or depend on GitHub features. The code is kept, reco
 | No new dependency without asking | `check_slice.py` | The reviewer reads manifest changes in the evidence file; the person approves |
 | Approved documents unchanged in a code change (ADR 0020) | `check_slice.py` | The reviewer reads `git diff <base> -- plans/<KEY>`; the code owner approves |
 | Plan complete before approval | `check_plan.py` | The plan template's checklist; the tech lead approves |
-| Recipe commit is mechanical (ADR 0012) | `check_recipe_commit.py` | The bundle's DONE WHEN: re-run the recipe on the parent commit and `git diff` against the commit; the reviewer reads the result |
+| Recipe commit is mechanical (ADR 0012) | `check_recipe_commit.py` | `aidlc-build` step 5 and the evidence file's Recipe commits section: re-run the recipe on the parent commit and `git diff` against the commit; the reviewer reads the result |
 | Run approved slices one by one | `run_slices.py` | The person starts one fresh session per slice; `aidlc-build` states the stops |
 | Story status across repositories, drift, merge state | `story_status.py` | A release checklist row per repository, filled from git by the agent and confirmed by the person |
 | Contract version raised; breaking change raises MAJOR | `check_contract_version.py` + workflows | The provider team runs `oasdiff breaking` and a version comparison in its own CI; `designing-apis` gives the commands |
