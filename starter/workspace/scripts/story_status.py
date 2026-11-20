@@ -11,7 +11,12 @@ otherwise <repository>/plans/<KEY>/README.md. Prints a table. --write also saves
 --check-release exits 1 unless the story is release-ready: every part merged at the current versions, nothing it
 could not read, and every repository checked out on its default branch (run `git pull` in each first; a part's index
 reaches the default branch only through its merge). Anything the script cannot read is reported, never skipped.
-Exits 2 when the story's index or coordination plan is missing. Standard library only."""
+Exits 2 when the story's index or coordination plan is missing. Standard library only.
+
+When the workspace root is itself a git repository (the home repository, ADR 0022), each part's spec pin also names a
+home commit, `spec v<n> @ <commit>`: it must be on the home repository's default branch, and the story's spec must not
+have changed since it. Each part keeps a read-only copy of its criteria beside its index, plans/<KEY>/criteria.md,
+whose SOURCE line names the commit it copies; every copied line must be in the spec at that commit."""
 from __future__ import annotations
 
 import argparse
@@ -27,6 +32,8 @@ PART_ROW = re.compile(r"^\s+(\d+)\.?\s+([A-Za-z0-9._/-]+)(?:\s|$)")
 VERSION = re.compile(r"^(.*?)\s+v(\d+(?:\.\d+)*)$")
 STAGE_ROW = re.compile(r"^\|\s*([^|]+?)\s*\|[^|]*\|\s*([^|]+?)\s*\|?$")
 UNAFFECTED = re.compile(r"^UNAFFECTED\s+([A-Za-z0-9._/-]+)\s+spec\s+v(\d+)\s*:", re.I)
+AT_COMMIT = re.compile(r"\s*@\s*([0-9a-fA-F]{7,40})$")
+SOURCE_LINE = re.compile(r"^SOURCE\s+(\S+)\s+(\S+)\s+@\s+([0-9a-fA-F]{7,40})\b", re.M)
 
 Version = int | tuple[int, ...]
 
@@ -70,7 +77,7 @@ def parse_versions(text: str) -> dict[str, Version]:
     """'spec v2 · contract orders-api v2.1.0' -> {'spec': 2, 'contract orders-api': (2, 1, 0)}; 'none' or '' -> {}."""
     versions: dict[str, Version] = {}
     for item in items(text):
-        m = VERSION.match(item.lower())
+        m = VERSION.match(without_commit(item).lower())
         if m:
             parts = tuple(int(n) for n in m.group(2).split("."))
             versions[m.group(1)] = parts[0] if len(parts) == 1 else parts
@@ -78,7 +85,22 @@ def parse_versions(text: str) -> dict[str, Version]:
 
 
 def unread_items(text: str) -> list[str]:
-    return [item for item in items(text) if not VERSION.match(item.lower())]
+    return [item for item in items(text) if not VERSION.match(without_commit(item).lower())]
+
+
+def without_commit(item: str) -> str:
+    """'spec v2 @ 1a2b3c4' -> 'spec v2': the version part of a pin that also names its home commit."""
+    return AT_COMMIT.sub("", item)
+
+
+def parse_commits(text: str) -> dict[str, str]:
+    """'spec v2 @ 1A2B3C4 · plan v1' -> {'spec': '1a2b3c4'}: the home commit each pin names, when it names one."""
+    commits = {}
+    for item in items(text):
+        at, version = AT_COMMIT.search(item), VERSION.match(without_commit(item).lower())
+        if at and version:
+            commits[version.group(1)] = at.group(1).lower()
+    return commits
 
 
 def field_line(text: str, name: str) -> str:
@@ -165,7 +187,85 @@ def part_status(workspace: Path, key: str, number: int, repository: str, current
     for name in pins:
         if name not in ("spec", "plan") and name not in current:
             needs.append(f"pins {name}, which the story no longer lists")
+    spec_now = as_tuple(current["spec"])[0] if "spec" in current else 0
+    covered = spec_now > 0 and unaffected.get(repository, 0) >= spec_now
+    needs += drift_needs(workspace, key, index, pins_text, needs, covered)
     return PartStatus(number, repository, reached, pins_text or "-", needs)
+
+
+def own_repository(folder: Path) -> bool:
+    """True when the folder is the top of its own git repository, not a folder inside another one."""
+    top = git(folder, "rev-parse", "--show-toplevel")
+    return top is not None and Path(top).resolve() == folder.resolve()
+
+
+def default_ref(folder: Path) -> str | None:
+    """The ref that stands for the default branch: origin's (the freshest after a fetch), else a local main or master."""
+    remote = git(folder, "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD")
+    if remote:
+        return remote
+    return next((b for b in ("main", "master") if git(folder, "rev-parse", "--verify", "--quiet", f"refs/heads/{b}")),
+                None)
+
+
+def copied_lines(text: str) -> list[str]:
+    """The lines criteria.md copies from the spec: everything below its first criteria, edge-case or non-goals
+    heading, except headings, fences, blank lines and template placeholders; whitespace runs collapsed."""
+    lines, inside = [], False
+    for line in text.splitlines():
+        if re.match(r"^##\s+(Acceptance criteria|Edge cases|Non-goals)", line):
+            inside = True
+            continue
+        flat = " ".join(line.split())
+        if inside and flat and not flat.startswith(("#", "```")) and "{{" not in flat:
+            lines.append(flat)
+    return lines
+
+
+def criteria_needs(workspace: Path, index: Path, commit: str | None) -> list[str]:
+    """F5: the part's read-only copy of its criteria matches the home spec at the commit it names."""
+    copy = index.parent / "criteria.md"
+    if not copy.is_file():
+        return ["no criteria.md beside the part index (the part's read-only copy of its criteria, ADR 0022)"]
+    text = read(copy)
+    source = SOURCE_LINE.search(text)
+    if not source:
+        return ["criteria.md has no SOURCE line naming the home repository, the spec's path and its commit"]
+    path, at = source.group(2), source.group(3).lower()
+    needs = []
+    if commit and not (commit.startswith(at) or at.startswith(commit)):
+        needs.append(f"criteria.md copies {at[:7]}, but the spec pin names {commit[:7]}")
+    spec = git(workspace, "show", f"{at}:{path}")
+    if spec is None:
+        return needs + [f"criteria.md: {path} at {at[:7]} cannot be read in the home repository"]
+    spec_lines = {" ".join(line.split()) for line in spec.splitlines()}
+    needs += [f"criteria.md differs from {path} at {at[:7]}: {line[:80]}"
+              for line in copied_lines(text) if line not in spec_lines]
+    return needs
+
+
+def drift_needs(workspace: Path, key: str, index: Path, pins_text: str, needs: list[str], covered: bool) -> list[str]:
+    """F4 and F5, when the workspace root is a git repository (the home repository): the spec pin names a home
+    commit on the default branch, the spec has not changed since it, and the criteria copy matches it. `covered` is
+    true when an UNAFFECTED line clears this part at the current spec."""
+    if not own_repository(workspace):
+        return []
+    base = default_ref(workspace)
+    if base is None:
+        return ["the home repository's default branch cannot be found"]
+    found, spec_rel = [], f"stories/{key}/spec.md"
+    commit = parse_commits(pins_text).get("spec")
+    if commit is None:
+        if "spec" in parse_versions(pins_text):
+            found.append("the spec pin names no home commit (spec v<n> @ <commit>)")
+    elif git(workspace, "cat-file", "-e", f"{commit}^{{commit}}") is None:
+        return found + [f"pinned home commit {commit[:7]} not found: run git fetch in the home repository"]
+    elif git(workspace, "merge-base", "--is-ancestor", commit, base) is None:
+        found.append(f"pinned home commit {commit[:7]} is not on the home repository's {base}")
+    elif (not covered and not any(n.startswith("re-plan: spec") for n in needs)
+          and git(workspace, "diff", "--quiet", commit, base, "--", spec_rel) is None):
+        found.append(f"re-plan: {spec_rel} changed on {base} since {commit[:7]}")
+    return found + criteria_needs(workspace, index, commit)
 
 
 def story_current(workspace: Path, key: str) -> tuple[dict[str, Version], dict[str, int], str]:

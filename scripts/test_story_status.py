@@ -1,5 +1,6 @@
 """Tests for starter/workspace/scripts/story_status.py: each builds a small workspace in a temporary folder."""
 import io
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -290,6 +291,173 @@ class StoryStatusTest(unittest.TestCase):
 
     def test_curly_placeholders_are_not_versions(self):
         self.assertEqual(story_status.items("spec v{{n}}"), [])
+
+
+# Plan 21: pins name the home commit, and each part keeps a read-only copy of its criteria (ADR 0022)
+
+GIT = ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false",
+       "-c", "core.hooksPath=/dev/null"]
+SPEC = ("# SHIP-1 · Track shipments · specification\n\nVersion: v1\n\n## Scope and non-goals\n"
+        "Non-goals: carrier rates\n\n## Acceptance criteria\nAC1 the API returns the shipment's status\n"
+        "    Given a shipment in transit\n    When its status is asked for\n    Then 200 with \"in transit\"\n")
+COPIED = ("AC1 the API returns the shipment's status", "Given a shipment in transit")
+
+
+def run_git(folder: Path, *args: str) -> str:
+    return subprocess.run(GIT + ["-C", str(folder), *args], check=True, capture_output=True, text=True).stdout.strip()
+
+
+def criteria(root: Path, repo: str, commit: str, lines=COPIED, source: bool = True) -> None:
+    head = f"```text\nSOURCE     home stories/SHIP-1/spec.md @ {commit} (spec v1)\n```\n\n" if source else ""
+    text = f"# SHIP-1 · part · acceptance criteria (read-only copy)\n\n{head}## Acceptance criteria\n" + "\n".join(lines)
+    (root / repo / "plans" / "SHIP-1" / "criteria.md").write_text(text + "\n", encoding="utf-8")
+
+
+class Home:
+    """A workspace root that is itself a git repository (the home repository): SHIP-1's documents on main."""
+
+    def __init__(self, root: Path, current: str = "spec v1 · contract tracking-api v1", extra: str = ""):
+        self.root = root
+        story(root, current=current, extra=extra)
+        (root / "stories" / "SHIP-1" / "spec.md").write_text(SPEC, encoding="utf-8")
+        run_git(root, "init", "-q", "-b", "main")
+        self.first = self.commit("spec v1")
+
+    def commit(self, message: str, files: dict[str, str] | None = None) -> str:
+        for rel, text in (files or {}).items():
+            (self.root / rel).write_text(text, encoding="utf-8")
+        run_git(self.root, "add", "stories")
+        run_git(self.root, "commit", "-q", "--allow-empty", "-m", message)
+        return run_git(self.root, "rev-parse", "HEAD")
+
+    def status(self) -> dict:
+        return {r.repository: r for r in story_status.story_status(self.root, "SHIP-1")}
+
+
+class HomeCommitTest(unittest.TestCase):
+    """F4: a part pins the spec by version and by the home commit; the drift check reads the home repository."""
+
+    def home(self, **kwargs) -> Home:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        return Home(Path(tmp.name), **kwargs)
+
+    def pinned(self, home: Home, commit: str, with_criteria: bool = True) -> None:
+        part(home.root, "shipments-api", pins=f"spec v1 @ {commit} · plan v1 · contract tracking-api v1")
+        part(home.root, "web-portal", pins=f"spec v1 @ {commit} · plan v1 · contract tracking-api v1")
+        if with_criteria:
+            criteria(home.root, "shipments-api", commit)
+            criteria(home.root, "web-portal", commit)
+
+    def test_a_pin_with_a_commit_is_parsed(self):
+        text = "spec v2 @ 1A2B3C4 · plan v1 · contract tracking-api v2.1.0"
+        self.assertEqual(story_status.parse_versions(text), {"spec": 2, "plan": 1, "contract tracking-api": (2, 1, 0)})
+        self.assertEqual(story_status.parse_commits(text), {"spec": "1a2b3c4"})
+        self.assertEqual(story_status.unread_items(text), [])
+
+    def test_without_a_home_repository_a_commit_pin_adds_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            story(root)
+            part(root, "shipments-api", pins="spec v1 @ 1a2b3c4 · plan v1 · contract tracking-api v1")
+            part(root, "web-portal")
+            rows = {r.repository: r for r in story_status.story_status(root, "SHIP-1")}
+        self.assertEqual(rows["shipments-api"].needs, [])
+
+    def test_a_pin_at_the_current_home_commit_is_clean(self):
+        home = self.home()
+        self.pinned(home, home.first)
+        self.assertEqual(home.status()["shipments-api"].needs, [])
+
+    def test_a_pin_without_a_home_commit_is_reported(self):
+        home = self.home()
+        self.pinned(home, home.first)
+        part_dir = home.root / "web-portal" / "plans" / "SHIP-1"
+        (part_dir / "README.md").write_text((part_dir / "README.md").read_text(encoding="utf-8").replace(
+            f" @ {home.first}", ""), encoding="utf-8")
+        self.assertIn("the spec pin names no home commit (spec v<n> @ <commit>)", home.status()["web-portal"].needs)
+
+    def test_a_spec_changed_since_the_pin_needs_a_re_plan(self):
+        home = self.home()
+        self.pinned(home, home.first)
+        home.commit("edit the spec in place", {"stories/SHIP-1/spec.md": SPEC + "AC2 the portal shows it\n"})
+        self.assertIn(f"re-plan: stories/SHIP-1/spec.md changed on main since {home.first[:7]}",
+                      home.status()["shipments-api"].needs)
+
+    def test_a_raised_version_is_one_re_plan_not_two(self):
+        home = self.home(current="spec v2 · contract tracking-api v1")
+        self.pinned(home, home.first)
+        home.commit("spec v2", {"stories/SHIP-1/spec.md": SPEC.replace("v1", "v2") + "AC2 the portal shows it\n"})
+        needs = home.status()["shipments-api"].needs
+        self.assertIn("re-plan: spec v1 < v2", needs)
+        self.assertFalse(any("changed on main" in n for n in needs), needs)
+
+    def test_an_unaffected_record_clears_the_commit_re_plan(self):
+        extra = "UNAFFECTED shipments-api spec v1: only the portal changes, Ana (tech lead), 2026-11-20"
+        home = self.home(extra=extra)
+        self.pinned(home, home.first)
+        home.commit("edit the spec in place", {"stories/SHIP-1/spec.md": SPEC + "AC2 the portal shows it\n"})
+        self.assertFalse(any("changed on main" in n for n in home.status()["shipments-api"].needs))
+
+    def test_a_pin_off_the_default_branch_is_reported(self):
+        home = self.home()
+        run_git(home.root, "switch", "-q", "-c", "draft")
+        draft = home.commit("an unapproved spec", {"stories/SHIP-1/spec.md": SPEC + "AC2 draft\n"})
+        run_git(home.root, "switch", "-q", "main")
+        self.pinned(home, draft, with_criteria=False)
+        criteria(home.root, "shipments-api", draft)
+        self.assertIn(f"pinned home commit {draft[:7]} is not on the home repository's main",
+                      home.status()["shipments-api"].needs)
+
+    def test_an_unknown_home_commit_is_reported(self):
+        home = self.home()
+        self.pinned(home, "deadbee")
+        self.assertEqual(home.status()["shipments-api"].needs,
+                         ["pinned home commit deadbee not found: run git fetch in the home repository"])
+
+
+class CriteriaCopyTest(unittest.TestCase):
+    """F5: each part's read-only copy of its criteria matches the home spec at the commit it names."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.home = Home(Path(tmp.name))
+        pins = f"spec v1 @ {self.home.first} · plan v1 · contract tracking-api v1"
+        part(self.home.root, "shipments-api", pins=pins)
+        part(self.home.root, "web-portal", pins=pins)
+        criteria(self.home.root, "web-portal", self.home.first)
+
+    def needs(self) -> list[str]:
+        return self.home.status()["shipments-api"].needs
+
+    def test_a_missing_copy_is_reported(self):
+        self.assertEqual(self.needs(), ["no criteria.md beside the part index (the part's read-only copy of its "
+                                        "criteria, ADR 0022)"])
+
+    def test_an_edited_copy_is_reported(self):
+        criteria(self.home.root, "shipments-api", self.home.first,
+                 lines=("AC1 the API returns the shipment's status within 1 second",))
+        self.assertEqual(self.needs(), [f"criteria.md differs from stories/SHIP-1/spec.md at {self.home.first[:7]}: "
+                                        "AC1 the API returns the shipment's status within 1 second"])
+
+    def test_a_copy_of_another_commit_is_reported(self):
+        later = self.home.commit("the index moves on", {"stories/SHIP-1/coordination-plan.md": PLAN + "\n"})
+        part_dir = self.home.root / "shipments-api" / "plans" / "SHIP-1"
+        (part_dir / "README.md").write_text((part_dir / "README.md").read_text(encoding="utf-8").replace(
+            f"spec v1 @ {self.home.first}", f"spec v1 @ {later}"), encoding="utf-8")
+        criteria(self.home.root, "shipments-api", self.home.first)
+        self.assertEqual(self.needs(), [f"criteria.md copies {self.home.first[:7]}, but the spec pin names {later[:7]}"])
+
+    def test_a_copy_without_a_source_line_is_reported(self):
+        criteria(self.home.root, "shipments-api", self.home.first, source=False)
+        self.assertEqual(self.needs(), ["criteria.md has no SOURCE line naming the home repository, the spec's path "
+                                        "and its commit"])
+
+    def test_only_the_copied_lines_are_compared(self):
+        text = ("# x\n```text\nSOURCE     home stories/SHIP-1/spec.md @ abc1234\n```\n## Acceptance criteria\n"
+                "AC1  a   b\n\n```text\n## Non-goals\nNon-goals: {{x}}\nNon-goals: rates\n")
+        self.assertEqual(story_status.copied_lines(text), ["AC1 a b", "Non-goals: rates"])
 
 
 if __name__ == "__main__":
