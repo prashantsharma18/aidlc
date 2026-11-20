@@ -38,10 +38,10 @@ You check that the change does what was approved, and only that.
   raise a `question`: a tag on an unmerged commit was never reviewed.
 - Each assertion listed under AMENDED ASSERTIONS has its line under "Amended assertions seen red" in the progress note,
   and the cited spec version has an Amendments line.
-- A commit with a `Recipe:` trailer holds only what the bundle's RECIPE approved; the recipe check's output is in the pull request; every assertion line it lists still checks the same thing.
+- A commit with a `Recipe:` trailer holds only what the bundle's RECIPE approved: the evidence file's Recipe commits section shows the re-run on its parent with no difference and the same test count; every assertion line the commit changes still checks the same thing.
 - A commit whose trailer ends `(scaffold)` belongs to slice 0 of route G: it touches only paths the bundle's MAY
-  CHANGE lists, and the recipe check does not apply to it. A `(scaffold)` trailer outside slice 0 of a story whose index ROUTE is G,
-  or on a command that is not the bundle's RECIPE, is a high finding. The recipe check's output line does not apply to a
+  CHANGE lists, and it is not re-run (generators are not reproducible). A `(scaffold)` trailer outside slice 0 of a story whose index ROUTE is G,
+  or on a command that is not the bundle's RECIPE, is a high finding. The re-run does not apply to a
   `(scaffold)` commit, and such a commit changes no existing file.
 - No new dependency (on slice 0 of route G, the manifest's direct dependencies match the approved DEPENDENCIES, at
   their versions), no architecture decision the plan did not record, nothing that breaks a rule in `AGENTS.md`.

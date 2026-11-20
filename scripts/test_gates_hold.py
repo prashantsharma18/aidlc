@@ -276,7 +276,8 @@ class SeveralRepositoriesTierTest(unittest.TestCase):
 class PlanCheckTest(unittest.TestCase):
     def test_plan_runs_the_plan_check(self):
         plan = " ".join(read("skills/aidlc-plan/SKILL.md").split())
-        self.assertIn("run the plan check named in AGENTS.md and fix every problem it reports", plan)
+        self.assertIn("go through the plan's checklist (`assets/plan.md`) item by item, against the files, and fix every "
+                      "gap it finds", plan)
 
 
 class FeedbackTest(unittest.TestCase):

@@ -3,7 +3,7 @@
 
 Session state, not memory: it lets a fresh session resume from the record.
 File: `plans/<KEY>/progress-{{SLICE}}.md`, committed on its own as the slice's first commit, then with the slice; the
-compliance reviewer and the slice runner read it.
+compliance reviewer and the next session read it.
 
 ```text
 STATUS      doing   (doing | paused: {{checkpoint n | recipe review}} | stopped: {{reason}} | done)

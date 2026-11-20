@@ -193,5 +193,44 @@ class EvidenceAndVerdictTest(unittest.TestCase):
                       "that session", consequences)
 
 
+class BuildAndPlanTest(unittest.TestCase):
+    """Task 3: the build and the plan name no script. The recipe check is a git procedure, a person starts each
+    delegate slice, and the plan check is the plan's checklist."""
+
+    def test_the_recipe_check_is_done_with_git(self):
+        build = skill("aidlc-build")
+        for phrase in ("`git worktree add <folder> <commit>^`", "`git -C <folder> add -A`",
+                       "`git -C <folder> diff --cached --stat <commit>` must print nothing",
+                       "the test count must be the same at the parent and at the commit"):
+            self.assertIn(phrase, build, phrase)
+        self.assertNotIn("check_recipe_commit", build)
+        self.assertIn("the evidence file's Recipe commits section shows the re-run", flat("agents/reviewer-compliance.md"))
+        self.assertNotIn("recipe check output", read("skills/aidlc-review/assets/pr-description.md"))
+
+    def test_a_person_starts_each_delegate_slice(self):
+        build = skill("aidlc-build")
+        self.assertNotIn("slice runner", build)
+        self.assertIn("one fresh session per slice, each started by the person", build)
+        self.assertNotIn("slice runner", read("skills/aidlc-build/assets/progress-note.md"))
+
+    def test_the_plan_check_is_a_checklist(self):
+        plan = skill("aidlc-plan")
+        self.assertNotIn("plan check", plan)
+        self.assertIn("go through the plan's checklist (`assets/plan.md`) item by item, against the files", plan)
+        checklist = flat("skills/aidlc-plan/assets/plan.md")
+        for item in ('every bundle field filled, or "none"', "each MODE allowed at its TIER",
+                     "a part of a story across several repositories is at Tier 2 or above (ADR 0021)",
+                     "every PINS line names the spec's current version",
+                     "every criterion and edge case in the spec maps to a test here and to a slice's bundle"):
+            self.assertIn(item, checklist, item)
+
+    def test_slice_0_names_no_starter_workflow_or_script(self):
+        plan = skill("aidlc-plan")
+        self.assertNotIn("ai-review.yml", plan)
+        self.assertNotIn("the check scripts", plan)
+        self.assertNotIn("story status command", plan)
+        self.assertIn("the team's CI configuration (`.github/workflows/ci.yml` on GitHub, `.gitlab-ci.yml` on GitLab)", plan)
+
+
 if __name__ == "__main__":
     unittest.main()

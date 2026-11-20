@@ -60,7 +60,7 @@ The approved spec and its version, the approved design note (always), the eviden
 
    At Tier 2 and above, load the `stress-testing-decisions` skill, challenge the draft and record the result in the plan. Where the approach depends on a framework's or library's behaviour, load the `checking-official-docs` skill and cite the source. To choose each criterion's test level, load the `writing-tests` skill; for a criterion users see in a web page, load the `testing-in-browser` skill and map it to a browser test.
 5. Slice the work so each slice is testable, reviewable and reversible. The usual slices are: map (read-only); core change (tests first, behind a flag if needed); edge cases and hardening; refactor and evidence. When in doubt, split along the acceptance criteria. Isolate open questions so they block as few slices as possible. Every slice starts and ends with the repository's tests green, because `aidlc-build` stops when a slice starts red: tests written first for a change go in the slice that makes them pass, and a recipe commit goes in the same slice as the fixes its build errors force. The part's slices share one branch and one pull request, so keep the whole part within the pull-request size `reviewing-code` gives. When it would exceed it, stop and propose the split to `aidlc-design` (in one repository, to the tech lead), which may split it into two parts, each with its own branch and pull request, the second waiting for the first. A second part in the same repository keeps its plan, bundles, progress notes and index in `plans/<KEY>/part-<n>/`. A part already merged when its spec changed gets a revision: branch `<type>/<KEY>-<part>-r<n>`, pull request title `[<KEY>] part <n> of <m>, revision <r>: <what>`, and a bundle pinned to the new spec that covers only the change between the two versions.
-6. Rate the tier with `assets/tiers.md` and propose a MODE per slice within what the tier allows: hands-on (every tier), delegate with checkpoints (Tiers 1 and 2) or delegate (Tier 1). A part of a story across several repositories is at least Tier 2 (ADR 0021); the plan check reports a Tier 1 part. Write them in each bundle's TIER and MODE lines; the tech lead decides with the bundle. If unsure, choose the more hands-on mode. At Tier 2, delegate with checkpoints puts a CHECKPOINT in DO before each step that touches a contract or another owner's code. A slice with a RECIPE stops for the person's review of the recipe commit in every mode.
+6. Rate the tier with `assets/tiers.md` and propose a MODE per slice within what the tier allows: hands-on (every tier), delegate with checkpoints (Tiers 1 and 2) or delegate (Tier 1). A part of a story across several repositories is at least Tier 2 (ADR 0021); the plan's checklist catches a Tier 1 part. Write them in each bundle's TIER and MODE lines; the tech lead decides with the bundle. If unsure, choose the more hands-on mode. At Tier 2, delegate with checkpoints puts a CHECKPOINT in DO before each step that touches a contract or another owner's code. A slice with a RECIPE stops for the person's review of the recipe commit in every mode.
 7. Draft one bundle per slice, `plans/<KEY>/bundle-<slice>.md`, by filling `assets/task-bundle.md`:
    - pin the spec, plan and contract versions in PINS, and copy that line into the part index. For a part of a story
      across several repositories, the spec pin also names the home repository's commit where the approved spec
@@ -75,7 +75,8 @@ The approved spec and its version, the approved design note (always), the eviden
    - fill RECIPE only for a deterministic tool (or, in slice 0 of route G, the approved scaffold, marked `(scaffold)`, one `Recipe:` trailer line per tool), as its own slice before any hand change (the recipe-commit rule in `aidlc-build`); the tool and its version are a dependency decision for the person.
 
    Every field is filled or marked "none".
-8. Write the plan and every bundle to `plans/<KEY>/`, never over an existing file, except the part index's rows and its PINS line. Before asking for approval, run the plan check named in AGENTS.md and fix every problem it reports. Its output goes in
+8. Write the plan and every bundle to `plans/<KEY>/`, never over an existing file, except the part index's rows and its PINS line. Before asking for approval, go through the plan's checklist (`assets/plan.md`) item by item, against the files, and fix every gap it
+   finds. Its result goes in
    the plan's pull request; the tech lead then judges the approach and the risk, not the fields. For a re-plan or a revision, raise the
    version, say what changed, and reset the `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged` rows of the part
    index to "to do". For a part of a story across several repositories, also write the part index
@@ -84,7 +85,7 @@ The approved spec and its version, the approved design note (always), the eviden
    write `plans/<KEY>/criteria.md` from `assets/criteria.md`: the part's own criteria, edge cases and non-goals,
    copied word for word from the spec at the pinned commit, under a SOURCE line naming the home repository, the
    spec's path and that commit. The copy is read-only: the part's CI and reviewers read it instead of the home
-   repository, and the story status command reports a copy that differs from the spec (ADR 0022).
+   repository, and `aidlc-release` compares it with the spec at its commit before release (ADR 0022).
 9. Mark this stage's row in the index (`plans/<KEY>/README.md`) as done, or as stopped with the reason.
 
 Slice 0 (route G), the first slice of each new repository, on branch `feat/<KEY>-slice-0`:
@@ -93,10 +94,10 @@ Slice 0 (route G), the first slice of each new repository, on branch `feat/<KEY>
    approved DEPENDENCIES: the only dependencies the slice may add.
 2. DO adds, tests first: a step that pins each direct dependency to the version DEPENDENCIES names (a package the
    generator added that DEPENDENCIES does not list is a stop for the design's approver); one real test of behaviour; a
-   health check that answers (an endpoint or a page); and `.github/workflows/ci.yml`, which runs the COMMANDS, each
-   required check seen red once in a draft pull request.
-3. MAY CHANGE covers the block's PATHS, the files the scaffold creates and `.github/workflows/ci.yml`. MUST NOT names
-   `AGENTS.md`, `CODEOWNERS`, `.claude/**`, `ai-review.yml` and the check scripts. DONE WHEN: every command in
+   health check that answers (an endpoint or a page); and the team's CI configuration (`.github/workflows/ci.yml` on GitHub,
+   `.gitlab-ci.yml` on GitLab), which runs the COMMANDS, each check seen red once in a draft pull request.
+3. MAY CHANGE covers the block's PATHS, the files the scaffold creates and the CI configuration. MUST NOT names
+   `AGENTS.md`, `CODEOWNERS` and `.claude/**`. DONE WHEN: every command in
    `AGENTS.md` runs green locally, and CI runs them on the pull request.
 4. The slice's stages mark the `slice 0` row in the index, not their own rows.
 
@@ -137,7 +138,7 @@ Feature brief mode (route F0):
 Drafts of `plans/<KEY>/plan.md` and one `plans/<KEY>/bundle-<slice>.md` per slice, on the story branch. Slices live only there, never as tracker sub-tasks. One branch per part: `<type>/<KEY>-<slug>` (`feat/<KEY>-<part>` for a story across several repositories), with `-r<n>` for a revision.
 
 ## Gate
-The tech lead reviews the plan against its checklist and decides; this session records the approval on the work item with the plan's version and commit (posting asks first), and on the plan's APPROVAL line, from the tech lead's word in this session or the plan pull request's approval checked on GitHub (ADR 0023). At Tier 1 the plan travels on the part's branch, in the same pull request as the code. At Tier 2 and 3 the plan, with its bundles, merges to the default branch first, in its own pull request, which the tech lead approves; the commit on the work item is that merge, and the build starts only from it (ADR 0020). A slice is built only from an approved bundle; a bundle changed after approval is approved again. In brief mode, the engineer confirms the brief (`fix.md` or `brief.md`); the code owner approves it with the change in the pull request. For a part of a story across several repositories, Decision 2 is the home design pull request plus this plan's pull request, titled `[<KEY>] part <n> of <m>, plan v<n>: <what>`, so the story status command never reads it as the part's code (ADR 0022). You draft; you never approve.
+The tech lead reviews the plan against its checklist and decides; this session records the approval on the work item with the plan's version and commit (posting asks first), and on the plan's APPROVAL line, from the tech lead's word in this session or the plan pull request's approval checked on GitHub (ADR 0023). At Tier 1 the plan travels on the part's branch, in the same pull request as the code. At Tier 2 and 3 the plan, with its bundles, merges to the default branch first, in its own pull request, which the tech lead approves; the commit on the work item is that merge, and the build starts only from it (ADR 0020). A slice is built only from an approved bundle; a bundle changed after approval is approved again. In brief mode, the engineer confirms the brief (`fix.md` or `brief.md`); the code owner approves it with the change in the pull request. For a part of a story across several repositories, Decision 2 is the home design pull request plus this plan's pull request, titled `[<KEY>] part <n> of <m>, plan v<n>: <what>`, so nobody takes it for the part's code (ADR 0022). You draft; you never approve.
 
 ## Stop if
 - The spec is not approved (outside brief mode), or a criterion is ambiguous.

@@ -27,7 +27,7 @@
 - **Spec:** {{version, clarifications}}
 - **Plan:** plan.md {{version}} ({{commit}}), approved by {{who}} on {{YYYY-MM-DD}}, {{how it was confirmed}}
 - **Bundle or brief:** {{path}} at its approval commit
-- **Recipe:** {{sha, tool@version, recipe check output}}, or none
+- **Recipe:** {{sha, tool@version, and the recipe check's result from the evidence file}}, or none
 - **Evidence:** {{link to the evidence table from the trusted run; what was proved only in CI}}
 - **Assumptions:** {{assumption, or none}}
 

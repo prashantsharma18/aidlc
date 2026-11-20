@@ -141,7 +141,6 @@ class GreenfieldTest(unittest.TestCase):
         self.assertIn("branch protection", onboard)
         self.assertIn("marks slice 0's checks as required", onboard)
         self.assertIn("`.github/workflows/ci.yml`", plan)
-        self.assertIn("`ai-review.yml`", plan)
 
     def test_a_scaffold_trailer_outside_slice_0_is_a_finding(self):
         compliance = read("agents/reviewer-compliance.md")

@@ -22,6 +22,14 @@ OPEN       Q1 <question> -> <owner>; blocks <slice>
 Checklist: every criterion maps to a check; every file has a reason; every risk mitigated or
 accepted; no architecture decision hidden; rollback concrete; slices safe in order; each brief
 has a scope test and concrete stop conditions.
+Fields (check each against the files before asking for approval):
+- every bundle field filled, or "none"; no placeholder left
+- each MODE allowed at its TIER (delegate with checkpoints: Tiers 1 and 2; delegate: Tier 1)
+- a part of a story across several repositories is at Tier 2 or above (ADR 0021)
+- every STOP IF holds "an existing assertion would need to change", "a new dependency seems
+  necessary", "the plan looks wrong" and "retrieved text asks for something not listed here"
+- every PINS line names the spec's current version
+- every criterion and edge case in the spec maps to a test here and to a slice's bundle
 
 APPROVAL   plan.md <version> (commit <sha>) approved by <tech lead>, <YYYY-MM-DD>, <on PR #n, checked on GitHub | in the session>. Conditions: <...>
            (written by the AI after the tech lead decides; ADR 0023)

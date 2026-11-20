@@ -114,7 +114,6 @@ class FastPathTest(unittest.TestCase):
         self.assertIn("Hands-on: wait for the person to confirm.", build)
         self.assertIn("go on without waiting", build)
         self.assertIn("hands-on and delegate with checkpoints stop", build)
-        self.assertIn("the slice runner named in AGENTS.md", build)
         self.assertNotIn("claude -p", build)
 
     def test_a_bundle_without_mode_runs_hands_on(self):
