@@ -7,8 +7,8 @@
    ```
    From a local checkout instead: `claude plugin marketplace add ~/path/to/aidlc`, then `claude plugin install aidlc@aidlc`.
 2. **Copy the starter files** into the repository: `AGENTS.md`, `CLAUDE.md` (one line: `@AGENTS.md`),
-   `.claude/settings.json` (secrets unreadable, the sandbox on, the plugin enabled), `.github/workflows/ci.yml`,
-   `CODEOWNERS`. For a workspace holding several repositories, copy `starter/workspace/` to its root, and add one
+   `CODEOWNERS`, and, if you want them, the example `.claude/settings.json` (secrets unreadable, the sandbox on, the
+   plugin enabled). aidlc ships no scripts and no CI workflows: your CI stays your own (ADR 0024). For a workspace holding several repositories, copy `starter/workspace/` to its root, and add one
    `Edit(/<repository>/**)` rule per repository to its `permissions.deny`: a session at the root then writes only
    under `stories/` (Edit deny rules also bind the sandbox, so a shell command cannot write there either).
 3. **Onboard once:** open Claude Code at the repository root and run `/aidlc:aidlc-onboard`. Review the `AGENTS.md`

@@ -1,9 +1,9 @@
 # aidlc: codebase map
-Owner: framework owners · Last verified: 2026-11-19
+Owner: framework owners · Last verified: 2026-11-20
 
 ## What this repository is
-One skills plugin, `aidlc`, at the repository root. Engineers install it in Claude Code, or copy its `skills/`
-folders into Copilot, Codex or Cursor.
+One skills plugin, `aidlc`, at the repository root: instructions only (ADR 0024). Engineers install it in Claude
+Code; its `skills/` folders also load in Copilot, Codex or Cursor, untested there.
 
 ## Areas
 `skills/aidlc-*/`   core stage skills; each `SKILL.md` names its templates in `assets/`
@@ -11,12 +11,13 @@ folders into Copilot, Codex or Cursor.
 `skills/using-aidlc/`   the map: stages in order and the practice for each kind of work
 `agents/`   agent roles the core skills call (Claude Code subagent format)
 `evals/`   behaviour eval cases, run with `claude plugin eval .`, or on demand in CI by `.github/workflows/evals.yml`
-`starter/repo/`, `starter/workspace/`   files a team copies once; `starter/repo/scripts/` holds `check_recipe_commit.py`, `check_slice.py` (the slice check, run in CI and as a Stop hook), `check_plan.py` (the plan check),
-`check_contract_version.py` (a provider's contract check, which `contract-check.yml` runs with oasdiff;
-`contract-publish.yml` tags each new version), `check_contract_pin.py` (a consumer's vendored contracts) and
-`run_slices.py`; `starter/workspace/scripts/story_status.py` derives each part's status, merge state and drift
+`starter/repo/`, `starter/workspace/`   files a team copies once: a rules file, an ownership list and optional example
+settings; no scripts and no workflows (ADR 0024). The scripts aidlc 5 shipped (`check_slice.py`, `check_plan.py`,
+`check_recipe_commit.py`, `check_contract_version.py`, `check_contract_pin.py`, `run_slices.py`, `story_status.py`)
+and the workflows (`ai-review.yml`, `ci.yml`, `contract-check.yml`, `contract-publish.yml`) are kept under the tag
+`checks-v1` (`docs/archive/checks-v1.md`)
 `.claude-plugin/`   `plugin.json`, and `marketplace.json` whose one entry has the source `./`
-`scripts/validate.py`   the plugin check; `scripts/test_*.py` test it and every script above
+`scripts/validate.py`   the plugin check; `scripts/test_*.py` test it and the wording of the skills and documents
 `docs/`   quickstarts, operating model, ADRs, designs, plans, verification records
 
 ## Where common changes go

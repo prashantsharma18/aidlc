@@ -7,7 +7,9 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
 - `skills/` the `aidlc-*` stage skills and the engineering-practice skills (`skills/NOTICE` holds the third-party
   licence for parts of the eight earlier practices); `agents/` the agent roles; `evals/` the behaviour evals.
   The repository root is the plugin.
-- `starter/` files a team copies once into a repository or a workspace, including `starter/repo/scripts/`.
+- `starter/` files a team copies once into a repository or a workspace: a rules file, an ownership list and optional
+  example settings; no scripts and no workflows (ADR 0024). `docs/archive/checks-v1.md` says where the removed
+  check code went.
 - `.claude-plugin/marketplace.json` the marketplace entry: one plugin, `aidlc`, whose source is the root (`./`).
 - `docs/` quickstarts, the operating model, ADRs, designs, plans, verification records.
 - The parked Python harness is under the tag `harness-v1` (`docs/archive/harness-v1.md`).

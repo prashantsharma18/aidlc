@@ -61,7 +61,7 @@ class DocsTest(unittest.TestCase):
         for phase, skills in (("### Phase 1", ("aidlc-onboard", "aidlc-review", "aidlc-start")),
                               ("### Phase 2", ("writing-tests", "aidlc-discover")),
                               ("### Phase 3", ("aidlc-specify", "aidlc-plan", "aidlc-release")),
-                              ("### Phase 4", ("Quality bar", "run_slices.py"))):
+                              ("### Phase 4", ("Quality bar", "one fresh session per slice"))):
             start = adoption.index(phase)
             end = adoption.find("### Phase", start + 10)
             body = adoption[start:end if end > 0 else len(adoption)]

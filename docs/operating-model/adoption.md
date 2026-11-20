@@ -60,10 +60,10 @@ flowchart LR
 
 - Run `aidlc-onboard` once per repository: it writes `AGENTS.md`, the codebase map, the Legacy list (code with no
   tests that pin it) and today's Quality bar values under Measured. Review both files in a pull request.
-- Copy the starter's `.github/workflows/ai-review.yml` so an AI review comments on every pull request, including ones
-  the kit did not produce. It needs an `ANTHROPIC_API_KEY` secret, and each run is a paid call. For kit-built
-  changes, `aidlc-review` adds the local reviewer agents and turns their findings into a review record. AI review is
-  evidence for the code owner, never the approval.
+- For kit-built changes, `aidlc-review` runs the reviewer agents in a fresh context on the evidence file and turns
+  their findings into a review record. A team may add any AI review its code host offers, so every pull request gets
+  one, including ones the kit did not produce; one that calls a model API needs a key such as `ANTHROPIC_API_KEY`
+  in CI, and each run is a paid call. AI review is evidence for the code owner, never the approval.
 - Send bugs through `aidlc-start`. Tier 1 bugs with a written expected behaviour take D1: a brief, a reproducing test,
   a fix.
 
@@ -96,8 +96,10 @@ Exit when stories run end to end with their approvals on the tracker.
   person's approval.
 - When a repository passes the [autonomy check](autonomy-and-maturity.md), let the tech lead approve delegate modes in
   bundles, within the tier: delegate with checkpoints at Tiers 1 and 2, delegate at Tier 1. Run approved delegate
-  slices with the starter's `scripts/run_slices.py`: one fresh session per slice, stopping at the first that does
-  not finish. You review the diffs at the end and push.
+  slices one fresh session per slice, each started by a person, stopping at the first that does not finish. You
+  review the diffs at the end and push.
+- When a mistake repeats, `aidlc-feedback` turns it into a check in the team's own project (a type, a lint rule, a
+  test or a CI step), proven on the real past mistake and listed in `AGENTS.md`'s rules table.
 
 Fast-path briefs carry a MODE the engineer chooses when confirming; until this phase, choose hands-on there too.
 Tier 3 stays hands-on at every phase.

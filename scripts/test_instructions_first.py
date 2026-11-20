@@ -441,5 +441,54 @@ class HostNeutralTest(unittest.TestCase):
             self.assertIn("Put this file where your review tool reads it", flat(rel), rel)
 
 
+class DocsTest(unittest.TestCase):
+    """Task 8: the README, the docs, the map, the manifest and the change list say what is true today."""
+
+    def test_the_readme_says_aidlc_is_instructions(self):
+        readme = flat("README.md")
+        gates = read("README.md").split("## Where the gates hold", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("It ships no scripts and no CI workflows (ADR 0024)", readme)
+        self.assertIn("aidlc depends on git and on no code-host feature", readme)
+        for name in ("Slice check", "Stop hook", "AI review in CI", "check scripts"):
+            self.assertNotIn(name, gates, name)
+        self.assertNotIn("The skills work in **Claude Code, GitHub Copilot, Codex and Cursor**", read("README.md"))
+
+    def test_the_manifest_claims_only_what_is_true(self):
+        description = json.loads(read(".claude-plugin/plugin.json"))["description"]
+        self.assertNotIn("the same skills work in", description)
+        self.assertIn("Written and tested for Claude Code", description)
+
+    def test_the_archive_note_says_where_the_code_went(self):
+        note = flat("docs/archive/checks-v1.md")
+        self.assertIn("git checkout checks-v1 -- <path>", note)
+        for name in ("check_slice.py", "check_plan.py", "check_recipe_commit.py", "run_slices.py",
+                     "check_contract_version.py", "check_contract_pin.py", "story_status.py", "ai-review.yml",
+                     "contract-check.yml", "contract-publish.yml"):
+            self.assertIn(name, note, name)
+        self.assertIn("docs/archive/checks-v1.md", read("docs/codebase-map.md"))
+        self.assertIn("no scripts and no workflows (ADR 0024)", flat("AGENTS.md"))
+
+    def test_the_change_list_marks_what_plan_22_dropped(self):
+        changes = read("docs/design/2026-11-19-aidlc-6-change-list.md")
+        self.assertIn("Superseded in part by ADR 0024", changes)
+        table = changes.split("## 6. After ADR 0024 (2026-11-20)", 1)[1]
+        for item in ("A1", "C4", "F6", "F7", "F9", "E1", "G1", "B5", "C2"):
+            self.assertRegex(table, rf"\b{item}\b", item)
+
+    def test_the_quickstarts_and_adoption_copy_no_script_or_workflow(self):
+        for rel in ("docs/quickstart/claude-code.md", "docs/quickstart/copilot.md", "docs/quickstart/codex-cursor.md"):
+            text = flat(rel)
+            self.assertNotIn("ci.yml", text, rel)
+            self.assertNotIn("`scripts/`", text, rel)
+        adoption = flat("docs/operating-model/adoption.md")
+        for name in ("run_slices", "ai-review.yml"):
+            self.assertNotIn(name, adoption, name)
+        self.assertIn("`aidlc-feedback` turns it into a check in the team's own project", adoption)
+
+    def test_the_eval_fixtures_name_no_removed_script(self):
+        for rel in ("evals/fixtures/workspace/WORKSPACE.md", "evals/fixtures/workspace/stories/README.md"):
+            self.assertNotIn("story_status.py", read(rel), rel)
+
+
 if __name__ == "__main__":
     unittest.main()

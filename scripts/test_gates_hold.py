@@ -198,13 +198,6 @@ class FinalReviewFixesTest(unittest.TestCase):
     def setUp(self):
         self.ci = read("starter/repo/.github/workflows/ci.yml")
 
-    def test_the_ci_comment_says_who_holds_the_workflow(self):
-        self.assertNotIn("cannot weaken its own check", " ".join(self.ci.split()))
-        self.assertIn("CODEOWNERS", self.ci)
-        section = read("README.md").split("## Where the gates hold", 1)[1].split("\n## ", 1)[0]
-        self.assertIn("ci.yml", section)
-        self.assertIn("CODEOWNERS", section)
-
     def test_ci_falls_back_only_when_the_base_has_no_script(self):
         self.assertIn('git cat-file -e "origin/$BASE_REF:scripts/check_slice.py"', self.ci)
         self.assertNotIn('if ! git show "origin/$BASE_REF:scripts/check_slice.py"', self.ci)

@@ -3,8 +3,9 @@
 A skills package for AI-assisted software delivery: from a requirement to a verified, reviewed change, with a person
 deciding at every gate. It implements the guide "From Intent to Verified Change".
 
-One plugin, **`aidlc`**. The skills work in **Claude Code, GitHub Copilot, Codex and Cursor**: they are plain
-`SKILL.md` folders in the open Agent Skills format.
+One plugin, **`aidlc`**, written and tested for **Claude Code**. The skills are plain `SKILL.md` folders in the
+open Agent Skills format, so GitHub Copilot, Codex and Cursor can read them; aidlc has not been tested there
+yet, and their adapters are a later plan.
 
 ## Install
 
@@ -15,7 +16,8 @@ One plugin, **`aidlc`**. The skills work in **Claude Code, GitHub Copilot, Codex
 | Codex, Cursor | Copy `skills/*` into `.agents/skills/` (or `.cursor/skills/` for Cursor) ([quickstart](docs/quickstart/codex-cursor.md)) |
 
 Then copy the starter files that fit (`starter/repo/` into a repository, `starter/workspace/` into a workspace) and run
-the `aidlc-onboard` skill once.
+the `aidlc-onboard` skill once. The starters hold a rules file, an ownership list and optional example settings:
+no scripts and no workflows.
 
 ## How work runs
 
@@ -39,24 +41,24 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
 
 ## Where the gates hold
 
-The skills say what must hold. These controls make it hold:
+aidlc is instructions: skills, agents and templates. It ships no scripts and no CI workflows (ADR 0024). The skills
+say what must hold; the team's own project makes it hold:
 
 | Control | Claude Code | GitHub Copilot, Codex, Cursor |
 |---|---|---|
-| Slice check in CI (scope, tests, manifests, suppressions, approved plans) | yes | yes |
-| AI review in CI, required and fail-closed | yes | yes |
-| Code-owner review, branch protection | yes | yes |
-| Slice check before the session stops (Stop hook) | yes | no: prose only |
-| Deny rules: secrets, settings, check scripts | yes | the tool's own settings, or prose only |
-| Read-only reviewer agents | yes | the tool's own agents, or prose only |
+| The team's own tests, linters, type checks and CI, which `aidlc-feedback` grows from each repeated mistake | yes | yes |
+| Reviewer agents in a fresh context, reading the evidence file the session writes with git | yes | the tool's own agents, or a fresh session |
+| A person decides at each gate, from evidence git can confirm | yes | yes |
+| Code-owner review (`CODEOWNERS`) | yes | yes |
+| Example settings: secrets unreadable, the sandbox on, push and install ask first | yes | the tool's own settings, or prose only |
 
-CI runs the base branch's copy of the slice check, so a pull request cannot weaken the script. A pull request can
-still edit `ci.yml` itself: that edit is held by `CODEOWNERS` (`.github/` belongs to the leads) and a required
-code-owner review.
+aidlc depends on git and on no code-host feature. A team that has branch protection, rulesets or required checks may
+use them to block a merge on red; aidlc never needs them. On GitHub Free, branch protection, rulesets and required
+checks work only on public repositories. A private repository needs GitHub Pro (personal account) or Team
+(organisation). Never turn on auto-merge without required checks: it would merge whatever is pushed.
 
-On GitHub Free, branch protection, rulesets and required checks work only on public repositories. A private
-repository needs GitHub Pro (personal account) or Team (organisation). Never turn on auto-merge without required
-checks: it would merge whatever is pushed.
+The check code aidlc 5 shipped (the slice, plan, recipe, contract and status scripts, and the starter workflows) is
+kept under the tag `checks-v1`: [docs/archive/checks-v1.md](docs/archive/checks-v1.md).
 
 The eight routes, drawn: [docs/operating-model/routes.md](docs/operating-model/routes.md). How to adopt aidlc on a new or an
 existing system, and who approves what: [docs/operating-model/adoption.md](docs/operating-model/adoption.md). The
