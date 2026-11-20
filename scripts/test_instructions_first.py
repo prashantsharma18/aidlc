@@ -77,8 +77,8 @@ class AdrTest(unittest.TestCase):
 
 
 VERDICT = ("- A verdict that the change is done or passes counts only from someone who did not write it: one of the "
-           "`reviewer-*` agents, dispatched with only the evidence file, the bundle and the diff, or a person other "
-           "than the engineer who ran the session. It names the commit it judged (`git rev-parse HEAD`). A later "
+           "`reviewer-*` agents, dispatched with the evidence file and the story documents it names, never the author's "
+           "conversation; or a person other than the engineer who ran the session. It names the commit it judged (`git rev-parse HEAD`). A later "
            "commit that changes any path outside `plans/<KEY>/` voids it: `git diff --name-only <judged commit> HEAD "
            "-- ':(top)' ':(top,exclude)plans/<KEY>/'` must print nothing.")
 REVIEWERS = ("reviewer-bug", "reviewer-security", "reviewer-compliance", "reviewer-tests")
@@ -151,13 +151,14 @@ class EvidenceAndVerdictTest(unittest.TestCase):
         self.assertIn("the verdict is void", stops)
         record = read("skills/aidlc-review/assets/review-record.md")
         self.assertIn("at {{commit}}", record.split("## Reviewer verdicts", 1)[1])
-        self.assertIn("one of the `reviewer-*` agents, dispatched with only the evidence file, the bundle and the "
-                      "diff, or a person other than the engineer who ran the session", " ".join(record.split()))
+        self.assertIn("one of the `reviewer-*` agents, dispatched with the evidence file and the story documents it "
+                      "names, never the author's conversation; or a person other than the engineer who ran the session",
+                      " ".join(record.split()))
         self.assertRegex(record, r"DECISION  \{\{approve [^}]*\}\} at \{\{commit\}\}")
 
     def test_verify_reads_the_evidence_and_gives_no_verdict(self):
-        self.assertIn("from the evidence file `plans/<KEY>/review-evidence.md` when its HEAD is the commit the trusted "
-                      "run tested", skill("aidlc-verify"))
+        self.assertIn("from the evidence file `plans/<KEY>/review-evidence.md` when its HEAD and the commit the trusted "
+                      "run tested differ in no path outside `plans/<KEY>/`", skill("aidlc-verify"))
         table = read("skills/aidlc-verify/assets/evidence-table.md")
         self.assertIn("This is evidence, not a verdict", " ".join(table.split()))
         for row in ("test files changed:", "test count:"):
@@ -676,9 +677,38 @@ class FinalReviewTest(unittest.TestCase):
             self.assertIn("':(top,exclude)plans/<KEY>/review-evidence.md'", story, rel)
             self.assertIn("':(top,exclude)plans/<KEY>/part-<n>/review-evidence.md'", story, rel)
 
+    def test_m5_the_build_may_edit_the_evidence_file(self):
+        rule = section(skill("aidlc-build"), "## Rules").split("- You edit only inside MAY CHANGE.", 1)[1]
+        self.assertIn("your progress note and your row in the index, and the evidence file "
+                      "`plans/<KEY>/review-evidence.md`", rule)
+
+    def test_m6_verify_uses_the_evidence_file_by_the_void_rule(self):
+        verify = skill("aidlc-verify")
+        self.assertNotIn("when its HEAD is the commit the trusted run tested", verify)
+        self.assertIn("when its HEAD and the commit the trusted run tested differ in no path outside `plans/<KEY>/` "
+                      "(`git diff --name-only <evidence HEAD> <tested commit> -- ':(top)' ':(top,exclude)plans/<KEY>/'` "
+                      "prints nothing, the same command as the verdict rule)", verify)
+
+    def test_m9_the_reviewers_know_the_second_part_path(self):
+        for name in ("reviewer-tests", "reviewer-compliance"):
+            self.assertIn("`plans/<KEY>/part-<n>/review-evidence.md` for a second part", flat(f"agents/{name}.md"), name)
+
+    def test_m10_specify_checks_the_parts_itself(self):
+        specify = skill("aidlc-specify")
+        self.assertNotIn("the next `status.md` the AI derives", specify)
+        self.assertIn("run `git -C <repository> fetch`, then read the part's PINS line on its default branch, with "
+                      "`git -C <repository> show origin/<default branch>:plans/<KEY>/README.md`", specify)
+
     def test_m11_the_base_is_read_after_a_fetch(self):
         for rel in EVIDENCE_COPIES:
             self.assertIn("{{git fetch, then git merge-base HEAD origin/<default branch>}}", read(rel), rel)
+
+    def test_m13_the_verdict_bullet_names_what_reviewers_are_given(self):
+        self.assertIn("dispatched with the evidence file and the story documents it names, never the author's "
+                      "conversation", VERDICT)
+        self.assertNotIn("dispatched with only", flat("skills/aidlc-review/assets/review-record.md"))
+        for name in ("aidlc-build", "aidlc-verify", "aidlc-review"):
+            self.assertNotIn("dispatched with only", skill(name), name)
 
 
 if __name__ == "__main__":

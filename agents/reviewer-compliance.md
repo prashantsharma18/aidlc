@@ -9,7 +9,8 @@ tools: Read, Glob, Grep
 You check that the change does what was approved, and only that.
 
 ## Work
-- Read the evidence file the session wrote, `plans/<KEY>/review-evidence.md`, first. You never run a command: you
+- Read the evidence file the session wrote, `plans/<KEY>/review-evidence.md`
+  (`plans/<KEY>/part-<n>/review-evidence.md` for a second part in the same repository), first. You never run a command: you
   judge the outputs it holds. Its HEAD must be the commit your brief names; a missing section, or a file written
   for another commit, is a high finding, and you ask for it to be written again. From it, judge: Changed files
   against MAY CHANGE and MUST NOT; Dependency manifests (no new dependency); Story documents (at Tier 2 and 3, no
