@@ -52,8 +52,9 @@ say what must hold; the team's own project makes it hold:
 | Code-owner review (`CODEOWNERS`) | yes | yes |
 | Example settings: secrets unreadable, the sandbox on, push and install ask first | yes | the tool's own settings, or prose only |
 
-aidlc depends on git and on no code-host feature. A team that has branch protection, rulesets or required checks may
-use them to block a merge on red; aidlc never needs them. On GitHub Free, branch protection, rulesets and required
+aidlc needs git and a pull request (a review request), and no other code-host feature. Reading the review tool is
+optional: without it, a person confirms the approval and the CI result in the session. A team that has branch
+protection, rulesets or required checks may use them to block a merge on red; aidlc never needs them. On GitHub Free, branch protection, rulesets and required
 checks work only on public repositories. A private repository needs GitHub Pro (personal account) or Team
 (organisation). Never turn on auto-merge without required checks: it would merge whatever is pushed.
 

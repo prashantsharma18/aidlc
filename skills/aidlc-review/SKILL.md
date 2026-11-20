@@ -45,7 +45,9 @@ The pull request, its evidence table, on route D1 the fix brief `plans/<KEY>/fix
    workspace root) as done, or as stopped with the reason. Once the code owner approves, check the approval in the
    review tool and the team's CI result; then this session marks the `merged` row done in its final commit. That
    commit's message says how it was confirmed, for example
-   `approved by ana on pull request 12, checked in the review tool, 2026-11-20`.
+   `approved by ana on pull request 12, checked in the review tool, 2026-11-20`. When you cannot read the review tool,
+   the code owner confirms the approval and the CI result in this session, and the record says so
+   (`confirmed by <name> in the session, <date>`); otherwise leave the row and report.
    Where the code host's rules dismiss stale approvals or require approval of the last push, the code owner re-approves
    after the final commit. Then check the approval again before you record it or call the pull request ready.
    The session then tells the person the pull request is ready to merge; you never merge (ADR 0023). So the row

@@ -451,7 +451,7 @@ class DocsTest(unittest.TestCase):
         readme = flat("README.md")
         gates = read("README.md").split("## Where the gates hold", 1)[1].split("\n## ", 1)[0]
         self.assertIn("It ships no scripts and no CI workflows (ADR 0024)", readme)
-        self.assertIn("aidlc depends on git and on no code-host feature", readme)
+        self.assertIn("aidlc needs git and a pull request (a review request), and no other code-host feature", readme)
         for name in ("Slice check", "Stop hook", "AI review in CI", "check scripts"):
             self.assertNotIn(name, gates, name)
         self.assertNotIn("The skills work in **Claude Code, GitHub Copilot, Codex and Cursor**", read("README.md"))
@@ -575,11 +575,17 @@ EVIDENCE_COPIES = ("skills/aidlc-build/assets/review-evidence.md", "skills/aidlc
 TOP_RULE = "Run every command from the repository root (`cd \"$(git rev-parse --show-toplevel)\"`)"
 
 
+def clean_env() -> dict:
+    """The environment with every GIT_ variable removed, so a throwaway repository never reaches an outer one, and
+    with no user or system configuration, so no global hook runs."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    return dict(env, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_AUTHOR_NAME="t",
+                GIT_AUTHOR_EMAIL="t@example.com", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@example.com")
+
+
 def git(cwd: Path, *args: str) -> str:
-    """Run git in a throwaway repository, with no user or system configuration (so no global hook runs)."""
-    env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_AUTHOR_NAME="t",
-               GIT_AUTHOR_EMAIL="t@example.com", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@example.com")
-    return subprocess.run(["git", *args], cwd=cwd, env=env, check=True, capture_output=True, text=True).stdout
+    """Run git in a throwaway repository."""
+    return subprocess.run(["git", *args], cwd=cwd, env=clean_env(), check=True, capture_output=True, text=True).stdout
 
 
 class FinalReviewTest(unittest.TestCase):
@@ -624,9 +630,8 @@ class FinalReviewTest(unittest.TestCase):
             git(repo, "commit", "-q", "-m", "weaken")
             command = command.replace("<base>", base)
             self.assertNotIn("<", command)
-            env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
-            out = subprocess.run(command, shell=True, cwd=repo / "src/api", env=env, check=True, capture_output=True,
-                                 text=True).stdout
+            out = subprocess.run(command, shell=True, cwd=repo / "src/api", env=clean_env(), check=True,
+                                 capture_output=True, text=True).stdout
         self.assertIn("deleted file mode", out)
         self.assertIn("src/billing/invoice_test.go", out)
         self.assertIn("-    assert total == 120", out)
@@ -650,6 +655,20 @@ class FinalReviewTest(unittest.TestCase):
                                                     "run the test command again, for the commit's count")]
         self.assertEqual(order, sorted(order))
         self.assertIn("because the recipe then changes the worktree", step5)
+
+    def test_i3_an_approval_the_session_cannot_read_is_confirmed_by_the_code_owner(self):
+        step8 = skill("aidlc-review").split(" 8. Mark this stage's row", 1)[1].split("## Produces", 1)[0]
+        self.assertIn("When you cannot read the review tool, the code owner confirms the approval and the CI result in "
+                      "this session, and the record says so (`confirmed by <name> in the session, <date>`); otherwise "
+                      "leave the row and report.", step8)
+        claim = "aidlc needs git and a pull request (a review request), and no other code-host feature"
+        optional = "Reading the review tool is optional: without it, a person confirms"
+        for text in (skill("using-aidlc"), flat("README.md")):
+            self.assertIn(claim, text)
+            self.assertIn(optional, text)
+        description = json.loads(read(".claude-plugin/plugin.json"))["description"]
+        self.assertIn("needs git and a pull request, and no other code-host feature", description)
+        self.assertNotIn("no code-host feature needed", description)
 
     def test_m4_the_story_documents_diff_leaves_out_the_evidence_file(self):
         for rel in EVIDENCE_COPIES:
