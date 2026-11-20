@@ -88,16 +88,22 @@ def load_source(folder: Path) -> dict[str, str] | str:
 def repository_problem(repository: str) -> str | None:
     """Why a repository value is not safe to hand to git, or None. It comes from SOURCE or the command line, so it
     is data: only https, ssh, scp-like git@host:path and an absolute local path are allowed, with no whitespace or
-    control character, and nothing git could read as an option."""
-    if repository.startswith("-") or re.search(r"[\s\x00-\x1f\x7f]", repository) or "::" in repository:
-        return f"repository {repository!r} is not a plain git URL or absolute path"
-    if not REPOSITORY.fullmatch(repository):
-        return (f"repository {repository!r} must be https://..., ssh://..., git@host:path or an absolute local "
-                f"path")
+    control character, and nothing git could read as an option. A message never repeats a user part, which can
+    hold a token."""
     if credentials_in(repository):
         return ("repository carries credentials (a user and password, or a token, before @): SOURCE is committed, "
                 "so name the repository without them and let git use its credential helper or ssh key")
+    shown = redacted(repository)
+    if repository.startswith("-") or re.search(r"[\s\x00-\x1f\x7f]", repository) or "::" in repository:
+        return f"repository {shown!r} is not a plain git URL or absolute path"
+    if not REPOSITORY.fullmatch(repository):
+        return f"repository {shown!r} must be https://..., ssh://..., git@host:path or an absolute local path"
     return None
+
+
+def redacted(repository: str) -> str:
+    """The repository value with every user part after "//" replaced, so no message prints a token."""
+    return re.sub(r"(?<=//)[^/@]*@", "***@", repository)
 
 
 def credentials_in(repository: str) -> bool:

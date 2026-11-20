@@ -689,6 +689,13 @@ class FinalReviewTest(unittest.TestCase):
                            "git@example.com:org/shipments-api.git", "https://example.com/org/shipments-api.git"):
             self.assertIsNone(check_contract_pin.repository_problem(repository), repository)
 
+    def test_a_malformed_repository_with_credentials_never_echoes_them(self):
+        for repository in ("https://user:s3cr3t@example.com/org/x?y", "https://user:s3cr3t@example.com/org/x y",
+                           "-https://ghp_s3cr3t@example.com/org/x"):
+            problem = check_contract_pin.repository_problem(repository)
+            self.assertIsNotNone(problem, repository)
+            self.assertNotIn("s3cr3t", problem, repository)
+
 
 if __name__ == "__main__":
     unittest.main()
