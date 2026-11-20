@@ -88,5 +88,7 @@ Kept by `aidlc-feedback`. A rule held only by prose is a candidate for a check.
 - Test paths, for the review evidence: {{test folders and file patterns, for example `tests/` and `*_test.go`}}
 - Dependency manifests, for the review evidence: {{manifest and lock files, for example `package.json` and
   `package-lock.json`}}
+- Check configuration, for the review evidence: {{lint, type, test, coverage and CI configuration paths}}. In the three
+  lines above, write each pattern so you can quote each pattern in a command, for example `'*_test.go'`
 - Contract: {{path of the OpenAPI file this repository owns, or none}}, published as tags `api-v{{version}}`; copies
   of other repositories' contracts: `contracts/{{provider}}/`, read-only, each with its SOURCE

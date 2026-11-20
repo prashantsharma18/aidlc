@@ -14,7 +14,7 @@ You check that the change does what was approved, and only that.
   for another commit, is a high finding, and you ask for it to be written again. From it, judge: Changed files
   against MAY CHANGE and MUST NOT; Dependency manifests (no new dependency); Story documents (at Tier 2 and 3, no
   plan, bundle, brief or criteria copy added or changed in a code pull request, ADR 0020); Added suppressions,
-  skips and exceptions; and Recipe commits.
+  skips and exceptions; Check configuration (no loosened check configuration); and Recipe commits.
 - Every changed path is inside the bundle's MAY CHANGE (`plans/<KEY>/**` is exempt from this check), and nothing in MUST NOT changed.
 - On route D1 or F0 the brief (`plans/<KEY>/fix.md` or `plans/<KEY>/brief.md`) is the bundle: its MAY CHANGE, MUST NOT and DONE WHEN apply, its CONFIRMED line names the engineer, and every CRITERIA line (F0) or the reproduction (D1) has its test.
 - Every criterion and edge case the slice covers has a test named with its ID. No existing assertion changed, except one listed under AMENDED ASSERTIONS in the bundle (with its spec version, criterion and decider) or inside a `Recipe:` commit; any other changed assertion is a high finding.

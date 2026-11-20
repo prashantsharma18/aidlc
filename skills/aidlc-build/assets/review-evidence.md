@@ -6,6 +6,11 @@ The session writes this file from git before each review pass, to `plans/<KEY>/r
 section holds a command's output exactly as it printed. The reviewer agents read this file and never run a command.
 The code owner can run any command again and compare. When an output holds three backticks, fence it with four.
 
+Three rules keep the evidence from being empty by accident. Write the file only from a clean tree
+(`git status --porcelain` prints nothing). Every diff below compares `<base>` with HEAD, never the working tree. Quote every
+pathspec pattern, for example `'*_test.go'`: the shell expands an unquoted pattern to files that did not change, and
+the diff then prints nothing.
+
 ```text
 HEAD       {{git rev-parse HEAD: the commit the reviewers judge}}
 BASE       {{git merge-base HEAD origin/<default branch>}}
@@ -14,7 +19,7 @@ WRITTEN    {{YYYY-MM-DD}}, by {{the build session | the review session}}
 ```
 
 ## Changed files (reviewer-compliance)
-`git diff --stat <base>`, then `git diff --name-only <base>`. The compliance reviewer compares the list with the
+`git diff --stat <base> HEAD`, then `git diff --name-only <base> HEAD`. The compliance reviewer compares the list with the
 bundle's MAY CHANGE and MUST NOT; `plans/<KEY>/**` is exempt.
 
 ```text
@@ -22,7 +27,7 @@ bundle's MAY CHANGE and MUST NOT; `plans/<KEY>/**` is exempt.
 ```
 
 ## Test files (reviewer-tests, reviewer-compliance)
-`git diff <base> -- <test paths>`, with the test paths `AGENTS.md` names under Where to look. A deleted test, a
+`git diff <base> HEAD -- '<test paths>'`, with the test paths `AGENTS.md` names under Where to look. A deleted test, a
 removed or changed assertion, or a new skip shows here.
 
 ```text
@@ -47,15 +52,23 @@ Each check command `AGENTS.md` names (tests, lint, type checks, build), run at H
 ```
 
 ## Dependency manifests (reviewer-compliance)
-`git diff <base> -- <manifests>`, with the manifest and lock files `AGENTS.md` names under Where to look. An added
+`git diff <base> HEAD -- '<manifests>'`, with the manifest and lock files `AGENTS.md` names under Where to look. An added
 dependency needs a person's approval.
 
 ```text
 {{output, or "no change"}}
 ```
 
+## Check configuration (reviewer-compliance)
+`git diff <base> HEAD -- '<check configuration>'`, with the lint, type, test, coverage and CI configuration paths
+`AGENTS.md` names under Where to look. A loosened rule, a lowered threshold or a removed step is a finding.
+
+```text
+{{output, or "no change"}}
+```
+
 ## Story documents (reviewer-compliance)
-`git diff <base> -- plans/<KEY>/`. At Tier 2 and 3, a plan, bundle, brief or criteria copy added or changed in a code
+`git diff <base> HEAD -- plans/<KEY>/`. At Tier 2 and 3, a plan, bundle, brief or criteria copy added or changed in a code
 pull request is a finding: those merge first, in their own pull request (ADR 0020).
 
 ```text
@@ -63,7 +76,7 @@ pull request is a finding: those merge first, in their own pull request (ADR 002
 ```
 
 ## Added suppressions, skips and exceptions (reviewer-compliance)
-`git diff -U0 <base> -- . ':(exclude)plans/<KEY>/'`, keeping only the added lines (they start with `+`) that hold one
+`git diff -U0 <base> HEAD -- . ':(top,exclude)plans/<KEY>/'`, keeping only the added lines (they start with `+`) that hold one
 of these markers, or another marker the repository's stacks use, and the removed lines (they start with `-`) that
 close one (`eslint-enable`, `pylint: enable`, `#pragma warning restore`, `c8 ignore stop`):
 
@@ -71,6 +84,7 @@ close one (`eslint-enable`, `pylint: enable`, `#pragma warning restore`, `c8 ign
 noqa  type: ignore  pylint: disable  eslint-disable  @ts-ignore  @ts-expect-error  @ts-nocheck  nolint
 #pragma warning disable  SuppressMessage  c8 ignore  istanbul ignore  .skip(  .only(  xfail  @unittest.skip
 @pytest.mark.skip  [Ignore  Skip =  t.Skip(  @Disabled  aidlc-exception
+xit(  xdescribe(  @Ignore  @SuppressWarnings  #[ignore]  <NoWarn>
 ```
 
 ```text

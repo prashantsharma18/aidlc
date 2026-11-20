@@ -15,7 +15,9 @@ You judge whether the tests prove the change works. You report; you do not fix. 
   first. You never run a command: you judge the outputs it holds. A missing section, or a file written for another
   commit, is a high finding. So is a deleted test; a test count at HEAD lower than at BASE without an AMENDED
   ASSERTIONS line or an approved exception; a removed or changed assertion line outside AMENDED ASSERTIONS; and a
-  check command that did not exit 0.
+  check command that did not exit 0. Also, any test-looking path in Changed files that is not in Test files is a high
+  finding: a colocated test such as `src/foo.test.ts` can sit outside the configured test paths, and its changes
+  would otherwise go unread.
 - For each criterion and edge case of the slice (its task bundle and the spec), find the test named with its ID. A missing test is the compliance reviewer's finding; you judge the tests that exist.
 - For each test, ask whether it would fail if the code were wrong: a constant return, an inverted condition, a missing branch, an off-by-one at a limit. A test that would still pass is a finding.
 - Each test checks what a caller sees, with no sleeps, real clock, shared state or dependence on test order.

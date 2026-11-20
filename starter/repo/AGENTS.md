@@ -85,5 +85,7 @@ Kept by `aidlc-feedback`. A rule held only by prose is a candidate for a check.
 - Owners: <CODEOWNERS path>
 - Test paths, for the review evidence: <test folders and file patterns>
 - Dependency manifests, for the review evidence: <manifest and lock files>
+- Check configuration, for the review evidence: <lint, type, test, coverage and CI configuration paths>. Write each
+  pattern so you can quote each pattern in a command, for example `'*_test.go'`
 - Contract: <path of the OpenAPI file this repository owns, published as tags api-v<version>> | <none>; copies of
   other repositories' contracts: `contracts/<provider>/`, read-only, each with its SOURCE

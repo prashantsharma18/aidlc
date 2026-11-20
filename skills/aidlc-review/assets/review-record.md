@@ -30,6 +30,7 @@ DECISION  {{approve | revise (back to build) | reject (back to plan or spec owne
 ```
 
 ## Reviewer verdicts
-Each verdict counts only from a reviewer agent in a fresh context, or a person who did not write the change, at the
-commit it names. A later commit that changes a path outside `plans/<KEY>/` voids it.
+Each verdict counts only from someone who did not write the change: one of the `reviewer-*` agents, dispatched with
+only the evidence file, the bundle and the diff, or a person other than the engineer who ran the session. It names the
+commit it judged. A later commit that changes a path outside `plans/<KEY>/` voids it.
 - {{reviewer-bug | reviewer-security | reviewer-compliance | reviewer-tests | person}}: {{no findings | the number of findings}} at {{commit}}

@@ -73,10 +73,11 @@ class AdrTest(unittest.TestCase):
             self.assertIn("Status: Accepted", text, name)
 
 
-VERDICT = ("- A verdict that the change is done or passes counts only from someone who did not write it: a reviewer "
-           "agent in a fresh context, or a person. It names the commit it judged (`git rev-parse HEAD`). A later "
+VERDICT = ("- A verdict that the change is done or passes counts only from someone who did not write it: one of the "
+           "`reviewer-*` agents, dispatched with only the evidence file, the bundle and the diff, or a person other "
+           "than the engineer who ran the session. It names the commit it judged (`git rev-parse HEAD`). A later "
            "commit that changes any path outside `plans/<KEY>/` voids it: `git diff --name-only <judged commit> HEAD "
-           "-- . ':(exclude)plans/<KEY>/'` must print nothing.")
+           "-- . ':(top,exclude)plans/<KEY>/'` must print nothing.")
 REVIEWERS = ("reviewer-bug", "reviewer-security", "reviewer-compliance", "reviewer-tests")
 EVIDENCE = "skills/aidlc-review/assets/review-evidence.md"
 
@@ -88,9 +89,9 @@ class EvidenceAndVerdictTest(unittest.TestCase):
     def test_the_template_says_what_the_session_writes_and_where(self):
         self.assertEqual(read(EVIDENCE), read("skills/aidlc-build/assets/review-evidence.md"))
         text = flat(EVIDENCE)
-        for command in ("git rev-parse HEAD", "git merge-base HEAD origin/<default branch>", "git diff --stat <base>",
-                        "git diff --name-only <base>", "git diff <base> -- <test paths>",
-                        "git diff <base> -- <manifests>", "git diff <base> -- plans/<KEY>/",
+        for command in ("git rev-parse HEAD", "git merge-base HEAD origin/<default branch>", "git diff --stat <base> HEAD",
+                        "git diff --name-only <base> HEAD", "git diff <base> HEAD -- '<test paths>'",
+                        "git diff <base> HEAD -- '<manifests>'", "git diff <base> HEAD -- plans/<KEY>/",
                         "git worktree add <folder> <base>", "echo $?", "git -C <folder> diff --cached --stat <commit>"):
             self.assertIn(command, text, command)
         self.assertIn("to `plans/<KEY>/review-evidence.md`", text)
@@ -100,7 +101,8 @@ class EvidenceAndVerdictTest(unittest.TestCase):
         text = read(EVIDENCE)
         for heading in ("## Changed files (reviewer-compliance)", "## Test files (reviewer-tests, reviewer-compliance)",
                         "## Test count (reviewer-tests)", "## Commands run at HEAD (reviewer-tests)",
-                        "## Dependency manifests (reviewer-compliance)", "## Story documents (reviewer-compliance)",
+                        "## Dependency manifests (reviewer-compliance)", "## Check configuration (reviewer-compliance)",
+                        "## Story documents (reviewer-compliance)",
                         "## Added suppressions, skips and exceptions (reviewer-compliance)",
                         "## Recipe commits (reviewer-compliance)"):
             self.assertIn(heading, text, heading)
@@ -108,6 +110,7 @@ class EvidenceAndVerdictTest(unittest.TestCase):
             where = read(rel).split("## Where to look", 1)[1]
             self.assertIn("- Test paths, for the review evidence:", where, rel)
             self.assertIn("- Dependency manifests, for the review evidence:", where, rel)
+            self.assertIn("- Check configuration, for the review evidence:", where, rel)
 
     def test_build_and_review_write_and_commit_it(self):
         for name in ("aidlc-build", "aidlc-review"):
@@ -139,10 +142,14 @@ class EvidenceAndVerdictTest(unittest.TestCase):
 
     def test_a_stale_verdict_is_void(self):
         stops = section(skill("aidlc-review"), "## Stop if")
-        self.assertIn("A reviewer verdict names a commit other than the pull request's head", stops)
+        self.assertIn("A reviewer verdict names a commit that is not an ancestor of the pull request's head", stops)
+        self.assertNotIn("other than the pull request's head", stops)
+        self.assertIn("git merge-base --is-ancestor <judged commit> HEAD", stops)
         self.assertIn("the verdict is void", stops)
         record = read("skills/aidlc-review/assets/review-record.md")
         self.assertIn("at {{commit}}", record.split("## Reviewer verdicts", 1)[1])
+        self.assertIn("one of the `reviewer-*` agents, dispatched with only the evidence file, the bundle and the "
+                      "diff, or a person other than the engineer who ran the session", " ".join(record.split()))
         self.assertRegex(record, r"DECISION  \{\{approve [^}]*\}\} at \{\{commit\}\}")
 
     def test_verify_reads_the_evidence_and_gives_no_verdict(self):
@@ -152,6 +159,23 @@ class EvidenceAndVerdictTest(unittest.TestCase):
         self.assertIn("This is evidence, not a verdict", " ".join(table.split()))
         for row in ("test files changed:", "test count:"):
             self.assertIn(row, table, row)
+
+    def test_the_evidence_cannot_be_empty_without_warning(self):
+        text = flat(EVIDENCE)
+        self.assertIn("Quote every pathspec pattern", text)
+        self.assertIn("`'*_test.go'`", text)
+        self.assertIn("compares `<base>` with HEAD, never the working tree", text)
+        self.assertIn("only from a clean tree (`git status --porcelain` prints nothing)", text)
+        self.assertIn("git diff -U0 <base> HEAD -- . ':(top,exclude)plans/<KEY>/'", text)
+        self.assertIn("git diff <base> HEAD -- '<check configuration>'", text)
+        for marker in ("xit(", "xdescribe(", "@Ignore", "@SuppressWarnings", "#[ignore]", "<NoWarn>"):
+            self.assertIn(marker, text, marker)
+        tests = flat("agents/reviewer-tests.md")
+        self.assertIn("any test-looking path in Changed files that is not in Test files is a high finding", tests)
+        self.assertIn("src/foo.test.ts", tests)
+        self.assertIn("no loosened check configuration", flat("agents/reviewer-compliance.md"))
+        for rel in ("skills/aidlc-onboard/assets/agents-md.md", "starter/repo/AGENTS.md"):
+            self.assertIn("quote each pattern", flat(rel).split("## Where to look", 1)[1], rel)
 
     def test_the_adr_says_the_session_writes_the_evidence(self):
         consequences = flat("docs/adr/0024-instructions-first.md").split("## Consequences", 1)[1]
