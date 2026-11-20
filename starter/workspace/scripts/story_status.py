@@ -2,7 +2,7 @@
 """Shows where every part of a story stands, read from each repository's own index, so the workspace root tracks
 the story without any session writing into another repository.
 
-    python3 scripts/story_status.py <KEY> [--root <workspace>] [--write] [--check-release]
+    python3 scripts/story_status.py <KEY> [--root <workspace>] [--write] [--check-release] [--no-github]
 
 Reads stories/<KEY>/README.md (the story index: its CURRENT versions and UNAFFECTED records) and
 stories/<KEY>/coordination-plan.md (its PARTS rows), then, for each part, its index in the repository:
@@ -16,11 +16,17 @@ Exits 2 when the story's index or coordination plan is missing. Standard library
 When the workspace root is itself a git repository (the home repository, ADR 0022), each part's spec pin also names a
 home commit, `spec v<n> @ <commit>`: it must be on the home repository's default branch, and the story's spec must not
 have changed since it. Each part keeps a read-only copy of its criteria beside its index, plans/<KEY>/criteria.md,
-whose SOURCE line names the commit it copies; every copied line must be in the spec at that commit."""
+whose SOURCE line names the commit it copies; every copied line must be in the spec at that commit.
+
+Each part's merge state comes from its newest code pull request on GitHub, when its repository has a GitHub remote and
+gh answers (--no-github skips it), else from the default branch's copy of the part index, whose merged row reaches the
+default branch only through the part's merge. A hand-marked merged row that disagrees is reported."""
 from __future__ import annotations
 
 import argparse
+import json
 import re
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -34,6 +40,7 @@ STAGE_ROW = re.compile(r"^\|\s*([^|]+?)\s*\|[^|]*\|\s*([^|]+?)\s*\|?$")
 UNAFFECTED = re.compile(r"^UNAFFECTED\s+([A-Za-z0-9._/-]+)\s+spec\s+v(\d+)\s*:", re.I)
 AT_COMMIT = re.compile(r"\s*@\s*([0-9a-fA-F]{7,40})$")
 SOURCE_LINE = re.compile(r"^SOURCE\s+(\S+)\s+(\S+)\s+@\s+([0-9a-fA-F]{7,40})\b", re.M)
+GITHUB_REMOTE = re.compile(r"github\.com[:/]")
 
 Version = int | tuple[int, ...]
 
@@ -45,6 +52,7 @@ class PartStatus:
     reached: str
     pins: str
     needs: list[str] = field(default_factory=list)
+    merge: str = "-"        # the real merge state and its source, such as "merged (GitHub #12)"; "-" when unknown
 
     @property
     def merged(self) -> bool:
@@ -153,7 +161,7 @@ def part_index(workspace: Path, key: str, number: int, repository: str) -> Path:
 
 
 def part_status(workspace: Path, key: str, number: int, repository: str, current: dict[str, Version],
-                unaffected: dict[str, int]) -> PartStatus:
+                unaffected: dict[str, int], use_github: bool = True) -> PartStatus:
     if not (workspace / repository).is_dir():
         return PartStatus(number, repository, "missing", "-", [f"{repository} is not in the workspace"])
     index = part_index(workspace, key, number, repository)
@@ -190,7 +198,12 @@ def part_status(workspace: Path, key: str, number: int, repository: str, current
     spec_now = as_tuple(current["spec"])[0] if "spec" in current else 0
     covered = spec_now > 0 and unaffected.get(repository, 0) >= spec_now
     needs += drift_needs(workspace, key, index, pins_text, needs, covered)
-    return PartStatus(number, repository, reached, pins_text or "-", needs)
+    state, source = merge_state(workspace / repository, key, number, index, use_github)
+    if state == "merged" and reached != "merged":
+        needs.append(f"{source} says merged, but this checkout's merged row is not done (git pull the default branch)")
+    elif state == "not merged" and reached == "merged":
+        needs.append(f"the merged row is done, but {source} says not merged")
+    return PartStatus(number, repository, reached, pins_text or "-", needs, f"{state} ({source})" if state else "-")
 
 
 def own_repository(folder: Path) -> bool:
@@ -324,6 +337,61 @@ def drift_needs(workspace: Path, key: str, index: Path, pins_text: str, needs: l
     return found + criteria_needs(workspace, index, commit)
 
 
+def run_gh(folder: Path, args: list[str]) -> str | None:
+    """gh's output, or None when gh is missing, fails, or takes longer than 30 seconds."""
+    if shutil.which("gh") is None:
+        return None
+    try:
+        result = subprocess.run(["gh", *args], cwd=folder, capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return result.stdout if result.returncode == 0 else None
+
+
+def github_merge_state(folder: Path, key: str, number: int) -> tuple[str, str] | None:
+    """('merged' or 'not merged', '#<n>') from the part's newest code pull request on GitHub; None when GitHub
+    cannot say (no GitHub remote, no gh, no such pull request). The plan's own pull request ('..., plan v<n>: ...')
+    and closed, unmerged ones are skipped; an open revision means the part is not merged at its latest version."""
+    remote = git(folder, "remote", "get-url", "origin")
+    if not remote or not GITHUB_REMOTE.search(remote):
+        return None
+    out = run_gh(folder, ["pr", "list", "--state", "all", "--search", f"{key} in:title", "--limit", "100",
+                          "--json", "number,title,state"])
+    try:
+        prs = json.loads(out) if out else []
+    except ValueError:
+        return None
+    title = re.compile(rf"^\[{re.escape(key)}\] part {number} of \d+(?:, revision \d+)?:")
+    ours = sorted((p for p in prs if isinstance(p, dict) and title.match(str(p.get("title", "")))
+                   and p.get("state") in ("OPEN", "MERGED")), key=lambda p: int(p.get("number", 0)))
+    if not ours:
+        return None
+    return ("merged" if ours[-1]["state"] == "MERGED" else "not merged"), f"#{ours[-1]['number']}"
+
+
+def git_merge_state(folder: Path, index_rel: str) -> str | None:
+    """'merged' or 'not merged' from the default branch's copy of the part index, whose merged row reaches the
+    default branch only through the part's merge (any merge method); None when the default branch has no copy."""
+    base = default_ref(folder)
+    text = git(folder, "show", f"{base}:{index_rel}") if base else None
+    if text is None:
+        return None
+    return "merged" if stage_rows(text).get("merged") == "done" else "not merged"
+
+
+def merge_state(folder: Path, key: str, number: int, index: Path, use_github: bool) -> tuple[str | None, str]:
+    """F6: the part's real merge state and where it came from: GitHub when it can say, else git; (None, '-') when
+    neither can (the folder is not its own repository, or its default branch has no part index yet)."""
+    if not own_repository(folder):
+        return None, "-"
+    if use_github:
+        found = github_merge_state(folder, key, number)
+        if found:
+            return found[0], f"GitHub {found[1]}"
+    state = git_merge_state(folder, index.relative_to(folder).as_posix())
+    return state, ("git" if state else "-")
+
+
 def story_current(workspace: Path, key: str) -> tuple[dict[str, Version], dict[str, int], str]:
     index = read(workspace / "stories" / key / "README.md")
     current_text = field_line(index, "CURRENT")
@@ -335,10 +403,10 @@ def story_current(workspace: Path, key: str) -> tuple[dict[str, Version], dict[s
     return parse_versions(current_text), unaffected, current_text
 
 
-def story_status(workspace: Path, key: str) -> list[PartStatus]:
+def story_status(workspace: Path, key: str, use_github: bool = True) -> list[PartStatus]:
     current, unaffected, _ = story_current(workspace, key)
     plan = read(workspace / "stories" / key / "coordination-plan.md")
-    return [part_status(workspace, key, n, repo, current, unaffected) for n, repo in parts(plan)]
+    return [part_status(workspace, key, n, repo, current, unaffected, use_github) for n, repo in parts(plan)]
 
 
 def story_problems(workspace: Path, key: str) -> list[str]:
@@ -380,8 +448,9 @@ def release_ready(rows: list[PartStatus], problems: list[str] | tuple[str, ...] 
 
 def render(key: str, rows: list[PartStatus], problems: list[str] | tuple[str, ...] = ()) -> str:
     lines = [f"# {key} · status (generated by scripts/story_status.py; do not edit)", "",
-             "| Part | Repository | Reached | Pins | Needs |", "|---|---|---|---|---|"]
-    lines += [f"| {r.number} | {r.repository} | {r.reached} | {r.pins} | {'; '.join(r.needs) or '-'} |" for r in rows]
+             "| Part | Repository | Reached | Pins | Needs | Merge state |", "|---|---|---|---|---|---|"]
+    lines += [f"| {r.number} | {r.repository} | {r.reached} | {r.pins} | {'; '.join(r.needs) or '-'} | {r.merge} |"
+              for r in rows]
     lines += [""] + [f"Story needs: {p}" for p in problems]
     lines += [f"Release: {'ready' if release_ready(rows, problems) else 'not ready'}", ""]
     return "\n".join(lines)
@@ -393,6 +462,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--root", default=".")
     parser.add_argument("--write", action="store_true")
     parser.add_argument("--check-release", action="store_true")
+    parser.add_argument("--no-github", action="store_true")
     args = parser.parse_args(argv)
     workspace = Path(args.root)
     story = workspace / "stories" / args.key
@@ -400,7 +470,7 @@ def main(argv: list[str]) -> int:
         if not (story / name).is_file():
             print(f"story_status: {(story / name).as_posix()} not found", file=sys.stderr)
             return 2
-    rows = story_status(workspace, args.key)
+    rows = story_status(workspace, args.key, use_github=not args.no_github)
     problems = story_problems(workspace, args.key)
     if args.check_release:
         for repository in dict.fromkeys(r.repository for r in rows if r.reached != "missing"):

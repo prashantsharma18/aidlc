@@ -1,10 +1,12 @@
 """Tests for starter/workspace/scripts/story_status.py: each builds a small workspace in a temporary folder."""
 import io
+import json
 import subprocess
 import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "starter" / "workspace" / "scripts"))
@@ -540,6 +542,104 @@ class DriftCouldNotRunTest(unittest.TestCase):
                 self.assertIn("Warning: the workspace root is not a git repository", self.release(Path(tmp)))
             finally:
                 os.environ["PATH"] = old
+
+
+class MergeStateTest(unittest.TestCase):
+    """F6: a part's merge state comes from GitHub when it can say, else from git; a hand-marked row that disagrees
+    is reported."""
+
+    PRS = [{"number": 4, "title": "[SHIP-1] part 1 of 2: add tracking endpoint", "state": "MERGED"},
+           {"number": 7, "title": "[SHIP-1] part 1 of 2, plan v2: re-plan", "state": "MERGED"},
+           {"number": 9, "title": "[SHIP-1] part 1 of 2, revision 2: rename the field", "state": "OPEN"},
+           {"number": 10, "title": "[SHIP-1] part 1 of 2, revision 2: abandoned", "state": "CLOSED"},
+           {"number": 12, "title": "[SHIP-12] part 1 of 1: another story", "state": "MERGED"}]
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        story(self.root)
+        part(self.root, "web-portal")
+        self.repo = self.root / "shipments-api"
+        self.index = self.repo / "plans" / "SHIP-1" / "README.md"
+
+    def commit_index(self, done, branch=None):
+        if not (self.repo / ".git").exists():
+            part(self.root, "shipments-api", done=done)
+            run_git(self.repo, "init", "-q", "-b", "main")
+        else:
+            if branch:
+                run_git(self.repo, "switch", "-q", "-c", branch)
+            rows = "\n".join(f"| {s} | shipments-api | {'done' if s in done else 'to do'} |" for s in ALL)
+            self.index.write_text(f"PINS       {PINS}\n\n| Stage | Runs in | Status |\n|---|---|---|\n{rows}\n",
+                                  encoding="utf-8")
+        run_git(self.repo, "add", "-A")
+        run_git(self.repo, "commit", "-q", "-m", "index")
+
+    def status(self, use_github=True):
+        return {r.repository: r for r in story_status.story_status(self.root, "SHIP-1", use_github)}["shipments-api"]
+
+    def test_the_default_branchs_index_is_the_git_merge_state(self):
+        self.commit_index(ALL)
+        row = self.status()
+        self.assertEqual((row.merge, row.needs), ("merged (git)", []))
+
+    def test_a_merged_row_marked_on_a_branch_is_reported(self):
+        self.commit_index(ALL[:4])
+        self.commit_index(ALL, branch="feat/SHIP-1-1")
+        row = self.status()
+        self.assertEqual(row.merge, "not merged (git)")
+        self.assertIn("the merged row is done, but git says not merged", row.needs)
+
+    def test_a_checkout_behind_the_merge_is_reported(self):
+        self.commit_index(ALL[:4])
+        run_git(self.repo, "branch", "old")
+        self.commit_index(ALL)
+        run_git(self.repo, "switch", "-q", "old")
+        self.assertIn("git says merged, but this checkout's merged row is not done (git pull the default branch)",
+                      self.status().needs)
+
+    def test_a_folder_with_no_committed_index_adds_nothing(self):
+        part(self.root, "shipments-api", done=ALL)
+        run_git(self.repo, "init", "-q", "-b", "main")
+        run_git(self.repo, "commit", "-q", "--allow-empty", "-m", "x")
+        row = self.status()
+        self.assertEqual((row.merge, row.needs), ("-", []))
+
+    def test_github_says_first_from_the_newest_code_pull_request(self):
+        self.commit_index(ALL)
+        run_git(self.repo, "remote", "add", "origin", "https://github.com/acme/shipments-api.git")
+        calls = []
+
+        def gh(folder, args):
+            calls.append(args)
+            return json.dumps(self.PRS)
+
+        with mock.patch.object(story_status, "run_gh", gh):
+            row = self.status()
+        self.assertEqual(row.merge, "not merged (GitHub #9)")
+        self.assertIn("the merged row is done, but GitHub #9 says not merged", row.needs)
+        self.assertIn("SHIP-1 in:title", calls[0])
+
+    def test_no_github_reads_only_git(self):
+        self.commit_index(ALL)
+        run_git(self.repo, "remote", "add", "origin", "https://github.com/acme/shipments-api.git")
+        with mock.patch.object(story_status, "run_gh", side_effect=AssertionError("gh was called")):
+            self.assertEqual(self.status(use_github=False).merge, "merged (git)")
+
+    def test_a_remote_that_is_not_github_never_calls_gh(self):
+        self.commit_index(ALL)
+        run_git(self.repo, "remote", "add", "origin", "https://gitlab.example.com/acme/shipments-api.git")
+        with mock.patch.object(story_status, "run_gh", side_effect=AssertionError("gh was called")):
+            self.assertEqual(self.status().merge, "merged (git)")
+
+    def test_the_status_file_has_the_merge_state_column(self):
+        self.commit_index(ALL)
+        with redirect_stdout(io.StringIO()):
+            story_status.main(["SHIP-1", "--root", str(self.root), "--write", "--no-github"])
+        status = (self.root / "stories" / "SHIP-1" / "status.md").read_text(encoding="utf-8")
+        self.assertIn("| Part | Repository | Reached | Pins | Needs | Merge state |", status)
+        self.assertIn("| merged (git) |", status)
 
 
 if __name__ == "__main__":
