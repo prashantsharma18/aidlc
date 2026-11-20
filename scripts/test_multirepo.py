@@ -194,7 +194,7 @@ class TemplateTest(unittest.TestCase):
     def test_the_part_index_and_the_bundle_pin_the_home_commit(self):
         for rel in ("skills/aidlc-start/assets/story-index.md", "skills/aidlc-plan/assets/task-bundle.md"):
             self.assertIn("spec v<n> @ <home commit>", read(rel), rel)
-        self.assertIn("GitHub permalinks at a commit", flat("skills/aidlc-start/assets/story-index.md"))
+        self.assertIn("permalinks at a commit (the full commit hash in the address)", flat("skills/aidlc-start/assets/story-index.md"))
 
     def test_the_criteria_copy_names_its_source(self):
         text = read("skills/aidlc-plan/assets/criteria.md")
@@ -257,8 +257,8 @@ class DecisionsTest(unittest.TestCase):
                       "`[<KEY>] part <n> of <m>, plan v<n>: <what>`", gate("aidlc-plan"))
 
     def test_tracker_links_are_permalinks(self):
-        self.assertIn("GitHub permalink at a commit", skill("aidlc-start"))
-        self.assertIn("Link the spec by its GitHub permalink at the commit where it merged", skill("aidlc-specify"))
+        self.assertIn("permalink at a commit: the file's address on the code host", skill("aidlc-start"))
+        self.assertIn("Link the spec by its permalink at the commit where it merged", skill("aidlc-specify"))
 
     def test_release_reads_the_real_merge_state(self):
         self.assertIn("its `merged` row reads done", skill("aidlc-release"))

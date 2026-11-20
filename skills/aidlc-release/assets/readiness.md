@@ -15,7 +15,7 @@ The worst of the five decides.
 - [ ] Success signal: {{signal}}
 
 ## 2. Evidence passing
-- [ ] Required checks green and code-owner approval on every PR; specialist reviews recorded
+- [ ] The team's CI green and code-owner approval on every pull request; specialist reviews recorded
 - [ ] Staging behaviour confirmed: {{what was seen}}
 
 ## 3. Access limited

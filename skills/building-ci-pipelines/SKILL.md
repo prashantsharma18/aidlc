@@ -33,7 +33,7 @@ A pipeline decides what may merge, so changing it changes the repository's gates
    7. build the artefact once and record its digest;
    8. end-to-end and browser tests against that artefact;
    9. budgets: size, performance, accessibility.
-3. Decide which checks are required. Required means branch protection blocks the merge when the check is red or missing. A check nobody would block a merge for is noise: remove it, or label it advisory and say so.
+3. Decide which checks are required. Required means the merge waits for it when it is red or missing: by the code host's rule where the team has one (branch protection, or a pipeline that must succeed), and by the code owner's rule otherwise. A check nobody would block a merge for is noise: remove it, or label it advisory and say so.
 4. Pin everything: each third-party action to a full commit SHA with its version in a comment, every runtime and tool version, the runner image. Without pins, yesterday's green proves nothing today.
 5. Give each job the least it needs: read-only repository access by default, write access only in the job that needs it, secrets only in protected environments, and none for runs from forks.
 6. Cache only what is keyed by its inputs, such as the lock file's hash and the tool version. Never carry build output between branches in a cache.
@@ -45,7 +45,7 @@ A pipeline decides what may merge, so changing it changes the repository's gates
 ## Checks
 - CI runs the commands AGENTS.md names.
 - Cheap checks run first; a lint error never waits for a long test suite.
-- Each required check has an owner and is enforced by branch protection.
+- Each required check has an owner, and a red or missing one blocks the merge.
 - Actions and tools are pinned; access is read-only unless a job needs more.
 - The artefact is built once and its digest recorded; later stages test that artefact.
 - Each new required check was seen red once.

@@ -32,6 +32,6 @@ Fields (check each against the files before asking for approval):
 - every PINS line names the spec's current version
 - every criterion and edge case in the spec maps to a test here and to a slice's bundle
 
-APPROVAL   plan.md <version> (commit <sha>) approved by <tech lead>, <YYYY-MM-DD>, <on PR #n, checked on GitHub | in the session>. Conditions: <...>
+APPROVAL   plan.md <version> (commit <sha>) approved by <tech lead>, <YYYY-MM-DD>, <on pull request n, checked in the review tool | in the session>. Conditions: <...>
            (written by the AI after the tech lead decides; ADR 0023)
 ```

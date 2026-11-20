@@ -14,6 +14,8 @@ aidlc has two kinds of skill.
 
 "Story level" means the workspace root for a story that spans several repositories, and the repository itself for a story that changes one.
 
+A "pull request" is the code host's review request: a pull request on GitHub, Bitbucket or Azure Repos, a merge request on GitLab. aidlc needs git and that review request, and no other feature of the code host: no branch protection, no required checks, no host API. "The review tool" is where the pull request is reviewed, and "the team's CI" is whatever runs the team's checks on it. "Change request" is never a pull request: it is route C, a change to an approved criterion.
+
 ## The lifecycle
 
 | # | Stage | Produces | Runs | Approved by | Next |

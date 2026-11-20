@@ -391,5 +391,55 @@ class FeedbackInStructureTest(unittest.TestCase):
             self.assertIn(phrase, feedback, phrase)
 
 
+RECORDING = ("aidlc-intent", "aidlc-specify", "aidlc-discover", "aidlc-design", "aidlc-plan", "aidlc-build",
+             "aidlc-verify", "aidlc-review", "aidlc-release", "aidlc-operate", "aidlc-feedback", "aidlc-onboard")
+RULE = ("- People decide; you record the decision after checking it (ADR 0023). Accept a decision only from the decider "
+        "in this session, or from a state you can check: a pull request approved in the review tool by a code owner who "
+        "is not its author, the team's CI result on it, the merge state, or the tracker through its connected tool.")
+GITHUB_ONLY = ("checked on GitHub", "approved on GitHub", "checking on GitHub", "state on GitHub", "on GitHub where",
+               "in GitHub;", "on GitHub, is the record", "GitHub permalink", "PR #", "required check")
+
+
+class HostNeutralTest(unittest.TestCase):
+    """Task 7: aidlc needs git and a review request, and no feature of one code host."""
+
+    def test_the_rules_bullet_is_host_neutral_and_identical(self):
+        bullets = set()
+        for name in RECORDING:
+            rules = section(skill(name), "## Rules")
+            bullet = rules[rules.index("- People decide;"):].split(" - ", 1)[0]
+            bullets.add(bullet)
+            self.assertTrue(bullet.startswith(RULE), name)
+            self.assertNotIn("GitHub", bullet, name)
+            self.assertIn("`approved by ana on pull request 12, checked in the review tool, 2026-11-20`", bullet, name)
+        self.assertEqual(len(bullets), 1)
+
+    def test_no_stage_skill_template_agent_or_doc_needs_a_github_feature(self):
+        paths = (sorted((ROOT / "skills").glob("aidlc-*/SKILL.md")) + sorted((ROOT / "skills").glob("aidlc-*/assets/*.md"))
+                 + sorted((ROOT / "agents").glob("*.md")) + sorted((ROOT / "docs/operating-model").glob("*.md")))
+        for path in paths:
+            text = " ".join(path.read_text(encoding="utf-8").split())
+            for phrase in GITHUB_ONLY:
+                self.assertNotIn(phrase, text, f"{path.relative_to(ROOT)}: {phrase}")
+            for m in re.finditer(r"branch protection", text):
+                self.assertIn("never needs it", text[m.start():m.start() + 120], f"{path.relative_to(ROOT)}")
+
+    def test_pull_request_is_defined_once_and_change_request_stays_route_c(self):
+        text = skill("using-aidlc")
+        self.assertIn('A "pull request" is the code host\'s review request', text)
+        self.assertIn('"Change request" is never a pull request', text)
+        self.assertIn("| C · change request, story in progress |", read("skills/using-aidlc/SKILL.md"))
+
+    def test_tracker_links_are_permalinks_on_any_code_host(self):
+        for rel in ("skills/aidlc-start/assets/story-index.md", "skills/aidlc-plan/assets/story-index.md"):
+            self.assertIn("permalinks at a commit (the full commit hash in the address)", flat(rel), rel)
+        self.assertIn("permalink at a commit: the file's address on the code host", skill("aidlc-start"))
+        self.assertIn("Link the spec by its permalink at the commit where it merged", skill("aidlc-specify"))
+
+    def test_the_ownership_list_goes_where_the_review_tool_reads_it(self):
+        for rel in ("starter/repo/CODEOWNERS", "starter/workspace/CODEOWNERS"):
+            self.assertIn("Put this file where your review tool reads it", flat(rel), rel)
+
+
 if __name__ == "__main__":
     unittest.main()

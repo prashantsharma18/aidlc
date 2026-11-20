@@ -56,13 +56,13 @@ workspace root ── release (flags on in the plan's order) ─► the story is
 |---|---|---|---|
 | Build | minutes | `aidlc-build`: a failing test, the code, the repository's tests; on a failure, name the cause and make one targeted fix | Three attempts at the same failure, then stop and report |
 | Pull request | hours | CI runs; `aidlc-verify` maps every criterion to its test; a red run goes back to `aidlc-build` | CI stays red; nothing merges |
-| Review | hours to days | `aidlc-review` sends the change to four reviewer agents; the code owner decides each finding; fixes go back through `aidlc-build` | The code owner's approval; branch protection |
+| Review | hours to days | `aidlc-review` sends the change to four reviewer agents; the code owner decides each finding; fixes go back through `aidlc-build` | The code owner's approval |
 | Production | days | `aidlc-operate`, then `aidlc-feedback` turns each lesson into a test, a rule, a skill change or an eval case | People decide containment and where each lesson goes |
 
 ## Who decides
 
 Agents draft; people decide. A person tells the agent each decision, or makes it where the agent can check it (a
-pull request approval on GitHub, the tracker); the agent then writes the record and says how it was confirmed
+pull request approval in the review tool, the tracker); the agent then writes the record and says how it was confirmed
 (ADR 0023). The agent checks when it can, even after being told. When the check disagrees, it records nothing
 and tells the decider. The product owner owns the story and its criteria; the tech lead approves designs and
 plans; each repository's code owner approves its pull request; a release approver turns flags on. AI review is evidence

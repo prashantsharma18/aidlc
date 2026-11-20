@@ -9,7 +9,8 @@ You need four things, whatever the system:
 
 - **A tracker**, where approvals are recorded with each document's version. The agent reads it when it is connected
   (otherwise you paste the work item) and posts only when you ask.
-- **CI** that runs the repository's tests on every pull request, and branch protection that requires it.
+- **CI** that runs the repository's tests on every pull request, and a rule that a red run never merges (the code
+  host's merge rules where the team has them; aidlc needs none).
 - **Code owners** for every path, and a rule that the author never approves their own change.
 - **Someone who owns the rules file** (`AGENTS.md`) and keeps it true.
 
@@ -36,7 +37,8 @@ flowchart LR
    `new-system.md`: the stack, every dependency pinned, the repository layout, the contracts, the commands and the
    scaffold. Approving it approves those dependencies and commands. These documents merge on their own.
 4. **Prepare.** `aidlc-onboard` (new mode) copies the starter files and writes `AGENTS.md`, each command marked
-   `(not yet run)`. A person turns on branch protection that requires a code owner.
+   `(not yet run)`. A team whose code host can require a code
+   owner's review may turn that on; aidlc never needs it.
 5. **Slice 0.** `aidlc-plan`, `aidlc-build`, `aidlc-verify` and `aidlc-review` build the skeleton under the usual
    gates: the scaffold recipe, one real test, a health check and CI.
 6. **Confirm.** `aidlc-onboard` runs every command, clears the marks and writes the map. A person makes slice 0's
@@ -103,7 +105,7 @@ Tier 3 stays hands-on at every phase.
 ## Who approves what
 
 The agent drafts every document and decides nothing on this sheet. When the person who decides tells it, or
-when it has checked the decision (a pull request approval on GitHub, the tracker), it writes the record in the
+when it has checked the decision (a pull request approval in the review tool, the tracker), it writes the record in the
 last column and says how it was confirmed; it never writes a name it was not given (ADR 0023). It checks when it
 can, even after being told. When the check disagrees, it records nothing and reports the difference to the
 decider. Nobody approves what they wrote: never the author, never the author's agent, never an AI reviewer.
@@ -130,7 +132,7 @@ decider. Nobody approves what they wrote: never the author, never the author's a
 | Each review finding | The engineer decides it; high and medium findings block the merge | The review record |
 | A specialist review (Tier 3) | The named specialist, who can block | The pull request |
 | The merge | A code owner who did not write or push the change | The pull request |
-| Required checks and branch protection | A repository administrator | The git host |
+| Merge rules on the code host, where the team has them (aidlc needs none) | A repository administrator | The code host |
 | Monitoring and rollback | The owning team confirms | The readiness record |
 | The release | Release approver (named at Tier 3) | Change management |
 | Containment of an incident | On-call; a person runs every runbook step | The incident record |

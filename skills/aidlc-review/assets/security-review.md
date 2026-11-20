@@ -10,7 +10,7 @@
 ```text
 Security review record · {{KEY}} · {{PR}}
 SCOPE      <criteria, bundle at approval commit, plan version, sessions>
-REVIEWER   <security champion>. Code owner approves (branch protection).
+REVIEWER   <security champion>. Code owner approves (in the review tool).
 
 1 INTENT   <brief matches the approved plan; decisions recorded in the PR>
 2 DIFF     <files, all inside MAY CHANGE?; side effects>

@@ -3,7 +3,7 @@
 
 ## For the reviewer
 - **Asked of:** A code owner who neither wrote nor pushed the change, to approve the merge; a required specialist can block
-- **Record it:** In the pull request. The code owner's approval in the pull request, on GitHub, is the record; the AI writes nothing for it
+- **Record it:** In the pull request. The code owner's approval in the review tool is the record; the AI writes nothing for it
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 

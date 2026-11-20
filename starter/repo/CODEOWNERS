@@ -1,4 +1,5 @@
-# Every change needs a review from its owners. Put this file at .github/CODEOWNERS and replace the teams.
+# Every change needs a review from its owners. Put this file where your review tool reads it (.github/CODEOWNERS on
+# GitHub, .gitlab/CODEOWNERS on GitLab) and replace the teams.
 *                 @your-org/your-team
 AGENTS.md         @your-org/your-team-leads
 CLAUDE.md         @your-org/your-team-leads

@@ -1,5 +1,6 @@
-# The home repository (the workspace root): every change needs a review from its owners. Put this file at
-# .github/CODEOWNERS and replace the teams (aidlc ADR 0022).
+# The home repository (the workspace root): every change needs a review from its owners.
+# Put this file where your review tool reads it (.github/CODEOWNERS on GitHub, .gitlab/CODEOWNERS on GitLab)
+# and replace the teams (aidlc ADR 0022).
 *                    @your-org/your-team-leads
 # The story documents: the spec, the design, the coordination plan, the release records.
 stories/**           @your-org/your-team-leads

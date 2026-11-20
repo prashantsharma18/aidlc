@@ -27,7 +27,7 @@ You check that the change does what was approved, and only that.
   (`contract <provider> v<MAJOR.MINOR.PATCH>`) matches the tag in `contracts/<provider>/SOURCE`; a mismatch is a high
   finding.
 - Each recorded decision (the CONFIRMED line, each "confirmed by" line, the plan's APPROVAL line) names a person
-  and says how it was confirmed: in the session, or checked on GitHub or the tracker (ADR 0023). A record with no
+  and says how it was confirmed: in the session, or checked in the review tool or on the tracker (ADR 0023). A record with no
   name, a placeholder, or no way it was confirmed is a medium finding.
 - For a part of a story across several repositories, the spec pin names a home commit (`spec v<n> @ <commit>`),
   `plans/<KEY>/criteria.md` names the same commit on its SOURCE line, and the criteria you check come from that
