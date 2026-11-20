@@ -43,7 +43,7 @@ Full map: `docs/codebase-map.md`. Read it before planning a change.
   no stub or placeholder left in, no lowered threshold or loosened check configuration. An exception carries
   a reason, an owner and an expiry date (next to the code for a suppression, in the Quality bar section for a
   threshold), and a person approves it in the pull request; without all of these, or past its expiry date, it is
-  a violation.
+  a violation. The compliance and test reviewers read the evidence file for these, and the code owner approves.
 - Exception format, next to the code: `aidlc-exception: reason=...; owner=...; expires=YYYY-MM-DD`, on the line or
   the line above. The compliance reviewer reports a new suppression or skip, or one made wider, without one or
   past its date; the linters' own rules (`aidlc-onboard`'s suppression rules) reject blanket and unused ones.

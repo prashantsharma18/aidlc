@@ -347,6 +347,16 @@ class OnboardTest(unittest.TestCase):
         self.assertIn("the compliance reviewer reads each added one in the session's evidence file", text)
         self.assertIn("## Closing directives", read("skills/aidlc-onboard/references/suppression-rules.md"))
 
+    def test_fix_round_1_says_what_optional_means_and_who_catches_a_breach(self):
+        onboard = skill("aidlc-onboard")
+        self.assertEqual(onboard.count("Without a required-checks or code-owner rule in the review tool, these checks are "
+                                       "advice: a person can merge past them."), 2)
+        self.assertIn("fill the `Where to look` lines the evidence file reads (test paths, dependency manifests, "
+                      "check configuration)", onboard)
+        for rel in self.GUIDES:
+            self.assertIn("The compliance and test reviewers read the evidence file for these, and the code owner "
+                          "approves", flat(rel), rel)
+
 
 if __name__ == "__main__":
     unittest.main()
