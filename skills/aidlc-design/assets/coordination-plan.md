@@ -16,6 +16,8 @@ fields: [KEY, TITLE]
 ```text
 OUTCOME    <...>. Tier <n> (<reason; unknown consumers raise it>)
 CONTRACTS  <contract> v<n> <from> -> <to> (<minor, additive | major via expand and contract>)
+PINS       Each part pins spec v<n> @ <home commit>; each consumer pins the provider's published tag
+           api-v<version> in contracts/<provider>/SOURCE (ADR 0022)
 PARTS      #  Repository     Owner    Change                 Flag          Waits for     Undo       Status
            1  <repository>   <team>   <what changes>         <flag, off>   <tag or ->    flag off   waiting
            (Status is derived: run the story status command named in WORKSPACE.md; it reads each part's index and writes `status.md` beside this plan.)

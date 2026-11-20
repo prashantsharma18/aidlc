@@ -22,6 +22,7 @@ metadata:
   - story-index
   - fix-brief
   - feature-brief
+  - criteria
   references:
   - tiers
 disable-model-invocation: true

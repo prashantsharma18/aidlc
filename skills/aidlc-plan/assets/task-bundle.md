@@ -12,7 +12,7 @@
 TASK BUNDLE · {{KEY}} · {{SLICE}}
 GOAL        <one or two sentences naming the criteria covered>
 INTENT      <spec version and clarifications; plan version and approval commit>
-PINS        spec v<n> · plan v<n> · contract <name> v<n> | contract none
+PINS        spec v<n> @ <home commit> · plan v<n> · contract <name> v<n> | contract none   (@ <home commit>: a part of a story across several repositories)
 TIER        <1 | 2 | 3> (from `assets/tiers.md`; the plan's rating)
 MODE        <hands-on | delegate with checkpoints | delegate>   (hands-on: every tier; delegate with checkpoints: Tiers 1 and 2; delegate: Tier 1; approved with the bundle)
 ALREADY     <what loads automatically (AGENTS.md, folder rules); not repeated here>

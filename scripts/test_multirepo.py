@@ -194,5 +194,36 @@ class ContractWorkflowHardeningTest(unittest.TestCase):
         self.assertIn("tag the skipped commit by hand", text)
 
 
+class TemplateTest(unittest.TestCase):
+    """F3, F4, F5, F13: the templates carry the pin, the criteria copy, the ADR scope and permalinks."""
+
+    def test_the_part_index_and_the_bundle_pin_the_home_commit(self):
+        for rel in ("skills/aidlc-start/assets/story-index.md", "skills/aidlc-plan/assets/task-bundle.md"):
+            self.assertIn("spec v<n> @ <home commit>", read(rel), rel)
+        self.assertIn("GitHub permalinks at a commit", flat("skills/aidlc-start/assets/story-index.md"))
+
+    def test_the_criteria_copy_names_its_source(self):
+        text = read("skills/aidlc-plan/assets/criteria.md")
+        self.assertIn("## For the reviewer", text)
+        self.assertIn("```text\nSOURCE     {{home repository}} stories/{{KEY}}/spec.md @ {{home commit}}", text)
+        for heading in ("## Acceptance criteria", "## Edge cases", "## Non-goals"):
+            self.assertIn(heading, text)
+        self.assertIn("  - criteria\n", read("skills/aidlc-plan/SKILL.md"))
+
+    def test_adrs_carry_their_scope_and_draft_name(self):
+        self.assertIn("Scope: {{one repository", read("skills/aidlc-design/assets/adr.md"))
+        self.assertIn("`{{KEY}}-adr-{{n}}.md`", read("skills/aidlc-design/assets/adr.md"))
+        self.assertNotIn("adr-draft", read("starter/workspace/stories/README.md") + read("skills/aidlc-design/assets/new-system.md"))
+
+    def test_the_coordination_plan_names_the_pins(self):
+        self.assertIn("api-v<version> in contracts/<provider>/SOURCE", read("skills/aidlc-design/assets/coordination-plan.md"))
+
+    def test_the_story_folder_says_who_owns_each_fact(self):
+        text = flat("starter/workspace/stories/README.md")
+        self.assertIn("## Who owns each fact (ADR 0022)", text)
+        self.assertIn("`plans/<KEY>/criteria.md`", text)
+        self.assertIn("nothing under `stories/<KEY>/` is moved or renamed", text)
+
+
 if __name__ == "__main__":
     unittest.main()

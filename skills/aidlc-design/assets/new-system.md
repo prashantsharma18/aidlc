@@ -16,7 +16,7 @@ QUALITY BAR  <dimension: target, set by the team>          (no baseline exists y
 UI           <the design note's UI REFERENCE line> | none
 
 REPOSITORY   <name>
-STACK        <language and runtime @version; framework @version>   ADR: <adr-draft-n.md>
+STACK        <language and runtime @version; framework @version>   ADR: <KEY-adr-n.md>
 DEPENDENCIES <name@version: why> | none          (approving this design is the approval to add them)
 PATHS        <the folders the skeleton creates>
 COMMANDS     tests: <command> · lint: <command> · build: <command> · run: <command>   (onboard writes them to AGENTS.md as "not yet run")

@@ -9,6 +9,7 @@
 
 Status: Proposed | Accepted at design approval | Superseded by {{n}}
 Decider: {{name/role}} · Agreed: {{owners and consumers}} · Work item: {{key}} · Tier: {{n}}
+Scope: {{one repository: it moves to that repository's docs/adr/ | several repositories: it stays in the home repository's docs/adr/, and each affected repository gets a one-line ADR that links it at a commit}} · Draft: `{{KEY}}-adr-{{n}}.md`
 
 ## Context
 {{why a decision is needed}}
