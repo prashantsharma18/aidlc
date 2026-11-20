@@ -300,7 +300,10 @@ GIT = ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "comm
 SPEC = ("# SHIP-1 · Track shipments · specification\n\nVersion: v1\n\n## Scope and non-goals\n"
         "Non-goals: carrier rates\n\n## Acceptance criteria\nAC1 the API returns the shipment's status\n"
         "    Given a shipment in transit\n    When its status is asked for\n    Then 200 with \"in transit\"\n")
-COPIED = ("AC1 the API returns the shipment's status", "Given a shipment in transit")
+COPIED = ("AC1 the API returns the shipment's status", "Given a shipment in transit",
+          "When its status is asked for", 'Then 200 with "in transit"')
+SPEC2 = SPEC + ("AC2 the portal shows it\n    Given a shipment\n    Then the portal lists it\n"
+                "AC3 an unknown id is a 404\n    When the id is unknown\n    Then 404\n")
 
 
 def run_git(folder: Path, *args: str) -> str:
@@ -458,6 +461,85 @@ class CriteriaCopyTest(unittest.TestCase):
         text = ("# x\n```text\nSOURCE     home stories/SHIP-1/spec.md @ abc1234\n```\n## Acceptance criteria\n"
                 "AC1  a   b\n\n```text\n## Non-goals\nNon-goals: {{x}}\nNon-goals: rates\n")
         self.assertEqual(story_status.copied_lines(text), ["AC1 a b", "Non-goals: rates"])
+
+
+class CriteriaBlockTest(unittest.TestCase):
+    """The copy is compared by criterion ID: each block equals the spec's block, in the spec's order."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.home = Home(Path(tmp.name))
+        self.home.commit("three criteria", {"stories/SHIP-1/spec.md": SPEC2})
+        self.at = run_git(self.home.root, "rev-parse", "HEAD")
+        pins = f"spec v1 @ {self.at} · plan v1 · contract tracking-api v1"
+        part(self.home.root, "shipments-api", pins=pins)
+        part(self.home.root, "web-portal", pins=pins)
+        criteria(self.home.root, "web-portal", self.at, lines=COPIED)
+
+    def needs(self, lines) -> list[str]:
+        criteria(self.home.root, "shipments-api", self.at, lines=lines)
+        return self.home.status()["shipments-api"].needs
+
+    def test_a_dropped_then_line_is_reported(self):
+        self.assertTrue(self.needs(COPIED[:3]))
+
+    def test_reordered_lines_in_a_block_are_reported(self):
+        self.assertTrue(self.needs((COPIED[0], COPIED[2], COPIED[1], COPIED[3])))
+
+    def test_a_then_moved_under_another_criterion_is_reported(self):
+        self.assertTrue(self.needs(COPIED[:3] + ("AC3 an unknown id is a 404", 'Then 200 with "in transit"',
+                                                 "When the id is unknown", "Then 404")))
+
+    def test_an_empty_copy_is_reported(self):
+        self.assertEqual(self.needs(()), ["plans/SHIP-1/criteria.md holds no criteria"])
+
+    def test_a_correct_subset_in_order_is_clean(self):
+        self.assertEqual(self.needs(COPIED + ("AC3 an unknown id is a 404", "When the id is unknown", "Then 404")), [])
+
+    def test_ids_out_of_order_are_reported(self):
+        out = self.needs(("AC3 an unknown id is a 404", "When the id is unknown", "Then 404") + COPIED)
+        self.assertTrue(any("order" in n for n in out), out)
+
+    def test_a_source_naming_another_story_is_reported(self):
+        criteria(self.home.root, "shipments-api", self.at)
+        path = self.home.root / "shipments-api" / "plans" / "SHIP-1" / "criteria.md"
+        path.write_text(path.read_text(encoding="utf-8").replace("stories/SHIP-1/", "stories/SHIP-2/"), encoding="utf-8")
+        self.assertEqual(self.home.status()["shipments-api"].needs,
+                         ["criteria.md SOURCE names stories/SHIP-2/spec.md, not stories/SHIP-1/spec.md"])
+
+
+class DriftCouldNotRunTest(unittest.TestCase):
+    """When the home repository cannot be read, the release check says so instead of reading as ready."""
+
+    def release(self, root: Path) -> str:
+        out = io.StringIO()
+        with redirect_stdout(out):
+            story_status.main(["SHIP-1", "--root", str(root), "--check-release"])
+        return out.getvalue()
+
+    def test_release_warns_when_the_root_is_not_a_git_repository(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            story(Path(tmp))
+            part(Path(tmp), "shipments-api")
+            part(Path(tmp), "web-portal")
+            self.assertIn("Warning: the workspace root is not a git repository, so pins and criteria copies were "
+                          "not checked", self.release(Path(tmp)))
+
+    def test_a_missing_git_binary_reads_as_not_a_git_repository(self):
+        import os
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as empty:
+            story(Path(tmp))
+            part(Path(tmp), "shipments-api")
+            part(Path(tmp), "web-portal")
+            old = os.environ["PATH"]
+            os.environ["PATH"] = empty
+            try:
+                self.assertFalse(story_status.own_repository(Path(tmp)))
+                self.assertEqual(story_status.story_status(Path(tmp), "SHIP-1")[0].needs, [])
+                self.assertIn("Warning: the workspace root is not a git repository", self.release(Path(tmp)))
+            finally:
+                os.environ["PATH"] = old
 
 
 if __name__ == "__main__":

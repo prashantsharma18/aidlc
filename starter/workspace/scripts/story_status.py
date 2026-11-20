@@ -222,8 +222,41 @@ def copied_lines(text: str) -> list[str]:
     return lines
 
 
+def criterion_blocks(text: str) -> tuple[list[tuple[str, list[str]]], list[str]]:
+    """Splits a spec or a criteria copy into criterion blocks and the other copied lines.
+
+    A block is an `AC<n>` or `E<n>` line plus the lines after it, up to the next ID line or `## ` heading, each
+    whitespace-collapsed. The second value holds the lines under a Non-goals heading. Headings, fences, blanks and
+    template placeholders are skipped."""
+    blocks: list[tuple[str, list[str]]] = []
+    other: list[str] = []
+    mode = None
+    for line in text.splitlines():
+        heading = re.match(r"^##\s+(.*)", line)
+        if heading:
+            title = heading.group(1).lower()
+            mode = ("blocks" if title.startswith(("acceptance criteria", "edge cases"))
+                    else "other" if title.startswith("non-goals") else None)
+            continue
+        flat = " ".join(line.split())
+        if mode is None or not flat or flat.startswith(("#", "```")) or "{{" in flat:
+            continue
+        found = re.match(r"^((?:AC|E)\d+)\b", flat)
+        if mode == "blocks" and found:
+            blocks.append((found.group(1), [flat]))
+        elif mode == "blocks" and blocks:
+            blocks[-1][1].append(flat)
+        else:
+            other.append(flat)
+    return blocks, other
+
+
 def criteria_needs(workspace: Path, index: Path, commit: str | None) -> list[str]:
-    """F5: the part's read-only copy of its criteria matches the home spec at the commit it names."""
+    """F5: the part's read-only copy of its criteria matches the home spec at the commit it names.
+
+    The copy is compared by criterion ID: every block in it equals the spec's block for that ID, and the IDs keep the
+    spec's order. Known limit: a part copies only the criteria it proves, so a criterion missing from the copy is not
+    reported; the tech lead checks that at plan approval."""
     copy = index.parent / "criteria.md"
     if not copy.is_file():
         return ["no criteria.md beside the part index (the part's read-only copy of its criteria, ADR 0022)"]
@@ -232,15 +265,38 @@ def criteria_needs(workspace: Path, index: Path, commit: str | None) -> list[str
     if not source:
         return ["criteria.md has no SOURCE line naming the home repository, the spec's path and its commit"]
     path, at = source.group(2), source.group(3).lower()
+    key = index.parent.parent.name if index.parent.name.startswith("part-") else index.parent.name
+    if path != f"stories/{key}/spec.md":
+        return [f"criteria.md SOURCE names {path}, not stories/{key}/spec.md"]
     needs = []
     if commit and not (commit.startswith(at) or at.startswith(commit)):
         needs.append(f"criteria.md copies {at[:7]}, but the spec pin names {commit[:7]}")
     spec = git(workspace, "show", f"{at}:{path}")
     if spec is None:
         return needs + [f"criteria.md: {path} at {at[:7]} cannot be read in the home repository"]
+    copied, copied_other = criterion_blocks(text)
+    if not copied:
+        return needs + [f"plans/{key}/criteria.md holds no criteria"]
+    spec_blocks = criterion_blocks(spec)[0]
     spec_lines = {" ".join(line.split()) for line in spec.splitlines()}
+    spec_ids = [i for i, _ in spec_blocks]
+    spec_by_id = {i: lines for i, lines in reversed(spec_blocks)}
+    last = -1
+    for id_, lines in copied:
+        if id_ not in spec_by_id:
+            needs.append(f"criteria.md differs from {path} at {at[:7]}: {lines[0][:80]}")
+            continue
+        want = spec_by_id[id_]
+        if lines != want:
+            wrong = next((a for a, b in zip(lines, want) if a != b), None)
+            detail = wrong or f"{id_} is missing a line"
+            needs.append(f"criteria.md differs from {path} at {at[:7]}: {detail[:80]}")
+        position = spec_ids.index(id_)
+        if position < last:
+            needs.append(f"criteria.md lists {id_} out of the spec's order")
+        last = max(last, position)
     needs += [f"criteria.md differs from {path} at {at[:7]}: {line[:80]}"
-              for line in copied_lines(text) if line not in spec_lines]
+              for line in copied_other if line not in spec_lines]
     return needs
 
 
@@ -298,7 +354,10 @@ def story_problems(workspace: Path, key: str) -> list[str]:
 
 
 def git(folder: Path, *args: str) -> str | None:
-    result = subprocess.run(["git", "-C", str(folder), *args], capture_output=True, text=True)
+    try:
+        result = subprocess.run(["git", "-C", str(folder), *args], capture_output=True, text=True)
+    except FileNotFoundError:
+        return None
     return result.stdout.strip() if result.returncode == 0 else None
 
 
@@ -349,6 +408,9 @@ def main(argv: list[str]) -> int:
             if problem:
                 problems.append(problem)
     text = render(args.key, rows, problems)
+    if args.check_release and not own_repository(workspace):
+        text += ("Warning: the workspace root is not a git repository, so pins and criteria copies were not "
+                 "checked\n")
     print(text)
     if args.write:
         (story / "status.md").write_text(text, encoding="utf-8")
