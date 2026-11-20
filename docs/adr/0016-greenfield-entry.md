@@ -3,6 +3,8 @@
 Status: Accepted (2026-11-08). · Decider: Prashant Sharma (framework owner)
 Design: `docs/design/2026-11-08-aidlc-4-routes-and-roadmap.md` (Plan 13)
 
+Amended by ADR 0024 (2026-11-20): see the last section.
+
 ## Context
 A new system had no way in (W1). `aidlc-start` stopped without `AGENTS.md`, and `aidlc-onboard` needed a repository
 that already builds, with merged changes to validate against. No stage chose a stack or built a skeleton, and the
@@ -26,3 +28,7 @@ build's first step runs commands that do not exist yet.
 - aidlc 4.1.0.
 - After confirm, the repository is ordinary: every feature takes F1 or F2.
 - The recipe check is unchanged for every other recipe.
+
+## Amended by ADR 0024 (2026-11-20)
+- The recipe check is now a git procedure in `aidlc-build`, not a script. A `(scaffold)` recipe is still reviewed
+  as generated code and is not re-run.

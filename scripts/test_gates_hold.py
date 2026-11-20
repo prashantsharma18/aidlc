@@ -162,7 +162,7 @@ class AdrTest(unittest.TestCase):
     def test_each_decision_is_recorded_with_a_decider(self):
         for name in self.ADRS:
             text = read(f"docs/adr/{name}")
-            self.assertRegex(text, r"Status: (Proposed|Accepted)")
+            self.assertRegex(text, r"Status: (Proposed|Accepted|Superseded by ADR 0024)")
             self.assertIn("Decider: Prashant Sharma", text)
             for heading in ("## Context", "## Decision", "## Consequences"):
                 self.assertIn(heading, text, name)

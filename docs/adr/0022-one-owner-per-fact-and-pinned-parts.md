@@ -4,6 +4,8 @@ Status: Accepted (2026-11-20; confirmed by the framework owner in the session). 
 Plan: `docs/plans/2026-11-20-plan-21-multirepo-foundations.md` · Change list: F1–F6, F9, F11, F13, F14; D5, D9 ·
 Amends: ADR 0015 (where a story's documents live; how parts pin), ADR 0020 (Decision 2 across repositories)
 
+Amended by ADR 0024 (2026-11-20): see the last section.
+
 ## Context
 A story across several repositories kept its shared documents at the workspace root and each part in its repository,
 but nothing said which copy of a fact was the original. Child bundles cited `plans/SHIP-1/spec.md` after the spec
@@ -57,3 +59,15 @@ and AI review could not see the criteria, which lived in another repository (P10
   The consumers' online pin check still reports a tag that moved.
 - No job runs the online pin check yet: a person or the release stage runs it in each consumer before a release, and
   before a pin moves. A moved tag stops the release. Automating it is phase 2b.
+
+## Amended by ADR 0024 (2026-11-20)
+- `story_status.py`, `check_contract_version.py`, `check_contract_pin.py` and the starter workflows
+  `contract-check.yml` and `contract-publish.yml` are removed.
+- A part's merge state and drift are read with git from its index and criteria copy on its default branch, and
+  recorded in the release checklist, one row per repository, which a person confirms.
+- The provider's own CI runs `oasdiff breaking` and a version comparison against the last published tag; the
+  consumer checks its copy with `sha256sum -c` and the tag with `git ls-remote --tags`. `designing-apis` gives the
+  commands.
+- A person adds each repository's line to the home repository's `.gitignore`; there is no generator.
+- Tracker links are permalinks at a commit on any code host. A tag rule or ruleset on `api-v*` is optional: aidlc
+  needs no code-host feature.

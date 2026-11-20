@@ -3,6 +3,8 @@
 Status: Accepted (2026-11-08). · Decider: Prashant Sharma (framework owner)
 Design: `docs/design/2026-11-08-aidlc-4-routes-and-roadmap.md`
 
+Amended by ADR 0024 (2026-11-20): see the last section.
+
 ## Context
 The stages worked one at a time but did not fit together end to end. Stages disagreed about the pull request (one per
 slice or one per repository part) and about whether design always runs. Five stages produced their output only in the
@@ -39,3 +41,9 @@ changes. Every defect took six stages. Two agents, `implementer` and `planner`, 
 - `scripts/test_routes.py` and `scripts/test_story_status.py` hold the checks.
 - The enforcement layer (hooks and CI scripts) stays parked; these rules hold through the stages' text, the compliance
   reviewer and people.
+
+## Amended by ADR 0024 (2026-11-20)
+- `story_status.py` is removed. The AI at the workspace root derives `status.md` from each part's index on its
+  repository's default branch, read with git. At release, `aidlc-release` fills one checklist row per repository,
+  and a person confirms each row.
+- `scripts/test_story_status.py` is removed with the script.

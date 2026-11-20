@@ -5,6 +5,8 @@ Amended by ADR 0015 (2026-11-08): an assertion listed under AMENDED ASSERTIONS, 
 second exception beside the recipe commit.
 shortcut"
 
+Amended by ADR 0024 (2026-11-20): see the last section.
+
 ## Context
 A framework upgrade changes dependency versions across a project and rewrites test syntax (for example JUnit 4 to 5
 imports). Core's gates forbid both: no new dependency without asking, never change an existing assertion, every
@@ -38,3 +40,9 @@ but still needs a second person. The five conditions keep that shape and add a r
   OpenRewrite's C# recipes come through Moderne under a proprietary licence (an organisation's decision). The
   `dotnet-modernize` factory ships its own small deterministic recipe; most of a .NET port stays under the full gates.
 - The check script needs the repository's test-count command; a team writes it once, in AGENTS.md's Commands.
+
+## Amended by ADR 0024 (2026-11-20)
+- `scripts/check_recipe_commit.py` is removed. The same check runs with git (`aidlc-build`, step 5): in a
+  temporary worktree at the commit's parent, run the approved recipe, stage everything, and
+  `git diff --cached --stat <commit>` must print nothing; the test count is the same at the parent and at the commit.
+  The session writes the result to the evidence file, and the compliance reviewer reads it.

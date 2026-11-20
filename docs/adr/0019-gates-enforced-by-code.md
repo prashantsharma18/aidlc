@@ -1,6 +1,8 @@
 # 0019 · The rules hold by code, not only by prose
 
-Status: Proposed (2026-11-19). · Decider: Prashant Sharma (framework owner)
+Status: Superseded by ADR 0024 (2026-11-20): aidlc ships no check code; each rule is held by the team's own
+project and by a reviewer who did not write the change. (Was: Proposed (2026-11-19). · Decider: Prashant Sharma
+(framework owner))
 Plan: `docs/plans/2026-11-19-plan-20-gates-that-hold.md` · Change list: A1, A3, A4, A5
 
 ## Context

@@ -4,6 +4,8 @@ Status: Accepted (2026-11-20; confirmed by the framework owner in the session). 
 Plan: `docs/plans/2026-11-20-plan-21-multirepo-foundations.md` · Amends: ADR 0015 (who marks the merged row), ADR
 0020 (who records an approval)
 
+Amended by ADR 0024 (2026-11-20): see the last section.
+
 ## Context
 People wrote many records by hand: the merged row of a part index, a brief's CONFIRMED line, the "confirmed by" lines
 of a paused slice, the plan's APPROVAL line, a design note's RECORDED BY and APPROVED lines, an ADR's status, the
@@ -35,3 +37,8 @@ writes it. The same AI that drafts the document can write the record, if it neve
   a person's to change. The AI checks them where it can read them and records how it confirmed them.
 - The compliance reviewer reports a recorded decision with no name, a placeholder, or no way it was confirmed.
 - Two behaviour evals were written for the old wording; see "Needs the owner's decision" in Plan 21.
+
+## Amended by ADR 0024 (2026-11-20)
+- The states the AI can check are named without a code host: a pull request approved in the review tool by a code
+  owner who is not its author, the team's CI result on it, and the merge state. The example record reads
+  `approved by ana on pull request 12, checked in the review tool, 2026-11-20`.

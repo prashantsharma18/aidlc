@@ -3,6 +3,8 @@
 Status: Accepted (2026-11-08). · Decider: Prashant Sharma (framework owner)
 Design: `docs/design/2026-11-08-aidlc-4-routes-and-roadmap.md` (Plan 15) · Plan: `docs/plans/2026-11-08-plan-15-fast-path-delegate.md`
 
+Amended by ADR 0024 (2026-11-20): see the last section.
+
 ## Context
 `aidlc-plan` offered three build modes, but nothing read them: every slice ran hands-on (the second half of W7). A
 feature of a few lines took the whole F1 route: a spec, a design note, a plan and a bundle for one test and one change.
@@ -34,3 +36,7 @@ Defects already had a fast path (D1); features had none.
 - The runner's default command is Claude Code's headless mode with edits accepted. Other tools pass `--command` and
   `--prompt`. The default command denies `git push` to the session; the starter settings also keep it on "ask".
 - The eval case for delegate at Tier 2 needs Bash, so it runs where the Bash sandbox runs.
+
+## Amended by ADR 0024 (2026-11-20)
+- `run_slices.py` is removed. A person starts one fresh session per approved delegate slice, and reads each
+  progress note before starting the next; `aidlc-build` states the stops.
