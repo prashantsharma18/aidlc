@@ -459,11 +459,6 @@ class CriteriaCopyTest(unittest.TestCase):
         self.assertEqual(self.needs(), ["criteria.md has no SOURCE line naming the home repository, the spec's path "
                                         "and its commit"])
 
-    def test_only_the_copied_lines_are_compared(self):
-        text = ("# x\n```text\nSOURCE     home stories/SHIP-1/spec.md @ abc1234\n```\n## Acceptance criteria\n"
-                "AC1  a   b\n\n```text\n## Non-goals\nNon-goals: {{x}}\nNon-goals: rates\n")
-        self.assertEqual(story_status.copied_lines(text), ["AC1 a b", "Non-goals: rates"])
-
 
 class CriteriaBlockTest(unittest.TestCase):
     """The copy is compared by criterion ID: each block equals the spec's block, in the spec's order."""
@@ -748,6 +743,19 @@ class GitignoreTest(unittest.TestCase):
         for name in ("a*b", "[x](y)"):
             self.assertEqual(story_status.rejected_repositories(f"## Repositories\n| {name} | t |\n"), [name])
         self.assertEqual(story_status.rejected_repositories(WORKSPACE), [])
+
+
+class CriteriaMessageTest(unittest.TestCase):
+    """The final review: a block with a line too few or a line too many says it differs from the spec."""
+
+    setUp = CriteriaBlockTest.setUp
+    needs = CriteriaBlockTest.needs
+
+    def test_a_short_or_long_block_differs_from_the_spec(self):
+        for lines in (COPIED[:3], COPIED + ("And it is cached",)):
+            out = self.needs(lines)
+            self.assertTrue(any("AC1 differs from the spec" in n for n in out), out)
+            self.assertFalse(any("missing a line" in n for n in out), out)
 
 
 if __name__ == "__main__":

@@ -17,7 +17,8 @@ Exits 2 when the story's index or coordination plan is missing. Standard library
 When the workspace root is itself a git repository (the home repository, ADR 0022), each part's spec pin also names a
 home commit, `spec v<n> @ <commit>`: it must be on the home repository's default branch, and the story's spec must not
 have changed since it. Each part keeps a read-only copy of its criteria beside its index, plans/<KEY>/criteria.md,
-whose SOURCE line names the commit it copies; every copied line must be in the spec at that commit.
+whose SOURCE line names the commit it copies; each criterion it copies must equal the spec's, by ID and in the
+spec's order, at that commit.
 
 Each part's merge state comes from its newest code pull request on GitHub, when its repository has a GitHub remote and
 gh answers (--no-github skips it), else from the default branch's copy of the part index, whose merged row reaches the
@@ -230,20 +231,6 @@ def default_ref(folder: Path) -> str | None:
                 None)
 
 
-def copied_lines(text: str) -> list[str]:
-    """The lines criteria.md copies from the spec: everything below its first criteria, edge-case or non-goals
-    heading, except headings, fences, blank lines and template placeholders; whitespace runs collapsed."""
-    lines, inside = [], False
-    for line in text.splitlines():
-        if re.match(r"^##\s+(Acceptance criteria|Edge cases|Non-goals)", line):
-            inside = True
-            continue
-        flat = " ".join(line.split())
-        if inside and flat and not flat.startswith(("#", "```")) and "{{" not in flat:
-            lines.append(flat)
-    return lines
-
-
 def criterion_blocks(text: str) -> tuple[list[tuple[str, list[str]]], list[str]]:
     """Splits a spec or a criteria copy into criterion blocks and the other copied lines.
 
@@ -311,7 +298,7 @@ def criteria_needs(workspace: Path, index: Path, commit: str | None) -> list[str
         want = spec_by_id[id_]
         if lines != want:
             wrong = next((a for a, b in zip(lines, want) if a != b), None)
-            detail = wrong or f"{id_} is missing a line"
+            detail = wrong or f"{id_} differs from the spec: a line too few or too many"
             needs.append(f"criteria.md differs from {path} at {at[:7]}: {detail[:80]}")
         position = spec_ids.index(id_)
         if position < last:
