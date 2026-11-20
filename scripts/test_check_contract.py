@@ -145,5 +145,73 @@ class ProviderTest(unittest.TestCase):
         self.assertEqual((code, out.getvalue()), (0, "api-v1.1.0\n"))
 
 
+class FailClosedTest(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+        self.provider = Provider(self.tmp)
+
+    def clone(self, *options: str) -> Path:
+        self.provider.commit(contract("1.0.0", ("/shipments/{id}", "/shipments")))
+        target = self.tmp / "clone"
+        subprocess.run(["git", "clone", "-q", *options, f"file://{self.provider.root}", str(target)],
+                       check=True, capture_output=True)
+        return target
+
+    def test_a_shallow_clone_without_tags_is_a_problem(self):
+        root = self.clone("--depth", "1")
+        problems, _ = check_contract_version.check(root, "openapi.yaml", str(self.provider.oasdiff))
+        self.assertEqual(len(problems), 1)
+        self.assertIn("fetch-depth: 0", problems[0])
+        tag, problems = check_contract_version.publish_tag(root, "openapi.yaml")
+        self.assertIsNone(tag)
+        self.assertIn("fetch-depth: 0", problems[0])
+
+    def test_a_full_clone_without_tags_is_the_first_version(self):
+        root = self.clone("--no-tags")
+        problems, notes = check_contract_version.check(root, "openapi.yaml", str(self.provider.oasdiff))
+        self.assertEqual(problems, [])
+        self.assertIn("becomes the first published version", notes[0])
+
+    def test_a_git_failure_is_a_problem(self):
+        problems, _ = check_contract_version.check(self.tmp, "openapi.yaml", str(self.provider.oasdiff))
+        self.assertEqual(problems, [])  # no file, no tags: nothing to check
+        (self.tmp / "openapi.yaml").write_text(contract("1.0.0"), encoding="utf-8")
+        problems, _ = check_contract_version.check(self.tmp, "openapi.yaml", str(self.provider.oasdiff))
+        self.assertIn("fetch-depth: 0", problems[0])
+
+    def test_a_deleted_published_contract_is_a_problem(self):
+        (self.provider.root / "openapi.yaml").unlink()
+        problems, _ = self.provider.check()
+        self.assertEqual(problems, ["the published contract openapi.yaml is missing; deleting a published contract "
+                                    "is a breaking change"])
+
+    def test_no_contract_and_no_tags_is_a_note(self):
+        git(self.provider.root, "tag", "-d", "api-v1.0.0")
+        (self.provider.root / "openapi.yaml").unlink()
+        self.assertEqual(self.provider.check(), ([], ["no contract at openapi.yaml; nothing to check"]))
+
+    def test_versions_order_numerically_and_prereleases_are_ignored(self):
+        for tag in ("api-v1.9.0", "api-v1.10.0", "api-v2.0.0-rc.1", "api-v01.0.0"):
+            git(self.provider.root, "tag", tag)
+        self.assertEqual([name for _, name in check_contract_version.published(self.provider.root)],
+                         ["api-v1.0.0", "api-v1.9.0", "api-v1.10.0"])
+        (self.provider.root / "openapi.yaml").write_text(contract("1.10.1", ("/shipments/{id}", "/x")),
+                                                         encoding="utf-8")
+        self.assertEqual(self.provider.check()[0], [])
+        self.assertIn("api-v1.10.0", self.provider.check()[1][0])
+
+    def test_a_missing_version_says_what_is_read(self):
+        (self.provider.root / "openapi.yaml").write_text("openapi: 3.0.3\ninfo:\n  title: x\n", encoding="utf-8")
+        self.assertEqual(self.provider.check()[0], ["info.version not found in openapi.yaml (only block-style YAML "
+                                                    "or JSON is read)"])
+
+    def test_a_missing_oasdiff_says_how_to_install_it(self):
+        (self.provider.root / "openapi.yaml").write_text(contract("1.1.0", ("/shipments",)), encoding="utf-8")
+        _, notes = check_contract_version.check(self.provider.root, "openapi.yaml", str(self.tmp / "none"))
+        self.assertTrue(any("pinned oasdiff" in n and "--oasdiff" in n for n in notes))
+
+
 if __name__ == "__main__":
     unittest.main()

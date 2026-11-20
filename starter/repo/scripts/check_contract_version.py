@@ -10,7 +10,9 @@ On a pull request it compares the contract with the last published version (the 
 a changed contract must raise info.version, and a breaking change (oasdiff breaking --fail-on ERR) must raise its
 MAJOR, with the consumers' agreement recorded in the pull request, which a person checks. oasdiff runs with external
 $refs refused, because a pull request is untrusted. --publish-tag prints the tag to create for the contract on this
-commit, or nothing when that version is already published. Exit 0 clean, 1 problems. Standard library only; oasdiff
+commit, or nothing when that version is already published. The contract must be one file: relative $refs to other
+files are not followed (--allow-external-refs=false). It needs full history and tags (fetch-depth: 0). Exit 0 clean,
+1 problems. Standard library only; oasdiff
 is a release binary that the workflow downloads at a pinned version and checks against its sha256."""
 from __future__ import annotations
 
@@ -22,8 +24,9 @@ import sys
 import tempfile
 from pathlib import Path
 
-SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
-TAG = re.compile(r"^api-v(\d+\.\d+\.\d+)$")
+NUMBER = r"(0|[1-9][0-9]*)"
+SEMVER = re.compile(rf"^{NUMBER}\.{NUMBER}\.{NUMBER}\Z")
+TAG = re.compile(rf"^api-v({NUMBER}\.{NUMBER}\.{NUMBER})\Z")
 Semver = tuple[int, int, int]
 
 
@@ -76,6 +79,14 @@ def published(root: Path) -> list[tuple[Semver, str]]:
     return sorted(found)
 
 
+def no_history_problem(root: Path) -> str | None:
+    """A problem when the clone cannot tell us whether any api-v* tag exists: shallow, or git failed."""
+    if (git(root, "rev-parse", "--is-shallow-repository") or "").strip() == "false":
+        return None
+    return ("cannot tell whether a contract version was published: fetch the full history and tags "
+            "(fetch-depth: 0 with tags) before this check")
+
+
 def run_oasdiff(oasdiff: str, base: str, revision: str, suffix: str) -> tuple[int, str]:
     """oasdiff's exit code and output for `breaking --fail-on ERR` between two contract texts: 0 no breaking change,
     1 a breaking change, anything else a failure to compare. External $refs are refused."""
@@ -91,17 +102,30 @@ def run_oasdiff(oasdiff: str, base: str, revision: str, suffix: str) -> tuple[in
     return result.returncode, (result.stdout + result.stderr).strip()
 
 
+def version_problem(contract: str, found: str | None) -> str:
+    if found is None:
+        return f"info.version not found in {contract} (only block-style YAML or JSON is read)"
+    return f"{contract}: info.version must be MAJOR.MINOR.PATCH, not {found!r}"
+
+
 def check(root: Path, contract: str, oasdiff: str = "oasdiff") -> tuple[list[str], list[str]]:
     """(problems, notes) for the contract in the working tree against its last published version."""
     path = root / contract
+    tags = published(root)
     if not path.is_file():
+        if tags:
+            return [f"the published contract {contract} is missing; deleting a published contract is a breaking "
+                    f"change"], []
         return [], [f"no contract at {contract}; nothing to check"]
     head = path.read_text(encoding="utf-8")
-    version = semver(info_version(head))
+    found = info_version(head)
+    version = semver(found)
     if version is None:
-        return [f"{contract}: info.version must be MAJOR.MINOR.PATCH, not {info_version(head)!r}"], []
-    tags = published(root)
+        return [version_problem(contract, found)], []
     if not tags:
+        missing = no_history_problem(root)
+        if missing:
+            return [missing], []
         return [], [f"no api-v* tag yet: {contract} {show(version)} becomes the first published version"]
     last, tag = tags[-1]
     base = git(root, "show", f"{tag}:{contract}")
@@ -125,6 +149,7 @@ def check(root: Path, contract: str, oasdiff: str = "oasdiff") -> tuple[list[str
                         f"MAJOR with the consumers' agreement (expand and contract)")
     else:
         problems.append(f"oasdiff could not compare the contracts (exit {code})")
+        notes.append("install the pinned oasdiff release (checked against its sha256) or pass --oasdiff <path>")
     if output:
         notes.append(output[:4000])
     return problems, notes
@@ -138,8 +163,10 @@ def publish_tag(root: Path, contract: str) -> tuple[str | None, list[str]]:
     head = path.read_text(encoding="utf-8")
     version = semver(info_version(head))
     if version is None:
-        return None, [f"{contract}: info.version must be MAJOR.MINOR.PATCH, not {info_version(head)!r}"]
+        return None, [version_problem(contract, info_version(head))]
     tag, tags = f"api-v{show(version)}", published(root)
+    if not tags and no_history_problem(root):
+        return None, [no_history_problem(root)]
     if any(name == tag for _, name in tags):
         if git(root, "show", f"{tag}:{contract}") != head:
             return None, [f"{contract} differs from the published {tag} without a new info.version: a published "
