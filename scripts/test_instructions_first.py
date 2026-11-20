@@ -358,5 +358,27 @@ class OnboardTest(unittest.TestCase):
                           "approves", flat(rel), rel)
 
 
+class FeedbackInStructureTest(unittest.TestCase):
+    """Task 6: a repeated mistake becomes a check in the team's project, proven on the real past mistake, and a row in
+    the rules table of the team's AGENTS.md."""
+
+    def test_the_lesson_becomes_a_check_in_the_teams_project(self):
+        feedback = skill("aidlc-feedback")
+        for phrase in ("Encode each lesson in structure, in the team's project.", "aidlc ships none (ADR 0024)",
+                       "A mistake that repeated (in two sessions, two reviews, or an incident) always gets a check above "
+                       "layer 4.",
+                       "run it on the commit that still holds the mistake (`git worktree add <folder> <commit>`",
+                       "the commit of the past mistake it was seen failing on"):
+            self.assertIn(phrase, feedback, phrase)
+        self.assertIn("when a session repeats a mistake", section(feedback, "## When to use"))
+        self.assertIn("A proposed check that lives outside the team's project", section(feedback, "## Red flags"))
+
+    def test_the_rules_table_lives_in_the_teams_project(self):
+        for rel in ("skills/aidlc-onboard/assets/agents-md.md", "starter/repo/AGENTS.md"):
+            text = flat(rel)
+            self.assertIn("Every check named here lives in this repository", text, rel)
+            self.assertIn("a check is listed only after it was seen failing on a real past mistake", text, rel)
+
+
 if __name__ == "__main__":
     unittest.main()

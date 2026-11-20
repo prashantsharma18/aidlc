@@ -16,7 +16,7 @@ disable-model-invocation: true
 # Feedback: make the next mistake impossible
 
 ## When to use
-Once an incident is contained, before its blameless review closes it, or when the same finding appears in several reviews.
+Once an incident is contained, before its blameless review closes it, when the same finding appears in several reviews, or when a session repeats a mistake that a rule already forbids.
 
 ## Inputs
 Where this runs: where the lessons came from. No story is needed. After an incident, write to `incidents/<ID>/`; for
@@ -26,8 +26,11 @@ The incident record (its Prevention section) or the repeated findings, and the o
 
 ## Steps
 1. List the lessons, one per line, each with its evidence.
-2. Choose each lesson's layer, highest first, and stop at the first that works: a rule nobody can break beats a rule
-   somebody must remember.
+2. Encode each lesson in structure, in the team's project. Every check lives there: its tests, linters, type
+   checks, CI and its AI tool's settings, which the team owns; aidlc ships none (ADR 0024). Choose each lesson's
+   layer, highest first, and stop at the first that works: a rule nobody can break beats a rule somebody must
+   remember. A mistake that repeated (in two sessions, two reviews, or an incident) always gets a check above
+   layer 4.
    1. Architecture: make the mistake impossible to write (one owner for each piece of state, one supported way,
       internals hidden, the old way deleted).
    2. A type, or a lint rule whose error names the fix, or a CI check; a guardrail (permission, hook) for an unsafe
@@ -36,10 +39,11 @@ The incident record (its Prevention section) or the repeated findings, and the o
       for a signal nobody saw.
    4. The context or the review checklist, only for what needs judgement.
    Always add a regression test for every fix. Prove each new check fails on the real past mistake before you propose
-   it: a check never seen failing proves nothing.
+   it: run it on the commit that still holds the mistake (`git worktree add <folder> <commit>`, the check there,
+   then `git worktree remove --force <folder>`) and see it fail. A check never seen failing proves nothing.
 3. Draft the change for that layer, for the owner of that source to review: load the `writing-tests` skill for a test, load the `building-ci-pipelines` skill for a CI guardrail, load the `adding-observability` skill for a signal or alert, and load the `writing-documentation` skill for the context.
 4. Fill the incident record's Prevention section from `assets/incident.md`: the lesson, the layer and where it went. Lessons from repeated review findings have no incident: write them to `feedback/<YYYY-MM-DD>-<topic>/feedback.md`.
-5. Record each change as merged, after checking its pull request's merge state on GitHub, or declined, with who declined it and why as the decider told you, and how each was confirmed (ADR 0023). Add each rule and what enforces it to the rules table in `AGENTS.md`, as a draft for its owner. A lesson whose rule is already in the table with no enforcer is a repeat: route it to a higher layer in the same change.
+5. Record each change as merged, after checking its pull request's merge state on GitHub, or declined, with who declined it and why as the decider told you, and how each was confirmed (ADR 0023). Add each rule to the "Rules and what enforces them" table in the team's `AGENTS.md`, as a draft for its owner: the rule, the check that enforces it (its file or command in the team's project), and the commit of the past mistake it was seen failing on. A lesson whose rule is already in the table with no enforcer is a repeat: route it to a higher layer in the same change.
 
 ## Produces
 `feedback.md` in `incidents/<ID>/` or `feedback/<YYYY-MM-DD>-<topic>/`: the routing table, one drafted change per lesson,
@@ -58,6 +62,7 @@ A person chooses each layer, and the owner of each source reviews its change. Th
 | Excuse | Reality |
 |---|---|
 | "We'll remember this next time." | Memory is the weakest layer. Put it in a test, a check or the rules. |
+| "aidlc's skills already say it." | A sentence in a skill is the weakest layer. Put the check in the team's project, where it runs every time. |
 | "A note in the wiki is enough." | Route it to the layer that runs every time: a test, an eval case or a guardrail. |
 | "Declining is the same as forgetting." | A declined change is recorded with who declined it and why. |
 
@@ -65,6 +70,7 @@ A person chooses each layer, and the owner of each source reviews its change. Th
 - A lesson routed to "be careful".
 - A prevention change with no owner.
 - A new rule with no enforcer, when a type, lint rule, check or test could hold it.
+- A proposed check that lives outside the team's project, or that was never seen failing on the real past mistake.
 - You are editing a guardrail or rules file directly instead of drafting it.
 
 ## Rules
