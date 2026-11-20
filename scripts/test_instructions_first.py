@@ -2,7 +2,10 @@
 team's project; a verdict counts only from someone who did not write the change, at a named commit; and the words
 need git, not a code host's features."""
 import json
+import os
 import re
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -90,8 +93,8 @@ class EvidenceAndVerdictTest(unittest.TestCase):
         self.assertEqual(read(EVIDENCE), read("skills/aidlc-build/assets/review-evidence.md"))
         text = flat(EVIDENCE)
         for command in ("git rev-parse HEAD", "git merge-base HEAD origin/<default branch>", "git diff --stat --no-renames <base> HEAD",
-                        "git diff --name-only --no-renames <base> HEAD", "git diff --no-renames <base> HEAD -- '<test paths>'",
-                        "git diff <base> HEAD -- '<manifests>'", "git diff <base> HEAD -- plans/<KEY>/",
+                        "git diff --name-only --no-renames <base> HEAD", "git diff --no-renames <base> HEAD -- ':(top)<test path>'",
+                        "git diff <base> HEAD -- ':(top)<manifest>'", "git diff <base> HEAD -- ':(top)plans/<KEY>/'",
                         "git worktree add <folder> <base>", "echo $?", "git -C <folder> diff --cached --stat <commit>"):
             self.assertIn(command, text, command)
         self.assertIn("to `plans/<KEY>/review-evidence.md`", text)
@@ -163,11 +166,11 @@ class EvidenceAndVerdictTest(unittest.TestCase):
     def test_the_evidence_cannot_be_empty_without_warning(self):
         text = flat(EVIDENCE)
         self.assertIn("Quote every pathspec pattern", text)
-        self.assertIn("`'*_test.go'`", text)
+        self.assertIn("`':(top)*_test.go'`", text)
         self.assertIn("compares `<base>` with HEAD, never the working tree", text)
         self.assertIn("only from a clean tree (`git status --porcelain` prints nothing)", text)
         self.assertIn("git diff -U0 --no-renames <base> HEAD -- ':(top)' ':(top,exclude)plans/<KEY>/'", text)
-        self.assertIn("git diff <base> HEAD -- '<check configuration>'", text)
+        self.assertIn("git diff <base> HEAD -- ':(top)<check configuration path>'", text)
         for marker in ("xit(", "xdescribe(", "@Ignore", "@SuppressWarnings", "#[ignore]", "<NoWarn>"):
             self.assertIn(marker, text, marker)
         tests = flat("agents/reviewer-tests.md")
@@ -181,7 +184,7 @@ class EvidenceAndVerdictTest(unittest.TestCase):
         text = flat(EVIDENCE)
         self.assertNotIn("-- . ':(", text)
         for command in ("git diff --stat --no-renames <base> HEAD", "git diff --name-only --no-renames <base> HEAD",
-                        "git diff --no-renames <base> HEAD -- '<test paths>'"):
+                        "git diff --no-renames <base> HEAD -- ':(top)<test path>'"):
             self.assertIn(command, text, command)
         for name in ("aidlc-build", "aidlc-verify", "aidlc-review"):
             self.assertIn("':(top)' ':(top,exclude)plans/<KEY>/'", section(skill(name), "## Rules"), name)
@@ -236,14 +239,14 @@ class BuildAndPlanTest(unittest.TestCase):
         build = skill("aidlc-build")
         step5 = build.split("5. **When the bundle has a RECIPE", 1)[1].split("\n6.", 1)[0]
         self.assertIn("Recipe commits section of the evidence file", " ".join(step5.split()))
-        self.assertIn("run the repository's test command (named in `AGENTS.md`) in the worktree at `<commit>^` and at the "
-                      "commit, and record both counts", " ".join(step5.split()))
+        self.assertIn("the test count must be the same at the parent and at the commit; record both counts",
+                      " ".join(step5.split()))
         step9 = build.split("9. Check the boundary", 1)[1].split("\n10.", 1)[0]
         self.assertIn("Recipe commits section", step9)
         self.assertIn("git status --porcelain", build.split("5. **When", 1)[0])
         for rel in ("skills/aidlc-build/assets/review-evidence.md", "skills/aidlc-review/assets/review-evidence.md"):
             recipe = flat(rel).split("## Recipe commits", 1)[1]
-            self.assertIn("git diff <commit>^ <commit> -- '<test paths>'", recipe, rel)
+            self.assertIn("git diff <commit>^ <commit> -- ':(top)<test path>'", recipe, rel)
 
     def test_the_plan_checklist_covers_the_plans_own_fields(self):
         self.assertIn("the plan's own fields (SPEC, APPROACH, FILES, TESTS, ORDER, RISKS, ROLLBACK, OPEN) are filled",
@@ -566,6 +569,97 @@ class RecordTest(unittest.TestCase):
     def test_the_evidence_file_has_nine_section_headings(self):
         for rel in ("skills/aidlc-build/assets/review-evidence.md", "skills/aidlc-review/assets/review-evidence.md"):
             self.assertEqual(len(re.findall(r"(?m)^## ", read(rel))), 9, rel)
+
+
+EVIDENCE_COPIES = ("skills/aidlc-build/assets/review-evidence.md", "skills/aidlc-review/assets/review-evidence.md")
+TOP_RULE = "Run every command from the repository root (`cd \"$(git rev-parse --show-toplevel)\"`)"
+
+
+def git(cwd: Path, *args: str) -> str:
+    """Run git in a throwaway repository, with no user or system configuration (so no global hook runs)."""
+    env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_AUTHOR_NAME="t",
+               GIT_AUTHOR_EMAIL="t@example.com", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@example.com")
+    return subprocess.run(["git", *args], cwd=cwd, env=env, check=True, capture_output=True, text=True).stdout
+
+
+class FinalReviewTest(unittest.TestCase):
+    """The final review's fix wave: the evidence commands see the whole repository from any folder, the recipe check
+    counts the parent's tests before the recipe runs, an approval a session cannot read is confirmed by a person, and
+    the minor items."""
+
+    def test_i1_every_evidence_command_runs_from_the_root_with_top_pathspecs(self):
+        self.assertEqual(read(EVIDENCE_COPIES[0]), read(EVIDENCE_COPIES[1]))
+        text = flat(EVIDENCE)
+        self.assertIn(TOP_RULE, text)
+        for command in ("git diff --no-renames <base> HEAD -- ':(top)<test path>'",
+                        "git diff <base> HEAD -- ':(top)<manifest>'",
+                        "git diff <base> HEAD -- ':(top)<check configuration path>'",
+                        "git diff <base> HEAD -- ':(top)plans/<KEY>/'",
+                        "git diff <commit>^ <commit> -- ':(top)<test path>'"):
+            self.assertIn(command, text, command)
+        self.assertNotRegex(text, r"-- '<|-- plans/")
+        step5 = skill("aidlc-build").split("5. **When the bundle has a RECIPE", 1)[1].split(" 6. ", 1)[0]
+        self.assertIn("git diff <commit>^ <commit> -- ':(top)<test path>'", step5)
+        self.assertIn("`cd \"$(git rev-parse --show-toplevel)\"`", step5)
+        self.assertNotIn("-- '<test paths>'", step5)
+
+    def test_i1_the_test_file_command_sees_every_change_from_a_subfolder(self):
+        section_text = flat(EVIDENCE).split("## Test files", 1)[1].split(" ## ", 1)[0]
+        command = re.search(r"`(git diff --no-renames <base> HEAD -- [^`]+)`", section_text).group(1)
+        command = command.replace("':(top)<test path>'", "':(top)tests/' ':(top)*_test.go'")
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            git(repo, "init", "-q")
+            for rel, body in (("tests/test_orders.py", "def test_total():\n    assert total == 120\n"),
+                              ("src/billing/invoice_test.go", "package billing\n"),
+                              ("src/api/handler.go", "package api\n")):
+                (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+                (repo / rel).write_text(body, encoding="utf-8")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "base")
+            base = git(repo, "rev-parse", "HEAD").strip()
+            (repo / "src/billing/invoice_test.go").unlink()
+            (repo / "tests/test_orders.py").write_text("def test_total():\n    assert total > 0\n", encoding="utf-8")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "weaken")
+            command = command.replace("<base>", base)
+            self.assertNotIn("<", command)
+            env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+            out = subprocess.run(command, shell=True, cwd=repo / "src/api", env=env, check=True, capture_output=True,
+                                 text=True).stdout
+        self.assertIn("deleted file mode", out)
+        self.assertIn("src/billing/invoice_test.go", out)
+        self.assertIn("-    assert total == 120", out)
+        self.assertIn("+    assert total > 0", out)
+
+    def test_i2_the_parents_count_comes_before_the_recipe_runs(self):
+        for rel in EVIDENCE_COPIES:
+            recipe = flat(rel).split("## Recipe commits", 1)[1].lower()
+            order = [recipe.index(p.lower()) for p in ("run the test command there first, for the parent's count",
+                                                       "run the bundle's RECIPE there", "`git -C <folder> add -A`",
+                                                       "`git -C <folder> diff --cached --stat <commit>`",
+                                                       "run the test command there again, for the commit's count")]
+            self.assertEqual(order, sorted(order), rel)
+            self.assertIn("because the recipe then changes the worktree", recipe, rel)
+        step5 = skill("aidlc-build").split("5. **When the bundle has a RECIPE", 1)[1].split(" 6. ", 1)[0]
+        lowered = step5.lower()
+        order = [lowered.index(p.lower()) for p in ("run the repository's test command (named in `AGENTS.md`) there "
+                                                    "first, for the parent's count", "run the approved command",
+                                                    "`git -C <folder> add -A`",
+                                                    "`git -C <folder> diff --cached --stat <commit>`",
+                                                    "run the test command again, for the commit's count")]
+        self.assertEqual(order, sorted(order))
+        self.assertIn("because the recipe then changes the worktree", step5)
+
+    def test_m4_the_story_documents_diff_leaves_out_the_evidence_file(self):
+        for rel in EVIDENCE_COPIES:
+            story = flat(rel).split("## Story documents", 1)[1].split(" ## ", 1)[0]
+            self.assertIn("':(top,exclude)plans/<KEY>/review-evidence.md'", story, rel)
+            self.assertIn("':(top,exclude)plans/<KEY>/part-<n>/review-evidence.md'", story, rel)
+
+    def test_m11_the_base_is_read_after_a_fetch(self):
+        for rel in EVIDENCE_COPIES:
+            self.assertIn("{{git fetch, then git merge-base HEAD origin/<default branch>}}", read(rel), rel)
 
 
 if __name__ == "__main__":
