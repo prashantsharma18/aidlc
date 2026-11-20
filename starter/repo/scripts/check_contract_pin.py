@@ -23,6 +23,7 @@ import argparse
 import hashlib
 import os
 import re
+import signal
 import subprocess
 import sys
 import tempfile
@@ -110,6 +111,8 @@ def offline_problems(folder: Path) -> list[str]:
     if not re.fullmatch(r"[0-9a-f]{40}", fields["commit"]):
         problems.append(f"{rel}/SOURCE: commit must be the full 40-character commit")
     copy = copy_of(folder, fields["path"])
+    if copy.name == "SOURCE":
+        return problems + [f"{rel}/SOURCE: path {fields['path']} names SOURCE itself, not a contract"]
     if not copy.is_file():
         return problems + [f"{rel}: no {copy.name} beside SOURCE"]
     data = copy.read_bytes()
@@ -122,6 +125,35 @@ def offline_problems(folder: Path) -> list[str]:
     return problems
 
 
+REDIRECTING = {"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
+               "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT"}
+
+
+def git_env() -> dict[str, str]:
+    """The environment git runs in: the caller's, without the variables that point git at another repository or
+    inject configuration (a hook exports GIT_DIR), and with no prompt and only the https, ssh and file transports."""
+    env = {k: v for k, v in os.environ.items()
+           if k not in REDIRECTING and not re.match(r"GIT_CONFIG_(KEY|VALUE)_[0-9]+$", k)}
+    return {**env, "GIT_TERMINAL_PROMPT": "0", "GIT_ALLOW_PROTOCOL": "https:ssh:file"}
+
+
+def run_process(cmd: list[str], env: dict[str, str], timeout: float, text: bool) -> subprocess.CompletedProcess:
+    """Runs cmd in its own process group. On a timeout the whole group is killed, so a helper git started (ssh) does
+    not outlive it, and TimeoutExpired is raised."""
+    proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=text, env=env, start_new_session=True)
+    try:
+        out, err = proc.communicate(timeout=timeout)
+    except BaseException:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        proc.communicate()
+        raise
+    return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
+
+
 def fetch(repository: str, tag: str, path: str, deadline: float | None = None) -> tuple[str, bytes] | str:
     """(the commit the tag names, the contract's bytes there), or why they cannot be read. Git runs without a
     credential prompt and with only the https, ssh and file transports, and every git call shares one deadline
@@ -130,14 +162,13 @@ def fetch(repository: str, tag: str, path: str, deadline: float | None = None) -
     if unsafe or not TAG.match(tag):
         return f"cannot fetch {tag}: {unsafe or 'not a published version'}"
     deadline = time.monotonic() + GIT_TIMEOUT if deadline is None else deadline
-    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ALLOW_PROTOCOL": "https:ssh:file"}
+    env = git_env()
     with tempfile.TemporaryDirectory() as tmp:
         def run(*args: str, text: bool = True) -> subprocess.CompletedProcess:
             left = deadline - time.monotonic()
             if left <= 0:
                 raise subprocess.TimeoutExpired("git", 0)
-            return subprocess.run(["git", "-C", tmp, *args], capture_output=True, text=text, env=env,
-                                  stdin=subprocess.DEVNULL, timeout=min(left, GIT_TIMEOUT))
+            return run_process(["git", "-C", tmp, *args], env=env, timeout=min(left, GIT_TIMEOUT), text=text)
         try:
             run("init", "-q")
             got = run("fetch", "-q", "--depth", "1", "--no-tags", "--", repository, f"refs/tags/{tag}:refs/tags/{tag}")
@@ -224,6 +255,8 @@ def update(root: Path, provider: str, tag: str, repository: str | None = None,
         return 2, [f"contracts/{provider} has no SOURCE yet: pass --repository and --path"]
     if not PurePosixPath(path).name or path.endswith("/"):
         return 2, [f"{path}: --path names a file, not a folder"]
+    if PurePosixPath(path).name == "SOURCE":
+        return 2, [f"{path}: the copy cannot be named SOURCE, which holds where it came from"]
     unsafe = repository_problem(repository)
     if unsafe:
         return 2, [unsafe]
@@ -239,7 +272,7 @@ def update(root: Path, provider: str, tag: str, repository: str | None = None,
         write_pair(folder, copy_of(folder, path), data, source_text(fields).encode("utf-8"))
     except OSError as error:
         return 1, [f"contracts/{provider}: cannot write the copy and SOURCE ({error}); the previous files are kept"]
-    if old.get("path") and copy_of(folder, old["path"]).name != copy_of(folder, path).name:
+    if (old.get("path") and copy_of(folder, old["path"]).name not in ("SOURCE", copy_of(folder, path).name)):
         copy_of(folder, old["path"]).unlink(missing_ok=True)
     messages = [f"contracts/{provider}: now {tag} ({commit[:12]}); commit the copy and SOURCE together, in a slice "
                 f"whose MAY CHANGE names contracts/{provider}/**"]

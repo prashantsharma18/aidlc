@@ -455,7 +455,7 @@ class ConsumerSecurityTest(unittest.TestCase):
         def fake(cmd, **kwargs):
             calls.append((cmd, kwargs))
             return subprocess.CompletedProcess(cmd, 1, "", "no")
-        with mock.patch.object(check_contract_pin.subprocess, "run", fake):
+        with mock.patch.object(check_contract_pin, "run_process", fake):
             check_contract_pin.fetch(str(self.provider.root), "api-v1.0.0", "openapi.yaml")
         self.assertTrue(calls)
         for cmd, kwargs in calls:
@@ -471,7 +471,7 @@ class ConsumerSecurityTest(unittest.TestCase):
         def fake(cmd, **kwargs):
             timeouts.append(kwargs["timeout"])
             return subprocess.CompletedProcess(cmd, 0, "", "")
-        with mock.patch.object(check_contract_pin.subprocess, "run", fake):
+        with mock.patch.object(check_contract_pin, "run_process", fake):
             result = check_contract_pin.fetch(str(self.provider.root), "api-v1.0.0", "openapi.yaml",
                                               deadline=time.monotonic() - 1)
         self.assertIsInstance(result, str)
@@ -503,6 +503,66 @@ class ConsumerSecurityTest(unittest.TestCase):
         code, out = self.main()
         self.assertEqual(code, 1)
         self.assertIn("SOURCE: tag appears twice", out)
+
+
+class ConsumerHardeningTest(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+        self.provider = Provider(self.tmp)
+        self.root = self.tmp / "web-portal"
+        self.root.mkdir()
+
+    main = ConsumerTest.main
+
+    def test_git_variables_that_redirect_the_repository_are_not_passed_on(self):
+        victim = self.tmp / "victim"
+        victim.mkdir()
+        git(victim, "init", "-q")
+        before = git(victim, "for-each-ref")
+        env = {"GIT_DIR": str(victim / ".git"), "GIT_WORK_TREE": str(victim), "GIT_INDEX_FILE": "x",
+               "GIT_OBJECT_DIRECTORY": str(victim / "o"), "GIT_ALTERNATE_OBJECT_DIRECTORIES": "y",
+               "GIT_CONFIG_PARAMETERS": "'core.x=1'", "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "a",
+               "GIT_CONFIG_VALUE_0": "b", "GIT_SSH_COMMAND": "ssh -q"}
+        with mock.patch.dict(os.environ, env):
+            clean = check_contract_pin.git_env()
+            result = check_contract_pin.fetch(str(self.provider.root), "api-v1.0.0", "openapi.yaml")
+        self.assertIsInstance(result, tuple, result)
+        self.assertEqual(git(victim, "for-each-ref"), before)
+        self.assertFalse((victim / ".git" / "FETCH_HEAD").exists())
+        self.assertEqual([k for k in clean if k in env], ["GIT_SSH_COMMAND"])
+
+    def test_a_timeout_kills_the_whole_process_group(self):
+        pidfile = self.tmp / "child.pid"
+        script = f"sleep 300 & echo $! > {pidfile}; wait"
+        with self.assertRaises(subprocess.TimeoutExpired):
+            check_contract_pin.run_process(["sh", "-c", script], env=dict(os.environ), timeout=1, text=True)
+        pid = int(pidfile.read_text())
+        for _ in range(50):
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.1)
+        else:
+            os.kill(pid, 9)
+            self.fail("the grandchild outlived the timeout")
+
+    def test_a_path_named_source_is_refused_and_never_deleted(self):
+        code, out = self.main("--update", "shipments-api", "api-v1.0.0", "--repository", str(self.provider.root),
+                              "--path", "d/SOURCE")
+        self.assertEqual(code, 2)
+        self.assertIn("SOURCE", out)
+        self.assertFalse((self.root / "contracts").exists())
+        ConsumerTest.vendor(self)
+        folder = self.root / "contracts" / "shipments-api"
+        text = (folder / "SOURCE").read_text(encoding="utf-8")
+        (folder / "SOURCE").write_text(text.replace("openapi.yaml", "d/SOURCE"), encoding="utf-8")
+        self.assertEqual(self.main("--update", "shipments-api", "api-v1.0.0")[0], 2)
+        self.assertEqual(self.main("--update", "shipments-api", "api-v1.0.0", "--path", "openapi.yaml")[0], 0)
+        self.assertTrue((folder / "SOURCE").is_file())
+        self.assertEqual(self.main("--online")[0], 0)
 
 
 if __name__ == "__main__":
