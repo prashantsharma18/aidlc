@@ -80,12 +80,23 @@ def published(root: Path) -> list[tuple[Semver, str]]:
     return sorted(found)
 
 
+NO_HISTORY = ("cannot tell which contract versions were published: fetch the full history and tags "
+              "(fetch-depth: 0 with tags) before this check")
+
+
+def shallow_problem(root: Path) -> str | None:
+    """A problem when the clone is shallow: its tags may be only some of the published ones, so the last published
+    version could be missing and an old version could look new."""
+    if (git(root, "rev-parse", "--is-shallow-repository") or "").strip() == "true":
+        return NO_HISTORY
+    return None
+
+
 def no_history_problem(root: Path) -> str | None:
     """A problem when the clone cannot tell us whether any api-v* tag exists: shallow, or git failed."""
     if (git(root, "rev-parse", "--is-shallow-repository") or "").strip() == "false":
         return None
-    return ("cannot tell whether a contract version was published: fetch the full history and tags "
-            "(fetch-depth: 0 with tags) before this check")
+    return NO_HISTORY
 
 
 def run_oasdiff(oasdiff: str, base: str, revision: str, suffix: str) -> tuple[int, str]:
@@ -119,6 +130,9 @@ def version_problem(contract: str, found: str | None) -> str:
 def check(root: Path, contract: str, oasdiff: str = "oasdiff") -> tuple[list[str], list[str]]:
     """(problems, notes) for the contract in the working tree against its last published version."""
     path = root / contract
+    shallow = shallow_problem(root)
+    if shallow:
+        return [shallow], []
     tags = published(root)
     if not path.is_file():
         if tags:
@@ -172,6 +186,9 @@ def publish_tag(root: Path, contract: str) -> tuple[str | None, list[str]]:
     version = semver(info_version(head))
     if version is None:
         return None, [version_problem(contract, info_version(head))]
+    shallow = shallow_problem(root)
+    if shallow:
+        return None, [shallow]
     tag, tags = f"api-v{show(version)}", published(root)
     if not tags and no_history_problem(root):
         return None, [no_history_problem(root)]

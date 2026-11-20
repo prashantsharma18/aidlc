@@ -40,6 +40,7 @@ REPOSITORY = re.compile(rf"(https|ssh)://{HOST_PATH}|git@[A-Za-z0-9][A-Za-z0-9.-
                         rf"|/[A-Za-z0-9._~%+@:/-]+")
 GIT_TIMEOUT = 120
 RUN_TIMEOUT = 300
+REAP_TIMEOUT = 5
 
 
 def read_source(text: str) -> dict[str, str]:
@@ -66,6 +67,12 @@ def copy_of(folder: Path, path: str) -> Path:
     return folder / PurePosixPath(path).name
 
 
+def names_source(path: str) -> bool:
+    """The copy would be SOURCE itself. Compared without case, because a case-insensitive file system (macOS,
+    Windows) treats source and SOURCE as one file."""
+    return PurePosixPath(path).name.casefold() == "source"
+
+
 def load_source(folder: Path) -> dict[str, str] | str:
     """The fields of folder/SOURCE, or why it cannot be read."""
     try:
@@ -87,7 +94,20 @@ def repository_problem(repository: str) -> str | None:
     if not REPOSITORY.fullmatch(repository):
         return (f"repository {repository!r} must be https://..., ssh://..., git@host:path or an absolute local "
                 f"path")
+    if credentials_in(repository):
+        return ("repository carries credentials (a user and password, or a token, before @): SOURCE is committed, "
+                "so name the repository without them and let git use its credential helper or ssh key")
     return None
+
+
+def credentials_in(repository: str) -> bool:
+    """An https URL with any user part (a token can stand in for the user), or an ssh URL whose user part has a
+    password. ssh://git@host/... and git@host:path name a user only, and stay valid."""
+    m = re.match(r"(https|ssh)://([^/]*)", repository)
+    if not m or "@" not in m.group(2):
+        return False
+    user = m.group(2).rsplit("@", 1)[0]
+    return m.group(1) == "https" or ":" in user
 
 
 def offline_problems(folder: Path) -> list[str]:
@@ -111,7 +131,7 @@ def offline_problems(folder: Path) -> list[str]:
     if not re.fullmatch(r"[0-9a-f]{40}", fields["commit"]):
         problems.append(f"{rel}/SOURCE: commit must be the full 40-character commit")
     copy = copy_of(folder, fields["path"])
-    if copy.name == "SOURCE":
+    if names_source(fields["path"]):
         return problems + [f"{rel}/SOURCE: path {fields['path']} names SOURCE itself, not a contract"]
     if not copy.is_file():
         return problems + [f"{rel}: no {copy.name} beside SOURCE"]
@@ -125,8 +145,8 @@ def offline_problems(folder: Path) -> list[str]:
     return problems
 
 
-REDIRECTING = {"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
-               "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT"}
+REDIRECTING = {"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_COMMON_DIR",
+               "GIT_NAMESPACE", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT"}
 
 
 def git_env() -> dict[str, str]:
@@ -139,7 +159,8 @@ def git_env() -> dict[str, str]:
 
 def run_process(cmd: list[str], env: dict[str, str], timeout: float, text: bool) -> subprocess.CompletedProcess:
     """Runs cmd in its own process group. On a timeout the whole group is killed, so a helper git started (ssh) does
-    not outlive it, and TimeoutExpired is raised."""
+    not outlive it, and TimeoutExpired is raised. A grandchild that left the group (setsid) can still hold the pipes
+    open, so reading what is left is bounded too: after REAP_TIMEOUT the pipes are closed and the child reaped."""
     proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             text=text, env=env, start_new_session=True)
     try:
@@ -149,7 +170,13 @@ def run_process(cmd: list[str], env: dict[str, str], timeout: float, text: bool)
             os.killpg(proc.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
-        proc.communicate()
+        try:
+            proc.communicate(timeout=REAP_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            for pipe in (proc.stdout, proc.stderr):
+                if pipe:
+                    pipe.close()
+            proc.wait()
         raise
     return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
 
@@ -255,7 +282,7 @@ def update(root: Path, provider: str, tag: str, repository: str | None = None,
         return 2, [f"contracts/{provider} has no SOURCE yet: pass --repository and --path"]
     if not PurePosixPath(path).name or path.endswith("/"):
         return 2, [f"{path}: --path names a file, not a folder"]
-    if PurePosixPath(path).name == "SOURCE":
+    if names_source(path):
         return 2, [f"{path}: the copy cannot be named SOURCE, which holds where it came from"]
     unsafe = repository_problem(repository)
     if unsafe:
@@ -272,7 +299,8 @@ def update(root: Path, provider: str, tag: str, repository: str | None = None,
         write_pair(folder, copy_of(folder, path), data, source_text(fields).encode("utf-8"))
     except OSError as error:
         return 1, [f"contracts/{provider}: cannot write the copy and SOURCE ({error}); the previous files are kept"]
-    if (old.get("path") and copy_of(folder, old["path"]).name not in ("SOURCE", copy_of(folder, path).name)):
+    if (old.get("path") and not names_source(old["path"])
+            and copy_of(folder, old["path"]).name != copy_of(folder, path).name):
         copy_of(folder, old["path"]).unlink(missing_ok=True)
     messages = [f"contracts/{provider}: now {tag} ({commit[:12]}); commit the copy and SOURCE together, in a slice "
                 f"whose MAY CHANGE names contracts/{provider}/**"]

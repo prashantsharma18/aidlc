@@ -2,6 +2,7 @@
 A fake oasdiff stands in for the real one: it reports a breaking change when a path of the base is gone."""
 import io
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -599,6 +600,94 @@ class OasdiffIsolationTest(unittest.TestCase):
     def test_oasdiff_does_not_inherit_the_config_variable(self):
         seen = self.run_it()
         self.assertNotIn("OASDIFF_CONFIG", seen["kwargs"]["env"])
+
+
+class FinalReviewTest(unittest.TestCase):
+    """The final review of Plan 21: a shallow clone with tags, more git variables, the copy's name in any case, a
+    grandchild that leaves the process group, and credentials in a repository URL."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+        self.provider = Provider(self.tmp)
+        self.root = self.tmp / "web-portal"
+        self.root.mkdir()
+        self.folder = self.root / "contracts" / "shipments-api"
+
+    main = ConsumerTest.main
+    vendor = ConsumerTest.vendor
+
+    def test_a_shallow_clone_with_some_tags_is_a_problem(self):
+        self.provider.commit(contract("1.1.0", ("/shipments/{id}", "/shipments")))
+        clone = self.tmp / "clone"
+        subprocess.run(["git", "clone", "-q", "--depth", "1", f"file://{self.provider.root}", str(clone)],
+                       check=True, capture_output=True)
+        git(clone, "tag", "api-v0.1.0")
+        self.assertTrue(check_contract_version.published(clone))
+        problems, _ = check_contract_version.check(clone, "openapi.yaml", str(self.provider.oasdiff))
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("fetch-depth: 0", problems[0])
+        tag, problems = check_contract_version.publish_tag(clone, "openapi.yaml")
+        self.assertIsNone(tag)
+        self.assertIn("fetch-depth: 0", problems[0])
+
+    def test_the_common_dir_and_namespace_variables_are_not_passed_on(self):
+        env = {"GIT_COMMON_DIR": str(self.tmp / "elsewhere"), "GIT_NAMESPACE": "other"}
+        with mock.patch.dict(os.environ, env):
+            clean = check_contract_pin.git_env()
+            result = check_contract_pin.fetch(str(self.provider.root), "api-v1.0.0", "openapi.yaml")
+        self.assertEqual([key for key in env if key in clean], [])
+        self.assertIsInstance(result, tuple, result)
+
+    def test_a_copy_named_source_in_any_case_is_refused_and_never_deleted(self):
+        for path in ("d/source", "d/Source"):
+            code, out = self.main("--update", "shipments-api", "api-v1.0.0", "--repository",
+                                  str(self.provider.root), "--path", path)
+            self.assertEqual(code, 2, (path, out))
+        self.assertFalse((self.root / "contracts").exists())
+        self.vendor()
+        text = (self.folder / "SOURCE").read_text(encoding="utf-8")
+        (self.folder / "SOURCE").write_text(text.replace("openapi.yaml", "d/source"), encoding="utf-8")
+        code, out = self.main()
+        self.assertEqual(code, 1)
+        self.assertIn("names SOURCE itself", out)
+        self.assertEqual(self.main("--update", "shipments-api", "api-v1.0.0")[0], 2)
+        keep = self.folder / "source"
+        keep.write_text("not a contract\n", encoding="utf-8")
+        self.assertEqual(self.main("--update", "shipments-api", "api-v1.0.0", "--path", "openapi.yaml")[0], 0)
+        self.assertTrue(keep.is_file())
+        self.assertTrue((self.folder / "SOURCE").is_file())
+
+    @unittest.skipUnless(shutil.which("setsid"), "needs setsid")
+    def test_a_grandchild_that_leaves_the_group_cannot_hold_the_call(self):
+        pidfile = self.tmp / "child.pid"
+        script = f"setsid sleep 20 & echo $! > {pidfile}; wait"
+        started = time.monotonic()
+        try:
+            with self.assertRaises(subprocess.TimeoutExpired):
+                check_contract_pin.run_process(["sh", "-c", script], env=dict(os.environ), timeout=1, text=True)
+            self.assertLess(time.monotonic() - started, 10)
+        finally:
+            try:
+                os.kill(int(pidfile.read_text()), 9)
+            except (OSError, ValueError):
+                pass
+
+    def test_a_repository_with_credentials_is_refused(self):
+        for repository in ("https://user:s3cr3t@example.com/org/shipments-api.git",
+                           "https://ghp_s3cr3t@example.com/org/shipments-api.git",
+                           "ssh://git:s3cr3t@example.com/org/shipments-api.git"):
+            problem = check_contract_pin.repository_problem(repository)
+            self.assertIsNotNone(problem, repository)
+            self.assertNotIn("s3cr3t", problem)
+            code, out = self.main("--update", "shipments-api", "api-v1.0.0", f"--repository={repository}",
+                                  "--path", "openapi.yaml")
+            self.assertEqual(code, 2, repository)
+        self.assertFalse(self.folder.exists())
+        for repository in ("ssh://git@example.com/org/shipments-api.git", "ssh://git@example.com:2222/org/x.git",
+                           "git@example.com:org/shipments-api.git", "https://example.com/org/shipments-api.git"):
+            self.assertIsNone(check_contract_pin.repository_problem(repository), repository)
 
 
 if __name__ == "__main__":
