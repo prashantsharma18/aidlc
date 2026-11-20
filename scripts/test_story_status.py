@@ -633,6 +633,34 @@ class MergeStateTest(unittest.TestCase):
         with mock.patch.object(story_status, "run_gh", side_effect=AssertionError("gh was called")):
             self.assertEqual(self.status().merge, "merged (git)")
 
+    def test_gh_output_that_is_not_a_list_falls_back_to_git(self):
+        self.commit_index(ALL)
+        run_git(self.repo, "remote", "add", "origin", "https://github.com/acme/shipments-api.git")
+        with mock.patch.object(story_status, "run_gh", lambda folder, args: "null"):
+            self.assertEqual(self.status().merge, "merged (git)")
+
+    def test_a_matching_pull_request_with_a_bad_number_falls_back_to_git(self):
+        self.commit_index(ALL)
+        run_git(self.repo, "remote", "add", "origin", "https://github.com/acme/shipments-api.git")
+        for number in ("x", None):
+            prs = [{"number": number, "title": "[SHIP-1] part 1 of 2: add", "state": "OPEN"}]
+            with mock.patch.object(story_status, "run_gh", lambda folder, args: json.dumps(prs)):
+                self.assertEqual(self.status().merge, "merged (git)")
+
+    def test_run_gh_never_waits_for_input(self):
+        done = subprocess.CompletedProcess([], 0, stdout="[]")
+        with mock.patch.object(story_status.shutil, "which", return_value="/usr/bin/gh"), \
+                mock.patch.object(story_status.subprocess, "run", return_value=done) as run:
+            self.assertEqual(story_status.run_gh(self.root, ["pr", "list"]), "[]")
+        self.assertEqual(run.call_args.kwargs["stdin"], subprocess.DEVNULL)
+        self.assertEqual(run.call_args.kwargs["env"]["GH_PROMPT_DISABLED"], "1")
+
+    def test_run_gh_treats_undecodable_output_as_a_failed_call(self):
+        error = UnicodeDecodeError("utf-8", b"\xff", 0, 1, "bad")
+        with mock.patch.object(story_status.shutil, "which", return_value="/usr/bin/gh"), \
+                mock.patch.object(story_status.subprocess, "run", side_effect=error):
+            self.assertIsNone(story_status.run_gh(self.root, ["pr", "list"]))
+
     def test_the_status_file_has_the_merge_state_column(self):
         self.commit_index(ALL)
         with redirect_stdout(io.StringIO()):

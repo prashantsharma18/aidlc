@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -338,12 +339,14 @@ def drift_needs(workspace: Path, key: str, index: Path, pins_text: str, needs: l
 
 
 def run_gh(folder: Path, args: list[str]) -> str | None:
-    """gh's output, or None when gh is missing, fails, or takes longer than 30 seconds."""
+    """gh's output, or None when gh is missing, fails, prints undecodable text, or takes longer than 30 seconds.
+    It never waits for input: stdin is closed and gh's prompts are off."""
     if shutil.which("gh") is None:
         return None
     try:
-        result = subprocess.run(["gh", *args], cwd=folder, capture_output=True, text=True, timeout=30)
-    except (OSError, subprocess.TimeoutExpired):
+        result = subprocess.run(["gh", *args], cwd=folder, capture_output=True, text=True, timeout=30,
+                                stdin=subprocess.DEVNULL, env={**os.environ, "GH_PROMPT_DISABLED": "1"})
+    except (OSError, subprocess.TimeoutExpired, UnicodeDecodeError):
         return None
     return result.stdout if result.returncode == 0 else None
 
@@ -361,9 +364,12 @@ def github_merge_state(folder: Path, key: str, number: int) -> tuple[str, str] |
         prs = json.loads(out) if out else []
     except ValueError:
         return None
+    if not isinstance(prs, list):
+        return None
     title = re.compile(rf"^\[{re.escape(key)}\] part {number} of \d+(?:, revision \d+)?:")
     ours = sorted((p for p in prs if isinstance(p, dict) and title.match(str(p.get("title", "")))
-                   and p.get("state") in ("OPEN", "MERGED")), key=lambda p: int(p.get("number", 0)))
+                   and p.get("state") in ("OPEN", "MERGED") and type(p.get("number")) is int),
+                  key=lambda p: p["number"])
     if not ours:
         return None
     return ("merged" if ours[-1]["state"] == "MERGED" else "not merged"), f"#{ours[-1]['number']}"
