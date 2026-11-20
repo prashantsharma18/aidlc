@@ -143,10 +143,6 @@ class FastPathTest(unittest.TestCase):
         self.assertIn("Each progress note's STATUS reads done", compliance)
         self.assertIn("a MODE its TIER does not allow is a high finding", compliance)
 
-    def test_the_runner_is_named_where_it_is_used(self):
-        self.assertIn("python3 scripts/run_slices.py <KEY> <slice>", read("starter/repo/AGENTS.md"))
-        self.assertIn("`run_slices.py`", skill("aidlc-onboard"))
-
     def test_the_new_gates_have_cases(self):
         evals = ROOT / "evals"
         for name in ("route-f0-start", "gate-f0-data-change", "gate-delegate-tier2"):
@@ -186,11 +182,6 @@ class ReviewFixesTest(unittest.TestCase):
         self.assertEqual(plan.count("it is route D2, and `aidlc-start` re-routes it"), 2)
         self.assertIn("it is route F1, and `aidlc-start` re-routes it. 2.", plan)
         self.assertIn("goes back to `aidlc-start`, which re-routes the work", section(skill("aidlc-build"), "## Stop if"))
-
-    def test_i5_onboarded_repositories_name_the_runner(self):
-        line = "python3 scripts/run_slices.py <KEY> <slice> [<slice> ...] [--part <n>]"
-        self.assertIn(line, read("skills/aidlc-onboard/assets/agents-md.md"))
-        self.assertIn(line, read("starter/repo/AGENTS.md"))
 
     def test_i6_i7_the_f0_cases_reach_their_gates(self):
         evals = "evals"

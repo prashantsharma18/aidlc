@@ -3,10 +3,11 @@
 Reference for step 3 of the `aidlc-onboard` skill. For each stack in the repository, propose the rules below as
 Enforced lines under the Quality bar in `AGENTS.md`. The person decides which go in.
 
-Why two layers. The slice check named in AGENTS.md judges the branch's diff: a new suppression, or one made wider,
-needs an `aidlc-exception`. It never sees the suppressions already in the code. The linters' own rules see the whole
-codebase: they reject a suppression that names no rule (a blanket one) and one that silences nothing (an unused one).
-Together, a suppression stays as narrow as it was approved, and goes when it is no longer needed.
+Why these rules. aidlc ships no check of its own (ADR 0024). In a change, a new suppression, or one made wider, needs
+an `aidlc-exception`: the compliance reviewer reads each added one in the session's evidence file, and the code owner
+approves it. Neither sees the suppressions already in the code. The linters' own rules see the whole codebase on
+every run: they reject a suppression that names no rule (a blanket one) and one that silences nothing (an unused
+one). Together, a suppression stays as narrow as it was approved, and goes when it is no longer needed.
 
 Confirm each rule and setting against the tool's official documentation for the version the repository uses before
 you propose it. Names and defaults change between major versions.
@@ -68,27 +69,22 @@ Enable `nolintlint` and set both options in its settings: under `linters-setting
 Raise its severity in `.editorconfig` (`dotnet_diagnostic.IDE0079.severity = error`); code-style rules run on build
 only with `EnforceCodeStyleInBuild` set to `true`.
 
-No built-in analyzer rejects a `#pragma warning disable` that names no code. The slice check catches a new one, or
-one widened from a named code, in the diff; one already in the code stays until someone removes it.
+No built-in analyzer rejects a `#pragma warning disable` that names no code. The compliance reviewer reports a new
+one, or one widened from a named code, from the evidence file; one already in the code stays until someone removes it.
 
-## What the slice check does not model
+## Closing directives
 
-The slice check judges a removed closing directive (`eslint-enable`, `# pylint: enable=`, `#pragma warning restore`,
-`c8 ignore stop`) by reading the file from the top, in order. It does not know each tool's scoping rules, so some pylint
-cases slip past it unreported. For example:
+Removing a closing directive (`eslint-enable`, `# pylint: enable=`, `#pragma warning restore`, `c8 ignore stop`) widens
+a suppression without adding a line. The evidence file lists every removed one, and the compliance reviewer reads
+each. Mind pylint's scoping when you judge one:
 
 - **Block scope.** pylint ends an own-line `disable` or `enable` inside a function or class at the end of that block.
-  The slice check lets it run on to the end of the file. So an `enable` inside a function can read as closing a
-  module-level `disable`, and removing the module-level `enable` below it is missed.
-- **Names and ids.** `no-member` and `E1101` are one message to pylint but two rules to the slice check. Removing
-  `enable=no-member` below `disable=E1101` is missed.
-- **Trailing pragma.** pylint applies a pragma trailing code to that line only. The slice check counts a trailing
-  `x = os.a  # pylint: enable=no-member` as a closer, so removing an own-line `enable` below it can be missed.
+- **Names and ids.** `no-member` and `E1101` are one message to pylint.
+- **Trailing pragma.** pylint applies a pragma trailing code to that line only.
 
 The linters' own rules narrow the gap. pylint's `use-symbolic-message-instead` reports numeric ids, so every
 suppression can use one name. `useless-suppression` (above) reports a `disable` that silences nothing. Prefer a trailing
-`disable` or `disable-next` on the one line that needs it: the slice check reads those exactly. A reviewer still reads
-any removed `enable` in the diff.
+`disable` or `disable-next` on the one line that needs it.
 
 ## The Enforced lines
 

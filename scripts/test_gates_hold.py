@@ -150,7 +150,7 @@ class WhereGatesHoldTest(unittest.TestCase):
 
     def test_onboard_says_it_too(self):
         onboard = " ".join(read("skills/aidlc-onboard/SKILL.md").split())
-        self.assertIn("Say which controls hold in the team's tool and on its GitHub plan", onboard)
+        self.assertIn("Say which controls hold in the team's tool and on its code host", onboard)
 
 
 class AdrTest(unittest.TestCase):
@@ -188,8 +188,6 @@ class WiringTest(unittest.TestCase):
     def test_the_guide_names_the_commands_and_the_exception_format(self):
         for rel in ("starter/repo/AGENTS.md", "skills/aidlc-onboard/assets/agents-md.md"):
             text = read(rel)
-            self.assertIn("python3 scripts/check_slice.py", text, rel)
-            self.assertIn("python3 scripts/check_plan.py", text, rel)
             self.assertIn("aidlc-exception: reason=...; owner=...; expires=YYYY-MM-DD", text, rel)
 
 

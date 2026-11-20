@@ -117,12 +117,6 @@ class ContractWorkflowTest(unittest.TestCase):
         self.assertIn("contract-pin:", self.ci)
         self.assertIn("python3 scripts/check_contract_pin.py", self.ci)
 
-    def test_the_guide_names_the_commands(self):
-        for rel in ("starter/repo/AGENTS.md", "skills/aidlc-onboard/assets/agents-md.md"):
-            text = read(rel)
-            self.assertIn("python3 scripts/check_contract_pin.py --update <provider> api-v<version>", text, rel)
-            self.assertIn("python3 scripts/check_contract_version.py --contract <path>", text, rel)
-
     def test_the_session_cannot_edit_the_contract_scripts(self):
         deny = json.loads(read("starter/repo/.claude/settings.json"))["permissions"]["deny"]
         self.assertIn("Edit(/scripts/check_*.py)", deny)
@@ -272,8 +266,8 @@ class DecisionsTest(unittest.TestCase):
     def test_onboard_sets_up_the_home_repository(self):
         onboard = skill("aidlc-onboard")
         self.assertIn("copy `CODEOWNERS` from aidlc's `starter/workspace/` to `.github/CODEOWNERS`", onboard)
-        self.assertIn("run `python3 scripts/story_status.py --write-gitignore`", onboard)
-        self.assertIn("propose `check_contract_pin.py` with `check_contract_version.py`, which it imports", onboard)
+        self.assertIn("Then write the root's `.gitignore`: one line per repository", onboard)
+        self.assertIn("propose the consumer's (`sha256sum -c` against each copy's SOURCE)", onboard)
 
 
 class ContractGuidanceTest(unittest.TestCase):
@@ -344,13 +338,6 @@ class ContractWorkflowFinalReviewTest(unittest.TestCase):
 class OnlinePinCheckTest(unittest.TestCase):
     """The final review: someone runs the online pin check, a pin move is reviewed, and a contract pin has one
     format."""
-
-    def test_the_guide_names_the_online_check_and_when_it_runs(self):
-        for rel in ("starter/repo/AGENTS.md", "skills/aidlc-onboard/assets/agents-md.md"):
-            text = flat(rel)
-            self.assertIn("`python3 scripts/check_contract_pin.py --online`", text, rel)
-            self.assertIn("before a pin moves and before a release", text, rel)
-            self.assertIn("reports a provider tag that moved", text, rel)
 
     def test_the_adr_and_the_publish_job_say_who_runs_it(self):
         publish = ContractWorkflowFinalReviewTest.header(read("starter/repo/.github/workflows/contract-publish.yml"))

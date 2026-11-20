@@ -37,16 +37,15 @@ If you started this skill on your own (the person did not ask for it by name), d
    - At a workspace root (a folder holding several repositories): first ask whether these repositories must stay
      separate. Code that ships together goes in one repository (ADR 0022); a workspace is for repositories with
      different owners, release cycles or runtimes.
-   - The workspace root is a git repository of its own, the home repository: the story status command's pin and
-     criteria checks read its history.
+   - The workspace root is a git repository of its own, the home repository: each part pins its commits, and the
+     release reads its history with git.
    - Then write `WORKSPACE.md` from `assets/workspace.md` (the repositories, their owners, how work runs here,
      starting with `aidlc-start`), and create `stories/README.md`.
-   - Next, copy `story_status.py` from aidlc's `starter/workspace/scripts/` into the workspace's `scripts/` folder.
    - Then copy `CODEOWNERS` from aidlc's `starter/workspace/` to `.github/CODEOWNERS`. The leads own `stories/**`;
      the runtime environment's owner owns its compose files and flags.
-   - Then run `python3 scripts/story_status.py --write-gitignore`, which writes the root's `.gitignore` from the
-     repository table in `WORKSPACE.md`.
-   - In Claude Code, copy the settings from aidlc's `starter/workspace/` folder. First add one deny rule per
+   - Then write the root's `.gitignore`: one line per repository in the table of `WORKSPACE.md` (`/<repository>/`),
+     so the home repository never tracks a repository's files.
+   - In Claude Code, the team may take the example settings from aidlc's `starter/workspace/` folder. First add one deny rule per
      repository, `Edit(/<repository>/**)`, to the settings before you copy them in. Then a session at the root can
      write only under `stories/`, `incidents/` and `feedback/`. The settings deny edits to `.claude/`, so no session can add a rule once they are
      in place. In another tool, use its own way to keep the root from editing the repositories, or say that it
@@ -58,8 +57,8 @@ If you started this skill on your own (the person did not ask for it by name), d
      becomes a one-line pointer to it.
    - If anything looks like a secret, stop: it is rotated and removed before anything else.
    - When repositories are added on route G, run this step again: add each to `WORKSPACE.md`, and ask the person to
-     add its deny rule to `.claude/settings.json` (a session cannot edit it). Run
-     `python3 scripts/story_status.py --write-gitignore` again whenever the repository table changes.
+     add its deny rule to `.claude/settings.json` (a session cannot edit it) and its line to the root's
+     `.gitignore`.
 1. Discover (A1): send the `explorer` agent the survey, briefed from `assets/explorer-brief.md`. Ask for frameworks, commands, areas, documents with their age and shared modules, each labelled FACT or INFERENCE with a file reference. Run every command it finds and record whether it works. Ask the person what reviewers repeatedly correct, and which documents are still true.
 2. Select (A2): for each item ask these questions in order, and stop at the first yes:
    - Is it sensitive? Then it never goes in context.
@@ -75,7 +74,7 @@ If you started this skill on your own (the person did not ask for it by name), d
    Propose; the person decides, above all what is enforced.
 3. Structure the rules file (A3): write `AGENTS.md` by filling `assets/agents-md.md`, with a compact map pointer, concrete standards with a named example, the exact test and lint commands, the "How work runs here" block (start with `aidlc-start`; which skill for what; tests first), tool usage, boundaries, the Quality bar, and a Legacy line naming code that has no tests pinning its behaviour. For the Quality bar, ask which dimensions the team holds: coverage, size, accessibility, latency. Where the team has no number, propose a ratchet from today's measured value and let the team decide: coverage no lower than today; no new serious or critical accessibility issue; artefact or bundle size at most 5% above today; p95 latency of the main endpoints at most 10% above today. A dimension without a check command goes under Measured, not Enforced. For each stack in the repository, propose the rules in `references/suppression-rules.md` that ban blanket and unused suppressions as Enforced lines; the person decides. Apply the removal test to every line: would removing it make the agent make a mistake on a real task? If not, cut it or move it behind a pointer.
 4. Build the map (A4): write `docs/codebase-map.md`, by filling `assets/codebase-map.md`, read-only, labelled FACT or INFERENCE. The person supplies responsibilities, owners, why boundaries exist, and the traps. Keep it to one or two screens.
-5. Inject (A5): propose the layout (shared rules in `AGENTS.md`, thin tool files, folder rules for one area) and say which rules need a control: a tool permission (the starter's `.claude/settings.json`), a CI check (the starter's workflow) or code-owner review (`CODEOWNERS`). Propose copying the starter files that fit; the person decides. When the repository has no CI, or only the starter's placeholder steps, load the `building-ci-pipelines` skill and design it. Say which controls hold in the team's tool and on its GitHub plan ("Where the gates hold" in the README): on GitHub Free, required checks and branch protection work only on public repositories. When the repository owns a contract that other repositories use, propose `contract-check.yml`, `contract-publish.yml` and `check_contract_version.py`, and name the contract's path in `AGENTS.md`; when it consumes one, propose `check_contract_pin.py` with `check_contract_version.py`, which it imports (ADR 0022).
+5. Inject (A5): propose the layout (shared rules in `AGENTS.md`, thin tool files, folder rules for one area) and say which rules need a control in the team's project: a check in its own tests, linters or CI; a tool permission (aidlc's example `.claude/settings.json`, optional); or code-owner review (`CODEOWNERS`). aidlc ships no check of its own (ADR 0024): each control is the team's, in its project. Propose copying the starter files that fit; the person decides. When the repository has no CI, load the `building-ci-pipelines` skill and design it. Say which controls hold in the team's tool and on its code host ("Where the gates hold" in the README): aidlc needs only git; a team whose code host can require checks or a code owner's review before a merge may use that, and on GitHub Free those work only on public repositories. When the repository owns a contract that other repositories use, name the contract's path in `AGENTS.md` and propose the provider's checks from `designing-apis` for its CI (oasdiff against the last published tag, and the version comparison); when it consumes one, propose the consumer's (`sha256sum -c` against each copy's SOURCE) (ADR 0022).
 6. Validate (A6): in a fresh session with only the rules and the map, answer five probe questions, and record each wrong answer as a gap:
    - what the service does and talks to;
    - how to check a change;
@@ -86,16 +85,18 @@ If you started this skill on your own (the person did not ask for it by name), d
 
 New mode (route G), instead of steps 1 to 6:
 - Prepare, before slice 0, on its own branch: copy the starter files that fit from aidlc's `starter/repo/`
-  (`.claude/settings.json`, `CODEOWNERS`, `ai-review.yml`, and `check_recipe_commit.py` and `run_slices.py` into the
-  repository's scripts folder); slice 0 writes the CI workflow. Copy `check_slice.py` and `check_plan.py` into the scripts folder as well, and copy `.claude/settings.json` last: its deny rules then protect the files copied before it. Ask the person to turn on branch protection that
-  requires a code owner's review. Write `AGENTS.md` from `assets/agents-md.md` with the COMMANDS of the approved
+  (`CODEOWNERS`, and in Claude Code the example `.claude/settings.json`); slice 0 writes the CI workflow. When the
+  team takes the example settings, copy `.claude/settings.json` last: its deny rules then protect the files copied
+  before it. A team whose code host can require a code owner's review before a merge may turn that on; aidlc never
+  needs it. Write `AGENTS.md` from `assets/agents-md.md` with the COMMANDS of the approved
   `new-system.md`, each marked `(not yet run)`; the Quality bar's Enforced lines from its targets; and Legacy as `- none: a new system`. No map yet: there is no code to map. In a workspace, also write the
   part index `plans/<KEY>/README.md` with the rows `aidlc-onboard (prepare)`, `slice 0` and `aidlc-onboard (confirm)`
   before the part's rows.
 - Confirm, after slice 0 merges: run every command; remove `(not yet run)` from each that works, and stop on any that
   does not. Write `docs/codebase-map.md` from the skeleton and the design. Validate with the five probe questions,
   judged against the design documents instead of past changes. Record today's measured values under the Quality bar's
-  Measured lines. Ask the person, who marks slice 0's checks as required in branch protection. Then check the setting on GitHub
+  Measured lines. A team whose code host can require checks before a merge may ask a repository administrator, who marks slice 0's
+  checks as required there (branch protection or its equivalent); aidlc never needs it. Then check the setting on GitHub
   where you can read it, and record how it was confirmed in the pull request description (ADR 0023).
 - On route G, mark its row in the index (`aidlc-onboard (prepare)` or `aidlc-onboard (confirm)`) as done, or as
   stopped with the reason.

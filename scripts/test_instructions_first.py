@@ -311,5 +311,42 @@ class StoryLevelTest(unittest.TestCase):
                       flat("skills/aidlc-release/assets/readiness.md"))
 
 
+class OnboardTest(unittest.TestCase):
+    """Task 5: onboarding copies no script and no workflow, and the rules file names no script."""
+
+    GUIDES = ("skills/aidlc-onboard/assets/agents-md.md", "starter/repo/AGENTS.md")
+
+    def test_the_rules_file_names_no_script(self):
+        for rel in self.GUIDES:
+            text = flat(rel)
+            for name in ("scripts/check_", "run_slices", "slice check", "Slice runner", "Plan check", "Recipe check,",
+                         "Contract pin,"):
+                self.assertNotIn(name, text, f"{rel}: {name}")
+            for phrase in ("the commands from the `designing-apis` skill, or none",
+                           "The compliance reviewer reports a new suppression or skip",
+                           "recipe commit, re-run on its parent with git and compared (ADR 0012)"):
+                self.assertIn(phrase, text, f"{rel}: {phrase}")
+
+    def test_onboard_copies_no_script_or_workflow(self):
+        onboard = skill("aidlc-onboard")
+        for name in ("story_status", "check_slice", "check_plan", "check_recipe_commit", "run_slices",
+                     "check_contract_", "ai-review.yml", "contract-check.yml", "contract-publish.yml",
+                     "the starter's workflow", "--write-gitignore", "Ask the person to turn on branch protection"):
+            self.assertNotIn(name, onboard, name)
+        for phrase in ("aidlc ships no check of its own (ADR 0024)",
+                       "Then write the root's `.gitignore`: one line per repository",
+                       "the team may take the example settings",
+                       "A team whose code host can require a code owner's review before a merge may turn that on; "
+                       "aidlc never needs it.",
+                       "propose the provider's checks from `designing-apis`"):
+            self.assertIn(phrase, onboard, phrase)
+
+    def test_the_suppression_reference_names_no_slice_check(self):
+        text = flat("skills/aidlc-onboard/references/suppression-rules.md")
+        self.assertNotIn("slice check", text)
+        self.assertIn("the compliance reviewer reads each added one in the session's evidence file", text)
+        self.assertIn("## Closing directives", read("skills/aidlc-onboard/references/suppression-rules.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

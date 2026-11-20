@@ -31,17 +31,7 @@ Full map: `docs/codebase-map.md`. Read it before planning a change.
 ## Commands
 <!-- On route G, a command written before slice 0 reads `(not yet run)` until `aidlc-onboard` confirms it. -->
 - Tests and lint, must pass before you report done: `{{CHECK_COMMAND}}`
-- Recipe check, after a recipe commit: `python3 scripts/check_recipe_commit.py <commit> --recipe "<approved command>" --count "<test count command>"`
-- Slice runner, for approved delegate slices only, one fresh session each: `python3 scripts/run_slices.py <KEY> <slice> [<slice> ...] [--part <n>]`;
-  it stops at the first slice that does not end done, and never pushes
-- Slice check, on the story's branch (CI and the session's Stop hook run it too): `python3 scripts/check_slice.py`
-- Plan check, before asking for the plan's approval: `python3 scripts/check_plan.py <KEY> [--part <n>]`
-- Contract pin, a consumer's vendored contracts match their SOURCE (CI runs it too): `python3 scripts/check_contract_pin.py`;
-  move a pin only to a published tag, in its own slice: `python3 scripts/check_contract_pin.py --update <provider> api-v<version>`
-- Contract pin, online, before a pin moves and before a release (no job runs it yet):
-  `python3 scripts/check_contract_pin.py --online`; it reports a provider tag that moved, which stops the release
-- Contract check, a provider's contract against its last published tag (CI runs it with oasdiff):
-  `python3 scripts/check_contract_version.py --contract <path> --oasdiff <oasdiff binary>`
+- Contract checks, when this repository owns or consumes a contract: {{the commands from the `designing-apis` skill, or none}}
 - {{run one test file}}: {{exact command}}
 
 ## Legacy
@@ -57,7 +47,8 @@ Full map: `docs/codebase-map.md`. Read it before planning a change.
   threshold), and a person approves it in the pull request; without all of these, or past its expiry date, it is
   a violation.
 - Exception format, next to the code: `aidlc-exception: reason=...; owner=...; expires=YYYY-MM-DD`, on the line or
-  the line above. The slice check rejects a suppression or skip, or one made wider, without one or past its date.
+  the line above. The compliance reviewer reports a new suppression or skip, or one made wider, without one or
+  past its date; the linters' own rules (`aidlc-onboard`'s suppression rules) reject blanket and unused ones.
 - Enforced: {{dimension}}: {{threshold}}, checked by `<command>`
 - Measured, not yet enforced: {{dimension}}: {{value}} on {{date}}
 
@@ -65,7 +56,8 @@ Full map: `docs/codebase-map.md`. Read it before planning a change.
 - {{must-hold rule}}. (CI also checks this.)
 - No new dependencies without asking first.
 - Never change an existing test assertion to make a test pass. Stop and report. (Two exceptions: an approved mechanical
-  recipe commit, checked by `scripts/check_recipe_commit.py`; and an assertion listed under AMENDED ASSERTIONS in the
+  recipe commit, re-run on its parent with git and compared (ADR 0012); and an assertion listed under AMENDED
+  ASSERTIONS in the
   bundle, which cites the approved spec amendment.)
 - Never lower the bar to get to green: no new suppressions, skipped or deleted tests, weakened assertions, stubs or
   lowered thresholds. Stop and report; only a person grants an exception (see Quality bar).
