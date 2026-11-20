@@ -34,8 +34,9 @@ fields: [NAME, PURPOSE]
 - Story status, after any part moves: `python3 scripts/story_status.py <KEY> --write` (writes `stories/<KEY>/status.md`).
 - Before release, with every repository on its default branch after `git pull`:
   `python3 scripts/story_status.py <KEY> --check-release` (fails unless every part is merged at the current versions).
-- After the repository table above changes: `python3 scripts/story_status.py --write-gitignore` (the root's
-  `.gitignore` then lists every repository, so this home repository never tracks their files).
+- After the repository table above changes, a person runs `python3 scripts/story_status.py --write-gitignore` (the
+  session at this root may write only under `stories/`, `incidents/` and `feedback/`). The root's `.gitignore` then
+  lists every repository, so this home repository never tracks their files.
 
 ## Rules
 - A repository's own rules apply to its code. Read its AGENTS.md before reasoning about it, and say when two

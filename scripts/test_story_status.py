@@ -728,6 +728,27 @@ class GitignoreTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("name the story's key", out)
 
+    def test_a_broken_marker_pair_is_refused_and_nothing_is_written(self):
+        (self.root / "WORKSPACE.md").write_text(WORKSPACE, encoding="utf-8")
+        b, e = story_status.GITIGNORE_BEGIN, story_status.GITIGNORE_END
+        for existing in (f"a\n{b}\nuser\n", f"a\n{e}\nuser\n", f"{b}\n{e}\nx\n{b}\n{e}\n"):
+            (self.root / ".gitignore").write_text(existing, encoding="utf-8")
+            code, out = self.main("--write-gitignore")
+            self.assertEqual(code, 1, existing)
+            self.assertIn("marker", out)
+            self.assertEqual((self.root / ".gitignore").read_text(encoding="utf-8"), existing)
+
+    def test_a_name_that_cannot_be_ignored_is_named_and_nothing_is_written(self):
+        bad = WORKSPACE.replace("| <repo> |", "| my repo |")
+        (self.root / "WORKSPACE.md").write_text(bad, encoding="utf-8")
+        code, out = self.main("--write-gitignore")
+        self.assertEqual(code, 1)
+        self.assertIn("my repo", out)
+        self.assertFalse((self.root / ".gitignore").exists())
+        for name in ("a*b", "[x](y)"):
+            self.assertEqual(story_status.rejected_repositories(f"## Repositories\n| {name} | t |\n"), [name])
+        self.assertEqual(story_status.rejected_repositories(WORKSPACE), [])
+
 
 if __name__ == "__main__":
     unittest.main()

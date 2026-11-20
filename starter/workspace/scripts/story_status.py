@@ -469,18 +469,45 @@ def render(key: str, rows: list[PartStatus], problems: list[str] | tuple[str, ..
     return "\n".join(lines)
 
 
-def workspace_repositories(text: str) -> list[str]:
-    """The repositories WORKSPACE.md lists in its '## Repositories' table; the header, the separator and placeholder
-    rows are skipped."""
+def repository_cells(text: str) -> list[str]:
+    """The first cell of each real row of WORKSPACE.md's '## Repositories' table; the header, the separator and
+    placeholder rows ({{...}} or <...>) are skipped."""
     table = text.split("## Repositories", 1)[1].split("\n## ", 1)[0] if "## Repositories" in text else ""
-    names = []
+    cells = []
     for line in table.splitlines():
         if not line.strip().startswith("|"):
             continue
         name = line.strip().strip("|").split("|", 1)[0].strip().strip("`").strip().strip("/")
-        if name.lower() != "repository" and REPOSITORY_NAME.fullmatch(name) and ".." not in name.split("/"):
-            names.append(name)
-    return list(dict.fromkeys(names))
+        if (name and name.lower() != "repository" and not set(name) <= set("-: ")
+                and not re.fullmatch(r"<[^<>]*>|\{\{[^{}]*\}\}", name)):
+            cells.append(name)
+    return cells
+
+
+def usable_name(name: str) -> bool:
+    return bool(REPOSITORY_NAME.fullmatch(name)) and ".." not in name.split("/")
+
+
+def workspace_repositories(text: str) -> list[str]:
+    """The repositories WORKSPACE.md lists in its '## Repositories' table that a .gitignore line can name."""
+    return list(dict.fromkeys(n for n in repository_cells(text) if usable_name(n)))
+
+
+def rejected_repositories(text: str) -> list[str]:
+    """The names in that table that cannot be ignored (spaces, wildcards, links, '..'): reported, never dropped."""
+    return list(dict.fromkeys(n for n in repository_cells(text) if not usable_name(n)))
+
+
+def marker_problem(existing: str) -> str | None:
+    """Why the generated block in an existing .gitignore cannot be replaced safely, or None when it can."""
+    lines = existing.splitlines()
+    begins, ends = lines.count(GITIGNORE_BEGIN), lines.count(GITIGNORE_END)
+    if begins == 0 and ends == 0:
+        return None
+    if begins != 1 or ends != 1 or lines.index(GITIGNORE_END) < lines.index(GITIGNORE_BEGIN):
+        return (f"its aidlc markers are broken ({begins} begin, {ends} end, or out of order); "
+                "fix or remove them by hand, then run it again")
+    return None
 
 
 def gitignore_text(existing: str, repositories: list[str]) -> str:
@@ -501,11 +528,20 @@ def write_gitignore(workspace: Path) -> tuple[int, str]:
     guide = workspace / "WORKSPACE.md"
     if not guide.is_file():
         return 2, f"story_status: {guide.as_posix()} not found"
-    repositories = workspace_repositories(read(guide))
+    text = read(guide)
+    rejected = rejected_repositories(text)
+    if rejected:
+        return 1, ("story_status: WORKSPACE.md names repositories a .gitignore line cannot hold: "
+                   + ", ".join(rejected) + "; .gitignore not written")
+    repositories = workspace_repositories(text)
     if not repositories:
         return 1, "story_status: WORKSPACE.md lists no repositories; .gitignore not written"
     target = workspace / ".gitignore"
-    target.write_text(gitignore_text(read(target) if target.is_file() else "", repositories), encoding="utf-8")
+    existing = read(target) if target.is_file() else ""
+    problem = marker_problem(existing)
+    if problem:
+        return 1, f"story_status: .gitignore: {problem}; .gitignore not written"
+    target.write_text(gitignore_text(existing, repositories), encoding="utf-8")
     return 0, f"story_status: .gitignore lists the {len(repositories)} repositories in WORKSPACE.md"
 
 
