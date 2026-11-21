@@ -35,7 +35,7 @@ FIXTURE_EOF
 TASK BUNDLE · $key · slice 1
 GOAL        $title.
 TIER        1
-MODE        hands-on
+MODE        delegate
 MAY CHANGE  $may
 MUST NOT    AGENTS.md, existing assertions
 DONE WHEN   the full suite passes; the diff touches only MAY CHANGE paths

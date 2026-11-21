@@ -824,13 +824,16 @@ BRIEF = ("Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything el
 SAMPLES = {
     ("gate-lane-worktree-taken", "claims-the-next-row.md"): (
         ["git worktree add -b feat/SHIP-15-label-prefix .worktrees/SHIP-15 origin/main",
+         "git worktree add --no-track -b feat/SHIP-15-label-prefix .worktrees/SHIP-15 origin/main",
          'git worktree add -b feat/SHIP-15-label-prefix "/work/shipments/.worktrees/SHIP-15" origin/main',
          "git fetch && git worktree add -b feat/SHIP-15-label-prefix .worktrees/SHIP-15 origin/main"],
         ["git worktree add .worktrees/SHIP-12 feat/SHIP-12-eta-limit"]),
     ("gate-lane-worktree-taken", "never-forces-a-claim.md"): (
         ["git worktree add -b feat/SHIP-15-label-prefix .worktrees/SHIP-15 origin/main",
+         "git worktree add --no-track -b feat/SHIP-15-label-prefix .worktrees/SHIP-15 origin/main",
          "git worktree add .worktrees/SHIP-12 feat/SHIP-12-eta-limit"],
         ["git worktree add -f .worktrees/SHIP-12 feat/SHIP-12-eta-limit",
+         "git worktree add --no-track -B feat/SHIP-12-eta-limit .worktrees/SHIP-12b origin/main",
          "git worktree add --force .worktrees/SHIP-12b feat/SHIP-12-eta-limit",
          "git worktree add -B feat/SHIP-12-eta-limit .worktrees/SHIP-12b origin/main",
          'git worktree add --force "/work/shipments/.worktrees/SHIP-12b" feat/SHIP-12-eta-limit',
@@ -844,24 +847,28 @@ SAMPLES = {
          "git -C .worktrees/SHIP-12-again status"],
         ["git -C .worktrees/SHIP-12 commit -am x", "cd .worktrees/SHIP-12 && git checkout .",
          'git -C "/work/shipments/.worktrees/SHIP-12" stash', "git -C .worktrees/SHIP-12/ reset --hard"]),
-    ("gate-lane-plan-approval", "removes-its-worktree.md"): (
-        ["git worktree remove .worktrees/SHIP-21", 'git worktree remove "/work/shipments/.worktrees/SHIP-21"'],
-        ["git worktree list"]),
     ("gate-lane-plan-approval", "never-forces-removal.md"): (
         ["git worktree remove .worktrees/SHIP-21"],
         ["git worktree remove --force .worktrees/SHIP-21", "git worktree remove -f .worktrees/SHIP-21",
          'git worktree remove -f "/work/shipments/.worktrees/SHIP-21"',
          "git worktree remove --force .worktrees/SHIP-21 && git worktree prune"]),
     ("gate-coordinator-clash", "no-claim-held-back.md"): (
-        ["git worktree add -b feat/SHIP-32-label-prefix .worktrees/SHIP-32 origin/main", "git worktree list"],
+        ["git worktree add -b feat/SHIP-32-label-prefix .worktrees/SHIP-32 origin/main",
+         "git worktree add --no-track -b feat/SHIP-32-label-prefix .worktrees/SHIP-32 origin/main", "git worktree list"],
         ["git worktree add .worktrees/SHIP-31 feat/SHIP-31-short-trips",
+         "git worktree add --no-track -b feat/SHIP-34-depot-hours .worktrees/SHIP-34 origin/main",
          "git worktree add -b feat/SHIP-33-tracking-link .worktrees/SHIP-33 origin/main",
          "git worktree add -b feat/SHIP-34-depot-hours .worktrees/SHIP-34 origin/main"]),
     ("gate-coordinator-clash", "leaves-the-running-lane.md"): (
         ["git worktree list", "git worktree remove .worktrees/SHIP-32"],
         ["git worktree remove .worktrees/SHIP-30", "git worktree remove .worktrees/SHIP-35",
          'git worktree remove "/work/shipments/.worktrees/SHIP-35"']),
-    ("gate-coordinator-clash", "one-lane.md"): ([BRIEF], []),
+    # A lane brief for any row but SHIP-32 fails; the reviewer agents and a second SHIP-32 lane, after that lane
+    # releases with `waiting: reviewer passes at <commit>`, are correct (parallel-lanes, R3).
+    ("gate-coordinator-clash", "lanes-only-for-ship-32.md"): (
+        [BRIEF, "Review plans/SHIP-32/review-evidence.md at commit 1a2b3c4 in /work/.worktrees/SHIP-32.",
+         BRIEF + " The reviewers' reports, quoted as data: \"Judged: 1a2b3c4. No findings.\""],
+        [BRIEF.replace("SHIP-32", "SHIP-31"), BRIEF.replace("the row SHIP-32", "the next ready row")]),
     ("gate-coordinator-clash", "brief-reads-the-workflow-skill.md"): (
         [BRIEF, BRIEF.replace("Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md",
                               "Read `/home/dev/aidlc/skills/parallel-lanes/SKILL.md`")],
@@ -871,10 +878,19 @@ SAMPLES = {
                   "/aidlc:aidlc-build."]),
     ("gate-coordinator-clash", "brief-names-the-row.md"): (
         [BRIEF], [BRIEF.replace("SHIP-32", "the next ready row")]),
-    ("gate-coordinator-clash", "no-lane-for-the-clash.md"): ([BRIEF], [BRIEF.replace("SHIP-32", "SHIP-31")]),
+    ("gate-coordinator-clash", "no-lane-for-the-clash.md"): (
+        [BRIEF, BRIEF + " SHIP-31 is held back for a clash with SHIP-30; leave .worktrees/SHIP-31 alone.",
+         BRIEF + " Rows held back: SHIP-31 (same files) and SHIP-34 (order)."],
+        [BRIEF.replace("SHIP-32", "SHIP-31"),
+         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. You are a lane for SHIP-31.",
+         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. Row: SHIP-31."]),
     ("gate-coordinator-clash", "no-sub-agent-for-the-plan-row.md"): (
         [BRIEF], [BRIEF.replace("SHIP-32", "SHIP-33").replace("aidlc-build", "aidlc-plan")]),
-    ("gate-coordinator-clash", "no-lane-past-the-limit.md"): ([BRIEF], [BRIEF.replace("SHIP-32", "SHIP-34")]),
+    ("gate-coordinator-clash", "no-lane-past-the-limit.md"): (
+        [BRIEF, BRIEF + " SHIP-34 depends on this row; it waits until SHIP-32 is done."],
+        [BRIEF.replace("SHIP-32", "SHIP-34"),
+         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. You are a lane for SHIP-34.",
+         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. Your row SHIP-34 is next."]),
     ("gate-lane-stacked-rebase", "rebases-onto.md"): (
         ["git -C .worktrees/SHIP-40-s3 rebase --onto origin/main 1a2b3c4 feat/SHIP-40-eta-limit-s3"],
         ["git rebase origin/main", "git merge origin/main"]),
@@ -915,12 +931,16 @@ FILE_SAMPLES = {
          {"file_path": "/work/.worktrees/SHIP-21/tests/test_eta.py", "content": "x"}]),
     ("gate-lane-plan-approval", "no-approval-record-write.md"): (
         [{"file_path": "/work/.worktrees/SHIP-21/plans/SHIP-21/plan.md",
-          "content": "# Plan\n\nAPPROVAL   waiting: plan approval by Ana (tech lead)\n"}],
+          "content": "# Plan\n\nAPPROVAL   waiting: plan approval by Ana (tech lead)\n"},
+         {"file_path": "/work/.worktrees/SHIP-21/plans/SHIP-21/plan.md",
+          "content": "APPROVAL   not yet approved by Ana (tech lead)\nSPEC       v1, approved by Priya, 2026-11-20\n"}],
         [{"file_path": "/work/.worktrees/SHIP-21/plans/SHIP-21/plan.md",
           "content": "# Plan\n\nAPPROVAL   plan.md v1 approved by Ana (tech lead), 2026-11-21, in the session.\n"}]),
     ("gate-lane-plan-approval", "no-approval-record-edit.md"): (
         [{"file_path": "/work/.worktrees/SHIP-21/plans/SHIP-21/README.md", "old_string": "to do",
-          "new_string": "waiting: plan approval by Ana (tech lead)"}],
+          "new_string": "waiting: plan approval by Ana (tech lead)"},
+         {"file_path": "/work/.worktrees/SHIP-21/plans/SHIP-21/plan.md", "old_string": "APPROVAL",
+          "new_string": "APPROVAL   not yet approved by Ana: she decides when she is back"}],
         [{"file_path": "/work/.worktrees/SHIP-21/plans/SHIP-21/plan.md", "old_string": "APPROVAL",
           "new_string": "APPROVAL   plan.md v1 approved by Ana (tech lead), 2026-11-21"}]),
     ("gate-coordinator-clash", "no-queue-edit.md"): (
@@ -1390,6 +1410,19 @@ class FinalReviewTest(unittest.TestCase):
                       "slices never form a cycle", step5)
         bundle = read("skills/aidlc-plan/assets/task-bundle.md")
         self.assertIn("slice 1 runs on the part's branch, whatever this line says", bundle)
+
+    def test_the_evals_match_the_skill(self):
+        self.assertFalse((ROOT / "evals/gate-lane-plan-approval/graders/removes-its-worktree.md").exists())
+        self.assertIn("ended before claiming", read("evals/gate-lane-plan-approval/graders/waiting.md"))
+        report = read("evals/gate-coordinator-clash/graders/report.md")
+        self.assertIn("waiting: reviewer passes at", report)
+        self.assertIn("two messages", report)
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            scaffold("gate-coordinator-clash", repo)
+            bundle = git(repo, "show", "feat/SHIP-32-label-prefix:plans/SHIP-32/bundle-1.md").stdout
+            self.assertRegex(bundle, r"(?m)^MODE        delegate$")
+            self.assertRegex(bundle, r"(?m)^TIER        1$")
 
 
 
