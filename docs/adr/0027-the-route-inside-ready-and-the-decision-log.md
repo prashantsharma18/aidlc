@@ -50,7 +50,7 @@ and no reviewer checked it. Its "confirm with" read as an approval.
   checks the log: a Deviation or Assumption with no row is medium; a row with no evidence, owner or commit on the
   branch is low; a row that should have been a stop is high; a progress note with no log, not even `none`, is
   medium. The code owner reads the log with the spec, the plan and the code, inside Merge.
-- This amends ADR 0026's Ready row. No decision is added or removed, and no stop; aidlc still ships no code and
+- This amends ADR 0026's Ready row. No decision is added or removed, and no stop; the AI never approves or merges (ADR 0023), and aidlc still ships no code and
   needs no code-host feature (ADR 0024).
 
 ## Consequences

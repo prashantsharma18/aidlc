@@ -106,6 +106,10 @@ class AdrTest(unittest.TestCase):
                        "a row that should have been a stop is high",
                        "The code owner reads the log with the spec, the plan and the code, inside Merge.",
                        "No decision is added or removed, and no stop",
+                       "the AI never approves or merges (ADR 0023)",
+                       "the tech lead or architect who approves `new-system.md`",
+                       "for a plan with independent slices, first the tech lead who approves it",
+                       "A tier change, up or down, needs a new Ready",
                        "aidlc still ships no code and needs no code-host feature (ADR 0024)"):
             self.assertIn(phrase, body, phrase)
 
