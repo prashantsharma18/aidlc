@@ -31,7 +31,11 @@ The person confirms each pause by telling the AI, which writes the line with the
 - {{test}} — failed against the old code: {{the failing line of the output}} | none
 
 ## Decisions made while working (for the PR)
-- {{decision}} — {{why}} — confirm with {{who}}
+The decision log (ADR 0027): one row per judgement call, written when the call is made, and one per Deviation and
+per Assumption below. A judgement call is a choice the spec, the plan and the bundle left open, settled inside
+MAY CHANGE; anything a stop names is a stop, never a row. `owner` is who owns the area and should see the row, never
+an approval: no row waits. Write `- none` when the slice made no judgement call.
+- {{commit}} · {{decision}} · {{why}} · {{evidence: file:line, a test or a command}} · owner {{who owns the area}}
 
 ## Assumptions
 - {{assumption}} — {{confirmed in code at file:line | flagged for reviewer}}

@@ -343,5 +343,65 @@ class RouteCheckTest(unittest.TestCase):
                       "checks it here, ADR 0027)", trace)
 
 
+class BuildLogTest(unittest.TestCase):
+    """Task 6: the build logs each judgement call when it makes it, and never logs a stop."""
+
+    NOTE = "skills/aidlc-build/assets/progress-note.md"
+
+    def test_the_progress_note_holds_the_row(self):
+        text = read(self.NOTE)
+        log = text.split("## Decisions made while working (for the PR)\n", 1)[1].split("\n## ", 1)[0]
+        self.assertTrue(log.rstrip().endswith(ROW), log)
+        flat_log = " ".join(log.split())
+        for phrase in ("The decision log (ADR 0027): one row per judgement call, written when the call is made, and "
+                       "one per Deviation and per Assumption below.",
+                       "A judgement call is a choice the spec, the plan and the bundle left open, settled inside MAY "
+                       "CHANGE; anything a stop names is a stop, never a row.",
+                       "`owner` is who owns the area and should see the row, never an approval: no row waits.",
+                       "Write `- none` when the slice made no judgement call."):
+            self.assertIn(phrase, flat_log, phrase)
+        self.assertNotIn("confirm with", text)
+        self.assertEqual(re.findall(r"<(?!!--)[^<>\n]+>", outside_code(text)), [])
+        self.assertNotRegex(outside_code(text), r"(?m)^[A-Z][A-Z /-]{2,}\s{2,}\S")
+
+    def test_step_7_writes_the_row_when_the_call_is_made(self):
+        step = skill("aidlc-build").split(" 7. Implement one step at a time.", 1)[1].split(" 8. Run the full test", 1)[0]
+        for phrase in ("the message also gives the step number and any judgement call the step settled.",
+                       "**Log each judgement call** (ADR 0027): a choice the spec, the plan and the bundle left open, "
+                       "which you settle inside MAY CHANGE (a name, one of two ways to write something, a test's "
+                       "shape, how to handle an edge case the criteria already allow).",
+                       "Write its row under \"Decisions made while working (for the PR)\" in the progress note when you "
+                       "make the call, not at the end, and name the step's commit once it is committed:",
+                       "`- <commit> · <decision> · <why> · <evidence: file:line, a test or a command> · owner <who owns "
+                       "the area>`",
+                       "the code owner of the path for a choice in code, the tech lead for a choice of approach, the "
+                       "criterion's owner for an edge case a criterion allows.",
+                       "It is a pointer, never a gate: no row waits, and no one approves a row.",
+                       "Each Deviation and each Assumption the note lists gets a row too.",
+                       "A slice with no judgement call writes `- none`.",
+                       "Anything this skill says stops the work is never a row: an unclear criterion, a new "
+                       "dependency, a file outside MAY CHANGE, a contract change, a changed assertion and every STOP "
+                       "IF still stop.",
+                       "When you believe you need someone's yes before going on, it is not a judgement call: it is a "
+                       "stop, and you ask."):
+            self.assertIn(phrase, step, phrase)
+        self.assertNotIn("who must confirm it", skill("aidlc-build"))
+
+    def test_the_report_red_flag_excuse_and_gate(self):
+        build = skill("aidlc-build")
+        self.assertIn("and what you did not know. Point to the decision log: the rows under \"Decisions made while "
+                      "working (for the PR)\" in the progress note, or `none`.", section(build, "## Steps"))
+        self.assertIn("You are logging a choice a stop names (an unclear criterion, a new dependency, a file outside "
+                      "MAY CHANGE, a contract change, a changed assertion, a STOP IF) instead of stopping, or writing a "
+                      "row that waits for someone's yes.", section(build, "## Red flags"))
+        self.assertIn("| \"The criterion is unclear, but I will pick the sensible reading and log it for the "
+                      "reviewer.\" | An unclear criterion is a stop, not a judgement call. The log holds only choices "
+                      "the documents left open: stop, and ask the criterion's owner. |", section(build, "## Common excuses"))
+        text = gate("aidlc-build")
+        self.assertIn("The code owner reads the decision log at Merge, with the spec, the plan and the code; no row "
+                      "waits, and no one approves a row (ADR 0027). " + DECIDE, text)
+        self.assertIsNone(re.search(r"code owner[^.;]* approves", text))
+
+
 if __name__ == "__main__":
     unittest.main()
