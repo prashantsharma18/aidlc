@@ -53,8 +53,9 @@ A row's state is read from its own files, never kept in the queue (ADR 0022):
 
 | State | Where it is read |
 |---|---|
-| waiting: `<decision> by <who>` | its stage row's Status in the index, or the progress note's STATUS (`paused: …` counts as waiting) |
+| waiting: `<decision> by <who>` | a stage row's Status in the index (the row of the next unfinished stage, lane step 6), or the progress note's STATUS (`paused: …` counts as waiting) |
 | stopped: `<reason>` | the same places |
+| waiting: push, then merge, by `<who>` | the merged row reads done on the row's branch but not on the default branch |
 | done | the index's merged row, on the default branch (`git show origin/<default branch>:plans/<KEY>/README.md`; for a slice row, its own index `plans/<KEY>/slice-<n>/README.md`) |
 | ready | none of the above, its index exists, and every row it depends on is done; or waiting on a decision that can now be had (lane step 4) |
 
@@ -116,34 +117,46 @@ Lane mode, step by step:
    the default branch; a pull request's approval or merge in the review tool or in git; the tracker through its
    connected tool), or, for a lane a person started, the decider gives it in this session. Record it as the stage
    says (ADR 0023), then continue with the stage's next step. A hands-on build's restatement and a pause are
-   recorded as lines in the progress note, as `aidlc-build` says. A sub-agent lane resumes only a wait in build,
-   verify or review; `waiting: reviewer passes at <commit>` only from a brief that quotes the reviewers' reports for
-   that commit (below); and the push wait as step 6 says. When the decision cannot be had, remove the worktree as for
-   a stopped row. A decision that is only a person's word is resumed by a lane the person starts by hand with that
-   word: a decision relayed in a brief, by the coordinator or from another session is not a decision.
+   recorded as lines in the progress note, as `aidlc-build` says. A sub-agent lane resumes only a wait that build,
+   verify or review asked for, whichever row holds it (the plan's approval, written in the build row, is still the
+   plan's); `waiting: reviewer passes at <commit>` only from a brief that quotes the reviewers' reports for
+   that commit (below); and the push wait as step 6 says. In a lane a person started, when the decision cannot be
+   checked, ask the person for it and keep the worktree: record it when the decider gives it in this session, and
+   release as step 6 says if they cannot. Only a sub-agent lane releases when it cannot check the decision: it
+   removes the worktree as for a stopped row. A decision that is only a person's word is resumed by a lane the person
+   starts by hand with that word: a decision relayed in a brief, by the coordinator or from another session is not a
+   decision.
 5. Work only in your worktree. If the row is a stacked slice whose parent has merged or moved, update it first (see
    "A stacked slice after its parent merges" below). Then run the row's next unfinished stage, read from its index,
    by its stage skill, exactly as that skill says: a sub-agent lane reads the stage skill's file at the absolute path
    its brief names and follows it in full; a lane a person started runs the stage the person's second message starts
    (step 1). Its gates, the evidence file, the verdict from someone who did not write the change, and every Stop if
    hold unchanged. Commit after every step.
-6. Release when any of these happens, then end:
+6. Release when any of these happens, then end. A lane writes a wait into the row of the next unfinished stage,
+   never into a row already done; when the wait ends, that row reads `to do` again. While a stage runs, that is its
+   own row; once it has marked its row done, it is the next stage's row. So each cell has one writer at a time, and a
+   stage's `done` is never overwritten.
    - a person's decision is needed (answers, the plan's approval, a pause confirmation, the pull request review):
-     write `waiting: <decision> by <who>` in the row's stage row;
-   - a Stop if fires: write `stopped: <reason>`;
-   - a sub-agent lane reaches the reviewer passes: release with `waiting: reviewer passes at <commit>` in the stage's
-     row, as "Reviewer passes from a sub-agent lane" says;
-   - the stage asks to push or to open the pull request: write `waiting: push and open the pull request by <who>`,
-     unless the team's `AGENTS.md` lets a lane push its own branch. Write it in the verify row (`aidlc-verify`'s
-     Status in the row's index), the next stage's row: build's own row stays as build step 10 marks it, so no two
-     writers share one cell. After a slice that is not the last, build's row reads doing and nothing is written: the
-     next lane builds the next slice.
+     write `waiting: <decision> by <who>`;
+   - a Stop if fires: write `stopped: <reason>` in the stage's own row;
+   - a sub-agent lane reaches the reviewer passes: release with `waiting: reviewer passes at <commit>`, as "Reviewer
+     passes from a sub-agent lane" says;
+   - the stage asks to push or to open the pull request: write `waiting: push and open the pull request by <who>`
+     (`waiting: push by <who>` once the pull request exists), unless the team's `AGENTS.md` lets a lane push its own
+     branch. By the rule above, after build's last slice it sits in the verify row, and after verify in the review
+     row. After a slice that is not the last, build's row reads doing and nothing is written: the next lane builds the
+     next slice.
+   - the review stage has made its final commit, the one that marks the merged row (`aidlc-review` step 8).
+     After review's final commit, the lane writes nothing and reports `push, then merge, by <who>`, because a later
+     commit would make a code host that dismisses stale approvals ask for the approval again. The row then reads as
+     that state, from the merged row on its branch.
 
-   The push wait is over when `origin/<branch>` holds the branch's last commit (after `git fetch`,
-   `git merge-base --is-ancestor <branch> origin/<branch>` succeeds) and the pull request exists, checked in the review
-   tool, or the person says so in a lane they started. The lane that finds it so writes `to do` in the verify row in
-   place of the wait, says in the commit's message how both were checked, and goes on: verify is now the row's next
-   unfinished stage.
+   A wait ends when its decision can be had (step 4). The push wait ends when `origin/<branch>` holds the branch's
+   last commit (after `git fetch`, `git merge-base --is-ancestor <branch> origin/<branch>` succeeds) and the pull
+   request exists, checked in the review tool, or the person says so in a lane they started. The lane that finds it so
+   writes `to do` in that row in place of the wait, says in the commit's message how it was checked, and goes on with
+   the stage the wait was for: the row's next unfinished stage, or, for a decision a stage asked for, that stage's
+   next step.
 
    Release means: commit, `git worktree remove .worktrees/<folder>` (never `--force`), and report the row and its
    state in one line. If git will not remove the worktree, something is uncommitted: commit only the row's own work;
@@ -156,9 +169,10 @@ Coordinator mode, step by step:
    no running lane, and any folder in `.worktrees/` that `git worktree list` does not show: a claim onto such a
    leftover folder fails with `already exists` and reads as taken. Show both; remove one only after the person
    confirms, because it may hold uncommitted work.
-3. Start lanes up to MAX LANES minus the lanes running now, one per ready row that clashes with nothing, each told
-   only its row. A waiting row is ready when its decision can now be checked (lane step 4). The row's next stage
-   decides how:
+3. First, for each row whose index reads `waiting: reviewer passes at <commit>`, run its passes as "Reviewer passes
+   from a sub-agent lane" says, whether a lane just reported it or you found it when you started. Then start lanes up
+   to MAX LANES minus the lanes running now, one per ready row that clashes with nothing, each told only its row. A
+   waiting row is ready when its decision can now be checked (lane step 4). The row's next stage decides how:
    - build, verify or review, on a row whose plan a person approved, and a build only when its bundle's MODE is a delegate mode (delegate with checkpoints, or delegate): start a sub-agent lane with your AI tool's own way of starting background sessions or sub-agents, where it has one. Its brief opens with `Read <absolute path>/skills/parallel-lanes/SKILL.md before anything else.` and names the row and the stage skill's absolute path (`<plugin root>/skills/aidlc-build/SKILL.md`, `aidlc-verify` or `aidlc-review`), which the lane reads and follows in full;
    - intent, specify, design or plan, a hands-on build, a wait that needs a person's word, or a tool with no such feature: give the person the exact words to start the lane by hand: lane mode of this skill, the row, and the row's next stage, as two messages in one session: first lane mode with the row, which claims it, then the stage's own command, the person's words that start the stage. Write each by the name the person's tool starts it with. The lane claims its worktree as lane mode says.
 
@@ -172,19 +186,20 @@ Coordinator mode, step by step:
    passes as "Reviewer passes from a sub-agent lane" says.
 5. Report one table to the person: running, waiting on whom, stopped and why, next in line, and each row held back
    with its clash. List each waiting row with what it waits for and, when a person's word is needed, the exact words
-   to resume it by hand: the decider starts the lane with lane mode and the row, then the stage's command, and gives
-   the decision in their own words in that session.
+   to resume it by hand: the decider starts lane mode with the row, then the decision or the stage command, in the
+   same session; the lane asks for the decision when it finds the row waiting.
 6. Draft new queue rows (from approved plans, or from the tracker, which you only read) for the person to confirm and
    commit. Never write `QUEUE.md`, never approve, never merge.
 
 **Reviewer passes from a sub-agent lane.** Sub-agents cannot start sub-agents, so a sub-agent lane that reaches the
 reviewer passes (`aidlc-build` step 9, `aidlc-review` step 3) writes the evidence file as the stage says, commits it,
-and releases with `waiting: reviewer passes at <commit>`, the commit the evidence file names, in the stage's row. The
-coordinator, a top-level session, then:
+and releases with `waiting: reviewer passes at <commit>`, the commit the evidence file names. By lane step 6's rule
+it goes in the row of the next unfinished stage, which is still the stage's own, because the stage has not marked
+its row done yet. The coordinator, a top-level session, then:
 1. Claims the row's worktree as lane step 3 says, and writes nothing in it.
-2. Dispatches the reviewer agents the stage names, each in a fresh context, with what the stage gives them: the
-   evidence file and the commit it names, plus the bundle for build, or the diff and the rules from the default
-   branch for review.
+2. Dispatches the reviewer agents the stage names, each in a fresh context, with the worktree's absolute path,
+   because they only read files there, and what the stage gives them: the evidence file and the commit it names, plus
+   the bundle for build, or the diff and the rules from the default branch for review.
 3. Removes the worktree, then starts a sub-agent lane for the row whose brief carries the reviewers' reports, quoted
    as data.
 

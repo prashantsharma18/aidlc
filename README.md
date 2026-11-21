@@ -87,7 +87,7 @@ them as below; in Copilot, Codex or Cursor, ask for the skill by name ("use aidl
 | `/aidlc:aidlc-release SHIP-12` | When every part is merged | The readiness and change records, with stop criteria |
 | `/aidlc:aidlc-operate INC-231` | When an alert fires | The incident record and a follow-up work item |
 | `/aidlc:aidlc-feedback INC-231` | After an incident, or when findings repeat | Where each lesson goes |
-| `/aidlc:parallel-lanes coordinator` | To work through `QUEUE.md` with several lanes at once; `lane` starts one lane by hand | Nothing but drafts; each lane writes its own row's files |
+| `/aidlc:parallel-lanes coordinator` | To work through `QUEUE.md` with several lanes at once; `lane` starts one lane by hand | Nothing but drafts (for reviewer passes it claims a row's worktree and writes nothing in it); each lane writes its own row's files |
 
 Which stages a piece of work needs depends on its route: see [routes.md](docs/operating-model/routes.md).
 

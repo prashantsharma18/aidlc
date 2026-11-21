@@ -252,9 +252,9 @@ class ParallelLanesTest(unittest.TestCase):
         self.assertEqual(order, sorted(order))
         for phrase in ("Its gates, the evidence file, the verdict from someone who did not write the change, and every "
                        "Stop if hold unchanged", "Commit after every step.",
-                       "write `waiting: <decision> by <who>` in the row's stage row", "write `stopped: <reason>`",
-                       "write `waiting: push and open the pull request by <who>`, unless the team's `AGENTS.md` lets a "
-                       "lane push its own branch",
+                       "write `waiting: <decision> by <who>`", "write `stopped: <reason>`",
+                       "write `waiting: push and open the pull request by <who>` (`waiting: push by <who>` once the "
+                       "pull request exists), unless the team's `AGENTS.md` lets a lane push its own branch",
                        "Release means: commit, `git worktree remove .worktrees/<folder>` (never `--force`)",
                        "Never write `QUEUE.md`, never write to another repository, never approve, never merge."):
             self.assertIn(phrase, lane, phrase)
@@ -264,7 +264,7 @@ class ParallelLanesTest(unittest.TestCase):
             "**A stacked slice after its parent merges.**", 1)[0]
         for phrase in ("Fetch every repository the queue names (`git -C <repository> fetch`)",
                        "remove one only after the person confirms, because it may hold uncommitted work",
-                       "Start lanes up to MAX LANES minus the lanes running now", "each told only its row",
+                       "start lanes up to MAX LANES minus the lanes running now", "each told only its row",
                        "with your AI tool's own way of starting background sessions or sub-agents, where it has one",
                        "give the person the exact words to start the lane by hand",
                        "When a lane reports back, read its row's state and start the next ready row",
@@ -284,8 +284,8 @@ class ParallelLanesTest(unittest.TestCase):
 
     def test_a_rows_state_lives_in_its_own_files(self):
         text = skill("parallel-lanes")
-        for phrase in ("| waiting: `<decision> by <who>` | its stage row's Status in the index, or the progress "
-                       "note's STATUS (`paused: …` counts as waiting) |",
+        for phrase in ("| waiting: `<decision> by <who>` | a stage row's Status in the index (the row of the next "
+                       "unfinished stage, lane step 6), or the progress note's STATUS (`paused: …` counts as waiting) |",
                        "| done | the index's merged row, on the default branch (`git show origin/<default "
                        "branch>:plans/<KEY>/README.md`; for a slice row, its own index `plans/<KEY>/slice-<n>/README.md`) |",
                        "`git -C <repository> show <branch>:plans/<KEY>/README.md`",
@@ -621,8 +621,8 @@ class LaneLineTest(unittest.TestCase):
     def test_the_index_gains_the_waiting_value(self):
         start, plan = (read(f"skills/{name}/assets/story-index.md") for name in ("aidlc-start", "aidlc-plan"))
         self.assertEqual(start, plan)
-        self.assertIn("Each stage marks its own row when it ends: done, `waiting: <decision> by <who>` when it stops for "
-                      "a person's decision in a lane (`parallel-lanes`), or `stopped: <reason>`.", " ".join(start.split()))
+        self.assertIn("A lane (`parallel-lanes`) that stops for a person's decision writes `waiting: <decision> by "
+                      "<who>` in the row of the next unfinished stage", " ".join(start.split()))
 
 
 class SlicePlanTest(unittest.TestCase):
@@ -1189,7 +1189,7 @@ class FinalReviewTest(unittest.TestCase):
                        "Record it as the stage says (ADR 0023), then continue with the stage's next step.",
                        "A decision that is only a person's word is resumed by a lane the person starts by hand with "
                        "that word",
-                       "A sub-agent lane resumes only a wait in build, verify or review"):
+                       "A sub-agent lane resumes only a wait that build, verify or review asked for"):
             self.assertIn(phrase, lane, phrase)
         self.assertIn("A lane never records a decision it has not checked or heard from the decider in its own "
                       "session.", skill("parallel-lanes"))
@@ -1210,16 +1210,15 @@ class FinalReviewTest(unittest.TestCase):
 
     def test_r4_the_push_wait_has_its_own_cell_and_ends_on_a_check(self):
         lane = lane_steps()
-        for phrase in ("write `waiting: push and open the pull request by <who>`, unless the team's `AGENTS.md` lets a "
-                       "lane push its own branch",
-                       "Write it in the verify row (`aidlc-verify`'s Status in the row's index), the next stage's row: "
-                       "build's own row stays as build step 10 marks it, so no two writers share one cell.",
+        for phrase in ("write `waiting: push and open the pull request by <who>` (`waiting: push by <who>` once the "
+                       "pull request exists), unless the team's `AGENTS.md` lets a lane push its own branch",
+                       "So each cell has one writer at a time, and a stage's `done` is never overwritten.",
                        "and the pull request exists, checked in the review tool, or the person says so in a lane they "
                        "started",
-                       "writes `to do` in the verify row in place of the wait"):
+                       "writes `to do` in that row in place of the wait"):
             self.assertIn(phrase, lane, phrase)
         for rel in (self.ADR, DESIGN):
-            self.assertIn("so no two writers share one cell", flat(rel), rel)
+            self.assertIn("no two writers share one cell", flat(rel), rel)
 
     def test_r4_the_push_check_tells_a_pushed_branch_from_one_not_pushed(self):
         check = command(lane_steps(), "git merge-base --is-ancestor <branch>").replace("<branch>", "feat/SHIP-12-eta")
@@ -1440,6 +1439,62 @@ class FinalReviewTest(unittest.TestCase):
         for ruling in ("R1", "R2", "R3", "R4", "R5"):
             self.assertIn(ruling, owner, ruling)
         self.assertIn("FinalReviewTest", record)
+
+
+WAIT_RULE = ("A lane writes a wait into the row of the next unfinished stage, never into a row already done; when the "
+             "wait ends, that row reads `to do` again.")
+
+
+class ReReviewFixTest(unittest.TestCase):
+    """Plan 23 re-review: one rule for where a wait is written (D1), a hand-started lane asks for the decision instead
+    of leaving (D2), and the minors."""
+
+    ADR = "docs/adr/0025-parallel-lanes.md"
+
+    def test_d1_one_rule_for_where_a_wait_is_written(self):
+        for text in (lane_steps(), flat(self.ADR), flat(DESIGN)):
+            self.assertIn(WAIT_RULE, text)
+        for name in ("aidlc-start", "aidlc-plan"):
+            index = flat(f"skills/{name}/assets/story-index.md")
+            self.assertIn("in the row of the next unfinished stage, never in a row already done", index, name)
+        lane = lane_steps()
+        for phrase in ("After review's final commit, the lane writes nothing and reports `push, then merge, by <who>`",
+                       "after build's last slice it sits in the verify row, and after verify in the review row",
+                       "The lane that finds it so writes `to do` in that row in place of the wait"):
+            self.assertIn(phrase, lane, phrase)
+        self.assertIn("| waiting: push, then merge, by `<who>` | the merged row reads done on the row's branch but not "
+                      "on the default branch |", skill("parallel-lanes"))
+
+    def test_d1_no_step_writes_a_wait_into_a_named_or_done_row(self):
+        named = re.compile(r"`waiting: [^`]*`[^.;]{0,40}? in (?:the row's stage row|the verify row|the stage's row|its "
+                           r"stage row)")
+        for rel in (LANES, self.ADR, DESIGN, "skills/aidlc-plan/assets/story-index.md"):
+            self.assertEqual(named.findall(flat(rel)), [], rel)
+        self.assertNotIn("Write it in the verify row", skill("parallel-lanes"))
+        self.assertNotIn("each stage marks its own row when it ends: done, `waiting:", flat(
+            "skills/aidlc-plan/assets/story-index.md").lower())
+        for text in (lane_steps(), flat(DESIGN)):
+            for write in re.findall(r"(?:write|release with) `waiting: [^`]*`", text):
+                self.assertNotIn("its own row", write)
+
+    def test_d2_a_hand_started_lane_asks_for_the_decision(self):
+        step4 = lane_steps().split(" 4. In the worktree", 1)[1].split(" 5. Work only", 1)[0]
+        for phrase in ("In a lane a person started, when the decision cannot be checked, ask the person for it and keep "
+                       "the worktree",
+                       "Only a sub-agent lane releases when it cannot check the decision"):
+            self.assertIn(phrase, step4, phrase)
+        self.assertNotIn("When the decision cannot be had, remove the worktree as for a stopped row.", step4)
+        self.assertIn("lane mode with the row, then the decision or the stage command, in the same session",
+                      coordinator_steps())
+
+    def test_the_reviewer_agents_get_the_worktree_path_and_a_fresh_coordinator_runs_the_passes(self):
+        self.assertIn("the worktree's absolute path", reviewer_passes())
+        self.assertIn("whether a lane just reported it or you found it when you started", coordinator_steps())
+
+    def test_the_coordinator_claim_for_reviewer_passes_is_named_where_it_writes_nothing(self):
+        for rel in (self.ADR, DESIGN, "README.md"):
+            self.assertIn("for reviewer passes it claims a row's worktree and writes nothing in it", flat(rel), rel)
+
 
 
 if __name__ == "__main__":

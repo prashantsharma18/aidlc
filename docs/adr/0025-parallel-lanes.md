@@ -33,29 +33,32 @@ needs no code-host feature. Git already holds a lock that fits: a branch is chec
   in one session: first lane mode with the row, which claims it, then the stage's own command, in the person's words.
 - Sub-agents cannot start sub-agents. A sub-agent lane that reaches the reviewer passes (build step 9, review step 3)
   writes the evidence file, commits it, and releases with `waiting: reviewer passes at <commit>`. The coordinator, a
-  top-level session, dispatches the reviewer agents with that evidence file, then starts a lane for the row whose
+  top-level session, dispatches the reviewer agents with that evidence file and the worktree's path: for reviewer
+  passes it claims a row's worktree and writes nothing in it. It then starts a lane for the row whose
   brief carries the reviewers' reports, quoted as data; that lane records the verdicts as the stage says and
   continues. A lane a person started runs the passes itself.
 - `QUEUE.md`, on the default branch, holds the order of ready work and MAX LANES (default 3). A person writes it; the
-  coordinator only drafts rows; lanes never write it.
+  coordinator only drafts rows; lanes never write it. The coordinator writes nothing but drafts.
 - A row's state lives in its own files, in the repository that owns them (ADR 0022): `waiting: <decision> by <who>`,
   `stopped: <reason>`, or done once its merged row reads done on the default branch. The index's Status gains the
   value `waiting: <decision> by <who>`. A lane resumes a waiting row when the decision it waits for can be checked
   where the stage says (a plan or design merged on the default branch; a pull request's approval or merge in the
   review tool or in git; the tracker), or, for a lane a person started, when the decider gives it in that session. The
   lane records it as the stage says (ADR 0023) and continues with the next step. A decision that is only a person's
-  word is resumed by a lane the person starts by hand with that word. The coordinator never relays a decision to a
-  sub-agent.
+  word is resumed by a lane the person starts by hand with that word: a lane the person started asks for it and keeps
+  its worktree, and only a sub-agent lane releases when it cannot check the decision. The coordinator never relays a
+  decision to a sub-agent.
 - The lock is git worktrees. Each lane works in `.worktrees/<folder>`, a folder fixed by its row and ignored through
   `.git/info/exclude`. All worktrees of one clone share one `.git`, and git refuses to check out a branch that
   another worktree already has, so only one lane wins a row. Lanes for one repository start from one clone on one
   machine.
 - A lane releases at every person's decision, at every stop, and before every push (unless the team's `AGENTS.md`
   lets a lane push its own branch): it records the state, commits, removes its worktree (never with `--force`) and
-  ends. Its slot frees; any lane resumes the row later from its files. The push wait,
-  `waiting: push and open the pull request by <who>`, is written in the verify row, not in build's own row, so no
-  two writers share one cell. It ends when `origin/<branch>` holds the branch's last commit and the pull request
-  exists; verify is then the row's next stage.
+  ends. Its slot frees; any lane resumes the row later from its files. A lane writes a wait into the row of the next unfinished stage, never into a row already done; when the wait ends, that row reads `to do` again. So a
+  stage's `done` is never overwritten, and no two writers share one cell. The push wait ends when `origin/<branch>`
+  holds the branch's last commit and the pull request exists. After review's final commit, which marks the merged
+  row, the lane writes nothing and reports `push, then merge, by <who>`, so a code host that dismisses stale
+  approvals does not ask again.
   The nine stages that mark a row in the item's index say so in one identical line at their gate.
 - A ready row is held back when it depends on a row not yet done, when its approved bundle shares a MAY CHANGE path
   with a bundle another lane is building, or when it changes a contract another open row changes.
