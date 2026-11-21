@@ -10,7 +10,7 @@ Date: 2026-11-21 · Owner: framework owner (Prashant Sharma) · Status: approved
   is no longer made, and a misunderstanding is caught only at the merge. The four decisions below are where a person
   still decides; everything else the AI states and a person may correct.
 - What changed: one decisions-by-tier table in the tiers file decides where a person stops. A decision is asked once.
-  At Tier 1 a person decides only Ready and Merge. Teams list their own standard changes in `AGENTS.md`; aidlc-start
+  At Tier 1 a person decides only Ready and Merge, and Release only when users see the change. Teams list their own standard changes in `AGENTS.md`; aidlc-start
   routes them as route S.
 
 ## Why
@@ -42,7 +42,7 @@ And one gap: on F0 and D1, no person agrees the Tier 1 rating; only the AI rates
 | Question | Decision |
 |---|---|
 | The aim | No decision asked twice, and fewer decisions at low risk (C1 and C3); not C6 |
-| Tier 1 | Two blocking decisions: Ready and Merge |
+| Tier 1 | Two blocking decisions: Ready and Merge, and Release only when users see the change |
 | Standard changes | Each team lists them in its `AGENTS.md`, approved once by the tech lead |
 | Tier 2 and 3 | Tier 2: Ready, Design + plan, Merge, and Release only when users see the change. Tier 3: the same four plus the specialists and the hands-on restatement per slice. Each pull request approval is the record |
 | How it is built | Approach A: one decisions-by-tier table in the tiers file every stage reads |

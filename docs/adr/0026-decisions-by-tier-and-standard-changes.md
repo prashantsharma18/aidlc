@@ -20,7 +20,7 @@ records; and the intent's acceptance next to the spec's approval. On F0 and D1, 
   still runs and still writes its document; it states what it did, in the document and in the session, and goes on.
   A person who disagrees says so, and the stage revises. Each stage whose Gate holds such a decision says so in one
   identical line.
-- Tier 1: two blocking decisions, Ready and Merge. Tier 2: Ready, Design + plan, Merge, and Release only when users
+- Tier 1: two blocking decisions, Ready and Merge, and Release only when users see the change. Tier 2: Ready, Design + plan, Merge, and Release only when users
   see the change. Tier 3: the same four, Release always, plus the specialists and the hands-on restatement per slice.
   A change behind a flag that is still off needs no release decision until the flag goes on; turning a flag on is
   the release.

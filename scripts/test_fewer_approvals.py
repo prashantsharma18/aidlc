@@ -131,23 +131,39 @@ class TiersTest(unittest.TestCase):
 
     def test_the_table_says_who_stops_at_each_tier(self):
         self.assertIn("| Decision | Who | Tier 1 | Tier 2 | Tier 3 | Recorded |", read(TIERS_COPIES[0]))
-        rows = decision_rows(TIERS_COPIES[0])
-        self.assertEqual(list(rows), ["**Ready**: the work, its acceptance criteria and its tier", "**Design + plan**",
-                                      "**Merge**", "**Release**", "**Restatement** of a hands-on build"])
-        ready, plan, merge, release, restate = rows.values()
-        self.assertIn("on F0, D1 and route S, the engineer who confirms the brief", ready[0])
-        self.assertEqual(ready[1:4], ["yes", "yes", "yes, with a specialist's spec review"])
-        self.assertIn("Tier 2 and 3: the approval of the spec's pull request, which merges first (ADR 0020)", ready[4])
-        self.assertEqual(plan[1:5], ["no", "yes: one pull request approval that merges design and plan first",
-                                     "yes, with the specialists", "the pull request approval"])
-        self.assertEqual(merge[0], "a code owner who did not write the change, after a non-author PASS")
-        self.assertEqual(merge[1], "yes; the code owner sees spec, plan and code together")
-        self.assertIn("the security specialist when the change touches secrets, permissions, tool calls, dependencies "
-                      "or prompts", merge[3])
-        self.assertEqual(release[1:3], ["only when users see the change", "only when users see the change"])
-        self.assertEqual(release[3], "always; a named approver and a rehearsed rollback")
-        self.assertEqual(release[4], "change management, cited in the readiness record")
-        self.assertEqual(restate[1:4], ["no: stated", "no: stated", "yes, per slice"])
+        self.assertEqual(decision_rows(TIERS_COPIES[0]), {
+            "**Ready**: the work, its acceptance criteria and its tier": [
+                "product owner; the tier with whoever owns the risk (on F0, D1 and route S, the engineer who confirms "
+                "the brief)", "yes", "yes", "yes, with a specialist's spec review",
+                "Tier 1: the decider's word in the session or their own tracker entry, checked (ADR 0023). Tier 2 and "
+                "3: the approval of the spec's pull request, which merges first (ADR 0020)"],
+            "**Design + plan**": [
+                "tech lead or architect", "no", "yes: one pull request approval that merges design and plan first",
+                "yes, with the specialists", "the pull request approval"],
+            "**Merge**": [
+                "a code owner who did not write the change, after a non-author PASS",
+                "yes; the code owner sees spec, plan and code together", "yes; every affected area",
+                "yes; the security specialist when the change touches secrets, permissions, tool calls, dependencies "
+                "or prompts", "the pull request"],
+            "**Release**": [
+                "release approver", "only when users see the change", "only when users see the change",
+                "always; a named approver and a rehearsed rollback",
+                "change management, cited in the readiness record"],
+            "**Restatement** of a hands-on build": [
+                "the engineer", "no: stated", "no: stated", "yes, per slice",
+                "the progress note's `restatement confirmed by` line"]})
+
+    def test_tier_1_releases_only_when_users_see_the_change_everywhere(self):
+        for rel in TIERS_COPIES + (TIERS_DOCS,):
+            text = flat(rel)
+            self.assertIn("its release has a release approver. That approver decides only when users see the change.",
+                          text, rel)
+            self.assertIn("no plan approval (except a plan with independent slices, ADR 0025)", text, rel)
+            self.assertIn("The flag rule applies at Tier 1 and 2; at Tier 3 both the deploy and turning the flag on "
+                          "are decided.", text, rel)
+        for rel in ("docs/operating-model/tiers.md", "docs/adr/0026-decisions-by-tier-and-standard-changes.md",
+                    "docs/design/2026-11-21-fewer-approvals.md"):
+            self.assertIn("Ready and Merge, and Release only when users see the change", flat(rel), rel)
 
     def test_the_rules_under_the_table(self):
         text = flat(TIERS_COPIES[0]).split("## Decisions by tier", 1)[1]

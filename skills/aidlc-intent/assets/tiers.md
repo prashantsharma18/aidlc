@@ -1,6 +1,6 @@
 # Risk tiers
 
-Rate each dial. The tier is the highest any dial reaches. When uncertain, go up a tier: unknown owners, unknown consumers or untested behaviour count as the next tier until someone resolves them. Scope alone never makes Tier 3; it raises coordination. A higher tier adds enforcement, checkpoints and approvers, never extra stages. A story that changes two or more repositories is at least Tier 2 (ADR 0021): its parts never merge on their own, and its release has a release approver.
+Rate each dial. The tier is the highest any dial reaches. When uncertain, go up a tier: unknown owners, unknown consumers or untested behaviour count as the next tier until someone resolves them. Scope alone never makes Tier 3; it raises coordination. A higher tier adds enforcement, checkpoints and approvers, never extra stages. A story that changes two or more repositories is at least Tier 2 (ADR 0021): its parts never merge on their own, and its release has a release approver. That approver decides only when users see the change.
 
 | | Tier 1 · routine | Tier 2 · crosses a boundary or moderate risk | Tier 3 · high risk |
 |---|---|---|---|
@@ -9,7 +9,7 @@ Rate each dial. The tier is the highest any dial reaches. When uncertain, go up 
 | Design | Usually stops at step 1 with 'none needed', which the AI states in the plan; the code owner sees it at Merge | Every step, compactly | Specialist approval; threat model; NFRs tested before release |
 | Plan | A brief for the fast path (`fix.md` for a defect, `brief.md` for a feature) or for a standard change (`standard.md`, route S); otherwise a short plan with one bundle per slice, which the AI states and the code owner reads at Merge | Written spec and plan; the tech lead approves design and plan in one pull request | Written plan with rollback; the approach is approved with the design, before slicing, in the same pull request as the plan |
 | Verification | required CI checks | required CI checks, contract tests, integration environment | required CI checks, contract tests, integration environment, security or privacy tests, characterisation tests for legacy code |
-| Approvals | Ready, then one code owner at Merge, who sees spec, plan and code together; no plan approval (the engineer confirms a fast-path or standard brief, with its tier) | Ready; design and plan, approved by the tech lead in one pull request; code owners of every affected area at Merge | Ready, with a specialist's spec review; design and plan, approved by the tech lead in one pull request, with the specialists; code owners of every affected area at Merge; recorded specialist review (security, privacy, architecture or release) |
+| Approvals | Ready, then one code owner at Merge, who sees spec, plan and code together; no plan approval (except a plan with independent slices, ADR 0025) (the engineer confirms a fast-path or standard brief, with its tier) | Ready; design and plan, approved by the tech lead in one pull request; code owners of every affected area at Merge | Ready, with a specialist's spec review; design and plan, approved by the tech lead in one pull request, with the specialists; code owners of every affected area at Merge; recorded specialist review (security, privacy, architecture or release) |
 | Agent autonomy (the bundle's MODE) | Any mode: hands-on, delegate with checkpoints, or delegate (a whole slice runs to DONE WHEN or the first STOP IF) | Hands-on, or delegate with checkpoints: a CHECKPOINT before each step that touches a contract or another owner's code | Hands-on only: judgement calls stay with a person; read-only first where code is poorly understood; no production access |
 | Release | Normal pipeline; revert to roll back | Normal pipeline; flag where behaviour is user-visible | Staged release behind a feature flag; written stop criteria; rehearsed rollback; named release approver |
 | Evidence pack items | none (notes in the PR) | 1, 2, 3, 4, 5 | 1, 2, 3, 4, 5, 6, 7, 8 |
@@ -29,7 +29,8 @@ disagrees says so, and the stage revises.
 | **Restatement** of a hands-on build | the engineer | no: stated | no: stated | yes, per slice | the progress note's `restatement confirmed by` line |
 
 "When users see the change": a change behind a flag that is still off needs no release decision until the flag goes
-on; turning a flag on is the release.
+on; turning a flag on is the release. The flag rule applies at Tier 1 and 2; at Tier 3 both the deploy and turning the
+flag on are decided.
 
 Where a pull request approval is the record, the AI writes the tracker entry from it, with how it was confirmed, and
 asks before posting (ADR 0023). When the AI cannot read the review tool, the decider confirms in the session.
