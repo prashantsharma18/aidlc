@@ -666,5 +666,99 @@ class SlicePlanTest(unittest.TestCase):
         self.assertIn("The tech lead approves the bundles' `DEPENDS ON` lines with the plan", section(plan, "## Gate"))
 
 
+class SiblingSlicesTest(unittest.TestCase):
+    """Task 6: a slice on its own branch edits only its own files; a stacked slice is moved with `git rebase --onto`,
+    never merged."""
+
+    def test_a_slice_on_its_own_branch_edits_only_its_own_files(self):
+        build = section(skill("aidlc-build"), "## Inputs")
+        self.assertIn("it keeps its index, its evidence file and its pull request's documents in "
+                      "`plans/<KEY>/slice-<n>/`, and its progress note stays `plans/<KEY>/progress-<n>.md`", build)
+        self.assertIn("It edits only its own row, its own progress note and its own evidence file, so sibling pull "
+                      "requests never edit the same file.", build)
+        self.assertIn("are in `plans/<KEY>/slice-<n>/` (ADR 0025): read and write them there, so sibling pull requests "
+                      "never edit the same file.", section(skill("aidlc-review"), "## Inputs"))
+        self.assertIn("read the evidence file and write the evidence table in `plans/<KEY>/slice-<n>/` (ADR 0025)",
+                      section(skill("aidlc-verify"), "## Inputs"))
+        self.assertIn("Check that the pull request is one part: one repository's share of the story, within the "
+                      "pull-request size `reviewing-code` gives; or one slice that the plan gave its own branch "
+                      "(`<branch>-s<n>`, ADR 0025)", skill("aidlc-review"))
+        self.assertIn("(or `<branch>-s<n>` for a slice on its own branch)", section(skill("aidlc-build"), "## Produces"))
+
+    def test_a_stacked_slice_is_moved_never_merged(self):
+        step1 = section(skill("aidlc-build"), "## Steps").split(" 2. Read the bundle's TIER", 1)[0]
+        self.assertIn("is moved first, as `parallel-lanes` says under \"A stacked slice after its parent merges\"", step1)
+        self.assertIn("(read its `SKILL.md`, in the folder beside this skill's)", step1)
+        self.assertIn("its own commits only, with `git rebase --onto`, never by merging the default branch into it",
+                      step1)
+        self.assertIn("Then run the repository's test and lint commands, named in `AGENTS.md`, before any change.", step1)
+        self.assertIn("**A stacked slice after its parent merges.**", read(LANES))
+
+    def test_rows_in_one_table_conflict_and_own_indexes_do_not(self):
+        def second_merge_conflicts(path_for: dict) -> bool:
+            with tempfile.TemporaryDirectory() as folder:
+                repo = Path(folder)
+                git(repo, "init", "-q", "-b", "main")
+                for n, rel in path_for.items():
+                    (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+                    with open(repo / rel, "a", encoding="utf-8") as index:
+                        index.write(f"| merged slice {n} | repository | to do |\n")
+                git(repo, "add", "-A")
+                git(repo, "commit", "-q", "-m", "plan")
+                for n, rel in path_for.items():
+                    git(repo, "checkout", "-q", "-b", f"s{n}", "main")
+                    text = (repo / rel).read_text(encoding="utf-8")
+                    (repo / rel).write_text(text.replace(f"slice {n} | repository | to do", f"slice {n} | repository | done"),
+                                            encoding="utf-8")
+                    git(repo, "commit", "-q", "-am", f"slice {n} merged row")
+                git(repo, "checkout", "-q", "main")
+                git(repo, "merge", "-q", "--squash", "s2")
+                git(repo, "commit", "-q", "-m", "slice 2")
+                return git(repo, "merge", "-q", "--squash", "s3", check=False).returncode != 0
+
+        self.assertTrue(second_merge_conflicts({2: "plans/SHIP-40/README.md", 3: "plans/SHIP-40/README.md"}))
+        self.assertFalse(second_merge_conflicts({2: "plans/SHIP-40/slice-2/README.md",
+                                                 3: "plans/SHIP-40/slice-3/README.md"}))
+
+    def test_the_onto_rebase_replays_only_the_slices_own_commits(self):
+        stacked = skill("parallel-lanes").split("**A stacked slice after its parent merges.**", 1)[1]
+        onto, base = command(stacked, "git rebase --onto origin/"), command(stacked, "git merge-base ")
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            eta = repo / "eta.py"
+            git(repo, "init", "-q", "-b", "main")
+            eta.write_text("LIMIT = 1\n", encoding="utf-8")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "base")
+            git(repo, "checkout", "-q", "-b", "s2")
+            for limit in (2, 3):
+                eta.write_text(f"LIMIT = {limit}\n", encoding="utf-8")
+                git(repo, "commit", "-q", "-am", f"slice 2, limit {limit}")
+            git(repo, "checkout", "-q", "-b", "s3")
+            (repo / "labels.py").write_text("from eta import LIMIT\n", encoding="utf-8")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "slice 3")
+            git(repo, "checkout", "-q", "main")
+            git(repo, "merge", "-q", "--squash", "s2")
+            git(repo, "commit", "-q", "-m", "slice 2 (squashed)")
+            (repo / "delivery.md").write_text("other work\n", encoding="utf-8")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "other work")
+            git(repo, "remote", "add", "origin", str(repo))
+            git(repo, "fetch", "-q", "origin")
+            git(repo, "checkout", "-q", "s3")
+            judged = git(repo, "rev-parse", "HEAD").stdout.strip()
+            self.assertNotEqual(git(repo, "rebase", "origin/main", check=False).returncode, 0)
+            git(repo, "rebase", "--abort")
+            old = sh(base.replace("<slice 3's branch>", "s3").replace("<slice 2's branch>", "s2"), repo).stdout.strip()
+            moved = sh(onto.replace("<default branch>", "main").replace("<slice 2's last commit>", old)
+                       .replace("<slice 3's branch>", "s3"), repo)
+            self.assertEqual(moved.returncode, 0, moved.stderr)
+            self.assertEqual(git(repo, "log", "--format=%s", "origin/main..s3").stdout.split("\n")[:-1], ["slice 3"])
+            self.assertEqual(eta.read_text(encoding="utf-8"), "LIMIT = 3\n")
+            void = git(repo, "diff", "--name-only", judged, "HEAD").stdout.split()
+            self.assertEqual(void, ["delivery.md"])
+
+
 if __name__ == "__main__":
     unittest.main()
