@@ -157,5 +157,64 @@ class ScaffoldIsolationTest(unittest.TestCase):
             self.assertEqual(worktree, "")
 
 
+class ContainerTest(unittest.TestCase):
+    """The local eval container (maintainer tooling): the same Claude Code as CI, a non-root user, and a run command
+    that takes credentials by name and never mounts a credential file or runs privileged."""
+    CONTAINER = EVALS / "container"
+    CREDENTIAL_PATHS = (".claude", ".docker", ".config", ".aws", ".ssh", ".netrc", ".git-credentials", ".npmrc",
+                        ".anthropic", "credentials")
+
+    def dockerfile(self) -> str:
+        return (self.CONTAINER / "Dockerfile").read_text(encoding="utf-8")
+
+    def run_commands(self) -> list[str]:
+        """Every `docker run` command in the README's code blocks, with its continuation lines joined."""
+        text = (self.CONTAINER / "README.md").read_text(encoding="utf-8")
+        blocks = re.findall(r"(?ms)^```[a-z]*\n(.*?)^```", text)
+        commands = []
+        for block in blocks:
+            for command in re.sub(r"\\\n\s*", " ", block).splitlines():
+                if re.match(r"\s*docker run\b", command):
+                    commands.append(command)
+        return commands
+
+    def test_claude_code_matches_the_evals_workflow(self):
+        workflow = (ROOT / ".github" / "workflows" / "evals.yml").read_text(encoding="utf-8")
+        pinned = re.findall(r"@anthropic-ai/claude-code@(\S+)", workflow)
+        image = re.findall(r"@anthropic-ai/claude-code@(\S+)", self.dockerfile())
+        self.assertEqual(len(pinned), 1, pinned)
+        self.assertEqual(image, pinned)
+
+    def test_the_base_image_is_pinned(self):
+        base = re.search(r"(?m)^FROM\s+(\S+)", self.dockerfile()).group(1)
+        self.assertRegex(base, r":[0-9][^@]*@sha256:[0-9a-f]{64}$")
+
+    def test_the_image_runs_as_a_non_root_user(self):
+        users = re.findall(r"(?m)^USER\s+(\S+)", self.dockerfile())
+        self.assertTrue(users, "no USER line")
+        self.assertNotIn(users[-1].split(":")[0], {"root", "0"})
+
+    def test_the_run_command_takes_credentials_by_name_and_mounts_none(self):
+        commands = self.run_commands()
+        self.assertTrue(commands, "the README gives no docker run command")
+        for command in commands:
+            self.assertNotIn("--env-file", command)
+            for name, value in re.findall(r"(?:-e|--env)[ =]([A-Za-z_][A-Za-z0-9_]*)(=\S*)?", command):
+                self.assertEqual(value, "", f"{name} is given a value in: {command}")
+            mounts = re.findall(r"(?:-v|--volume)[ =](\S+)|--mount[ =](\S+)", command)
+            self.assertTrue(any(":/work" in v for v, _ in mounts), f"the repository is not mounted at /work: {command}")
+            for volume, mount in mounts:
+                for path in self.CREDENTIAL_PATHS:
+                    self.assertNotIn(path, volume + mount, command)
+
+    def test_nothing_runs_privileged(self):
+        readme = (self.CONTAINER / "README.md").read_text(encoding="utf-8")
+        for command in self.run_commands():
+            self.assertNotIn("--privileged", command)
+            self.assertNotIn("SYS_ADMIN", command)
+        self.assertNotIn("--privileged", self.dockerfile())
+        self.assertIn("seccomp=unconfined", readme)
+
+
 if __name__ == "__main__":
     unittest.main()
