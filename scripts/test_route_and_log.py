@@ -508,5 +508,68 @@ class ReviewLogTest(unittest.TestCase):
             self.assertIn("COMMITS    <short hash> <subject>", read(rel))
 
 
+class DocsTest(unittest.TestCase):
+    """Task 8: the documents a team reads say what the skills say; the change list and the version follow."""
+
+    def test_the_sheet_shows_the_route_and_the_log(self):
+        sheet = flat("docs/operating-model/adoption.md").split("## Who approves what", 1)[1]
+        self.assertIn("| **Ready**: the story, its acceptance criteria, its tier and its route | Product owner, with the "
+                      "spec owner; the tier with whoever owns the risk (on F0, D1 and S, the engineer who confirms the "
+                      "brief); the route is shown, and the tech lead owns it |", sheet)
+        self.assertIn("| **Merge** | A code owner who did not write or push the change, after a non-author PASS, who "
+                      "reads the decision log with spec, plan and code |", sheet)
+        self.assertIn("| The route | Tech lead owns it; Ready shows it, and a technical person checks its facts at the "
+                      "first technical decision: the engineer who confirms a brief (F0, D1, S), the code owner at Merge "
+                      "(F1, D2 and C at Tier 1; for a plan with independent slices, first the tech lead who approves "
+                      "it), the tech lead or architect at Design + plan (Tier 2 and 3) |", sheet)
+        self.assertIn("| A judgement call made while building | No one approves a row: the code owner reads the "
+                      "decision log inside Merge, and may bring in the row's owner as a reviewer |", sheet)
+        self.assertNotIn("Tech lead agrees what `aidlc-start` proposes", sheet)
+
+    def test_roles_lifecycle_and_routes(self):
+        roles = read("docs/operating-model/roles.md")
+        self.assertIn("| The route | Tech lead (Ready shows it; a technical person checks it at the first technical "
+                      "decision) | `aidlc-start`; after Ready, a change that touches the tier, the scope, the criteria "
+                      "or the controls is decided again (ADR 0027) |", roles)
+        self.assertIn("The code owner reads the AI's decision log with the spec, the plan and the code, inside Merge; "
+                      "no one approves a row (ADR 0027).", flat("docs/operating-model/roles.md"))
+        lifecycle = read("docs/operating-model/lifecycle.md")
+        self.assertIn("| Criteria testable; Ready recorded (at Tier 2 and 3, the spec's pull request approval), with "
+                      "the route shown |", lifecycle)
+        self.assertIn("| Local check green; diff inside MAY CHANGE; each judgement call logged |", lifecycle)
+        self.assertIn("Ready shows the route, which the tech lead owns, and the code owner reads the AI's decision log "
+                      "at Merge (ADR 0027).", flat("docs/operating-model/lifecycle.md"))
+        routes = flat("docs/operating-model/routes.md").split("## Re-routing", 1)[1].split(" ## ", 1)[0]
+        self.assertIn("After Ready, what the change touches decides what it needs before the work goes on (ADR 0027):",
+                      routes)
+        for row in ("| The tier changes, up or down | A new Ready |",
+                    "| The route would lose controls (for example F1 to F0, a normal route to S) | Not allowed after "
+                    "Ready: a lighter route is chosen only at the start |",
+                    "| None of the above (for example, the kind of work was mislabelled) | No new decision: the AI "
+                    "states the change |"):
+            self.assertIn(row, routes, row)
+
+    def test_the_map_names_the_routes_owner_and_the_log(self):
+        lifecycle = section(skill("using-aidlc"), "## The lifecycle")
+        for cell in ("| The product owner owns the story; the tech lead owns the route, which Ready shows and a "
+                     "technical person checks at the first technical decision (ADR 0027); on route S, the engineer "
+                     "confirms the standard brief and its tier (Ready) |",
+                     "| Spec owner: Ready, with the tier; the route is shown, and the tech lead owns it |",
+                     "the engineer decides each finding; the code owner reads the decision log |"):
+            self.assertIn(cell, lifecycle, cell)
+        self.assertNotIn("the tech lead agrees the route", skill("using-aidlc"))
+        self.assertIn("records that as a deviation in the progress note, with a row in its decision log (ADR 0027).",
+                      skill("using-aidlc"))
+
+    def test_the_change_list_and_the_version(self):
+        changes = read("docs/design/2026-11-19-aidlc-6-change-list.md")
+        table = changes.split("## 9. After Plan 25 (2026-11-21)", 1)[1]
+        self.assertRegex(table, r"(?m)^\| C6 \| Covered, as instructions \|")
+        self.assertRegex(table, r"(?m)^\| B4 \| Covered, as instructions \|")
+        self.assertIn("`docs/plans/2026-11-21-plan-25-route-in-ready-and-decision-log.md`", table)
+        self.assertIn("aidlc 7.1.0", table)
+        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "7.1.0")
+
+
 if __name__ == "__main__":
     unittest.main()

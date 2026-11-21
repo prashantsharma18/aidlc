@@ -260,3 +260,14 @@ a decision, and route S for the standard changes a team lists in its `AGENTS.md`
 | C3 | Covered, as instructions | Route S: the Standard changes section of `AGENTS.md`, three suggested classes from `aidlc-onboard`, the standard brief from `aidlc-start`; the recipe-review pause lifted for a listed recipe class |
 | C6 | Open | Intent, route and Ready as one first approval: a later plan |
 ```
+
+## 9. After Plan 25 (2026-11-21)
+
+Plan 25 (`docs/plans/2026-11-21-plan-25-route-in-ready-and-decision-log.md`, ADR 0027 proposed) builds the rest of
+C6 and item B4 as instructions, in aidlc 7.1.0. It updates these items of sections 6 and 8; the rest stand as
+sections 6 to 8 say.
+
+| Item | State after Plan 25 | How |
+|---|---|---|
+| C6 | Covered, as instructions | Ready is the work, its acceptance criteria, its tier and its route. The ROUTE line carries its facts; the tech lead owns the route, and a technical person checks it at the first technical decision; a route change after Ready that touches the tier, the scope, the criteria or the controls is decided again |
+| B4 | Covered, as instructions | The progress note's decision log: one row per judgement call, with its commit, evidence and owner, written when the call is made; `aidlc-review` copies the rows into the pull request description by owner; the compliance reviewer checks them; the code owner reads them at Merge |

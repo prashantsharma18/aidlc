@@ -688,8 +688,9 @@ class DocsTest(unittest.TestCase):
         self.assertIn("A person decides only where the tiers file's decisions table says", sheet)
         self.assertIn("At Tier 1 that is Ready and Merge, and Release only when users see the change.", sheet)
         self.assertIn("| Decision | Who | When | Where it is recorded |", sheet)
-        for row in ("| **Ready**: the story, its acceptance criteria and its tier |", "| **Design + plan**, with each "
-                    "bundle's MODE |", "| **Merge** |", "| **Release** |", "| The hands-on restatement |",
+        for row in ("| **Ready**: the story, its acceptance criteria, its tier and its route |",
+                    "| **Design + plan**, with each bundle's MODE |", "| **Merge** |", "| **Release** |",
+                    "| The hands-on restatement |",
                     "| A standard change list |", "| The push |"):
             self.assertIn(row, sheet, row)
         self.assertIn("| Tier 2 and 3: one pull request that merges both first; at Tier 1 the AI states them, except a "

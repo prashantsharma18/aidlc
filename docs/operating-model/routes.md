@@ -290,6 +290,17 @@ stateDiagram-v2
 `<new route>   (re-routed from <old route>, <date>: <reason>)`. The old brief stays as history. When the new route
 spans several repositories, the story moves to `stories/<KEY>/` at the workspace root.
 
+After Ready, what the change touches decides what it needs before the work goes on (ADR 0027):
+
+| The change | What it needs |
+|---|---|
+| The tier changes, up or down | A new Ready |
+| The criteria change | The criterion's owner decides the amendment (`aidlc-specify`, amendment mode) |
+| The scope grows: a repository, a part or a contract (for example F1 to F2) | A new Ready, then the new route's decisions |
+| The route gains controls (for example F0 to F1, D1 to D2, S to its normal route) | The new route's Ready, by its decider |
+| The route would lose controls (for example F1 to F0, a normal route to S) | Not allowed after Ready: a lighter route is chosen only at the start |
+| None of the above (for example, the kind of work was mislabelled) | No new decision: the AI states the change |
+
 ## Where the documents live
 
 | Route | Story documents | Part documents | The index |

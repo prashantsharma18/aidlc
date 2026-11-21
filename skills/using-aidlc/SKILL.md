@@ -23,15 +23,15 @@ A "pull request" is the code host's review request: a pull request on GitHub, Bi
 | # | Stage | Produces | Runs | Approved by | Next |
 |---|---|---|---|---|---|
 | 0 | `aidlc-onboard` | `AGENTS.md`, the codebase map, the Quality bar, the starter files | Once per repository or workspace | The person, through a reviewed pull request | `aidlc-start` |
-| 1 | `aidlc-start` | The story's index: the kind of work, the repositories, the next stage; on route S, the standard brief | Workspace root or repository | The product owner owns the story; the tech lead agrees the route; on route S, the engineer confirms the standard brief and its tier (Ready) | `aidlc-intent` |
+| 1 | `aidlc-start` | The story's index: the kind of work, the repositories, the next stage; on route S, the standard brief | Workspace root or repository | The product owner owns the story; the tech lead owns the route, which Ready shows and a technical person checks at the first technical decision (ADR 0027); on route S, the engineer confirms the standard brief and its tier (Ready) | `aidlc-intent` |
 | 2 | `aidlc-intent` | The intent statement and a provisional tier | Story level | Product owner, inside Ready, with the spec | `aidlc-specify` |
-| 3 | `aidlc-specify` | Acceptance criteria with IDs, edge cases with deciders | Story level | Spec owner: Ready, with the tier | `aidlc-discover` when the tier or an unknown asks, else `aidlc-design` |
+| 3 | `aidlc-specify` | Acceptance criteria with IDs, edge cases with deciders | Story level | Spec owner: Ready, with the tier; the route is shown, and the tech lead owns it | `aidlc-discover` when the tier or an unknown asks, else `aidlc-design` |
 | 4 | `aidlc-discover` | The evidence pack: what the change touches | Story level | Tech lead (proceed, with the design and the plan; to escalate or raise the tier is Ready) | `aidlc-design` |
 | 5 | `aidlc-design` | The design note, the ADR, the contract and its failing tests | Story level | Tech lead or architect, with the plan, in one pull request (Tier 2 and 3); consumers for a contract; stated at Tier 1 | `aidlc-plan` |
 | 6 | `aidlc-plan` | The plan and one task bundle per slice | Inside each repository | Tech lead, with the design, in one pull request (Tier 2 and 3); stated at Tier 1 | `aidlc-build` |
 | 7 | `aidlc-build` | One slice: tests, commits, a progress note | Inside the repository, a fresh session per slice | The person pushes; at Tier 3, the restatement per slice | The next slice, then `aidlc-verify` |
 | 8 | `aidlc-verify` | The evidence table from CI | Inside the repository | No one: the code owner decides once, at review (Merge) | `aidlc-review` |
-| 9 | `aidlc-review` | The pull request description, dispositions, the review record | Inside the repository | A code owner who is neither author nor pusher (Merge); specialists by tier; the engineer decides each finding | `aidlc-release` once merged |
+| 9 | `aidlc-review` | The pull request description, dispositions, the review record | Inside the repository | A code owner who is neither author nor pusher (Merge); specialists by tier; the engineer decides each finding; the code owner reads the decision log | `aidlc-release` once merged |
 | 10 | `aidlc-release` | Readiness, the change record, stop criteria | Story level | Release approver, when users see the change (always at Tier 3) | `aidlc-operate` when an alert fires |
 | 11 | `aidlc-operate` | The incident record and a new work item | Story level | On-call owns the incident; people act | `aidlc-feedback` |
 | 12 | `aidlc-feedback` | Each lesson routed to a test, an eval case, the context, a guardrail or a checklist | Story level | The owner of each source | — |
@@ -92,7 +92,7 @@ Some practices load every time at a given stage step, without being chosen:
 
 1. `aidlc-plan` chooses the practices each slice needs from the practice map and writes them into the bundle's USE SKILLS. The tech lead approves them with the plan.
 2. `aidlc-build` loads every USE SKILL before any edit, and each practice its steps command. A skill that cannot be loaded is a stop.
-3. If the build finds the slice needs a practice the bundle does not name, it loads it and records that as a deviation in the progress note.
+3. If the build finds the slice needs a practice the bundle does not name, it loads it and records that as a deviation in the progress note, with a row in its decision log (ADR 0027).
 4. The compliance reviewer checks the progress note against the bundle and the build's commanded loads.
 
 ## Rules

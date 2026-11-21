@@ -16,16 +16,17 @@ and gate the framework provides at each stage.
 | Stage | Decides | Artefact (template) | System of record | Gate | Skill |
 |---|---|---|---|---|---|
 | Intent | Product owner, inside Ready | `intent` | Jira issue | Owner, priority, provisional tier, decided with the spec | `aidlc-intent` |
-| Specify | Spec owner (+ specialists) | `spec` | Jira (approved version) | Criteria testable; Ready recorded (at Tier 2 and 3, the spec's pull request approval) | `aidlc-specify` |
+| Specify | Spec owner (+ specialists) | `spec` | Jira (approved version) | Criteria testable; Ready recorded (at Tier 2 and 3, the spec's pull request approval), with the route shown | `aidlc-specify` |
 | Design | Tech lead / architect; consumers | `design-note`, `adr`, contract | Jira note; `docs/adr/`; contract file | At Tier 2 and 3, approved with the plan in one pull request; at Tier 1 "none needed" stated | `aidlc-design` |
 | Plan | Engineer drafts; tech lead approves at Tier 2 and 3, with the design | `plan`, `task-bundle`, `coordination-plan` | `plans/<KEY>/` (or `stories/<KEY>/coordination-plan.md`) | At Tier 2 and 3, the pull request approval, written to the work item with the plan's version and commit; at Tier 1 the plan is stated, except a plan with independent slices, which the tech lead approves | `aidlc-plan` |
-| Build | Engineer | commits, `progress-note` | Feature branch `<type>/<KEY>-<slug>` (`feat/<KEY>-<part>` for a part) | Local check green; diff inside MAY CHANGE | `aidlc-build` |
+| Build | Engineer | commits, `progress-note` | Feature branch `<type>/<KEY>-<slug>` (`feat/<KEY>-<part>` for a part) | Local check green; diff inside MAY CHANGE; each judgement call logged | `aidlc-build` |
 | Verify | Automated gates | `evidence-table` | CI record | The team's CI green | `aidlc-verify` |
 | Review & release | Code owners, specialists, release approver | `review-record`, `readiness`, `change-record` | Git host; change management | Code-owner approval (Merge); release approval when users see the change (always at Tier 3) | `aidlc-review`, `aidlc-release` |
 | Operate & learn | On-call, owning team | `runbook`, `incident` | Monitoring; Jira | Healthy or rolled back; lessons routed | `aidlc-operate` |
 
 Who decides at each tier, and where every other stage states what it did and goes on:
-[the decisions table](tiers-table.md#decisions-by-tier) (ADR 0026).
+[the decisions table](tiers-table.md#decisions-by-tier) (ADR 0026). Ready shows the route, which the tech lead owns,
+and the code owner reads the AI's decision log at Merge (ADR 0027).
 
 Discovery (`evidence-pack`, `explorer-brief`) runs before Design whenever the tier asks for it.
 
