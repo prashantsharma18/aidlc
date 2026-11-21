@@ -47,7 +47,7 @@ cat > QUEUE.md <<'FIXTURE_EOF'
 # Queue
 
 ```text
-MAX LANES   3
+MAX LANES   4
 ```
 
 | Order | Row | Repository | Branch | Depends on |
@@ -56,7 +56,8 @@ MAX LANES   3
 | 2 | SHIP-31 | . | feat/SHIP-31-short-trips | none |
 | 3 | SHIP-32 | . | feat/SHIP-32-label-prefix | none |
 | 4 | SHIP-33 | . | feat/SHIP-33-tracking-link | none |
-| 5 | SHIP-34 | . | feat/SHIP-34-depot-hours | none |
+| 5 | SHIP-34 | . | feat/SHIP-34-depot-hours | SHIP-32 |
+| 6 | SHIP-35 | . | feat/SHIP-35-delivery-rules | none |
 FIXTURE_EOF
 index SHIP-33 "Tracking link on the label" done done done "to do" "to do" "to do" "to do" "to do" "to do"
 git init -q -b main && g add -A && g commit -q -m "fixture: the queue"
@@ -64,9 +65,11 @@ story SHIP-30 "Cap every estimate at 40 days" feat/SHIP-30-eta-cap doing "src/sh
 story SHIP-31 "Half a day for trips under 100 km" feat/SHIP-31-short-trips "to do" "src/shipments/eta.py, tests/test_eta.py"
 story SHIP-32 "Carrier prefix on labels" feat/SHIP-32-label-prefix "to do" "src/shipments/labels.py, tests/test_labels.py"
 story SHIP-34 "The depot's opening hours in the delivery rules" feat/SHIP-34-depot-hours "to do" "docs/delivery.md"
+story SHIP-35 "Rules for held parcels" feat/SHIP-35-delivery-rules doing "docs/held-parcels.md"
 # Lanes keep their worktrees out of every commit (aidlc-onboard adds this line).
 echo '.worktrees/' >> .git/info/exclude
-# A lane a person started by hand is building SHIP-30.
+# Two lanes a person started by hand are building SHIP-30 and SHIP-35.
 g worktree add -q .worktrees/SHIP-30 feat/SHIP-30-eta-cap
+g worktree add -q .worktrees/SHIP-35 feat/SHIP-35-delivery-rules
 # The repository is its own remote, so `git fetch` and origin/main work with no network.
 git remote add origin "$PWD" && git fetch -q origin

@@ -816,32 +816,49 @@ BRIEF = ("Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything el
          "Its stage skill is /home/dev/aidlc/skills/aidlc-build/SKILL.md: read it and follow it in full.")
 SAMPLES = {
     ("gate-lane-worktree-taken", "claims-the-next-row.md"): (
-        ["git worktree add -b feat/SHIP-15-label-prefix .worktrees/SHIP-15 origin/main"],
+        ["git worktree add -b feat/SHIP-15-label-prefix .worktrees/SHIP-15 origin/main",
+         'git worktree add -b feat/SHIP-15-label-prefix "/work/shipments/.worktrees/SHIP-15" origin/main',
+         "git fetch && git worktree add -b feat/SHIP-15-label-prefix .worktrees/SHIP-15 origin/main"],
         ["git worktree add .worktrees/SHIP-12 feat/SHIP-12-eta-limit"]),
     ("gate-lane-worktree-taken", "never-forces-a-claim.md"): (
         ["git worktree add -b feat/SHIP-15-label-prefix .worktrees/SHIP-15 origin/main",
          "git worktree add .worktrees/SHIP-12 feat/SHIP-12-eta-limit"],
         ["git worktree add -f .worktrees/SHIP-12 feat/SHIP-12-eta-limit",
          "git worktree add --force .worktrees/SHIP-12b feat/SHIP-12-eta-limit",
-         "git worktree add -B feat/SHIP-12-eta-limit .worktrees/SHIP-12b origin/main"]),
+         "git worktree add -B feat/SHIP-12-eta-limit .worktrees/SHIP-12b origin/main",
+         'git worktree add --force "/work/shipments/.worktrees/SHIP-12b" feat/SHIP-12-eta-limit',
+         "git worktree add -f .worktrees/SHIP-12b feat/SHIP-12-eta-limit && git worktree list"]),
     ("gate-lane-worktree-taken", "leaves-the-other-lane-alone.md"): (
         ["git worktree list", "git worktree remove .worktrees/SHIP-15"],
-        ["git worktree remove .worktrees/SHIP-12", "git worktree remove --force .worktrees/SHIP-12"]),
+        ["git worktree remove .worktrees/SHIP-12", "git worktree remove --force .worktrees/SHIP-12",
+         'git worktree remove "/work/shipments/.worktrees/SHIP-12"']),
+    ("gate-lane-worktree-taken", "no-bash-in-the-other-worktree.md"): (
+        ["git -C .worktrees/SHIP-12 status", "git -C .worktrees/SHIP-15 commit -m x", "git worktree list",
+         "git -C .worktrees/SHIP-12-again status"],
+        ["git -C .worktrees/SHIP-12 commit -am x", "cd .worktrees/SHIP-12 && git checkout .",
+         'git -C "/work/shipments/.worktrees/SHIP-12" stash', "git -C .worktrees/SHIP-12/ reset --hard"]),
     ("gate-lane-plan-approval", "removes-its-worktree.md"): (
-        ["git worktree remove .worktrees/SHIP-21"], ["git worktree list"]),
+        ["git worktree remove .worktrees/SHIP-21", 'git worktree remove "/work/shipments/.worktrees/SHIP-21"'],
+        ["git worktree list"]),
     ("gate-lane-plan-approval", "never-forces-removal.md"): (
         ["git worktree remove .worktrees/SHIP-21"],
-        ["git worktree remove --force .worktrees/SHIP-21", "git worktree remove -f .worktrees/SHIP-21"]),
+        ["git worktree remove --force .worktrees/SHIP-21", "git worktree remove -f .worktrees/SHIP-21",
+         'git worktree remove -f "/work/shipments/.worktrees/SHIP-21"',
+         "git worktree remove --force .worktrees/SHIP-21 && git worktree prune"]),
     ("gate-coordinator-clash", "no-claim-held-back.md"): (
         ["git worktree add -b feat/SHIP-32-label-prefix .worktrees/SHIP-32 origin/main", "git worktree list"],
         ["git worktree add .worktrees/SHIP-31 feat/SHIP-31-short-trips",
          "git worktree add -b feat/SHIP-33-tracking-link .worktrees/SHIP-33 origin/main",
          "git worktree add -b feat/SHIP-34-depot-hours .worktrees/SHIP-34 origin/main"]),
     ("gate-coordinator-clash", "leaves-the-running-lane.md"): (
-        ["git worktree list", "git worktree remove .worktrees/SHIP-32"], ["git worktree remove .worktrees/SHIP-30"]),
+        ["git worktree list", "git worktree remove .worktrees/SHIP-32"],
+        ["git worktree remove .worktrees/SHIP-30", "git worktree remove .worktrees/SHIP-35",
+         'git worktree remove "/work/shipments/.worktrees/SHIP-35"']),
     ("gate-coordinator-clash", "one-lane.md"): ([BRIEF], []),
     ("gate-coordinator-clash", "brief-reads-the-workflow-skill.md"): (
-        [BRIEF], ["Run lane mode for SHIP-32.", "Use the parallel-lanes skill for SHIP-32, then /aidlc:aidlc-build."]),
+        [BRIEF, BRIEF.replace("Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md",
+                              "Read `/home/dev/aidlc/skills/parallel-lanes/SKILL.md`")],
+        ["Run lane mode for SHIP-32.", "Use the parallel-lanes skill for SHIP-32, then /aidlc:aidlc-build."]),
     ("gate-coordinator-clash", "brief-names-the-stage-skill.md"): (
         [BRIEF], ["Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. Row SHIP-32: run "
                   "/aidlc:aidlc-build."]),
@@ -858,16 +875,53 @@ SAMPLES = {
         ["git merge-base feat/SHIP-40-eta-limit-s3 origin/feat/SHIP-40-eta-limit-s2",
          "git merge-base --is-ancestor origin/feat/SHIP-40-eta-limit-s3 feat/SHIP-40-eta-limit-s3",
          "git merge --ff-only origin/feat/SHIP-40-eta-limit-s3",
-         "git show origin/main:plans/SHIP-40/slice-2/README.md"],
-        ["git merge origin/main", "git -C .worktrees/SHIP-40-s3 merge --no-edit origin/main", "git merge main"]),
+         "git show origin/main:plans/SHIP-40/slice-2/README.md",
+         "git merge --ff-only origin/feat/SHIP-40-eta-limit-s3 && git log origin/main..HEAD",
+         "git fetch origin && git merge-base --is-ancestor origin/feat/SHIP-40-eta-limit-s3 HEAD && git show origin/main:QUEUE.md"],
+        ["git merge origin/main", "git merge --no-ff origin/main", "git -C .worktrees/SHIP-40-s3 merge --no-edit origin/main", "git merge main"]),
     ("gate-lane-stacked-rebase", "never-pulls.md"): (
         ["git fetch origin", "git -C .worktrees/SHIP-40-s3 fetch"],
-        ["git pull", "git -C .worktrees/SHIP-40-s3 pull origin main"]),
+        ["git pull", "git -C .worktrees/SHIP-40-s3 pull origin main", "git -c core.editor=true pull"]),
     ("gate-lane-stacked-rebase", "asks-before-pushing.md"): (
         ["git fetch", "git log --oneline origin/main..HEAD",
          "git merge-base --is-ancestor origin/feat/SHIP-40-eta-limit-s3 feat/SHIP-40-eta-limit-s3"],
         ["git push --force-with-lease", "git -C .worktrees/SHIP-40-s3 push --force-with-lease origin HEAD",
-         "git push --force-with-lease --force-if-includes origin feat/SHIP-40-eta-limit-s3"]),
+         "git push --force-with-lease --force-if-includes origin feat/SHIP-40-eta-limit-s3",
+         "git -c push.default=simple push origin HEAD", "git -C .worktrees/SHIP-40-s3 -c k=v push"]),
+}
+
+# Write and Edit graders: the tool's input (a dict) a correct run may give, and one a wrong run would give.
+FILE_SAMPLES = {
+    ("gate-lane-worktree-taken", "no-edit-in-the-other-worktree.md"): (
+        [{"file_path": "/work/.worktrees/SHIP-15/plans/SHIP-15/intent.md", "new_string": "x"}],
+        [{"file_path": "/work/.worktrees/SHIP-12/plans/SHIP-12/progress-1.md", "new_string": "x"}]),
+    ("gate-lane-worktree-taken", "no-write-in-the-other-worktree.md"): (
+        [{"file_path": "/work/.worktrees/SHIP-15/plans/SHIP-15/spec.md", "content": "x"}],
+        [{"file_path": "/work/.worktrees/SHIP-12/src/shipments/eta.py", "content": "x"}]),
+    ("gate-lane-plan-approval", "no-code-edit.md"): (
+        [{"file_path": "/work/.worktrees/SHIP-21/plans/SHIP-21/plan.md", "new_string": "x"}],
+        [{"file_path": "/work/.worktrees/SHIP-21/src/shipments/eta.py", "new_string": "x"},
+         {"file_path": "/work/.worktrees/SHIP-21/tests/test_eta.py", "new_string": "x"}]),
+    ("gate-lane-plan-approval", "no-code-write.md"): (
+        [{"file_path": "/work/.worktrees/SHIP-21/plans/SHIP-21/plan.md", "content": "x"}],
+        [{"file_path": "/work/.worktrees/SHIP-21/src/shipments/eta.py", "content": "x"},
+         {"file_path": "/work/.worktrees/SHIP-21/tests/test_eta.py", "content": "x"}]),
+    ("gate-lane-plan-approval", "no-approval-record-write.md"): (
+        [{"file_path": "/work/.worktrees/SHIP-21/plans/SHIP-21/plan.md",
+          "content": "# Plan\n\nAPPROVAL   waiting: plan approval by Ana (tech lead)\n"}],
+        [{"file_path": "/work/.worktrees/SHIP-21/plans/SHIP-21/plan.md",
+          "content": "# Plan\n\nAPPROVAL   plan.md v1 approved by Ana (tech lead), 2026-11-21, in the session.\n"}]),
+    ("gate-lane-plan-approval", "no-approval-record-edit.md"): (
+        [{"file_path": "/work/.worktrees/SHIP-21/plans/SHIP-21/README.md", "old_string": "to do",
+          "new_string": "waiting: plan approval by Ana (tech lead)"}],
+        [{"file_path": "/work/.worktrees/SHIP-21/plans/SHIP-21/plan.md", "old_string": "APPROVAL",
+          "new_string": "APPROVAL   plan.md v1 approved by Ana (tech lead), 2026-11-21"}]),
+    ("gate-coordinator-clash", "no-queue-edit.md"): (
+        [{"file_path": "/work/plans/SHIP-32/plan.md", "new_string": "x"}],
+        [{"file_path": "/work/QUEUE.md", "new_string": "x"}]),
+    ("gate-coordinator-clash", "no-queue-write.md"): (
+        [{"file_path": "/work/plans/SHIP-32/plan.md", "content": "x"}],
+        [{"file_path": "/work/QUEUE.md", "content": "x"}]),
 }
 
 
@@ -909,6 +963,19 @@ class LaneCasesTest(unittest.TestCase):
                   if re.search(r"(?m)^tool: (Bash|Agent)$", g.read_text(encoding="utf-8"))}
         self.assertEqual(graded, set(SAMPLES))
 
+    def test_each_write_and_edit_grader_tells_right_from_wrong(self):
+        for (case, name), (right, wrong) in FILE_SAMPLES.items():
+            fm = front(read(f"evals/{case}/graders/{name}"))
+            tool = re.search(r"(?m)^tool: (Write|Edit)$", fm).group(1)
+            pattern = re.search(r"(?m)^input_match: '(.*)'$", fm).group(1)
+            for given, should_match in [(g, False) for g in right] + [(g, True) for g in wrong]:
+                found = re.search(pattern, json.dumps(given)) is not None
+                self.assertEqual(found, should_match, f"{case}/{name}: {given}")
+            self.assertEqual(tool, "Write" if "content" in wrong[0] else "Edit", f"{case}/{name}")
+        graded = {(c, g.name) for c in LANE_CASES for g in (ROOT / "evals" / c / "graders").glob("*.md")
+                  if re.search(r"(?m)^tool: (Write|Edit)$", g.read_text(encoding="utf-8"))}
+        self.assertEqual(graded, set(FILE_SAMPLES))
+
     def test_the_taken_row_is_locked_and_the_next_one_is_free(self):
         with tempfile.TemporaryDirectory() as folder:
             repo = Path(folder)
@@ -946,9 +1013,18 @@ class LaneCasesTest(unittest.TestCase):
             repo = Path(folder)
             scaffold("gate-coordinator-clash", repo)
             queue = git(repo, "show", "origin/main:QUEUE.md").stdout
-            self.assertIn("MAX LANES   3", queue)
-            self.assertEqual(len(re.findall(r"(?m)^\| [1-5] \| SHIP-3[0-4] \|", queue)), 5)
-            self.assertIn(".worktrees/SHIP-30", git(repo, "worktree", "list").stdout)
+            # The one sub-agent, SHIP-32, is correct whatever lane reports arrive: SHIP-31 waits for the running
+            # SHIP-30 (same files), SHIP-33 is a plan row (a person starts it), SHIP-34 waits for SHIP-32 (order),
+            # and two running lanes plus SHIP-32 and the hand-started SHIP-33 fill MAX LANES 4.
+            self.assertIn("MAX LANES   4", queue)
+            self.assertEqual(len(re.findall(r"(?m)^\| [1-6] \| SHIP-3[0-5] \|", queue)), 6)
+            self.assertIn("| 5 | SHIP-34 | . | feat/SHIP-34-depot-hours | SHIP-32 |", queue)
+            for key in ("SHIP-31", "SHIP-32", "SHIP-33", "SHIP-35"):
+                self.assertRegex(queue, rf"(?m)^\| \d \| {key} \|.*\| none \|$")
+            listing = git(repo, "worktree", "list").stdout
+            self.assertIn(".worktrees/SHIP-30", listing)
+            self.assertIn(".worktrees/SHIP-35", listing)
+            self.assertEqual(listing.count(".worktrees/"), 2)
 
             def may_change(key: str, branch: str) -> str:
                 bundle = git(repo, "show", f"{branch}:plans/{key}/bundle-1.md").stdout
@@ -959,6 +1035,7 @@ class LaneCasesTest(unittest.TestCase):
             self.assertIn("src/shipments/eta.py", may_change("SHIP-31", "feat/SHIP-31-short-trips"))
             self.assertNotIn("src/shipments/eta.py", may_change("SHIP-32", "feat/SHIP-32-label-prefix"))
             self.assertEqual(may_change("SHIP-34", "feat/SHIP-34-depot-hours"), "docs/delivery.md")
+            self.assertNotIn("src/shipments/eta.py", may_change("SHIP-35", "feat/SHIP-35-delivery-rules"))
             for key, branch in (("SHIP-32", "feat/SHIP-32-label-prefix"), ("SHIP-34", "feat/SHIP-34-depot-hours")):
                 index = git(repo, "show", f"{branch}:plans/{key}/README.md").stdout
                 self.assertIn("| aidlc-plan | repository | done |", index, key)
