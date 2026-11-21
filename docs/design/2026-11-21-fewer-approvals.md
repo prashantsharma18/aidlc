@@ -1,7 +1,7 @@
 # Fewer approvals: one decision once, and fewer at low risk
 
-Date: 2026-11-21 · Owner: framework owner (Prashant Sharma) · Status: agreed in the session, 2026-11-21; to be
-recorded in ADR 0026 · Change list: items C1 (decisions by tier) and C3 (pre-approved standard changes). Item C6
+Date: 2026-11-21 · Owner: framework owner (Prashant Sharma) · Status: approved by the framework owner in the session,
+2026-11-21; to be recorded in ADR 0026 · Change list: items C1 (decisions by tier) and C3 (pre-approved standard changes). Item C6
 (intent, route and Ready as one approval) is out of scope.
 
 ## For the reviewer
