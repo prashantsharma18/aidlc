@@ -1,6 +1,6 @@
 # Slice 0: route G
 
-Sent here from `aidlc-plan` after step 9, on slice 0 of route G; this skill's Gate, Stop if and Rules still apply.
+Sent here from `aidlc-plan` Steps, before step 1, on slice 0 of route G; this skill's Gate, Stop if and Rules still apply.
 
 Slice 0 (route G), the first slice of each new repository, on branch `feat/<KEY>-slice-0`:
 1. RECIPE holds the SCAFFOLD commands of this repository's block in the approved `new-system.md`, marked `(scaffold)`.

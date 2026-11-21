@@ -387,5 +387,32 @@ class RecordTest(unittest.TestCase):
         self.assertNotIn("{{", read(self.RECORD))
 
 
+class FinalFixWaveTest(unittest.TestCase):
+    """The final review's findings: slice 0 reads its reference before step 1; the brief's confirmation covers its
+    route; a slice's progress note is the exception."""
+
+    def test_the_slice_0_pointer_comes_before_step_1(self):
+        steps = flat(section(skill_md("aidlc-plan"), "## Steps"))
+        pointer = ("Slice 0 (route G), the first slice of each new repository, on branch `feat/<KEY>-slice-0`: read "
+                   "`references/route-g.md` now and follow it with steps 1 to 9; it says what step 7's bundle holds.")
+        self.assertEqual(steps.count(pointer), 1)
+        self.assertLess(steps.index(pointer), steps.index("1. Restate the outcome"))
+        self.assertEqual(steps.count("read `references/route-g.md` now"), 1)
+        route_g = flat(read("skills/aidlc-plan/references/route-g.md"))
+        self.assertIn("Sent here from `aidlc-plan` Steps, before step 1, on slice 0 of route G; this skill's Gate, "
+                      "Stop if and Rules still apply.", route_g)
+        self.assertNotIn("after step 9", route_g)
+
+    def test_the_brief_confirmation_covers_its_route(self):
+        gate = flat(section(skill_md("aidlc-plan"), "## Gate"))
+        self.assertIn("which is Ready on routes D1 and F0 and covers the brief's ROUTE line (ADR 0027); the code owner",
+                      gate)
+
+    def test_a_slice_progress_note_is_the_exception(self):
+        rules = flat(section(skill_md("aidlc-build"), "## Rules"))
+        self.assertIn("A slice on its own branch edits the same documents in `plans/<KEY>/slice-<n>/`. Its progress "
+                      "note is the exception, as `references/stacked-slices.md` says.", rules)
+
+
 if __name__ == "__main__":
     unittest.main()
