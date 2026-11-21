@@ -21,7 +21,7 @@ and gate the framework provides at each stage.
 | Plan | Engineer drafts; tech lead approves at Tier 2 and 3, with the design | `plan`, `task-bundle`, `coordination-plan` | `plans/<KEY>/` (or `stories/<KEY>/coordination-plan.md`) | At Tier 2 and 3, the pull request approval, written to the work item with the plan's version and commit; at Tier 1 the plan is stated, except a plan with independent slices, which the tech lead approves | `aidlc-plan` |
 | Build | Engineer | commits, `progress-note` | Feature branch `<type>/<KEY>-<slug>` (`feat/<KEY>-<part>` for a part) | Local check green; diff inside MAY CHANGE | `aidlc-build` |
 | Verify | Automated gates | `evidence-table` | CI record | The team's CI green | `aidlc-verify` |
-| Review & release | Code owners, specialists, release approver | `review-record`, `readiness`, `change-record` | Git host; change management | Code-owner approval (Merge); release approval when users see the change | `aidlc-review`, `aidlc-release` |
+| Review & release | Code owners, specialists, release approver | `review-record`, `readiness`, `change-record` | Git host; change management | Code-owner approval (Merge); release approval when users see the change (always at Tier 3) | `aidlc-review`, `aidlc-release` |
 | Operate & learn | On-call, owning team | `runbook`, `incident` | Monitoring; Jira | Healthy or rolled back; lessons routed | `aidlc-operate` |
 
 Who decides at each tier, and where every other stage states what it did and goes on:

@@ -256,7 +256,7 @@ a decision, and route S for the standard changes a team lists in its `AGENTS.md`
 
 | Item | State after Plan 24 | How |
 |---|---|---|
-| C1 | Covered, as instructions | The decisions-by-tier table: at Tier 1, Ready and Merge, and Release only when users see the change; Tier 2 adds Design + plan in one pull request, and Release when users see the change; Tier 3 adds the specialists, Release always and the hands-on restatement per slice. No decision is asked twice |
+| C1 | Covered, as instructions | The decisions-by-tier table: at Tier 1, Ready and Merge, and Release only when users see the change; Tier 2 adds Design + plan in one pull request and every affected area's code owner at Merge; Tier 3 adds the specialists, Release always and the hands-on restatement per slice. No decision is asked twice |
 | C3 | Covered, as instructions | Route S: the Standard changes section of `AGENTS.md`, three suggested classes from `aidlc-onboard`, the standard brief from `aidlc-start`; the recipe-review pause lifted for a listed recipe class |
 | C6 | Open | Intent, route and Ready as one first approval: a later plan |
 ```

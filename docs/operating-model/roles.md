@@ -10,7 +10,7 @@ Who decides, who owns which shared artefact, and who may approve.
 | Skills, agents and starter settings | Framework owners; platform team for the organisation layer (managed settings) | Reviewed PR; `scripts/validate.py` green |
 | Eval set and baseline | Eval owner; baseline changes approved by a code owner, never the author | Reviewed PR |
 | Acceptance criteria | Spec owner | Spec review loop (amendment with date, reason, decider) |
-| Plans and briefs | Tech lead (a brief: the engineer who confirms it) | Re-approval when scope, approach, risk or criteria change (at Tier 1, the plan is stated again) |
+| Plans and briefs | Tech lead (a brief: the engineer who confirms it) | Re-approval when scope, approach, risk or criteria change (at Tier 1, the plan is stated again, except a plan with independent slices, which the tech lead re-approves) |
 
 ## The six judgement dimensions (people decide; automation informs)
 
