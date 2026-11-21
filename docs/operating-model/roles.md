@@ -31,8 +31,10 @@ the decisions the tiers file lists under "Kept at every tier" ([tiers-table.md](
 Ready shows the route, and the tech lead owns it. A technical person checks it at the first technical decision: the
 engineer who confirms a brief on F0, D1 and S, the code owner at Merge on F1, D2 and C at Tier 1 (for a plan with
 independent slices, first the tech lead who approves it), and the tech lead or architect at Design + plan at Tier 2
-and 3. The code owner reads the AI's decision log with the spec, the plan and
-the code, inside Merge; no one approves a row (ADR 0027).
+and 3, and on route G, the tech lead or architect who approves `new-system.md`.
+
+The code owner reads the AI's decision log with the spec, the plan and the code, inside Merge; no one approves a row
+(ADR 0027).
 
 The author never approves: not the engineer who directed the agent, not the identity that pushed
 the branch, and never an AI reviewer.

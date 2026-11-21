@@ -521,7 +521,8 @@ class DocsTest(unittest.TestCase):
         self.assertIn("| The route | Tech lead owns it; Ready shows it, and a technical person checks its facts at the "
                       "first technical decision: the engineer who confirms a brief (F0, D1, S), the code owner at Merge "
                       "(F1, D2 and C at Tier 1; for a plan with independent slices, first the tech lead who approves "
-                      "it), the tech lead or architect at Design + plan (Tier 2 and 3) |", sheet)
+                      "it), the tech lead or architect at Design + plan (Tier 2 and 3); on route G, the tech lead or "
+                      "architect who approves `new-system.md` |", sheet)
         self.assertIn("| A judgement call made while building | No one approves a row: the code owner reads the "
                       "decision log inside Merge, and may bring in the row's owner as a reviewer |", sheet)
         self.assertNotIn("Tech lead agrees what `aidlc-start` proposes", sheet)
@@ -533,6 +534,8 @@ class DocsTest(unittest.TestCase):
                       "or the controls is decided again (ADR 0027) |", roles)
         self.assertIn("The code owner reads the AI's decision log with the spec, the plan and the code, inside Merge; "
                       "no one approves a row (ADR 0027).", flat("docs/operating-model/roles.md"))
+        self.assertIn("at Tier 2 and 3, and on route G, the tech lead or architect who approves `new-system.md`.",
+                      flat("docs/operating-model/roles.md"))
         lifecycle = read("docs/operating-model/lifecycle.md")
         self.assertIn("| Criteria testable; Ready recorded (at Tier 2 and 3, the spec's pull request approval), with "
                       "the route shown |", lifecycle)
