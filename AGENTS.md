@@ -4,7 +4,8 @@ aidlc is a skills package for AI-assisted software delivery, from a requirement 
 It implements the guide "From Intent to Verified Change". Owner: framework owners (Prashant Sharma).
 
 ## Map
-- `skills/` the `aidlc-*` stage skills and the engineering-practice skills (`skills/NOTICE` holds the third-party
+- `skills/` the `aidlc-*` stage skills, the engineering-practice skills, the workflow skill `parallel-lanes` and the
+  map `using-aidlc` (`skills/NOTICE` holds the third-party
   licence for parts of the eight earlier practices); `agents/` the agent roles; `evals/` the behaviour evals.
   The repository root is the plugin.
 - `starter/` files a team copies once into a repository or a workspace: a rules file, an ownership list and optional

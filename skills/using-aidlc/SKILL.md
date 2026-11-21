@@ -7,10 +7,12 @@ metadata:
 ---
 # Using aidlc
 
-aidlc has two kinds of skill.
+aidlc has four kinds of skill.
 
 - **Stage skills** (`aidlc-*`) say which step you are in, what it produces and who approves it. A person starts each one by name (`aidlc-onboard` and `aidlc-verify` may also start on their own), and each stops for its approver.
 - **Practice skills** say how to do a kind of work well. They load inside a stage: a stage step commands them, the slice's task bundle names them in USE SKILLS, or, outside the stages, Claude picks them by their description.
+- **Workflow skills** say how work runs across sessions. `parallel-lanes` runs several pieces of work at once, each in its own git worktree, from a `QUEUE.md` a person keeps; a lane releases at every person's decision (ADR 0025). A person starts its coordinator or a lane by name, as with a stage; the coordinator's sub-agent lanes read `parallel-lanes` and the build, verify and review skills by path.
+- **The map** is this skill, `using-aidlc`: the stages in order, the routes, and the practice for each kind of work.
 
 "Story level" means the workspace root for a story that spans several repositories, and the repository itself for a story that changes one.
 

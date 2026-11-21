@@ -38,6 +38,8 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
 - **Gates:** each skill drafts and stops; people approve in the pull request and the tracker, or tell the AI, which
   records each decision after checking it (ADR 0023). Tests come first; an
   existing test assertion is never changed to make a test pass.
+- **Several at once:** the `parallel-lanes` workflow skill runs lanes, each in its own git worktree, from a
+  `QUEUE.md` a person keeps. A lane releases at every person's decision, and the next ready row starts (ADR 0025).
 
 ## Where the gates hold
 
@@ -85,6 +87,7 @@ them as below; in Copilot, Codex or Cursor, ask for the skill by name ("use aidl
 | `/aidlc:aidlc-release SHIP-12` | When every part is merged | The readiness and change records, with stop criteria |
 | `/aidlc:aidlc-operate INC-231` | When an alert fires | The incident record and a follow-up work item |
 | `/aidlc:aidlc-feedback INC-231` | After an incident, or when findings repeat | Where each lesson goes |
+| `/aidlc:parallel-lanes coordinator` | To work through `QUEUE.md` with several lanes at once; `lane` starts one lane by hand | Nothing but drafts; each lane writes its own row's files |
 
 Which stages a piece of work needs depends on its route: see [routes.md](docs/operating-model/routes.md).
 
@@ -92,11 +95,11 @@ Which stages a piece of work needs depends on its route: see [routes.md](docs/op
 
 The skills (`skills/`):
 
-| Stage skills | Practice skills |
-|---|---|
-| `aidlc-start`, `aidlc-onboard`, `aidlc-intent`, `aidlc-specify`, `aidlc-discover`, `aidlc-design`, `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`, `aidlc-operate`, `aidlc-feedback` | `designing-apis`, `reviewing-code`, `debugging-failures`, `migrating-safely`, `building-user-interfaces`, `adding-observability`, `tuning-performance`, `securing-code`, `writing-tests`, `committing-changes`, `building-ci-pipelines`, `simplifying-code`, `stress-testing-decisions`, `checking-official-docs`, `testing-in-browser`, `writing-documentation` |
+| Stage skills | Practice skills | Workflow skills |
+|---|---|---|
+| `aidlc-start`, `aidlc-onboard`, `aidlc-intent`, `aidlc-specify`, `aidlc-discover`, `aidlc-design`, `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`, `aidlc-operate`, `aidlc-feedback` | `designing-apis`, `reviewing-code`, `debugging-failures`, `migrating-safely`, `building-user-interfaces`, `adding-observability`, `tuning-performance`, `securing-code`, `writing-tests`, `committing-changes`, `building-ci-pipelines`, `simplifying-code`, `stress-testing-decisions`, `checking-official-docs`, `testing-in-browser`, `writing-documentation` | `parallel-lanes` |
 
-The map of stages and practices, and the first skill to read: `using-aidlc`.
+The map of the four kinds of skill (stage, practice, workflow and map), and the first skill to read: `using-aidlc`.
 
 Agents the skills call: `explorer`, `reviewer-bug`, `reviewer-security`, `reviewer-compliance`, `reviewer-tests`,
 `ops-diagnoser` (in `agents/`).

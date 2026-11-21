@@ -1063,5 +1063,56 @@ class LaneCasesTest(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
 
 
+def workflow_skills() -> list:
+    """Every skill whose metadata says `kind: workflow`."""
+    found = []
+    for path in sorted((ROOT / "skills").glob("*/SKILL.md")):
+        text = path.read_text(encoding="utf-8")
+        if validate.KIND_WORKFLOW.search(text[: text.find("\n---", 4)]):
+            found.append(path.parent.name)
+    return found
+
+
+class DocsTest(unittest.TestCase):
+    """Task 9: the four kinds of skill are listed where a team reads, and the change list says what Plan 23 covers."""
+
+    def test_the_readme_lists_the_workflow_skill_and_its_command(self):
+        readme = read("README.md")
+        self.assertIn("| Stage skills | Practice skills | Workflow skills |", readme)
+        self.assertIn("`testing-in-browser`, `writing-documentation` | `parallel-lanes` |", readme)
+        commands = readme.split("## Commands you type", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("| `/aidlc:parallel-lanes coordinator` |", commands)
+        text = flat("README.md")
+        self.assertIn("**Several at once:** the `parallel-lanes` workflow skill runs lanes, each in its own git worktree",
+                      text)
+        self.assertIn("The map of the four kinds of skill (stage, practice, workflow and map)", text)
+
+    def test_the_map_skill_names_the_four_kinds(self):
+        text = skill("using-aidlc")
+        self.assertIn("aidlc has four kinds of skill.", text)
+        self.assertNotIn("two kinds of skill", text)
+        for kind in ("**Stage skills**", "**Practice skills**", "**Workflow skills**", "**The map**"):
+            self.assertIn(kind, text, kind)
+
+    def test_every_workflow_skill_is_named_where_a_team_reads(self):
+        self.assertEqual(workflow_skills(), ["parallel-lanes"])
+        for name in workflow_skills():
+            for rel in ("README.md", "skills/using-aidlc/SKILL.md", "AGENTS.md", "docs/codebase-map.md"):
+                self.assertIn(name, read(rel), f"{rel}: {name}")
+
+    def test_the_codebase_map_says_where_a_workflow_skill_goes(self):
+        mapping = flat("docs/codebase-map.md")
+        self.assertIn("`skills/parallel-lanes/` the workflow skill", mapping)
+        self.assertIn("A new workflow skill: `skills/<noun-phrase>/SKILL.md` with `metadata.kind: workflow`", mapping)
+        self.assertIn("Last verified: 2026-11-21", mapping)
+
+    def test_the_change_list_marks_what_plan_23_covers(self):
+        changes = read("docs/design/2026-11-19-aidlc-6-change-list.md")
+        table = changes.split("## 7. After Plan 23 (2026-11-21)", 1)[1]
+        for item in ("D1", "D2", "E1", "E2", "E3", "E4", "E5", "Decision D1", "Decision D7"):
+            self.assertRegex(table, rf"(?m)^\| {item} \|", item)
+        self.assertIn("`docs/plans/2026-11-21-plan-23-parallel-lanes.md`", table)
+
+
 if __name__ == "__main__":
     unittest.main()

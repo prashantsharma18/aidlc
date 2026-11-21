@@ -1,5 +1,5 @@
 # aidlc: codebase map
-Owner: framework owners · Last verified: 2026-11-20
+Owner: framework owners · Last verified: 2026-11-21
 
 ## What this repository is
 One skills plugin, `aidlc`, at the repository root: instructions only (ADR 0024). Engineers install it in Claude
@@ -9,6 +9,7 @@ Code; its `skills/` folders also load in Copilot, Codex or Cursor, untested ther
 `skills/aidlc-*/`   core stage skills; each `SKILL.md` names its templates in `assets/`
 `skills/<practice>/`   engineering-practice skills (`skills/NOTICE` covers parts of the eight earlier ones)
 `skills/using-aidlc/`   the map: stages in order and the practice for each kind of work
+`skills/parallel-lanes/`   the workflow skill: lanes in git worktrees, from a `QUEUE.md` a person keeps (ADR 0025)
 `agents/`   agent roles the core skills call (Claude Code subagent format)
 `evals/`   behaviour eval cases, run with `claude plugin eval .`, or on demand in CI by `.github/workflows/evals.yml`
 `starter/repo/`, `starter/workspace/`   files a team copies once: a rules file, an ownership list and optional example
@@ -24,6 +25,9 @@ and the workflows (`ai-review.yml`, `ci.yml`, `contract-check.yml`, `contract-pu
 - A new core stage skill: `skills/aidlc-<name>/SKILL.md` with the house sections; templates in its `assets/`.
 - A new practice skill: `skills/<gerund-name>/SKILL.md` with `metadata.kind: practice` and the practice
   sections (When to use, Steps, Checks, Stop if, Common excuses, Red flags, Rules); long checklists in its `references/`.
+- A new workflow skill: `skills/<noun-phrase>/SKILL.md` with `metadata.kind: workflow` and the workflow sections
+  (When to use, Inputs, Steps, Stop if, Common excuses, Red flags, Rules); its name never starts with `aidlc-` or with
+  an "-ing" word.
 - A template change: the `assets/` file of every skill that uses it (search for its file name).
 
 ## Traps

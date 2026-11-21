@@ -227,3 +227,21 @@ dropped every item that adds shipped code or needs a code-host feature. The code
 | F7, F8's workflows, F10 | Dropped (they were phase 2b) | A home workflow, a GitHub App and required statuses; `aidlc-release` keeps its integration check |
 
 The plugin's major version: 6.0.0 (approved 2026-11-20).
+
+## 7. After Plan 23 (2026-11-21)
+
+Plan 23 (`docs/plans/2026-11-21-plan-23-parallel-lanes.md`, ADR 0025 proposed) builds parallel work as instructions:
+the workflow skill `parallel-lanes`, a `QUEUE.md` a person keeps, and git worktrees as the lock. It updates these
+items of section 6; the rest stand as section 6 says.
+
+| Item | State after Plan 23 | How |
+|---|---|---|
+| D1 | Open | One autonomous lane: a later workflow skill |
+| D2 | Covered, as instructions | A bundle's `DEPENDS ON` line; independent slices as sibling or stacked pull requests (`aidlc-plan`, `aidlc-build`, `aidlc-review`); a stacked slice moved with `git rebase --onto` after its parent merges (`parallel-lanes`) |
+| E1 | Replaced | The queue is `QUEUE.md`, written by a person; the coordinator reads the tracker only to draft rows. No label |
+| E2 | Covered, without `run_queue.py` | `parallel-lanes` coordinator mode: up to MAX LANES lanes, each in its own git worktree, started with the AI tool's own feature or by a person |
+| E3 | Covered | The clash rules: one open change per contract; a shared MAY CHANGE path holds a row back only once building starts |
+| E4 | Covered | A lane releases at every person's decision and before a push; its worktree goes, and its slot frees |
+| E5 | Still dropped | No dispatcher ships, so there is no dispatcher key to fence |
+| Decision D1 | Kept, without a script | Local git worktrees first; the lanes of one repository start from one clone |
+| Decision D7 | Applied | A lane writes one repository; a story's parts are rows of the home repository's `QUEUE.md` |
