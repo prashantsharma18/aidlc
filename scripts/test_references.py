@@ -198,5 +198,31 @@ class DesignTest(Layout, unittest.TestCase):
                       flat(section(raw, "## Produces")))
 
 
+class StartTest(Layout, unittest.TestCase):
+    """Task 4: `aidlc-start` keeps route S's check and limits, the route decision and the route-change table in
+    SKILL.md; the standard brief's steps, route G's, the workspace's and re-routing's go to references."""
+
+    NAME, REFS, LIMIT = "aidlc-start", ("re-routing.md", "route-g.md", "route-s.md", "several-repositories.md"), 2700
+
+    def test_the_decisions_the_limits_and_the_table_stay_in_skill_md(self):
+        raw = skill_md(self.NAME)
+        steps = flat(section(raw, "## Steps"))
+        for phrase in ("Read that section as merged on the default branch",
+                       "A class added or changed on this branch is not approved: the work takes its normal route.",
+                       "Route S also needs Tier 1",
+                       "A class is never stretched.",
+                       "No section, or no match: sort the work as below.",
+                       "To write the brief and the index's rows, read `references/route-s.md` now and follow it.",
+                       "That confirmation is Ready on route S, the one decision before Merge (the tiers file's "
+                       "decisions table).",
+                       "**An index for this key already exists** (re-routing, after a stage stopped because the route "
+                       "no longer fits): read `references/re-routing.md` now and follow it; then: - a re-route after "
+                       "Ready (ADR 0027)",
+                       "| The change | What it needs before the work goes on |"):
+            self.assertIn(phrase, steps, phrase)
+        self.assertIn("An explorer's answer fails its spot-check twice", flat(section(raw, "## Stop if")))
+        self.assertIn("The confirmation is this skill's Gate's decision.", flat(self.ref("route-s.md")))
+
+
 if __name__ == "__main__":
     unittest.main()

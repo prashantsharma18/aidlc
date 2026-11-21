@@ -67,9 +67,7 @@ route, keeps every row already done, and names the next stage. After Ready, it a
    story for the product owner. When the product owner creates the item, the person renames the folder to the item's key.
 4. **The story exists:** read it for its kind and its scope only. Judging whether it states a problem, an outcome and
    testable criteria is `aidlc-intent`'s job. Never redraft or split it: its parts are tracked in the coordination plan.
-5. **Which repositories change?** At a workspace root, send one `explorer` agent into each repository listed in
-   `WORKSPACE.md` with one question: "would this work change you, and how?" Spot-check two or three of each answer's
-   citations; a false one means that answer is discarded and asked again.
+5. **Which repositories change?** At a workspace root: read `references/several-repositories.md` now and follow it.
 6. **Route.** Load the `using-aidlc` skill for the routes.
    - One repository, started at a workspace root: write nothing at the workspace root. Tell the person to open
      `<repository>` and run `aidlc-start` there, and stop. The same holds for an index left by aidlc 3 that only points
@@ -95,12 +93,7 @@ route, keeps every row already done, and names the next stage. After Ready, it a
    a recorded "none needed"), `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`; on events,
    `aidlc-operate`, `aidlc-feedback`.
 
-   **Several repositories:**
-   - story level, at the workspace root: `aidlc-intent` (only if the story needs it), `aidlc-specify`,
-     `aidlc-discover`, `aidlc-design` (with the coordination plan, one row per repository part);
-   - part level, inside each repository: `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`. The root index
-     has no rows for them, only the line "parts: see `status.md`";
-   - back at the root: `aidlc-release`; on events: `aidlc-operate`, `aidlc-feedback`.
+   **Several repositories:** read `references/several-repositories.md` now and follow it.
 
    **Defect fast path (D1):** inside the repository, `aidlc-plan` (brief mode), the engineer confirms the brief,
    `aidlc-build` (the reproducing test first), `aidlc-verify`, `aidlc-review`. No release stage unless the fix changes
@@ -111,42 +104,21 @@ route, keeps every row already done, and names the next stage. After Ready, it a
    them, and the normal pipeline ships it.
 
    **Standard change (S):** inside the repository: this stage writes the standard brief, the engineer confirms it
-   with its tier, then `aidlc-build`, `aidlc-verify`, `aidlc-review`. No intent, spec, design or plan approval, and no
-   release stage unless users see the change: the normal pipeline ships it. Write `plans/<KEY>/standard.md` from
-   `assets/standard-brief.md`, from the class in `AGENTS.md`: its name, each limit with how the evidence file will
-   show it held, the evidence it needs, its MAY CHANGE, and a STOP IF for every limit; for a recipe class, its RECIPE
-   (the approved tool, version and command). Propose MODE; the engineer chooses it when confirming. The engineer
-   confirms the brief and its tier by telling you; you write the CONFIRMED line with the name they give, the date and
-   how it was confirmed, after checking where you can (ADR 0023). That confirmation is Ready on route S, the one
-   decision before Merge (the tiers file's decisions table). The index's rows are `aidlc-build`, `aidlc-verify`,
-   `aidlc-review`, `aidlc-release` when users see the change, and `merged`. The brief's ROUTE line names route S with
-   its facts (the class, Tier 1, one repository, every limit held); the engineer's confirmation covers it, as it
-   covers the tier (ADR 0027).
+   with its tier, then `aidlc-build`, `aidlc-verify`, `aidlc-review`. No intent, spec, design or plan approval, and
+   no release stage unless users see the change: the normal pipeline ships it. To write the brief and the index's
+   rows, read `references/route-s.md` now and follow it. The engineer confirms the brief and its tier by telling
+   you; you write the CONFIRMED line with the name they give, the date and how it was confirmed, after checking where
+   you can (ADR 0023). That confirmation is Ready on route S, the one decision before Merge (the tiers file's
+   decisions table). The brief's ROUTE line names route S with its facts (the class, Tier 1, one repository, every
+   limit held); the engineer's confirmation covers it, as it covers the tier (ADR 0027).
 
    **Full defect route (D2):** as a new feature in one repository or several, with `aidlc-intent` first and the
    reproduction as the spec's first criterion.
 
-   **New system (G):** each step's pull request merges before the next starts.
-   1. In the home (the repository, or the workspace root): `aidlc-intent` (when the story needs it), `aidlc-specify`
-      (the system and its first criteria), `aidlc-design` (the new system's decisions and `new-system.md`). These
-      documents merge in their own pull request: there is no code yet.
-   2. Several repositories, or undecided: the person creates each repository the design's LAYOUT names, then re-runs
-      `aidlc-onboard` at the workspace root to add them to `WORKSPACE.md`; the person adds their deny rules to the
-      root's `.claude/settings.json`, which a session cannot edit.
-   3. In each new repository: `aidlc-onboard` (new mode, prepare) on its own branch; then slice 0 (`aidlc-plan`,
-      `aidlc-build`, `aidlc-verify`, `aidlc-review`) on `feat/<KEY>-slice-0`; then `aidlc-onboard` (new mode, confirm).
-   4. The story's criteria are then built as in F1 (one repository) or F2 (several), and the story ends with
-      `aidlc-release`. Later features are new stories.
+   **New system (G):** read `references/route-g.md` now and follow it.
 
-   The index lists the rows `aidlc-onboard (prepare)`, `slice 0` and `aidlc-onboard (confirm)` before the build rows.
    **An index for this key already exists** (re-routing, after a stage stopped because the route no longer fits):
-   - keep every row marked done; give the new route's other stages a row "to do"; a row marked stopped becomes "to
-     do" when the new route has that stage, and is removed otherwise;
-   - write the ROUTE line as `<new route>   (re-routed from <old route>, <YYYY-MM-DD>: <reason>)`;
-   - keep the old brief (`fix.md` or `brief.md`) as history: the new route's documents replace it;
-   - when the new route spans several repositories, run this at the workspace root: it writes
-     `stories/<KEY>/README.md` there with the story-level rows, and the repository's `plans/<KEY>/README.md` becomes
-     that repository's part index when `aidlc-plan` runs for the part;
+   read `references/re-routing.md` now and follow it; then:
    - a re-route after Ready (ADR 0027): what the change touches decides what it needs before the work goes on. Name
      it in the ROUTE line's reason, and tell the person who decides it:
 
