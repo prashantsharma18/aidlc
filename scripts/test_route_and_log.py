@@ -772,5 +772,23 @@ class EvalCasesTest(unittest.TestCase):
             self.assertIn("Ran 4 tests", result.stderr)
 
 
+class RecordTest(unittest.TestCase):
+    """Task 10: the plan is recorded."""
+
+    RECORD = "docs/verification/2026-11-21-plan-25.md"
+
+    def test_the_verification_record_exists(self):
+        record = read(self.RECORD)
+        for heading in ("## What changed", "## How it was checked", "## Evidence", "## Not verified here",
+                        "## Rulings", "## For the owner"):
+            self.assertIn(heading, record, heading)
+        for phrase in ("ADR 0027", "aidlc 7.1.0", "python3 scripts/validate.py", "claude plugin validate .",
+                       *NEW_CASES):
+            self.assertIn(phrase, record, phrase)
+
+    def test_the_record_has_no_open_slot(self):
+        self.assertNotIn("{{", read(self.RECORD))
+
+
 if __name__ == "__main__":
     unittest.main()
