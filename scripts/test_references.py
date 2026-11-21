@@ -230,7 +230,7 @@ class PlanTest(Layout, unittest.TestCase):
 
     NAME = "aidlc-plan"
     REFS = ("brief-mode.md", "independent-slices.md", "revision.md", "route-g.md", "several-repositories.md")
-    LIMIT = 3200  # the design's target is 2,500; this cut reaches 3,165 (item W1)
+    LIMIT = 3200  # the design's target is 2,500; this cut reaches 3,185 (item W1)
 
     def test_every_stop_of_a_brief_and_of_slice_0_is_in_stop_if(self):
         stops = flat(section(skill_md(self.NAME), "## Stop if"))
@@ -291,7 +291,7 @@ class BuildTest(Layout, unittest.TestCase):
     pause, route S's exception and every stop stay in SKILL.md."""
 
     NAME, REFS = "aidlc-build", ("recipe-commit.md", "route-g.md", "stacked-slices.md")
-    LIMIT = 3900  # the design's target is 2,500; this cut reaches 3,871 (item W1)
+    LIMIT = 3900  # the design's target is 2,500; this cut reaches 3,880 (item W1)
 
     def test_the_recipe_pause_and_its_exception_stay_in_step_5(self):
         step5 = flat(skill_md(self.NAME)).split("5. **When the bundle has a RECIPE", 1)[1].split(" 6. ", 1)[0]
@@ -358,7 +358,7 @@ class DocsTest(unittest.TestCase):
         self.assertIn("`docs/plans/2026-11-21-plan-26-shorter-stage-skills.md`", table)
         self.assertIn("aidlc 7.2.0", table)
         self.assertIn("`aidlc-specify` meets its word target (1,797 words). `aidlc-start` (2,675), `aidlc-design` (2,324), "
-                      "`aidlc-plan` (3,165) and `aidlc-build` (3,871) stay above theirs (Plan 26, item W1); the tests "
+                      "`aidlc-plan` (3,185) and `aidlc-build` (3,880) stay above theirs (Plan 26, item W1); the tests "
                       "hold these counts as their limits.", table)
         self.assertNotIn("Needs the owner's decision", changes)
         self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "7.2.0")
