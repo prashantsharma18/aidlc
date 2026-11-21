@@ -175,5 +175,28 @@ class SpecifyTest(Layout, unittest.TestCase):
         self.assertIn("The classification is the tech lead's decision, as this skill's Gate says.", ref)
 
 
+class DesignTest(Layout, unittest.TestCase):
+    """Task 3: `aidlc-design` keeps amendment mode, route G's `new-system.md` and the several-repositories steps in
+    references; every approval stays in SKILL.md."""
+
+    NAME, REFS = "aidlc-design", ("amendment.md", "route-g.md", "several-repositories.md")
+    LIMIT = 2400  # the design's target is 2,000; this cut reaches 2,324 (item W1)
+
+    def test_the_approvals_and_the_load_stay_in_skill_md(self):
+        raw = skill_md(self.NAME)
+        steps = flat(section(raw, "## Steps"))
+        for phrase in ("On route G: read `references/route-g.md` now and follow it; then go on with step 2. 2. Load the "
+                       "`building-ci-pipelines` skill and design the team's CI",
+                       "3. The tech lead or architect approves the design and `new-system.md` together, on the work "
+                       "item.",
+                       "8. For a story that spans several repositories: read `references/several-repositories.md` now "
+                       "and follow it; then go on with step 9. 9. Present the decision for approval"):
+            self.assertIn(phrase, steps, phrase)
+        self.assertIn("the consumers approve a contract change", flat(section(raw, "## Gate")))
+        self.assertIn("The consumers' approval is this skill's Gate's decision.", flat(self.ref("amendment.md")))
+        self.assertIn("Each fact has one owner, and only the owner changes it (ADR 0022).",
+                      flat(section(raw, "## Produces")))
+
+
 if __name__ == "__main__":
     unittest.main()
