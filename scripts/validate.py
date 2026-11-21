@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Checks the aidlc plugin at the repository root and its marketplace entry: each skill and agent in the open Agent Skills format, the
-house sections of the stage and recipe skills, the practice sections of the practice skills,
+house sections of the stage and recipe skills, the practice sections of the practice skills, the workflow sections
+and names of the workflow skills,
 no command of the parked harness and no tool-specific syntax (in a
 skill or its files), every named file present, the plugin's version, and the starter settings' secret denies.
 
@@ -27,6 +28,13 @@ HOUSE_PREFIXES = ("aidlc-",)
 PRACTICE_SECTIONS = ("## When to use", "## Steps", "## Checks", "## Stop if", "## Common excuses", "## Red flags",
                      "## Rules")
 KIND_PRACTICE = re.compile(r"^[ \t]+kind:[ \t]*['\"]?practice['\"]?[ \t]*(#.*)?$", re.M)
+# A skill whose metadata says `kind: workflow` says how work runs across sessions (ADR 0025). It produces no document of
+# its own and has no gate of its own, so it keeps the workflow sections. Its name tells it apart too: never `aidlc-`,
+# which marks a stage, and never an "-ing" word, which marks a practice.
+WORKFLOW_SECTIONS = ("## When to use", "## Inputs", "## Steps", "## Stop if", "## Common excuses", "## Red flags",
+                     "## Rules")
+KIND_WORKFLOW = re.compile(r"^[ \t]+kind:[ \t]*['\"]?workflow['\"]?[ \t]*(#.*)?$", re.M)
+ING_WORD = re.compile(r"^[a-z0-9]+ing(-|$)")
 # The eight earlier practices keep their own structure, so PRACTICE_SECTIONS does not apply to them.
 # This list only shrinks.
 EARLIER_PRACTICES = frozenset({"adding-observability", "building-user-interfaces", "debugging-failures",
@@ -97,9 +105,16 @@ def check_skill(path: Path, root: Path) -> list[str]:
         problems.append(f"{rel}: description is missing or longer than 1024 characters")
     elif "Use when" not in description:
         problems.append(f"{rel}: description must say when to use the skill ('Use when ...')")
-    if folder.startswith(HOUSE_PREFIXES):
+    head = text[: text.find("\n---", 4)]
+    if KIND_WORKFLOW.search(head):
+        if folder.startswith(HOUSE_PREFIXES):
+            problems.append(f"{rel}: a workflow name never starts with 'aidlc-', which marks a stage")
+        if ING_WORD.match(folder):
+            problems.append(f"{rel}: a workflow name never starts with an '-ing' word, which marks a practice")
+        problems += check_sections(rel, text, WORKFLOW_SECTIONS, "the Rules")
+    elif folder.startswith(HOUSE_PREFIXES):
         problems += check_sections(rel, text, SECTIONS, "the gate")
-    elif KIND_PRACTICE.search(text[: text.find("\n---", 4)]) and folder not in EARLIER_PRACTICES:
+    elif KIND_PRACTICE.search(head) and folder not in EARLIER_PRACTICES:
         problems += check_sections(rel, text, PRACTICE_SECTIONS, "the Rules")
     problems += portability(rel, text)
     for sub in SKILL_DIRS:

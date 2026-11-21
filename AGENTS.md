@@ -24,8 +24,10 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
   and "Use when …". Stage skills (`aidlc-`) keep the sections: When
   to use, Inputs, Steps, Produces, Gate, Stop if, Common excuses, Red flags, Rules. Practice skills (`metadata.kind:
   practice`) keep: When to use, Steps, Checks, Stop if, Common excuses, Red flags, Rules; the eight earlier practices
-  keep their own structure. `using-aidlc` keeps the open format. A stage step commands a practice with "Load the
-  `<name>` skill"; `scripts/test_loads.py` holds the table.
+  keep their own structure. Workflow skills (`metadata.kind: workflow`, ADR 0025) run work across sessions and keep:
+  When to use, Inputs, Steps, Stop if, Common excuses, Red flags, Rules; a workflow name never starts with `aidlc-` or
+  with an "-ing" word. `using-aidlc` (`metadata.kind: map`) keeps the open format. A stage step commands a practice
+  with "Load the `<name>` skill"; `scripts/test_loads.py` holds the table.
 - Templates (`skills/aidlc-*/assets/`) are read rendered by the people who approve them: a placeholder outside a
   code block is written `{{…}}`, because GitHub drops `<word>` as an HTML tag; a block of FIELD lines
   sits in a ```text fence; and every document a person approves opens with a `## For the reviewer` section naming who

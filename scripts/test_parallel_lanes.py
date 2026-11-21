@@ -87,5 +87,81 @@ class AdrTest(unittest.TestCase):
         self.assertTrue(text.rstrip().split("\n## ")[-1].startswith("Amended by ADR 0024 (2026-11-20)"))
 
 
+WORKFLOW_BODY = """# Title
+
+## When to use
+x
+## Inputs
+x
+## Steps
+1. x
+## Stop if
+x
+## Common excuses
+x
+## Red flags
+x
+## Rules
+- You draft; you never approve.
+"""
+
+
+def workflow(name: str, body: str = WORKFLOW_BODY, kind: str = "workflow") -> str:
+    return (f"---\nname: {name}\ndescription: Runs work across sessions. Use when needed.\nmetadata:\n  kind: {kind}\n"
+            f"  invocation: auto\n---\n{body}")
+
+
+class WorkflowKindTest(unittest.TestCase):
+    """Task 2: a third kind of skill, workflow, with its own sections and two naming rules (ADR 0025)."""
+
+    def check(self, skills: dict) -> list:
+        with tempfile.TemporaryDirectory() as tmp:
+            package(Path(tmp), skills, assets=())
+            return validate.validate(Path(tmp))
+
+    def test_a_workflow_in_the_workflow_format_has_no_problems(self):
+        self.assertEqual(self.check({"parallel-lanes": workflow("parallel-lanes")}), [])
+        self.assertEqual(validate.WORKFLOW_SECTIONS, ("## When to use", "## Inputs", "## Steps", "## Stop if",
+                                                      "## Common excuses", "## Red flags", "## Rules"))
+
+    def test_a_workflow_needs_every_workflow_section(self):
+        body = WORKFLOW_BODY.replace("## Inputs\nx\n", "")
+        problems = self.check({"parallel-lanes": workflow("parallel-lanes", body)})
+        self.assertTrue(any("missing section '## Inputs'" in p for p in problems), problems)
+
+    def test_a_workflow_keeps_the_sections_in_order(self):
+        body = WORKFLOW_BODY.replace("## Inputs\nx\n## Steps\n1. x\n", "## Steps\n1. x\n## Inputs\nx\n")
+        problems = self.check({"parallel-lanes": workflow("parallel-lanes", body)})
+        self.assertTrue(any("out of order" in p for p in problems), problems)
+
+    def test_a_workflow_ends_its_rules_with_the_gate_line(self):
+        body = WORKFLOW_BODY.replace("- You draft; you never approve.", "- ok")
+        problems = self.check({"parallel-lanes": workflow("parallel-lanes", body)})
+        self.assertTrue(any("You draft; you never approve." in p for p in problems), problems)
+
+    def test_a_workflow_name_never_starts_with_aidlc(self):
+        problems = self.check({"aidlc-lanes": workflow("aidlc-lanes")})
+        self.assertTrue(any("a workflow name never starts with 'aidlc-'" in p for p in problems), problems)
+        self.assertFalse(any("'## Produces'" in p for p in problems), problems)
+
+    def test_a_workflow_name_never_starts_with_an_ing_word(self):
+        for name in ("running-lanes", "queueing"):
+            problems = self.check({name: workflow(name)})
+            self.assertTrue(any("a workflow name never starts with an '-ing' word" in p for p in problems),
+                            (name, problems))
+
+    def test_a_quoted_workflow_kind_or_one_with_a_comment_is_still_a_workflow(self):
+        for kind in ("'workflow'", "workflow  # see ADR 0025"):
+            problems = self.check({"parallel-lanes": workflow("parallel-lanes", "# Essay\n", kind)})
+            self.assertTrue(any("missing section '## Inputs'" in p for p in problems), (kind, problems))
+
+    def test_the_rules_file_names_the_workflow_kind(self):
+        standards = flat("AGENTS.md").split("## Standards", 1)[1].split(" ## ", 1)[0]
+        self.assertIn("Workflow skills (`metadata.kind: workflow`, ADR 0025) run work across sessions and keep: When "
+                      "to use, Inputs, Steps, Stop if, Common excuses, Red flags, Rules", standards)
+        self.assertIn("a workflow name never starts with `aidlc-` or with an \"-ing\" word", standards)
+        self.assertIn("`using-aidlc` (`metadata.kind: map`) keeps the open format", standards)
+
+
 if __name__ == "__main__":
     unittest.main()
