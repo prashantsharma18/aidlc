@@ -301,7 +301,9 @@ class BuildTest(Layout, unittest.TestCase):
                        "On route S, for a recipe class that `AGENTS.md`'s Standard changes section lists, do not pause",
                        "The pause lifts only when the brief's RECIPE and the commit's `Recipe:` trailer name the "
                        "class's tool and version exactly; otherwise pause as usual.",
-                       "Fixes come after it, as ordinary steps under every gate."):
+                       "Fixes come after it, as ordinary steps under every gate.",
+                       "Then run the recipe check: read `references/recipe-commit.md` now and follow it. A "
+                       "`(scaffold)` recipe on slice 0 follows `references/route-g.md` instead."):
             self.assertIn(phrase, step5, phrase)
         self.assertIn("That review is this skill's recipe pause, step 5.", flat(self.ref("route-g.md")))
 
@@ -313,6 +315,7 @@ class BuildTest(Layout, unittest.TestCase):
                        "On slice 0 of route G: read `references/route-g.md` now and follow it; it says which steps "
                        "change."):
             self.assertIn(phrase, step1, phrase)
+        self.assertLess(step1.index("On slice 0 of route G: read"), step1.index("If it is red or skips tests, stop"))
         self.assertIn("For a slice that the plan gave its own branch: read `references/stacked-slices.md` now and "
                       "follow it.", flat(section(skill_md(self.NAME), "## Inputs")))
 
