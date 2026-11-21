@@ -160,7 +160,10 @@ class TiersTest(unittest.TestCase):
                        "at Tier 2 and 3, the tech lead or architect, at Design + plan, in the same pull request;",
                        "on route G, the tech lead or architect who approves `new-system.md`.",
                        "A route change after Ready that touches the tier, the scope, the criteria or the controls is "
-                       "decided again, as `aidlc-start` says; a lighter route is chosen only at the start.",
+                       "decided again, as `aidlc-start` says; a tier change, up or down, needs a new Ready; a lighter route is "
+                       "chosen only at the start.",
+                       "one row each in the progress note, and a row for each Deviation and Assumption; anything a "
+                       "skill says stops the work is a stop, never a row",
                        "The decision log (ADR 0027):", "No row waits, and no one approves a row."):
             self.assertIn(phrase, text, phrase)
         self.assertLess(text.index("The route (ADR 0027)"), text.index("Where a pull request approval is the record"))
