@@ -291,5 +291,57 @@ class SpecifyTest(unittest.TestCase):
         self.assertIn("Keep the header's route equal to the index's ROUTE line.", section(specify, "## Steps"))
 
 
+class RouteCheckTest(unittest.TestCase):
+    """Task 5: a technical person checks the route at the first technical decision the table lists for it."""
+
+    BRIEFS = {"fix-brief": ("ACTUAL ", "D1 (<why: a defect; Tier 1; one repository; a reproduction; the expected "
+                                       "behaviour written in SOURCE>)", "Ready on route D1, ADR 0026"),
+              "feature-brief": ("OWNER ", "F0 (<why: a new feature; Tier 1; one repository; criteria written on the "
+                                          "work item by OWNER>)", "Ready on route F0, ADR 0026")}
+
+    def test_the_engineer_checks_it_in_the_brief_at_ready(self):
+        for name, (before, value, ready) in self.BRIEFS.items():
+            text = read(f"skills/aidlc-plan/assets/{name}.md")
+            fields = text.split("```text\n", 1)[1].split("\n```", 1)[0].splitlines()
+            route = next(l for l in fields if l.startswith("ROUTE "))
+            self.assertTrue(route.startswith("ROUTE       " + value), name)
+            self.assertIn("the engineer's confirmation covers the route, as it covers the TIER; the tech lead owns the "
+                          "route, ADR 0027", route, name)
+            at = fields.index(route)
+            self.assertTrue(fields[at - 1].startswith(before), name)
+            self.assertTrue(fields[at + 1].startswith("TIER "), name)
+            self.assertIn(f"({ready}), which covers its ROUTE line (ADR 0027)", flat(f"skills/aidlc-plan/assets/{name}.md"))
+        plan = skill("aidlc-plan")
+        self.assertEqual(plan.count("It covers the brief's ROUTE line too: the engineer checks the route's facts, "
+                                    "which the tech lead owns (ADR 0027)."), 2)
+        self.assertEqual(plan.count("The engineer confirms its TIER with it: that is Ready on route"), 2)
+
+    def test_the_tech_lead_checks_it_at_design_and_plan(self):
+        plan = gate("aidlc-plan")
+        self.assertIn("At Tier 2 and 3, and at Tier 1 for a plan with independent slices, the tech lead or architect "
+                      "also checks the route with this decision: the facts "
+                      "on the story index's ROUTE line, in the same pull request (for a story across several "
+                      "repositories, on the home design pull request). A fact that does not hold goes back to "
+                      "`aidlc-start`, which re-routes the work (ADR 0027). " + DECIDE + " " + LANE, plan)
+        design = gate("aidlc-design")
+        self.assertIn("At Tier 2 and 3 the tech lead or architect also checks the route here, with the design: the "
+                      "facts on the story index's ROUTE line, in the same pull request (on the home design pull "
+                      "request for a story across several repositories); on route G, they check it when they approve "
+                      "`new-system.md`. A fact that does not hold goes back to `aidlc-start` (ADR 0027). " + DECIDE,
+                      design)
+
+    def test_the_code_owner_checks_it_at_merge_on_the_other_tier_1_routes(self):
+        review = skill("aidlc-review")
+        self.assertIn("the tier, the route (the story index's ROUTE line, with its facts) and the rollback;",
+                      section(review, "## Steps"))
+        self.assertIn("At Tier 1 on F1, D2 and C, the code owner also checks the route here: the facts on the ROUTE "
+                      "line the description shows. A fact that does not hold goes back to `aidlc-start` before the "
+                      "merge, which re-routes the work (ADR 0027).", gate("aidlc-review"))
+        trace = flat("skills/aidlc-review/assets/pr-description.md").split("## Traceability", 1)[1]
+        self.assertIn("- **Work item:** {{key, title}} · Tier {{n}} - **Route:** {{the story index's ROUTE line, with "
+                      "its facts}} (shown at Ready; the tech lead owns it; at Tier 1 on F1, D2 and C, the code owner "
+                      "checks it here, ADR 0027)", trace)
+
+
 if __name__ == "__main__":
     unittest.main()

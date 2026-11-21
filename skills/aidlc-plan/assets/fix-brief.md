@@ -2,7 +2,7 @@
 # {{KEY}} · fix brief
 
 ## For the reviewer
-- **Asked of:** The engineer, to confirm the brief, its TIER and its MODE (Ready on route D1, ADR 0026); the code owner approves it with the fix
+- **Asked of:** The engineer, to confirm the brief, its TIER and its MODE (Ready on route D1, ADR 0026), which covers its ROUTE line (ADR 0027); the code owner approves it with the fix
 - **Record it:** On the CONFIRMED line below, which the AI writes when the engineer confirms (ADR 0023); then in the pull request
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
@@ -14,6 +14,7 @@ REPRO       <the steps or the failing output that show the defect>
 EXPECTED    <the behaviour that should happen>
 SOURCE      <where that behaviour is written: criterion ID, spec section, contract, documentation page>   (none: stop, it is route D2)
 ACTUAL      <what happens instead>
+ROUTE       D1 (<why: a defect; Tier 1; one repository; a reproduction; the expected behaviour written in SOURCE>)   (the engineer's confirmation covers the route, as it covers the TIER; the tech lead owns the route, ADR 0027)
 TIER        1 (<why: one repository; no money, personal data, security, contract or untested legacy code>)
 DESIGN      none needed: no change of shape, boundary or contract   (any yes: stop, it is route D2)
 LIKELY AREA <file:line, labelled FACT or INFERENCE>

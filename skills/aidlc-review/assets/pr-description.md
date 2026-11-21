@@ -24,6 +24,7 @@
 
 ## Traceability
 - **Work item:** {{key, title}} · Tier {{n}}
+- **Route:** {{the story index's ROUTE line, with its facts}} (shown at Ready; the tech lead owns it; at Tier 1 on F1, D2 and C, the code owner checks it here, ADR 0027)
 - **Spec:** {{version, clarifications}}
 - **Plan:** plan.md {{version}} ({{commit}}), approved by {{who}} on {{YYYY-MM-DD}}, {{how it was confirmed}}
 - **Bundle or brief:** {{path}} at its approval commit

@@ -2,7 +2,7 @@
 # {{KEY}} · feature brief
 
 ## For the reviewer
-- **Asked of:** The engineer, to confirm the brief, its TIER and its MODE (Ready on route F0, ADR 0026); the code owner approves it with the change
+- **Asked of:** The engineer, to confirm the brief, its TIER and its MODE (Ready on route F0, ADR 0026), which covers its ROUTE line (ADR 0027); the code owner approves it with the change
 - **Record it:** On the CONFIRMED line below, which the AI writes when the engineer confirms (ADR 0023); then in the pull request
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
@@ -13,6 +13,7 @@ FEATURE BRIEF · {{KEY}} · {{TITLE}}      route F0 (feature, fast path)
 OUTCOME     <the observable behaviour the work item asks for, in one or two sentences>
 CRITERIA    <ID>: <the criterion as its owner wrote it on the work item> -> test <name with the ID>   (one line each)
 OWNER       <who wrote the criteria on the work item>, <the work item's version or date>
+ROUTE       F0 (<why: a new feature; Tier 1; one repository; criteria written on the work item by OWNER>)   (the engineer's confirmation covers the route, as it covers the TIER; the tech lead owns the route, ADR 0027)
 TIER        1 (<why: one repository; no money, personal data, security, contract or untested legacy code>)
 DESIGN      none needed: the three design questions are no   (any yes or unsure: stop, it is route F1)
 DEPENDENCIES none new   (one needed: stop, it is route F1)
