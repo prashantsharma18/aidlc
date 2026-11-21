@@ -1114,5 +1114,22 @@ class DocsTest(unittest.TestCase):
         self.assertIn("`docs/plans/2026-11-21-plan-23-parallel-lanes.md`", table)
 
 
+class RecordTest(unittest.TestCase):
+    """Task 10: the plan is recorded."""
+
+    RECORD = "docs/verification/2026-11-21-plan-23.md"
+
+    def test_the_verification_record_exists(self):
+        record = read(self.RECORD)
+        for heading in ("## What changed", "## How it was checked", "## Evidence", "## Not verified here",
+                        "## For the owner"):
+            self.assertIn(heading, record, heading)
+        for phrase in ("ADR 0025", "python3 scripts/validate.py", "claude plugin validate .", *LANE_CASES):
+            self.assertIn(phrase, record, phrase)
+
+    def test_the_record_has_no_open_slot(self):
+        self.assertNotIn("{{", read(self.RECORD))
+
+
 if __name__ == "__main__":
     unittest.main()
