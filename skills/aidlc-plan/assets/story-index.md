@@ -11,7 +11,8 @@ PINS       spec v<n> @ <home commit> · plan v<n> · contract <provider> v<MAJOR
 UNAFFECTED <repository> spec v<n>: <why>, <tech lead>, <YYYY-MM-DD>, <how it was confirmed>        (one line per part recorded as unaffected, written by the AI when the tech lead decides; delete when none)
 ```
 
-Each stage marks its own row when it ends: done, or `stopped: <reason>`. The build row reads doing while slices remain.
+Each stage marks its own row when it ends: done, `waiting: <decision> by <who>` when it stops for a person's
+decision in a lane (`parallel-lanes`), or `stopped: <reason>`. The build row reads doing while slices remain.
 Once the code owner approves, the AI checks the approval in the review tool and the team's CI result, marks the merged row
 done in the pull request's final commit (its message says how it was confirmed) and tells the person it is ready
 to merge (ADR 0023), so it reaches

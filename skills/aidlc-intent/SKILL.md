@@ -45,7 +45,7 @@ Where this runs: read the story's index first: `stories/<KEY>/README.md` at the 
 The draft of `plans/<KEY>/intent.md` (or `stories/<KEY>/intent.md`), on the story branch. The accepted intent lives in the work item.
 
 ## Gate
-The product owner edits the statement, sets the priority, agrees the provisional tier with whoever owns the risk, and accepts or declines the work in the tracker. You record the acceptance in the intent's file only after checking the tracker, or from the product owner's own word in this session, with how it was confirmed (ADR 0023); the tracker stays the system of record. You draft; you never approve. You never change a work item's status.
+The product owner edits the statement, sets the priority, agrees the provisional tier with whoever owns the risk, and accepts or declines the work in the tracker. You record the acceptance in the intent's file only after checking the tracker, or from the product owner's own word in this session, with how it was confirmed (ADR 0023); the tracker stays the system of record. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve. You never change a work item's status.
 
 ## Stop if
 - The work item has no owner, or it contradicts another approved item: report it, never resolve it.

@@ -47,7 +47,7 @@ for a story across several repositories, and `follow-ups.md`. The release approv
 records merge in their own small pull request.
 
 ## Gate
-The release approver decides ship, limit or hold, and approves in change management. The engineer owns the plan, and the owning team confirms monitoring and rollback. The release approver tells you the decision, or you check it in change management through its connected tool; you then write the readiness record's Decision, with how it was confirmed (ADR 0023). The approver's word in the session fills the Decision line only. The change record's Approved by line cites the approval's record in change management: checked through its connected tool where one exists; otherwise the record's ID the approver gives you, written with who told you and the date. An approval that exists only in the chat still stops the release. You draft; you never approve.
+The release approver decides ship, limit or hold, and approves in change management. The engineer owns the plan, and the owning team confirms monitoring and rollback. The release approver tells you the decision, or you check it in change management through its connected tool; you then write the readiness record's Decision, with how it was confirmed (ADR 0023). The approver's word in the session fills the Decision line only. The change record's Approved by line cites the approval's record in change management: checked through its connected tool where one exists; otherwise the record's ID the approver gives you, written with who told you and the date. An approval that exists only in the chat still stops the release. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
 
 ## Stop if
 - There are no stop criteria.

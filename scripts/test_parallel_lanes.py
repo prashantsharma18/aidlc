@@ -583,5 +583,40 @@ class ParallelLanesRoundTwoTest(unittest.TestCase):
             self.assertIn("already exists", taken.stderr)
 
 
+LANE_LINE = "In a lane, release at your gate as `parallel-lanes` says."
+LANE_STAGES = ("aidlc-intent", "aidlc-specify", "aidlc-discover", "aidlc-design", "aidlc-plan", "aidlc-build",
+               "aidlc-verify", "aidlc-review", "aidlc-release")
+
+
+class LaneLineTest(unittest.TestCase):
+    """Task 4: each stage that marks a row in the item's index releases at its gate in a lane, in one identical line;
+    the index gains the value the lane writes."""
+
+    def test_each_lane_stage_has_the_line_once_at_the_end_of_its_gate(self):
+        for name in LANE_STAGES:
+            raw = read(f"skills/{name}/SKILL.md")
+            self.assertEqual(raw.count(LANE_LINE), 1, name)
+            self.assertEqual(raw.count("In a lane,"), 1, name)
+            gate = raw.split("\n## Gate\n", 1)[1].split("\n## ", 1)[0]
+            self.assertIn(LANE_LINE + " You draft; you never approve.", gate, name)
+
+    def test_no_other_skill_has_it(self):
+        for path in sorted((ROOT / "skills").glob("*/SKILL.md")):
+            if path.parent.name not in LANE_STAGES:
+                self.assertNotIn("In a lane, release", path.read_text(encoding="utf-8"), path.parent.name)
+
+    def test_the_lane_stages_are_the_ones_that_mark_the_items_row(self):
+        for name in LANE_STAGES:
+            self.assertIn("Mark this stage's row in the index", section(skill(name), "## Steps"), name)
+        for name in ("aidlc-start", "aidlc-operate", "aidlc-feedback"):
+            self.assertNotIn("Mark this stage's row in the index", skill(name), name)
+
+    def test_the_index_gains_the_waiting_value(self):
+        start, plan = (read(f"skills/{name}/assets/story-index.md") for name in ("aidlc-start", "aidlc-plan"))
+        self.assertEqual(start, plan)
+        self.assertIn("Each stage marks its own row when it ends: done, `waiting: <decision> by <who>` when it stops for "
+                      "a person's decision in a lane (`parallel-lanes`), or `stopped: <reason>`.", " ".join(start.split()))
+
+
 if __name__ == "__main__":
     unittest.main()

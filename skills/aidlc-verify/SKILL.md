@@ -41,7 +41,7 @@ The pull request's CI results (the checks and their logs, test reports), or, whe
 The evidence table and the pull request description; updating the pull request asks the person first.
 
 ## Gate
-The team's CI is green on the pull request; every row points to the trusted run, or is listed as unproved with a decision; and a code owner who did not write the change approves it. You draft; you never approve.
+The team's CI is green on the pull request; every row points to the trusted run, or is listed as unproved with a decision; and a code owner who did not write the change approves it. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
 
 ## Stop if
 - A CI check is red, missing or skipped: report it, and never describe the change as passing.

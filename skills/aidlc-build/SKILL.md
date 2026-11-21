@@ -47,7 +47,7 @@ The approved task bundle `plans/<KEY>/bundle-<slice>.md`, or, on route D1, the c
 Commits on `<type>/<KEY>-<slug>`, tests named after the criteria, and the progress note `plans/<KEY>/progress-<slice>.md`, committed on its own first, then with the slice, and the evidence file `plans/<KEY>/review-evidence.md`. This is local evidence only: the team's CI on the pull request and the reviewers who did not write the change decide.
 
 ## Gate
-The local check is green with no unexplained skips, the diff stays inside MAY CHANGE, the reviewer agents' passes on the evidence file are clean at the commit they name, and the person reviews the diff before pushing. Your STATUS `done` means your steps are finished, not that the change passes. You draft; you never approve.
+The local check is green with no unexplained skips, the diff stays inside MAY CHANGE, the reviewer agents' passes on the evidence file are clean at the commit they name, and the person reviews the diff before pushing. Your STATUS `done` means your steps are finished, not that the change passes. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
 
 ## Stop if
 - The bundle's MODE is not allowed at its TIER (delegate with checkpoints above Tier 2, delegate above Tier 1), or a

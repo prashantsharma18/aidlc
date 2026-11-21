@@ -48,7 +48,7 @@ The question or the accepted intent, the provisional tier, `AGENTS.md` and the c
 The evidence pack, written to `plans/<KEY>/evidence-pack.md` (or `stories/<KEY>/evidence-pack.md`), and the explorer briefs you used.
 
 ## Gate
-The tech lead, with the affected owners, decides to proceed, escalate or raise the tier, and tells you; you record it on the evidence pack's DECISION line, with how it was confirmed (ADR 0023), and offer to post it on the work item. You draft; you never approve.
+The tech lead, with the affected owners, decides to proceed, escalate or raise the tier, and tells you; you record it on the evidence pack's DECISION line, with how it was confirmed (ADR 0023), and offer to post it on the work item. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
 
 ## Stop if
 - Access to logs or a database is needed: return it as UNKNOWN, with who can provide it.

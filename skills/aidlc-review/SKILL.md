@@ -59,7 +59,7 @@ In `plans/<KEY>/`, on the part's branch: `review-evidence.md`, `pr-description.m
 dispositions, the reviewers' verdicts and questions) and, when required, `security-review.md`. Posting any of them to the pull request asks the person first.
 
 ## Gate
-A code owner who is neither the author nor the pusher approves, and a required specialist can block; the code host may enforce both (branch protection or its equivalent), but aidlc never needs it; the decision is recorded on the pull request. You draft; you never approve.
+A code owner who is neither the author nor the pusher approves, and a required specialist can block; the code host may enforce both (branch protection or its equivalent), but aidlc never needs it; the decision is recorded on the pull request. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
 
 ## Stop if
 - You are asked to approve, or "AI review clean" is offered as the approval: AI review is evidence for the reviewer and is never the approval.
