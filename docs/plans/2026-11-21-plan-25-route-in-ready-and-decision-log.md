@@ -112,6 +112,8 @@ person reading them, not by a test; the two cases are written, not run (they cos
 
 ## Needs the owner's decision
 
+**Approved by the owner in the session, 2026-11-21:** T2a, T8a (change it), T9a, T9b, V1 (7.1.0) and O1; execution subagent-driven.
+
 AGENTS.md says: never change an existing test assertion to make a test pass; stop and report. **Approving this plan
 approves exactly the items below, and no other change to an existing test.** If an executor finds that any other
 existing assertion fails, it stops and reports. The list was built by running the suite (559 tests, OK) and then
