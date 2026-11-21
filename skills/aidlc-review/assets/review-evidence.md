@@ -19,6 +19,7 @@ BASE       {{git fetch, then git merge-base HEAD origin/<default branch>}}
 BRANCH     {{git branch --show-current}}
 WRITTEN    {{YYYY-MM-DD}}, by {{the build session | the review session}}
 STANDARD   {{on route S: the class, and each limit with how it held | none}}   (route S: also the packages added to lock files, or none)
+COMMITS    {{one line per commit on the branch, from git log --format='%h %s' <base>..HEAD; the compliance reviewer checks each decision-log row's commit against it}}
 ```
 
 ## Changed files (reviewer-compliance)

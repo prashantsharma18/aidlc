@@ -6,8 +6,10 @@ write_evidence() {
   local key="$1" base="$2" head="$3" before="$4" after="$5"
   {
     printf '# %s · part 1 · review evidence at %s\n\n' "$key" "$(git rev-parse --short "$head")"
-    printf '```text\nHEAD       %s\nBASE       %s\nBRANCH     %s\nWRITTEN    2026-11-20, by the review session\n```\n\n' \
+    printf '```text\nHEAD       %s\nBASE       %s\nBRANCH     %s\nWRITTEN    2026-11-20, by the review session\n' \
       "$head" "$base" "$(git branch --show-current)"
+    git log --format='COMMITS    %h %s' "$base..$head"
+    printf '```\n\n'
     printf '## Changed files (reviewer-compliance)\n'
     printf '`git diff --stat --no-renames <base> HEAD`, then `git diff --name-only --no-renames <base> HEAD`.\n\n```text\n'
     git diff --stat --no-renames "$base" "$head"

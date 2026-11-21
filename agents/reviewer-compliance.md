@@ -30,6 +30,15 @@ You check that the change does what was approved, and only that.
 - Each recorded decision (the CONFIRMED line, each "confirmed by" line, the plan's APPROVAL line) names a person
   and says how it was confirmed: in the session, or checked in the review tool or on the tracker (ADR 0023). A record with no
   name, a placeholder, or no way it was confirmed is a medium finding.
+- The decision log (ADR 0027): each progress note has its "Decisions made while working (for the PR)" rows, or
+  `- none`; a note with no log, not even `none`, is a medium finding. Each Deviation and each Assumption the note
+  lists has a row; a missing row is a medium finding. Each row names its evidence (file:line, a test or a command), an
+  owner, and a commit the evidence file's COMMITS line lists; a row missing one of them is a low finding. A row that
+  should have been a stop (an unclear criterion, a new dependency, a file outside MAY CHANGE, a contract change, a
+  changed assertion, a STOP IF of the bundle, or a choice that waits for someone's yes) is a high finding: the build
+  should have stopped and asked. The same holds for every item under the build's Stop if, an approach the plan did
+  not name, and an Assumption that is really behaviour the spec does not state. `owner` is a pointer, never an
+  approval: a row with no approval is not a finding.
 - For a part of a story across several repositories, the spec pin names a home commit (`spec v<n> @ <commit>`),
   `plans/<KEY>/criteria.md` names the same commit on its SOURCE line, and the criteria you check come from that
   copy. A copy under `contracts/<provider>/` changes only in a slice whose MAY CHANGE names it, together with its

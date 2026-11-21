@@ -423,5 +423,78 @@ class BuildLogTest(unittest.TestCase):
                       "confirm is flagged for the reviewer.", note.split("## Assumptions", 1)[1])
 
 
+class ReviewLogTest(unittest.TestCase):
+    """Task 7: the description carries the log by owner; the compliance reviewer checks it against the commits."""
+
+    EVIDENCE = ("skills/aidlc-build/assets/review-evidence.md", "skills/aidlc-review/assets/review-evidence.md")
+
+    def test_review_copies_the_rows_by_owner(self):
+        review = skill("aidlc-review")
+        self.assertIn("each change mapped to its criteria; the decision log, copied from each progress note's "
+                      "\"Decisions made while working (for the PR)\" rows into \"Decisions made while building\", grouped "
+                      "by the owner each row names, with their evidence, or `none` (ADR 0027);", section(review, "## Steps"))
+        self.assertNotIn("the decisions with who confirmed them", review)
+        self.assertIn("The code owner reads the decision log with the spec, the plan and the code, inside this "
+                      "decision; nothing new is approved. The description groups the rows by owner, so the code owner "
+                      "can bring in another owner as a reviewer; anyone who disagrees with a row raises a review "
+                      "finding, which the engineer decides (ADR 0027). " + DECIDE, gate("aidlc-review"))
+        self.assertIn("A decision-log row left out of the description, or a row presented as an approval.",
+                      section(review, "## Red flags"))
+
+    def test_the_description_template_groups_the_rows(self):
+        text = read("skills/aidlc-review/assets/pr-description.md")
+        part = text.split("## Decisions made while building\n", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("**Owner: {{who owns the area}}**\n- {{commit}} · {{decision}} · {{why}} · {{evidence: file:line, "
+                      "a test or a command}}", part)
+        flat_part = " ".join(part.split())
+        for phrase in ("copied from each progress note's \"Decisions made while working (for the PR)\", grouped by "
+                       "the owner each row names (ADR 0027).",
+                       "A row is a pointer for its owner, never an approval: no row waits.",
+                       "anyone who disagrees with a row raises a review finding.",
+                       "Write `- none` when no slice logged a judgement call."):
+            self.assertIn(phrase, flat_part, phrase)
+        self.assertNotIn("confirm with", text)
+        block = flat("skills/aidlc-review/assets/pr-description.md").split("## For the reviewer", 1)[1]
+        self.assertIn("a required specialist can block; they read the decision log below with the spec, the plan and "
+                      "the code, and at Tier 1 on F1, D2 and C they check the route under Traceability (ADR 0027)",
+                      block)
+        self.assertEqual(re.findall(r"<(?!!--)[^<>\n]+>", outside_code(text)), [])
+
+    def test_the_compliance_reviewer_checks_the_log(self):
+        text = flat("agents/reviewer-compliance.md")
+        for phrase in ("The decision log (ADR 0027): each progress note has its \"Decisions made while working (for "
+                       "the PR)\" rows, or `- none`; a note with no log, not even `none`, is a medium finding.",
+                       "Each Deviation and each Assumption the note lists has a row; a missing row is a medium finding.",
+                       "Each row names its evidence (file:line, a test or a command), an owner, and a commit the "
+                       "evidence file's COMMITS line lists; a row missing one of them is a low finding.",
+                       "A row that should have been a stop (an unclear criterion, a new dependency, a file outside MAY "
+                       "CHANGE, a contract change, a changed assertion, a STOP IF of the bundle, or a choice that waits "
+                       "for someone's yes) is a high finding: the build should have stopped and asked.",
+                       "`owner` is a pointer, never an approval: a row with no approval is not a finding."):
+            self.assertIn(phrase, text, phrase)
+
+    def test_the_evidence_names_the_branch_commits(self):
+        copies = {read(rel) for rel in self.EVIDENCE}
+        self.assertEqual(len(copies), 1)
+        text = copies.pop()
+        header = text.split("```text\n", 1)[1].split("\n```", 1)[0].splitlines()
+        self.assertEqual([line.split()[0] for line in header], ["HEAD", "BASE", "BRANCH", "WRITTEN", "STANDARD",
+                                                               "COMMITS"])
+        self.assertIn("git log --format='%h %s' <base>..HEAD", header[-1])
+        self.assertEqual(len(re.findall(r"(?m)^## ", text)), 9)
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            scaffold("gate-evidence-deleted-test", repo)
+            evidence = (repo / "plans/SHIP-44/review-evidence.md").read_text(encoding="utf-8")
+            subject = "refactor(eta): one expression for the rule (SHIP-44 slice 1)"
+            short = git(repo, "log", "-1", "--format=%h", "--grep", "one expression for the rule").stdout.strip()
+            self.assertRegex(evidence, rf"(?m)^COMMITS    {short} {re.escape(subject)}$")
+
+    def test_the_compliance_reviewer_names_every_stop_as_a_high_finding(self):
+        text = flat("agents/reviewer-compliance.md")
+        self.assertIn("The same holds for every item under the build's Stop if, an approach the plan did not name, and "
+                      "an Assumption that is really behaviour the spec does not state.", text)
+
+
 if __name__ == "__main__":
     unittest.main()
