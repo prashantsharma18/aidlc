@@ -496,5 +496,17 @@ class ReviewLogTest(unittest.TestCase):
                       "an Assumption that is really behaviour the spec does not state.", text)
 
 
+    def test_fix_round_none_hash_matching_and_commits_line(self):
+        part = read("skills/aidlc-review/assets/pr-description.md").split("## Decisions made while building\n", 1)[1]
+        self.assertIn("Write `- none` only when every progress note's log reads `- none`.", " ".join(part.split()))
+        text = flat("agents/reviewer-compliance.md")
+        self.assertIn("Among them: a spec that does not say how something should behave, a plan that looks wrong, a "
+                      "check that passes only by lowering the Quality bar, and a failure about architecture, scope or "
+                      "security.", text)
+        self.assertIn("A row's commit matches a COMMITS line when either hash starts with the other.", text)
+        for rel in self.EVIDENCE:
+            self.assertIn("COMMITS    <short hash> <subject>", read(rel))
+
+
 if __name__ == "__main__":
     unittest.main()
