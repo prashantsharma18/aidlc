@@ -298,7 +298,7 @@ After Ready, what the change touches decides what it needs before the work goes 
 | The criteria change | The criterion's owner decides the amendment (`aidlc-specify`, amendment mode) |
 | The scope grows: a repository, a part or a contract (for example F1 to F2) | A new Ready, then the new route's decisions |
 | The route gains controls (for example F0 to F1, D1 to D2, S to its normal route) | The new route's Ready, by its decider |
-| The route would lose controls (for example F1 to F0, a normal route to S) | Not allowed after Ready: a lighter route is chosen only at the start |
+| The route would lose controls (for example F1 to F0, a normal route to S) | Not allowed after Ready: a lighter route is chosen only at the start; before Ready nothing is approved yet, so `aidlc-start` may still re-route to a lighter route |
 | None of the above (for example, the kind of work was mislabelled) | No new decision: the AI states the change |
 
 ## Where the documents live

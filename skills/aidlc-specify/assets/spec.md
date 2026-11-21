@@ -5,7 +5,7 @@ Spec owner: {{OWNER}} · Tier: {{TIER}} · Route: {{ROUTE, from the story index'
 
 ## For the reviewer
 - **Asked of:** The spec owner, to approve the criteria and decide every edge case; a specialist reviews at Tier 3; the route is shown with the spec, and the tech lead owns it (ADR 0027)
-- **Record it:** On the work item: "Spec vN approved by name · route F1 (shown; the tech lead owns it)" (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
+- **Record it:** On the work item: "Spec vN approved by name · route {{ROUTE}} (shown; the tech lead owns it)" (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 

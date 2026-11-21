@@ -40,7 +40,7 @@ S, the engineer who confirms the brief, at Ready; on F1, D2 and C at Tier 1, the
 request description shows the ROUTE line (for a plan with independent slices, first the tech lead who approves it); at
 Tier 2 and 3, the tech lead or architect, at Design + plan, in the same pull request; on route G, the tech lead or
 architect who approves `new-system.md`. A route change after Ready that touches the tier, the scope, the criteria or
-the controls is decided again, as `aidlc-start` says; a tier change, up or down, needs a new Ready; a lighter route is chosen only at the start.
+the controls is decided again, as `aidlc-start` says; a tier change, up or down, needs a new Ready; a lighter route is chosen only at the start; before Ready nothing is approved yet, so `aidlc-start` may still re-route to a lighter route.
 
 The decision log (ADR 0027): the AI logs each judgement call it makes while building, one row each in the progress
 note, and a row for each Deviation and Assumption; anything a skill says stops the work is a stop, never a row, and the pull request description groups the rows by owner. The code owner reads them at Merge, with spec, plan

@@ -161,7 +161,8 @@ class TiersTest(unittest.TestCase):
                        "on route G, the tech lead or architect who approves `new-system.md`.",
                        "A route change after Ready that touches the tier, the scope, the criteria or the controls is "
                        "decided again, as `aidlc-start` says; a tier change, up or down, needs a new Ready; a lighter route is "
-                       "chosen only at the start.",
+                       "chosen only at the start; before Ready nothing is approved yet, so `aidlc-start` may still re-route to a "
+                       "lighter route.",
                        "one row each in the progress note, and a row for each Deviation and Assumption; anything a "
                        "skill says stops the work is a stop, never a row",
                        "The decision log (ADR 0027):", "No row waits, and no one approves a row."):
@@ -190,7 +191,7 @@ class StartTest(unittest.TestCase):
         "| The route gains controls (for example F0 to F1, D1 to D2, S to its normal route) | The new route's Ready, by "
         "that route's decider (the product owner for F1 and D2) |",
         "| The route would lose controls (for example F1 to F0, a normal route to S) | Not allowed after Ready: the "
-        "work stays on its route. A lighter route is chosen only at the start |",
+        "work stays on its route. A lighter route is chosen only at the start; before Ready nothing is approved yet, so `aidlc-start` may still re-route to a lighter route |",
         "| None of the above: the same tier, repositories, criteria and controls (for example, the kind of work was "
         "mislabelled) | No new decision: state the change, and it is shown at the next decision the table lists |")
 
@@ -222,7 +223,8 @@ class StartTest(unittest.TestCase):
                        "the engineer who confirms the brief on F0, D1 and S, at Ready;",
                        "the code owner on F1, D2 and C at Tier 1, at Merge (for a plan with independent slices, first "
                        "the tech lead who approves it);",
-                       "the tech lead or architect at Tier 2 and 3, and on route G, at Design + plan (ADR 0027).",
+                       "the tech lead or architect at Design + plan at Tier 2 and 3, and on route G when they approve "
+                       "`new-system.md` (ADR 0027).",
                        "When the product owner disagrees with the route at Ready, the work comes back here, and the "
                        "tech lead decides; the product owner's Ready still covers the work, its criteria and its tier.",
                        DECIDE + " You draft; you never approve."):
@@ -242,7 +244,7 @@ class StartTest(unittest.TestCase):
         self.assertIn("Moving work to a lighter route after Ready (F1 to F0, a normal route to S), or re-routing after "
                       "Ready without saying what the change needs.", section(start, "## Red flags"))
         self.assertIn("| \"The tier dropped after discovery, so I will move the story to the fast path.\" | A lighter "
-                      "route is chosen only at the start. After Ready the work stays on its route; a lower tier is a "
+                      "route is chosen only at the start; before Ready nothing is approved yet, so `aidlc-start` may still re-route to a lighter route. After Ready the work stays on its route; a lower tier is a "
                       "new Ready. |", section(start, "## Common excuses"))
 
     def test_the_standard_brief_shows_the_route(self):
@@ -271,7 +273,7 @@ class SpecifyTest(unittest.TestCase):
         block = flat("skills/aidlc-specify/assets/spec.md").split("## For the reviewer", 1)[1].split(" ## ", 1)[0]
         self.assertIn("a specialist reviews at Tier 3; the route is shown with the spec, and the tech lead owns it "
                       "(ADR 0027)", block)
-        self.assertIn("On the work item: \"Spec vN approved by name · route F1 (shown; the tech lead owns it)\"", block)
+        self.assertIn("On the work item: \"Spec vN approved by name · route {{ROUTE}} (shown; the tech lead owns it)\"", block)
 
     def test_specify_writes_the_route_and_never_decides_it(self):
         specify = skill("aidlc-specify")
@@ -279,7 +281,7 @@ class SpecifyTest(unittest.TestCase):
                       "lead owns it (ADR 0027).", section(specify, "## Steps"))
         text = gate("aidlc-specify")
         for phrase in ("Ready shows the route apart from the approval: write the Approval record as \"Spec vN approved "
-                       "by … · route F1 (shown; the tech lead owns it)\", and at Tier 1, where the spec may be a few "
+                       "by … · route F1 (shown; the tech lead owns it)\" (with the story's route in place of F1), and at Tier 1, where the spec may be a few "
                        "lines on the work item, write the work item's entry the same way (ADR 0027).",
                        "The spec owner sees the route and does not decide it: when they disagree with it, the work "
                        "goes back to `aidlc-start`, and the tech lead decides; their Ready still covers the work, its "
@@ -358,7 +360,7 @@ class BuildLogTest(unittest.TestCase):
                        "A judgement call is a choice the spec, the plan and the bundle left open, settled inside MAY "
                        "CHANGE; anything a stop names is a stop, never a row.",
                        "`owner` is who owns the area and should see the row, never an approval: no row waits.",
-                       "Write `- none` when the slice made no judgement call."):
+                       "Write `- none` when the slice has no row to write."):
             self.assertIn(phrase, flat_log, phrase)
         self.assertNotIn("confirm with", text)
         self.assertEqual(re.findall(r"<(?!!--)[^<>\n]+>", outside_code(text)), [])
@@ -378,7 +380,7 @@ class BuildLogTest(unittest.TestCase):
                        "criterion's owner for an edge case a criterion allows.",
                        "It is a pointer, never a gate: no row waits, and no one approves a row.",
                        "Each Deviation and each Assumption the note lists gets a row too.",
-                       "A slice with no judgement call writes `- none`.",
+                       "A slice with no judgement call, no Deviation and no Assumption writes `- none`.",
                        "Anything this skill says stops the work is never a row: an unclear criterion, a new "
                        "dependency, a file outside MAY CHANGE, a contract change, a changed assertion and every STOP "
                        "IF still stop.",
@@ -414,7 +416,7 @@ class BuildLogTest(unittest.TestCase):
                        "After step 1 moves a stacked slice, update each row's commit to the moved one.",
                        "Write `- none` only when there is no judgement call, no Deviation and no Assumption."):
             self.assertIn(phrase, step, phrase)
-        self.assertIn("You are logging an approach the plan did not name, or behaviour the spec does not state.",
+        self.assertIn("You are logging an approach the plan did not name (a practice recorded under Deviations is not one), or behaviour the spec does not state.",
                       " ".join(section(build, "## Red flags").split()))
         note = flat(self.NOTE)
         self.assertIn("Write `- none` only when there is no judgement call, no Deviation and no Assumption.", note)
@@ -451,7 +453,7 @@ class ReviewLogTest(unittest.TestCase):
                        "the owner each row names (ADR 0027).",
                        "A row is a pointer for its owner, never an approval: no row waits.",
                        "anyone who disagrees with a row raises a review finding.",
-                       "Write `- none` when no slice logged a judgement call."):
+                       "Write `- none` when no slice logged a row."):
             self.assertIn(phrase, flat_part, phrase)
         self.assertNotIn("confirm with", text)
         block = flat("skills/aidlc-review/assets/pr-description.md").split("## For the reviewer", 1)[1]
@@ -492,7 +494,8 @@ class ReviewLogTest(unittest.TestCase):
 
     def test_the_compliance_reviewer_names_every_stop_as_a_high_finding(self):
         text = flat("agents/reviewer-compliance.md")
-        self.assertIn("The same holds for every item under the build's Stop if, an approach the plan did not name, and "
+        self.assertIn("The same holds for every item under the build's Stop if, an approach the plan did not name (a practice listed under Deviations, loaded "
+                      "inside MAY CHANGE, is not an approach: its row is expected), and "
                       "an Assumption that is really behaviour the spec does not state.", text)
 
 
@@ -547,7 +550,7 @@ class DocsTest(unittest.TestCase):
                       routes)
         for row in ("| The tier changes, up or down | A new Ready |",
                     "| The route would lose controls (for example F1 to F0, a normal route to S) | Not allowed after "
-                    "Ready: a lighter route is chosen only at the start |",
+                    "Ready: a lighter route is chosen only at the start; before Ready nothing is approved yet, so `aidlc-start` may still re-route to a lighter route |",
                     "| None of the above (for example, the kind of work was mislabelled) | No new decision: the AI "
                     "states the change |"):
             self.assertIn(row, routes, row)
@@ -593,12 +596,15 @@ TOOL_SAMPLES = {
         [{"file_path": "/work/plans/SHIP-96/review-record.md", "old_string": "a",
           "new_string": "reviewer-compliance: No findings at 1a2b3c4"},
          {"file_path": "/work/plans/SHIP-96/review-record.md", "old_string": "a",
-          "new_string": "reviewer-compliance: 0 findings at 1a2b3c4"}]),
+          "new_string": "reviewer-compliance: 0 findings at 1a2b3c4"},
+         {"file_path": "/work/plans/SHIP-96/review-record.md", "old_string": "a",
+          "new_string": "reviewer-compliance: PASS"}]),
     ("gate-compliance-decision-log", "no-clean-verdict-write.md"): (
         [{"file_path": "/work/plans/SHIP-96/review-record.md",
           "content": "reviewer-compliance: 2 findings (1 high, 1 medium) at 1a2b3c4"}],
         [{"file_path": "/work/plans/SHIP-96/review-record.md", "content": "reviewer-compliance: No findings."},
-         {"file_path": "/work/plans/SHIP-96/review-record.md", "content": "reviewer-compliance: 0 findings at 1a2b3c4"}]),
+         {"file_path": "/work/plans/SHIP-96/review-record.md", "content": "reviewer-compliance: 0 findings at 1a2b3c4"},
+         {"file_path": "/work/plans/SHIP-96/review-record.md", "content": "reviewer-compliance: PASS"}]),
 }
 TOOLS = {("gate-compliance-decision-log", "dispatched.md"): "Agent",
          ("gate-compliance-decision-log", "no-clean-verdict-edit.md"): "Edit",
@@ -616,6 +622,7 @@ REGEX_SAMPLES = {
          "platform team"],
         ["- named the function return_label — the plan leaves it open — confirm with platform team",
          "- 3f2a1b9 · named the function return_label · the plan leaves it open · src/shipments/labels.py:8",
+         "- 3f2a1b9 · named the function return_label · the plan leaves it open · src/shipments/labels.py:8 · owner:\n- none",
          "- none"]),
     ("gate-build-decision-log", "no-clean-row.md"): (
         ["## Decisions made while working (for the PR)\n- 3f2a1b9 · named the function return_label · the plan leaves it open · src/shipments/labels.py:8 · owner "

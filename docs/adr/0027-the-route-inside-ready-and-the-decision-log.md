@@ -35,7 +35,7 @@ and no reviewer checked it. Its "confirm with" read as an approval.
   up or down, needs a new Ready. A criteria change is the criterion's owner's amendment. A scope that grows (a
   repository, a part or a contract) needs a new Ready, then the new route's decisions. A route that gains controls
   needs the new route's Ready, by that route's decider. A route that would lose controls is not allowed after Ready:
-  a lighter route is chosen only at the start. Any other change needs no new decision: the AI states it, and it is
+  a lighter route is chosen only at the start; before Ready nothing is approved yet, so `aidlc-start` may still re-route to a lighter route. Any other change needs no new decision: the AI states it, and it is
   shown at the next decision the table lists.
 - The decision log. A judgement call is a choice the spec, the plan and the bundle left open, which the AI settles
   inside MAY CHANGE: a name, one of two ways to write something, a test's shape, how to handle an edge case the

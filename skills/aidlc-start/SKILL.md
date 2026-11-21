@@ -156,7 +156,7 @@ route, keeps every row already done, and names the next stage. After Ready, it a
      | The criteria change | The criterion's owner decides the amendment (`aidlc-specify`, amendment mode), as today |
      | The scope grows: a repository, a part or a contract is added (for example F1 to F2) | A new Ready, then the decisions the tiers file's decisions table lists for the new route |
      | The route gains controls (for example F0 to F1, D1 to D2, S to its normal route) | The new route's Ready, by that route's decider (the product owner for F1 and D2) |
-     | The route would lose controls (for example F1 to F0, a normal route to S) | Not allowed after Ready: the work stays on its route. A lighter route is chosen only at the start |
+     | The route would lose controls (for example F1 to F0, a normal route to S) | Not allowed after Ready: the work stays on its route. A lighter route is chosen only at the start; before Ready nothing is approved yet, so `aidlc-start` may still re-route to a lighter route |
      | None of the above: the same tier, repositories, criteria and controls (for example, the kind of work was mislabelled) | No new decision: state the change, and it is shown at the next decision the table lists |
 
 8. Tell the person the next stage, the exact folder to run it in, and the command.
@@ -166,7 +166,7 @@ The story's index, `plans/<KEY>/README.md` in a repository or `stories/<KEY>/REA
 story's documents in the pull request.
 
 ## Gate
-The product owner owns the story and its acceptance criteria; the tech lead owns the route. Ready shows the route (the tiers file's decisions table): the product owner sees it and does not decide it. A technical person checks the ROUTE line's facts at the first technical decision: the engineer who confirms the brief on F0, D1 and S, at Ready; the code owner on F1, D2 and C at Tier 1, at Merge (for a plan with independent slices, first the tech lead who approves it); the tech lead or architect at Tier 2 and 3, and on route G, at Design + plan (ADR 0027). When the product owner disagrees with the route at Ready, the work comes back here, and the tech lead decides; the product owner's Ready still covers the work, its criteria and its tier. A re-route after Ready needs what step 7's table says. On route S, the engineer who confirms the standard brief confirms its tier: that is Ready (the tiers file's decisions table). A person decides here only where the tiers file's decisions table lists this decision; otherwise state what you did and go on. You draft; you never approve.
+The product owner owns the story and its acceptance criteria; the tech lead owns the route. Ready shows the route (the tiers file's decisions table): the product owner sees it and does not decide it. A technical person checks the ROUTE line's facts at the first technical decision: the engineer who confirms the brief on F0, D1 and S, at Ready; the code owner on F1, D2 and C at Tier 1, at Merge (for a plan with independent slices, first the tech lead who approves it); the tech lead or architect at Design + plan at Tier 2 and 3, and on route G when they approve `new-system.md` (ADR 0027). When the product owner disagrees with the route at Ready, the work comes back here, and the tech lead decides; the product owner's Ready still covers the work, its criteria and its tier. A re-route after Ready needs what step 7's table says. On route S, the engineer who confirms the standard brief confirms its tier: that is Ready (the tiers file's decisions table). A person decides here only where the tiers file's decisions table lists this decision; otherwise state what you did and go on. You draft; you never approve.
 
 ## Stop if
 - The work item cannot be read, has no owner, or contradicts another approved item: report it.
@@ -183,7 +183,7 @@ The product owner owns the story and its acceptance criteria; the tech lead owns
 | "The defect is easy, no need for a reproduction." | Without one, nothing proves the fix. Ask the reporter. |
 | "This change is small, I will just edit the released feature." | A change to released behaviour is new work with its own key, so the original criteria are checked again. |
 | "It is only a dependency bump; a major version is close enough to standard." | A class is never stretched. A major version passes the limit: the work takes its normal route. |
-| "The tier dropped after discovery, so I will move the story to the fast path." | A lighter route is chosen only at the start. After Ready the work stays on its route; a lower tier is a new Ready. |
+| "The tier dropped after discovery, so I will move the story to the fast path." | A lighter route is chosen only at the start; before Ready nothing is approved yet, so `aidlc-start` may still re-route to a lighter route. After Ready the work stays on its route; a lower tier is a new Ready. |
 
 ## Red flags
 - Routing to one repository without asking the others.

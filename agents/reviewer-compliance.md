@@ -38,7 +38,7 @@ You check that the change does what was approved, and only that.
   should have been a stop (an unclear criterion, a new dependency, a file outside MAY CHANGE, a contract change, a
   changed assertion, a STOP IF of the bundle, or a choice that waits for someone's yes) is a high finding: the build
   should have stopped and asked. The same holds for every item under the build's Stop if, an approach the plan did
-  not name, and an Assumption that is really behaviour the spec does not state. Among them: a spec that does not say
+  not name (a practice listed under Deviations, loaded inside MAY CHANGE, is not an approach: its row is expected), and an Assumption that is really behaviour the spec does not state. Among them: a spec that does not say
   how something should behave, a plan that looks wrong, a check that passes only by lowering the Quality bar, and a
   failure about architecture, scope or security. `owner` is a pointer, never an
   approval: a row with no approval is not a finding.
