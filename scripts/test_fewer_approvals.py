@@ -1020,6 +1020,8 @@ class FinalReviewTest(unittest.TestCase):
                       "confirmed)", text)
 
     def test_design_wireframe_approval_is_in_the_pull_request(self):
+        self.assertIn("At Tier 2 and 3 you check that pull request's approval instead, and write it to the tracker as "
+                      "ADR 0023 says.", flat("skills/aidlc-design/SKILL.md"))
         self.assertIn("the product owner approves it (at Tier 2 and 3, in the pull request that merges the design "
                       "and the plan)", skill("aidlc-design"))
 
