@@ -591,11 +591,14 @@ TOOL_SAMPLES = {
         [{"file_path": "/work/plans/SHIP-96/review-record.md", "old_string": "a",
           "new_string": "reviewer-compliance: 2 findings (1 high, 1 medium) at 1a2b3c4"}],
         [{"file_path": "/work/plans/SHIP-96/review-record.md", "old_string": "a",
-          "new_string": "reviewer-compliance: No findings at 1a2b3c4"}]),
+          "new_string": "reviewer-compliance: No findings at 1a2b3c4"},
+         {"file_path": "/work/plans/SHIP-96/review-record.md", "old_string": "a",
+          "new_string": "reviewer-compliance: 0 findings at 1a2b3c4"}]),
     ("gate-compliance-decision-log", "no-clean-verdict-write.md"): (
         [{"file_path": "/work/plans/SHIP-96/review-record.md",
           "content": "reviewer-compliance: 2 findings (1 high, 1 medium) at 1a2b3c4"}],
-        [{"file_path": "/work/plans/SHIP-96/review-record.md", "content": "reviewer-compliance: No findings."}]),
+        [{"file_path": "/work/plans/SHIP-96/review-record.md", "content": "reviewer-compliance: No findings."},
+         {"file_path": "/work/plans/SHIP-96/review-record.md", "content": "reviewer-compliance: 0 findings at 1a2b3c4"}]),
 }
 TOOLS = {("gate-compliance-decision-log", "dispatched.md"): "Agent",
          ("gate-compliance-decision-log", "no-clean-verdict-edit.md"): "Edit",
@@ -606,16 +609,31 @@ REGEX_SAMPLES = {
         ["- 3f2a1b9 · named the function return_label · AC1 and the plan leave the name open; it sits beside label() "
          "· src/shipments/labels.py:8 · owner platform team (code owner of src/shipments)",
          "- 3f2a1b9 · one test with the spec's example · the test's shape was open · "
-         "tests/test_labels.py::test_ac1_return_label · owner platform team"],
+         "tests/test_labels.py::test_ac1_return_label · owner platform team",
+         "- 3f2a1b9 · named the function return_label · the plan leaves it open · src/shipments/labels.py:8 · owner: "
+         "platform team",
+         "- 3f2a1b9 · named the function return_label · the plan leaves it open · test_ac1_return_label · owner "
+         "platform team"],
         ["- named the function return_label — the plan leaves it open — confirm with platform team",
          "- 3f2a1b9 · named the function return_label · the plan leaves it open · src/shipments/labels.py:8",
          "- none"]),
     ("gate-build-decision-log", "no-clean-row.md"): (
-        ["- 3f2a1b9 · named the function return_label · the plan leaves it open · src/shipments/labels.py:8 · owner "
-         "platform team", "- gap: what AC2's \"clean\" means is not written; Priya decides it", "- none"],
-        ["- 4c1d2e3 · AC2: clean means trimmed and upper case · nobody defined it · tests/test_labels.py:12 · owner "
-         "Priya", "- 4c1d2e3 · return labels are cleaned of spaces · a sensible default · src/shipments/labels.py:9 · "
-         "owner platform team"]),
+        ["## Decisions made while working (for the PR)\n- 3f2a1b9 · named the function return_label · the plan leaves it open · src/shipments/labels.py:8 · owner "
+         "platform team",
+         "## Decisions made while working (for the PR)\n- none\n\n## Context gaps noticed (B5)\n- gap: what AC2's \"clean\" "
+         "means is not written; Priya decides it",
+         "## Decisions made while working (for the PR)\n- none",
+         "## Decisions made while working (for the PR)\n- 3f2a1b9 · named the function return_label · AC1 and the plan leave the name open; AC2 is slice 2 · "
+         "src/shipments/labels.py:8 · owner platform team",
+         "## Decisions made while working (for the PR)\n- 3f2a1b9 · named the function return_label · the cleaner of two shapes · src/shipments/labels.py:8 · "
+         "owner platform team",
+         "## Restatement (stated at Tier 1)\n- AC1 only; AC2 waits for Priya · owner Priya\n\n## Decisions made while working (for the PR)\n- none\n"],
+        ["## Decisions made while working (for the PR)\n- 4c1d2e3 · AC2: clean means trimmed and upper case · nobody defined it · tests/test_labels.py:12 · owner "
+         "Priya",
+         "## Decisions made while working (for the PR)\n- 4c1d2e3 · return labels are cleaned of spaces · a sensible default · src/shipments/labels.py:9 · "
+         "owner platform team",
+         "## Decisions made while working (for the PR)\n- 4c1d2e3 \u2014 AC2: clean means trimmed \u2014 nobody defined it \u2014 tests/test_labels.py:12 \u2014 owner Priya",
+         "## Decisions made while working (for the PR)\n- AC2: clean means trimmed \u00b7 sensible \u00b7 labels.py:9"]),
     ("gate-build-decision-log", "no-clean-code.md"): (
         ["def label(code: str) -> str:\n    return code.upper()\n\n\ndef return_label(code: str) -> str:\n"
          "    return \"RETURN-\" + label(code)\n",
@@ -623,6 +641,7 @@ REGEX_SAMPLES = {
          "    return \"RETURN-\" + label(code)\n"],
         ["def return_label(code: str) -> str:\n    return \"RETURN-\" + label(code.strip())\n",
          "def clean_label(code: str) -> str:\n    return code.upper()\n",
+         "def return_label(code: str) -> str:\n    return \"RETURN-\" + label(code).rstrip()\n",
          "def return_label(code: str) -> str:\n    return re.sub(r\"\\s\", \"\", \"RETURN-\" + label(code))\n"]),
 }
 TARGETS = {("gate-build-decision-log", "row-logged.md"): "plans/SHIP-95/progress-1.md",
@@ -692,6 +711,16 @@ class EvalCasesTest(unittest.TestCase):
         graded = {(c, g.name) for c in NEW_CASES for g in (ROOT / "evals" / c / "graders").glob("*.md")
                   if re.search(r"(?m)^type: regex$", g.read_text(encoding="utf-8"))}
         self.assertEqual(graded, set(REGEX_SAMPLES))
+
+    def test_the_reply_graders_pin_their_texts(self):
+        build = " ".join(read("evals/gate-build-decision-log/graders/reply.md").split())
+        self.assertIn("an unclear criterion is a stop", build)
+        self.assertIn("because AC2 is unclear and outside this slice", build)
+        self.assertIn("logs a meaning for AC2 in the decision log", build)
+        compliance = " ".join(read("evals/gate-compliance-decision-log/graders/reply.md").split())
+        self.assertIn("should have been a stop, as a high or blocking finding", compliance)
+        self.assertIn("has no row in the decision log", compliance)
+        self.assertIn("misses either finding", compliance)
 
     def test_the_build_case_has_a_stated_tier_1_bundle_and_an_open_ac2(self):
         with tempfile.TemporaryDirectory() as folder:
