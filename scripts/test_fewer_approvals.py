@@ -206,5 +206,48 @@ class TiersTest(unittest.TestCase):
         self.assertIn("At Tier 1 that is Ready and Merge", tiers)
 
 
+LANE = "In a lane, release at your gate as `parallel-lanes` says."
+
+
+def assert_gate_line(case: unittest.TestCase, name: str) -> None:
+    """The Gate line is in the stage's Gate, once in the whole file, and sits just before the lane line (or, for a
+    stage with no lane line, just before "You draft; you never approve.")."""
+    raw = read(f"skills/{name}/SKILL.md")
+    case.assertEqual(raw.count(DECIDE), 1, name)
+    after = LANE if LANE in raw else "You draft; you never approve."
+    case.assertIn(DECIDE + " " + after, gate(name), name)
+
+
+class ReadyTest(unittest.TestCase):
+    """Task 3: the intent's acceptance and the spec's approval are one decision, Ready."""
+
+    def test_both_gates_carry_the_line(self):
+        for name in ("aidlc-intent", "aidlc-specify"):
+            assert_gate_line(self, name)
+
+    def test_the_intent_states_its_draft_and_goes_on(self):
+        text = gate("aidlc-intent")
+        self.assertIn("That acceptance is part of Ready, which the product owner decides with the spec (the tiers "
+                      "file's decisions table): state the draft and its provisional tier in the session, and go on to "
+                      "`aidlc-specify`; there is no separate stop here.", text)
+        block = flat("skills/aidlc-intent/assets/intent.md").split("## For the reviewer", 1)[1]
+        self.assertIn("part of Ready, which the product owner decides with the spec", block)
+        self.assertIn("and hands it to the spec, where the product owner decides Ready.", skill("aidlc-intent"))
+
+    def test_the_spec_approval_is_ready_and_its_pull_request_is_the_record(self):
+        text = gate("aidlc-specify")
+        for phrase in ("That approval is Ready (the tiers file's decisions table): the work, its acceptance criteria "
+                       "and its tier, in one decision with the intent's acceptance.",
+                       "At Tier 1 the record is the approval with the spec's version on the work item",
+                       "That pull request's approval is the record: check it in the review tool (when you cannot, the "
+                       "spec owner confirms it in this session), then write the spec's Approval record and the work "
+                       "item's entry from it, with how it was confirmed, and ask before posting (ADR 0026)."):
+            self.assertIn(phrase, text, phrase)
+        specify = skill("aidlc-specify")
+        self.assertIn("Use when the intent is drafted", specify)
+        self.assertIn("**Draft mode.** The intent is drafted (its acceptance is decided with the spec, as Ready)", specify)
+        self.assertNotIn("The accepted intent", specify)
+
+
 if __name__ == "__main__":
     unittest.main()

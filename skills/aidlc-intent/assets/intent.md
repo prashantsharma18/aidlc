@@ -2,7 +2,7 @@
 # {{KEY}} · {{TITLE}} · intent
 
 ## For the reviewer
-- **Asked of:** The product owner, to accept or decline the work, set its priority and agree the provisional tier with whoever owns the risk
+- **Asked of:** The product owner, to accept or decline the work, set its priority and agree the provisional tier with whoever owns the risk; this is part of Ready, which the product owner decides with the spec (ADR 0026)
 - **Record it:** In the tracker (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}

@@ -1,6 +1,6 @@
 ---
 name: aidlc-specify
-description: Drafts or amends the specification of a work item (acceptance criteria with IDs and examples, edge cases with named deciders, and a Definition of Ready check by tier) and stops for the spec owner. Use when the intent is accepted, or when an approved criterion must change.
+description: Drafts or amends the specification of a work item (acceptance criteria with IDs and examples, edge cases with named deciders, and a Definition of Ready check by tier) and stops for the spec owner. Use when the intent is drafted (its acceptance is part of Ready, with the spec), or when an approved criterion must change.
 argument-hint: "[KEY]"
 metadata:
   stage: specify
@@ -23,13 +23,13 @@ disable-model-invocation: true
 # Specify: turn the intent into testable criteria
 
 ## When to use
-- **Draft mode.** The intent is accepted and the work needs a spec. At Tier 1 that can be a few lines on the work item; Tiers 2 and 3 need this file.
+- **Draft mode.** The intent is drafted (its acceptance is decided with the spec, as Ready) and the work needs a spec. At Tier 1 that can be a few lines on the work item; Tiers 2 and 3 need this file.
 - **Amendment mode.** An approved criterion looks wrong or incomplete. It was raised at planning, by an unwritable test, by a stop condition, a review comment or a production signal.
 
 ## Inputs
 Where this runs: read the story's index first: `stories/<KEY>/README.md` at the workspace root, `../stories/<KEY>/README.md` from inside one of its repositories, or `plans/<KEY>/README.md` in a lone repository. No index: ask the person to run `aidlc-start` first, and stop. When it routes the story to several repositories, run at the workspace root and write to `stories/<KEY>/`; started inside a repository for such a story, say so, name the workspace root, and stop. When it names one repository, run inside that repository: a one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`; started at the workspace root for such a story, name the repository to open, and stop.
 
-- The accepted intent (`plans/<KEY>/intent.md` or the work item) and the acceptance criteria already written in the story.
+- The intent (`plans/<KEY>/intent.md` or the work item) and the acceptance criteria already written in the story.
 - For an amendment: the approved spec and the criterion ID in question.
 
 Do not read or change code. Do not decide any security behaviour.
@@ -73,7 +73,7 @@ workspace root) as done, or as stopped with the reason.
 The draft of the spec, or its new version, on the story branch; for an amendment, also the list of artefacts that cite the changed criterion.
 
 ## Gate
-The spec owner rewrites until each criterion says what they mean, decides every edge case or routes it to its decider, and records the approval with the spec's version in the work item ("Spec v1 approved by …"). Tier 3 needs a specialist's review. You can check readiness; you cannot grant it. At Tier 2 and 3 the spec also merges to the default branch first, in its own pull request, which the spec owner approves; planning starts only from that merged version (ADR 0020). The spec owner tells you the decision in this session, or records it on the work item, where you check it through the tracker's tool; you then write the spec's Approval record, with how it was confirmed (ADR 0023). In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
+The spec owner rewrites until each criterion says what they mean, decides every edge case or routes it to its decider, and approves the spec with its version. That approval is Ready (the tiers file's decisions table): the work, its acceptance criteria and its tier, in one decision with the intent's acceptance. Tier 3 needs a specialist's review. You can check readiness; you cannot grant it. At Tier 1 the record is the approval with the spec's version on the work item ("Spec v1 approved by …"). The spec owner tells you the decision in this session, or records it on the work item, where you check it through the tracker's tool; you then write the spec's Approval record, with how it was confirmed (ADR 0023). At Tier 2 and 3 the spec also merges to the default branch first, in its own pull request, which the spec owner approves; planning starts only from that merged version (ADR 0020). That pull request's approval is the record: check it in the review tool (when you cannot, the spec owner confirms it in this session), then write the spec's Approval record and the work item's entry from it, with how it was confirmed, and ask before posting (ADR 0026). A person decides here only where the tiers file's decisions table lists this decision; otherwise state what you did and go on. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
 
 ## Stop if
 - The spec does not say how something should behave: ask; never invent it.
