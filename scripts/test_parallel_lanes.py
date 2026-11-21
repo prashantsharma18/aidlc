@@ -618,5 +618,53 @@ class LaneLineTest(unittest.TestCase):
                       "a person's decision in a lane (`parallel-lanes`), or `stopped: <reason>`.", " ".join(start.split()))
 
 
+class SlicePlanTest(unittest.TestCase):
+    """Task 5: the plan marks independent slices with DEPENDS ON lines; a plan without them works as before."""
+
+    def test_the_bundle_has_an_optional_depends_on_line(self):
+        bundle = read("skills/aidlc-plan/assets/task-bundle.md")
+        block = bundle.split("```text\n", 1)[1].split("\n```", 1)[0]
+        lines = [line for line in block.splitlines() if line.startswith("DEPENDS ON")]
+        self.assertEqual(len(lines), 1)
+        self.assertTrue(lines[0].startswith("DEPENDS ON  none | slice <n>   ("), lines[0])
+        self.assertIn("delete this line otherwise, and the part's slices share one branch and one pull request",
+                      lines[0])
+
+    def test_the_plan_marks_slices_independent_only_on_purpose(self):
+        step5 = skill("aidlc-plan").split(" 5. Slice the work", 1)[1].split(" 6. Rate the tier", 1)[0]
+        for phrase in ("**Independent slices (ADR 0025).**",
+                       "give every bundle a `DEPENDS ON` line, `none` or the one slice it builds on",
+                       "The first slice runs on the part's branch.",
+                       "A later slice whose `DEPENDS ON` names the slice before it, on that branch, continues it, as "
+                       "today.", "branch `<branch>-s<n>`", "`[<KEY>] slice <n> of <m>: <what>`",
+                       "with `none` it starts from the default branch (a sibling pull request)",
+                       "a stacked pull request, which merges after it", "A slice's own branch holds that slice only.",
+                       "`DEPENDS ON` names at most one slice",
+                       "keeps its index and its pull request's documents in `plans/<KEY>/slice-<n>/`",
+                       "The plan, its bundles and these indexes merge on the default branch first, in their own pull "
+                       "request (ADR 0020)"):
+            self.assertIn(phrase, step5, phrase)
+
+    def test_a_plan_without_depends_on_works_as_before(self):
+        plan = skill("aidlc-plan")
+        self.assertIn("A plan without `DEPENDS ON` lines works as before: one branch, one pull request, slices as "
+                      "commits.", plan)
+        self.assertIn("The part's slices share one branch and one pull request, so keep the whole part within the "
+                      "pull-request size `reviewing-code` gives, unless the plan marks its slices independent", plan)
+        self.assertIn("except `DEPENDS ON`, which is written only in a plan that marks its slices independent", plan)
+        checklist = flat("skills/aidlc-plan/assets/plan.md")
+        self.assertIn('every bundle field filled, or "none"', checklist)
+        self.assertIn("DEPENDS ON lines only when the plan marks its slices independent (ADR 0025)", checklist)
+
+    def test_the_plan_writes_each_slices_index_and_the_tech_lead_approves_the_split(self):
+        plan = skill("aidlc-plan")
+        self.assertIn("also write each such slice's index `plans/<KEY>/slice-<n>/README.md` from "
+                      "`assets/story-index.md`", plan)
+        self.assertIn("Each slice's stages mark only those rows.", plan)
+        self.assertIn("A slice the plan marks independent gets its own branch, `<branch>-s<n>`, and its own pull "
+                      "request (ADR 0025).", section(plan, "## Produces"))
+        self.assertIn("The tech lead approves the bundles' `DEPENDS ON` lines with the plan", section(plan, "## Gate"))
+
+
 if __name__ == "__main__":
     unittest.main()

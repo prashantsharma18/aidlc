@@ -15,6 +15,7 @@ INTENT      <spec version and clarifications; plan version and approval commit>
 PINS        spec v<n> @ <home commit> · plan v<n> · contract <provider> v<MAJOR.MINOR.PATCH> | contract none   (@ <home commit>: a part of a story across several repositories; a contract's version is its published tag's, and must match the tag in contracts/<provider>/SOURCE)
 TIER        <1 | 2 | 3> (from `assets/tiers.md`; the plan's rating)
 MODE        <hands-on | delegate with checkpoints | delegate>   (hands-on: every tier; delegate with checkpoints: Tiers 1 and 2; delegate: Tier 1; approved with the bundle)
+DEPENDS ON  none | slice <n>   (only in a plan that marks its slices independent, ADR 0025: `none` starts its own branch from the default branch, a sibling pull request; `slice <n>` builds on that one slice, as a stacked pull request unless it is the slice before it on the part's branch; delete this line otherwise, and the part's slices share one branch and one pull request)
 ALREADY     <what loads automatically (AGENTS.md, folder rules); not repeated here>
 LOADED
 LOAD FIRST  <pointers to the plan, spec sections and files; never pasted copies>
