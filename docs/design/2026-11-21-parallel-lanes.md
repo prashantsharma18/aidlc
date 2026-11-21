@@ -29,6 +29,7 @@ the same result with git worktrees, a queue file a person keeps, and the AI tool
 | What kind of skill | A new third kind, **workflow** (`metadata.kind: workflow`), kept apart from stage skills and practice skills |
 | Its name | `parallel-lanes`, invoked as `/aidlc:parallel-lanes`; no `aidlc-` prefix, because it is not a stage |
 | Branch names | aidlc's existing names (`<type>/<KEY>-<slug>`), written in each queue row; never an `aidlc/` prefix |
+| Who starts a stage in a lane | The middle option, done pstack's way: every stage keeps `disable-model-invocation: true`, and so does `parallel-lanes`. A person starts intent, specify, design and plan. A person starts the coordinator once; after a row's plan is approved, its sub-agent lanes run build, verify and review by reading those stage skill files by path. No switch is removed. |
 | Slices | Independent slices become sibling pull requests, stacked where one builds on another, only when the plan marks them independent |
 
 ## A third kind of skill: workflow
@@ -137,13 +138,29 @@ not collide in the story's documents.
 1. Fetch every repository the queue names, read `QUEUE.md` and each row's state.
 2. List worktrees (`git worktree list` in each repository). A worktree with no running lane is shown to the person;
    it is removed only after the person confirms, because it may hold uncommitted work.
-3. Start lanes up to MAX LANES minus the running ones, each told only its row: with the AI tool's own way of starting
-   sessions where there is one (in Claude Code, a background sub-agent per lane), or by giving the person the exact
-   command to start each lane by hand.
+3. Start lanes up to MAX LANES minus the running ones, each told only its row. Which stage decides how:
+   - **build, verify and review, on a row whose plan a person approved:** start the lane with the AI tool's own way of
+     starting sessions where there is one (in Claude Code, a background sub-agent per lane). The lane's brief opens
+     with `Read <absolute path>/skills/parallel-lanes/SKILL.md before anything else.` and names the row and the stage
+     skill's absolute path (`<plugin root>/skills/aidlc-build/SKILL.md`), which the lane reads and follows in full;
+   - **intent, specify, design and plan, or a tool with no such feature:** give the person the exact words to start
+     the lane by hand in its worktree, naming the stage (for example `/aidlc:aidlc-plan SHIP-15`).
 4. When a lane reports back, read its row's state and start the next ready row.
 5. Report one table to the person: running, waiting on whom, stopped and why, next in line.
 6. Draft new queue rows (from approved plans, or from the tracker it only reads) for the person to confirm. Never
    write `QUEUE.md`, never approve, never merge.
+
+## How a person-started run reaches its lanes
+Every stage skill keeps `disable-model-invocation: true`: the AI never starts a stage by itself in an ordinary chat.
+`parallel-lanes` has the same switch. Starting the coordinator is a person's act, and it is the go-ahead for the run.
+A sub-agent lane cannot start a skill with that switch, so it reads the skill's file by its absolute path and follows
+it in full, as pstack's delegates do (`cursor/plugins`, `pstack/skills/poteto-mode/SKILL.md`: "The operator's rules live
+in skills that only load from a slash command, so they reach another agent no other way"). The coordinator sends
+sub-agent lanes only to build, verify and review, and only on a row whose plan a person approved (ADR 0023), because
+those stages run between two people's decisions (the plan approval and the pull request review). Intent, specify,
+design and plan need a person's answers and approval anyway, so a person starts them. Reading a file by path works in
+every AI tool, so the same protocol serves Copilot and Codex once their adapters exist. aidlc borrows pstack's way of
+passing instructions, not its autonomy: a lane still stops and frees its slot at every person's decision.
 
 ## Clashes: when a ready row is held back
 | Clash | Rule |
