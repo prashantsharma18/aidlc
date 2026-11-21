@@ -407,5 +407,32 @@ class BuildReviewTest(unittest.TestCase):
         self.assertEqual(approving, ["aidlc-review"])
 
 
+class ReleaseTest(unittest.TestCase):
+    """Task 6: one release decision, recorded once, and only when users see the change below Tier 3."""
+
+    def test_the_gate_carries_the_line(self):
+        assert_gate_line(self, "aidlc-release")
+
+    def test_the_release_is_decided_only_when_users_see_it(self):
+        text = gate("aidlc-release")
+        for phrase in ("That approval is the one Release decision (the tiers file's decisions table): at Tier 1 and 2 "
+                       "it is needed only when users see the change, and at Tier 3 always, with a named approver and a "
+                       "rehearsed rollback.",
+                       "A change behind a flag that is still off needs no release decision until the flag goes on; "
+                       "turning a flag on is the release.",
+                       "When no decision is needed, state the readiness record, with its stop criteria, and go on: the "
+                       "normal pipeline ships the change.",
+                       "the owning team confirms monitoring and rollback, as part of that decision"):
+            self.assertIn(phrase, text, phrase)
+        self.assertIn("stops for the release approver when users see the change (always at Tier 3).",
+                      skill("aidlc-release"))
+
+    def test_the_approval_is_recorded_once_and_cited(self):
+        text = gate("aidlc-release")
+        self.assertIn("The approver's word in the session fills the Decision line only; the Decision then cites the "
+                      "change-management record, so the approval is recorded once, there (ADR 0026).", text)
+        self.assertIn("An approval that exists only in the chat still stops the release.", text)
+
+
 if __name__ == "__main__":
     unittest.main()
