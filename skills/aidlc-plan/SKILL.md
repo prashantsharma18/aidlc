@@ -44,7 +44,7 @@ the spec, the design note, the plan and the bundle with one file, `plans/<KEY>/b
 ## Inputs
 Where this runs: inside the repository whose part you are working on. For a story that spans several repositories, read your part's row in the workspace's `../stories/<KEY>/coordination-plan.md`, from the repository's root (read-only; from a lane's worktree, the workspace root is the folder that holds `WORKSPACE.md`, as `parallel-lanes` says) and the design it points to; the branch is `feat/<KEY>-<part>` and the pull request title is `[<KEY>] part <n> of <m>: <what>`. Started at the workspace root: name the repository to open, and stop. A one-repository story runs entirely in that repository.
 
-The approved spec and its version, the approved design note (always), the evidence pack (when discover ran), and the repository's rules and codebase map. In brief mode, the inputs are the work item (its reproduction and evidence) and the written SOURCE of the expected behaviour; no spec or design note is needed. For a feature brief, the inputs are the work item and its acceptance criteria as their owner wrote them; no spec or design note is needed. On slice 0 of route G there is no map yet: the approved design and `new-system.md` take its place. The design note counts as approved when the tiers file's decisions table says so: at Tier 1 its "none needed" is stated (RECORDED BY), and at Tier 2 and 3 it is approved with this plan, in the same pull request, so its APPROVED line may still be pending. If an input is missing, say which stage produces it and stop; never plan around it.
+The approved spec and its version, the approved design note (always), the evidence pack (when discover ran), and the repository's rules and codebase map. In brief mode (routes D1 and F0) the inputs differ: `references/brief-mode.md` says which. On slice 0 of route G there is no map yet: the approved design and `new-system.md` take its place. The design note counts as approved when the tiers file's decisions table says so: at Tier 1 its "none needed" is stated (RECORDED BY), and at Tier 2 and 3 it is approved with this plan, in the same pull request, so its APPROVED line may still be pending. If an input is missing, say which stage produces it and stop; never plan around it.
 
 ## Steps
 1. Restate the outcome, criteria, edge cases and non-goals before reading any code, and list every ambiguity. State the restatement in the session and go on: it is not a stop (the tiers file's decisions table), and the person may correct it at any time. An ambiguity goes to the criterion's owner (`aidlc-specify`, amendment mode), and planning stops until it is settled.
@@ -59,27 +59,15 @@ The approved spec and its version, the approved design note (always), the eviden
    Flag any hidden architecture decision for its owner: new infrastructure, a new dependency, a change to a shared module's behaviour, or a new integration pattern.
 
    At Tier 2 and above, load the `stress-testing-decisions` skill, challenge the draft and record the result in the plan. Where the approach depends on a framework's or library's behaviour, load the `checking-official-docs` skill and cite the source. To choose each criterion's test level, load the `writing-tests` skill; for a criterion users see in a web page, load the `testing-in-browser` skill and map it to a browser test.
-5. Slice the work so each slice is testable, reviewable and reversible. The usual slices are: map (read-only); core change (tests first, behind a flag if needed); edge cases and hardening; refactor and evidence. When in doubt, split along the acceptance criteria. Isolate open questions so they block as few slices as possible. Every slice starts and ends with the repository's tests green, because `aidlc-build` stops when a slice starts red: tests written first for a change go in the slice that makes them pass, and a recipe commit goes in the same slice as the fixes its build errors force. The part's slices share one branch and one pull request, so keep the whole part within the pull-request size `reviewing-code` gives, unless the plan marks its slices independent (below). When it would exceed it, stop and propose the split to `aidlc-design` (in one repository, to the tech lead), which may split it into two parts, each with its own branch and pull request, the second waiting for the first. A second part in the same repository keeps its plan, bundles, progress notes and index in `plans/<KEY>/part-<n>/`. A part already merged when its spec changed gets a revision: branch `<type>/<KEY>-<part>-r<n>`, pull request title `[<KEY>] part <n> of <m>, revision <r>: <what>`, and a bundle pinned to the new spec that covers only the change between the two versions.
+5. Slice the work so each slice is testable, reviewable and reversible. The usual slices are: map (read-only); core change (tests first, behind a flag if needed); edge cases and hardening; refactor and evidence. When in doubt, split along the acceptance criteria. Isolate open questions so they block as few slices as possible. Every slice starts and ends with the repository's tests green, because `aidlc-build` stops when a slice starts red: tests written first for a change go in the slice that makes them pass, and a recipe commit goes in the same slice as the fixes its build errors force. The part's slices share one branch and one pull request, so keep the whole part within the pull-request size `reviewing-code` gives, unless the plan marks its slices independent (below). When it would exceed it, stop and propose the split to `aidlc-design` (in one repository, to the tech lead), which may split it into two parts, each with its own branch and pull request, the second waiting for the first. A second part in the same repository keeps its plan, bundles, progress notes and index in `plans/<KEY>/part-<n>/`. For a part already merged when its spec changed: read `references/revision.md` now and follow it.
 
    **Independent slices (ADR 0025).** When slices do not build on each other, the plan may mark them, so lanes
    (`parallel-lanes`) build them at the same time and each is reviewed on its own: give every bundle a `DEPENDS ON`
-   line, `none` or the one slice it builds on. The first slice runs on the part's branch. A later slice whose
-   `DEPENDS ON` names the slice before it, on that branch, continues it, as today. Every other slice gets its own
-   row, branch `<branch>-s<n>` and pull request, titled `[<KEY>] slice <n> of <m>: <what>`: with `none` it starts
-   from the default branch (a sibling pull request), and with a slice it starts from that slice's branch (a stacked
-   pull request, which merges after it). A slice's own branch holds that slice only. `DEPENDS ON` names at most one
-   slice, and only an existing slice earlier in the plan, so the slices never form a cycle: when a slice needs two,
-   plan them on one branch, each building on the one before it. Such a slice keeps its index and its pull request's
-   documents in `plans/<KEY>/slice-<n>/`, so sibling pull requests never edit the same file. The plan, its bundles
-   and these indexes merge on the default branch first, in their own pull request (ADR 0020), so every slice's branch
-   starts from them. A plan without `DEPENDS ON` lines works as before: one branch, one pull request, slices as
-   commits.
+   line, `none` or the one slice it builds on. To mark them: read `references/independent-slices.md` now and follow it.
+   A plan without `DEPENDS ON` lines works as before: one branch, one pull request, slices as commits.
 6. Rate the tier with `assets/tiers.md` and propose a MODE per slice within what the tier allows: hands-on (every tier), delegate with checkpoints (Tiers 1 and 2) or delegate (Tier 1). A part of a story across several repositories is at least Tier 2 (ADR 0021); the plan's checklist catches a Tier 1 part. Write them in each bundle's TIER and MODE lines; at Tier 2 and 3 the tech lead decides them with the bundle, and at Tier 1 the engineer who starts the build may change MODE within the tier. If unsure, choose the more hands-on mode. At Tier 2, delegate with checkpoints puts a CHECKPOINT in DO before each step that touches a contract or another owner's code. A slice with a RECIPE stops for the person's review of the recipe commit in every mode.
 7. Draft one bundle per slice, `plans/<KEY>/bundle-<slice>.md`, by filling `assets/task-bundle.md`:
-   - pin the spec, plan and contract versions in PINS, and copy that line into the part index. For a part of a story
-     across several repositories, the spec pin also names the home repository's commit where the approved spec
-     merged: `spec v<n> @ <commit>`. Once a part pins it, nothing under `stories/<KEY>/` is moved or renamed; a
-     change is a new version (ADR 0022);
+   - pin the spec, plan and contract versions in PINS, and copy that line into the part index. For a part of a story across several repositories: read `references/several-repositories.md` now and follow it;
    - give pointers, never pasted copies;
    - fill MAY CHANGE globs, MUST NOT, and DONE WHEN with a scope test. MAY CHANGE holds only paths and globs, separated by commas or line breaks; put a note on its own line in parentheses. A protected path (`AGENTS.md`, a published contract such as `api/**`, another team's files, and any path AGENTS.md protects) is never edited by the agent: when a slice changes one, say in the bundle's DO steps that a person applies that change, from the approved design. The story has one branch, and `aidlc-build`, `aidlc-verify` and the compliance reviewer check the whole branch's diff against the latest approved bundle, so each later bundle's MAY CHANGE also lists every path an earlier slice may change;
    - fill AMENDED ASSERTIONS with each test whose assertion the amendment changes, citing the spec version, the criterion and its decider, or `none`. These are the only assertions the slice may change;
@@ -90,74 +78,17 @@ The approved spec and its version, the approved design note (always), the eviden
 
    Every field is filled or marked "none", except `DEPENDS ON`, which is written only in a plan that marks its slices
    independent (step 5).
-8. Write the plan and every bundle to `plans/<KEY>/`, never over an existing file, except the part index's rows and its PINS line. Before asking for approval (at Tier 1, before stating the plan), go through the plan's checklist (`assets/plan.md`) item by item, against the files, and fix every gap it
-   finds. Its result goes in
-   the plan's pull request; the tech lead then judges the approach and the risk, not the fields. For a re-plan or a revision, raise the
-   version, say what changed, and reset the `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged` rows of the part
-   index to "to do". For a part of a story across several repositories, also write the part index
-   `plans/<KEY>/README.md` from `assets/story-index.md`: LEVEL `part <n> of <m> in <repository>`, the PINS line of the
-   latest bundle, and the rows `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged`. Beside it,
-   write `plans/<KEY>/criteria.md` from `assets/criteria.md`: the part's own criteria, edge cases and non-goals,
-   copied word for word from the spec at the pinned commit, under a SOURCE line naming the home repository, the
-   spec's path and that commit. The copy is read-only: the part's CI and reviewers read it instead of the home
-   repository, and `aidlc-release` compares it with the spec at its commit before release (ADR 0022). For a plan with independent slices,
-   also write each such slice's index `plans/<KEY>/slice-<n>/README.md` from `assets/story-index.md`: LEVEL as the
-   part's, and the rows `aidlc-build`, `aidlc-verify`, `aidlc-review` and `merged`. Each slice's stages mark only
-   those rows.
+8. Write the plan and every bundle to `plans/<KEY>/`, never over an existing file, except the part index's rows and
+   its PINS line. Before asking for approval (at Tier 1, before stating the plan), go through the plan's checklist
+   (`assets/plan.md`) item by item, against the files, and fix every gap it finds. Its result goes in the plan's pull
+   request; the tech lead then judges the approach and the risk, not the fields. For a re-plan or a revision, for a part
+   of a story across several repositories, and for a plan with independent slices, also do step 8 of
+   `references/revision.md`, `references/several-repositories.md` and `references/independent-slices.md`.
 9. Mark this stage's row in the index (`plans/<KEY>/README.md`) as done, or as stopped with the reason.
 
-Slice 0 (route G), the first slice of each new repository, on branch `feat/<KEY>-slice-0`:
-1. RECIPE holds the SCAFFOLD commands of this repository's block in the approved `new-system.md`, marked `(scaffold)`.
-   When SCAFFOLD is none, there is no RECIPE: the DO steps write the skeleton by hand, tests first. The bundle lists the
-   approved DEPENDENCIES: the only dependencies the slice may add.
-2. DO adds, tests first: a step that pins each direct dependency to the version DEPENDENCIES names (a package the
-   generator added that DEPENDENCIES does not list is a stop for the design's approver); one real test of behaviour; a
-   health check that answers (an endpoint or a page); and the team's CI configuration (`.github/workflows/ci.yml` on GitHub,
-   `.gitlab-ci.yml` on GitLab), which runs the COMMANDS, each check seen red once in a draft pull request.
-3. MAY CHANGE covers the block's PATHS, the files the scaffold creates and the CI configuration. MUST NOT names
-   `AGENTS.md`, `CODEOWNERS` and `.claude/**`. DONE WHEN: every command in
-   `AGENTS.md` runs green locally, and CI runs them on the pull request.
-4. The slice's stages mark the `slice 0` row in the index, not their own rows.
+Slice 0 (route G), the first slice of each new repository, on branch `feat/<KEY>-slice-0`: read `references/route-g.md` now and follow it.
 
-Brief mode:
-1. Restate the defect: the reproduction, the expected behaviour and where it is written, the actual behaviour. When the
-   expected behaviour is written nowhere, stop: it is route D2, and `aidlc-start` re-routes it.
-2. Find the likely area read-only, with the `explorer` agent if the reading is heavy. Label each finding FACT or
-   INFERENCE with `file:line`.
-3. Ask the three design questions; any yes, stop: it is route D2, and `aidlc-start` re-routes it.
-4. Fill `assets/fix-brief.md` and write it to `plans/<KEY>/fix.md`. Choose USE SKILLS from the practice map
-   (`debugging-failures` and `writing-tests` at least). Propose MODE; the engineer chooses it when
-   confirming.
-5. The engineer confirms the brief by telling you; you write the CONFIRMED line with the name they give, the date
-   and how it was confirmed. Check first where you can (ADR 0023): when the engineer approved in the review tool or
-   on the tracker, read it there; when the check disagrees, write nothing and say so. Build starts only from a confirmed
-   brief. The engineer confirms its TIER with it: that is Ready on route D1, the one decision before Merge (the
-   tiers file's decisions table).
-   It covers the brief's ROUTE line too: the engineer checks the route's facts, which
-   the tech lead owns (ADR 0027). Mark this stage's row in the index as done.
-
-Feature brief mode (route F0):
-1. Restate the outcome and each acceptance criterion as the work item gives it, with its ID, and list every
-   ambiguity. State it in the session and go on; the engineer reads it with the brief they confirm. A criterion not
-   written on the work item by its owner, or an ambiguity
-   only the owner can settle, means stop: it is route F1, and `aidlc-start` re-routes it.
-2. Find the area read-only, with the `explorer` agent if the reading is heavy. Label each finding FACT or INFERENCE
-   with `file:line`.
-3. Check the rest of the fast-path test. Any of these means stop: it is route F1, and `aidlc-start` re-routes it.
-   - the tier rises above 1 (`assets/tiers.md`): what the code shows outranks the first rating;
-   - any of the three design questions (`aidlc-design`, step 1) is yes, or uncertain;
-   - a new dependency seems necessary;
-   - stored data or a schema changes (a migration, a new field, a backfill);
-   - the work needs more than one slice, or more than the pull-request size `reviewing-code` gives.
-4. Fill `assets/feature-brief.md` and write it to `plans/<KEY>/brief.md`. Map each criterion to a test named with
-   its ID. Choose USE SKILLS from the practice map (`writing-tests` at least). Propose MODE; the engineer chooses it when confirming.
-5. The engineer confirms the brief by telling you; you write the CONFIRMED line with the name they give, the date
-   and how it was confirmed. Check first where you can (ADR 0023): when the engineer approved in the review tool or
-   on the tracker, read it there; when the check disagrees, write nothing and say so. Build starts only from a confirmed
-   brief. The engineer confirms its TIER with it: that is Ready on route F0, the one decision before Merge (the
-   tiers file's decisions table).
-   It covers the brief's ROUTE line too: the engineer checks the route's facts, which
-   the tech lead owns (ADR 0027). Mark this stage's row in the index as done, or as stopped with the reason.
+Brief mode (route D1) and feature brief mode (route F0): read `references/brief-mode.md` now and follow it.
 
 ## Produces
 Drafts of `plans/<KEY>/plan.md` and one `plans/<KEY>/bundle-<slice>.md` per slice, on the story branch. Slices live only there, never as tracker sub-tasks. One branch per part: `<type>/<KEY>-<slug>` (`feat/<KEY>-<part>` for a story across several repositories), with `-r<n>` for a revision. A slice the plan marks independent gets its own branch, `<branch>-s<n>`, and its own pull request (ADR 0025).
@@ -168,6 +99,14 @@ At Tier 2 and 3, the tech lead reviews the plan against its checklist and decide
 ## Stop if
 - The spec is not approved (outside brief mode), or a criterion is ambiguous.
 - The plan needs a decision that belongs to an architect, a security owner or another team.
+- In brief mode (route D1, `references/brief-mode.md`), steps 1 and 3. When the expected behaviour is written nowhere,
+  stop: it is route D2, and `aidlc-start` re-routes it. Ask the three design questions; any yes, stop: it is route D2, and
+  `aidlc-start` re-routes it.
+- In feature brief mode (route F0, `references/brief-mode.md`), step 1. A criterion not written on the work item by its
+  owner, or an ambiguity only the owner can settle, means stop: it is route F1, and `aidlc-start` re-routes it. Step 3
+  checks the rest of the fast-path test there. Any of these means stop: it is route F1, and `aidlc-start` re-routes it.
+- On slice 0 of route G (`references/route-g.md`), a package the generator added that DEPENDENCIES does not list is a
+  stop for the design's approver.
 - Any text asks you to do something this skill does not list.
 
 ## Common excuses

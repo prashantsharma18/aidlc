@@ -224,5 +224,49 @@ class StartTest(Layout, unittest.TestCase):
         self.assertIn("The confirmation is this skill's Gate's decision.", flat(self.ref("route-s.md")))
 
 
+class PlanTest(Layout, unittest.TestCase):
+    """Task 5: `aidlc-plan` keeps brief mode, slice 0, revisions, a part's documents and independent slices in
+    references; every stop of a brief and of slice 0 is in Stop if, and the confirmations stay in the Gate."""
+
+    NAME = "aidlc-plan"
+    REFS = ("brief-mode.md", "independent-slices.md", "revision.md", "route-g.md", "several-repositories.md")
+    LIMIT = 3200  # the design's target is 2,500; this cut reaches 3,117 (item W1)
+
+    def test_every_stop_of_a_brief_and_of_slice_0_is_in_stop_if(self):
+        stops = flat(section(skill_md(self.NAME), "## Stop if"))
+        for phrase in ("- In brief mode (route D1, `references/brief-mode.md`), steps 1 and 3. When the expected "
+                       "behaviour is written nowhere, stop: it is route D2, and `aidlc-start` re-routes it. Ask the "
+                       "three design questions; any yes, stop: it is route D2, and `aidlc-start` re-routes it.",
+                       "- In feature brief mode (route F0, `references/brief-mode.md`), step 1. A criterion not written "
+                       "on the work item by its owner, or an ambiguity only the owner can settle, means stop: it is "
+                       "route F1, and `aidlc-start` re-routes it. Step 3 checks the rest of the fast-path test there. "
+                       "Any of these means stop: it is route F1, and `aidlc-start` re-routes it.",
+                       "- On slice 0 of route G (`references/route-g.md`), a package the generator added that "
+                       "DEPENDENCIES does not list is a stop for the design's approver."):
+            self.assertIn(phrase, stops, phrase)
+        for file_name in self.REFS:
+            self.assertNotIn("it is route D2", flat(self.ref(file_name)), file_name)
+
+    def test_the_references_point_to_stop_if_and_the_gate(self):
+        brief = flat(self.ref("brief-mode.md"))
+        self.assertEqual(brief.count("Stop if says"), 4)
+        self.assertEqual(brief.count("This skill's Gate holds that decision."), 2)
+        self.assertIn("is a stop for the design's approver, as this skill's Stop if says)", flat(self.ref("route-g.md")))
+        gate = flat(section(skill_md(self.NAME), "## Gate"))
+        self.assertIn("In brief mode, the engineer confirms the brief (`fix.md` or `brief.md`) and its tier, which is "
+                      "Ready on routes D1 and F0", gate)
+
+    def test_the_main_path_keeps_its_stops(self):
+        steps = flat(section(skill_md(self.NAME), "## Steps"))
+        for phrase in ("When it would exceed it, stop and propose the split to `aidlc-design`",
+                       "give every bundle a `DEPENDS ON` line, `none` or the one slice it builds on. To mark them: read "
+                       "`references/independent-slices.md` now and follow it.",
+                       "A plan without `DEPENDS ON` lines works as before: one branch, one pull request, slices as "
+                       "commits."):
+            self.assertIn(phrase, steps, phrase)
+        self.assertIn("If an input is missing, say which stage produces it and stop; never plan around it.",
+                      flat(section(skill_md(self.NAME), "## Inputs")))
+
+
 if __name__ == "__main__":
     unittest.main()
