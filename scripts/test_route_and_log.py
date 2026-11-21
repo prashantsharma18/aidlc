@@ -288,6 +288,7 @@ class SpecifyTest(unittest.TestCase):
             self.assertIn(phrase, text, phrase)
         self.assertIn("You are recording the route as the spec owner's decision, or changing the route yourself: the "
                       "tech lead owns it.", section(specify, "## Red flags"))
+        self.assertIn("Keep the header's route equal to the index's ROUTE line.", section(specify, "## Steps"))
 
 
 if __name__ == "__main__":

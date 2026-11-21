@@ -48,7 +48,7 @@ Amendment mode:
 1. Raise it against the criterion ID: quote the criterion and say exactly what conflicts.
 2. Classify it: a misreading (the spec is right; fix the reading) or a gap or conflict (someone must decide). If unsure, treat it as a gap.
 3. For a gap, prepare the decision for the criterion's owner, with the options and their consequences. Never pick one.
-4. Only after the owner has decided, and only from that decision: write the new version of the spec, with its version raised (v1 to v2) and an Amendments line with the date, criterion, reason and decider. The person saves it.
+4. Only after the owner has decided, and only from that decision: write the new version of the spec, with its version raised (v1 to v2) and an Amendments line with the date, criterion, reason and decider. The person saves it. Keep the header's route equal to the index's ROUTE line.
 5. List everything that cites the criterion (tests, plan, task bundles, evidence) and say that the plan returns for
    approval, because the criteria changed. Then the tech lead classifies each part by its state:
 
