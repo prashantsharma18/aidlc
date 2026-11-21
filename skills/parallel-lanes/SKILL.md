@@ -43,10 +43,14 @@ when a person names it: the AI never starts such a stage by itself (ADR 0025). T
 start such a skill, so it reads the skill's file by its absolute path and follows it in full. The coordinator takes
 that path from where its tool loaded this skill: the stage skills are the folders beside this one. It sends sub-agent
 lanes only to build, verify and review, and only on a row whose plan a person approved (ADR 0023), because those
-stages run between two people's decisions: the plan's approval and the pull request review. A build goes to a
+stages run between two people's decisions: the plan's approval and the pull request review. A confirmed brief
+(`fix.md`, `brief.md` or `standard.md`) counts as an approved plan, because the engineer's confirmation is the row's
+Ready (ADR 0026). At Tier 1 on a full route, where the tiers file's decisions table lists no plan decision, no person
+approves the plan, so a sub-agent lane never builds such a row: a person starts its build by hand. A build goes to a
 sub-agent only when its bundle's MODE is a delegate mode (delegate with checkpoints, or delegate): a hands-on build
-waits for the person to confirm its restatement in the session, so a person starts it. A person starts intent,
-specify, design and plan, which need the person's answers and approval anyway. A sub-agent cannot start the reviewer
+keeps a person in the session for its judgement calls, and at Tier 3 waits for the person to confirm its
+restatement, so a person starts it. A person starts intent, specify, design and plan, which need the person's
+answers, and at Tier 2 and 3 the approval, anyway. A sub-agent cannot start the reviewer
 agents, so it hands those passes to the coordinator ("Reviewer passes from a sub-agent lane", below).
 
 A row's state is read from its own files, never kept in the queue (ADR 0022):
@@ -116,7 +120,7 @@ Lane mode, step by step:
    is waiting, resume it only when its decision can be had: checked where its stage says (a plan or design merged on
    the default branch; a pull request's approval or merge in the review tool or in git; the tracker through its
    connected tool), or, for a lane a person started, the decider gives it in this session. Record it as the stage
-   says (ADR 0023), then continue with the stage's next step. A hands-on build's restatement and a pause are
+   says (ADR 0023), then continue with the stage's next step. A hands-on build's restatement at Tier 3 and a pause are
    recorded as lines in the progress note, as `aidlc-build` says. A sub-agent lane resumes only a wait that build,
    verify or review asked for, whichever row holds it (the plan's approval, written in the build row, is still the
    plan's); `waiting: reviewer passes at <commit>` only from a brief that quotes the reviewers' reports for
@@ -136,8 +140,12 @@ Lane mode, step by step:
    never into a row already done; when the wait ends, that row reads `to do` again. While a stage runs, that is its
    own row; once it has marked its row done, it is the next stage's row. So each cell has one writer at a time, and a
    stage's `done` is never overwritten.
-   - a person's decision is needed (answers, the plan's approval, a pause confirmation, the pull request review):
-     write `waiting: <decision> by <who>`;
+   - a person's decision is needed, as the tiers file's decisions table lists it for the row's tier (answers, the
+     plan's approval at Tier 2 and 3, a pause or a Tier 3 restatement confirmation, the pull request review): write
+     `waiting: <decision> by <who>`;
+   - the stage is done and no person's decision follows it (the tiers file's decisions table): write nothing more,
+     because the row is ready for its next stage, which a lane starts as coordinator step 3 says (for example intent and
+     design at every tier, and plan at Tier 1);
    - a Stop if fires: write `stopped: <reason>` in the stage's own row;
    - a sub-agent lane reaches the reviewer passes: release with `waiting: reviewer passes at <commit>`, as "Reviewer
      passes from a sub-agent lane" says;
@@ -176,6 +184,7 @@ Coordinator mode, step by step:
    - build, verify or review, on a row whose plan a person approved, and a build only when its bundle's MODE is a delegate mode (delegate with checkpoints, or delegate): start a sub-agent lane with your AI tool's own way of starting background sessions or sub-agents, where it has one. Its brief opens with `Read <absolute path>/skills/parallel-lanes/SKILL.md before anything else.` and names the row and the stage skill's absolute path (`<plugin root>/skills/aidlc-build/SKILL.md`, `aidlc-verify` or `aidlc-review`), which the lane reads and follows in full;
    - intent, specify, design or plan, a hands-on build, a wait that needs a person's word, or a tool with no such feature: give the person the exact words to start the lane by hand: lane mode of this skill, the row, and the row's next stage, as two messages in one session: first lane mode with the row, which claims it, then the stage's own command, the person's words that start the stage. Write each by the name the person's tool starts it with. The lane claims its worktree as lane mode says.
 
+   A build whose plan no person approved (at Tier 1 on a full route) goes the second way.
    Never relay a decision to a sub-agent: a brief carries the row, the skill paths and, after reviewer passes, the
    reviewers' reports, never a person's decision. A lane a person starts by hand counts toward MAX LANES. A row held
    back is skipped, not dropped: the next ready row that clashes with nothing starts.

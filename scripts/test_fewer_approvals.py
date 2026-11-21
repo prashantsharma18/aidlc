@@ -631,5 +631,39 @@ class RouteSDocsTest(unittest.TestCase):
         self.assertIn("the tech lead approves the list in the pull request, as any rule (ADR 0026)", onboard)
 
 
+class LanesTest(unittest.TestCase):
+    """Task 9: the lanes release where the decisions table says, and a sub-agent still builds only an approved plan."""
+
+    def lane(self) -> str:
+        return skill("parallel-lanes").split("Lane mode, step by step:", 1)[1].split("Coordinator mode, step by step:")[0]
+
+    def test_a_sub_agent_builds_only_a_plan_a_person_approved(self):
+        inputs = section(skill("parallel-lanes"), "## Inputs")
+        for phrase in ("only on a row whose plan a person approved (ADR 0023)",
+                       "A confirmed brief (`fix.md`, `brief.md` or `standard.md`) counts as an approved plan, because "
+                       "the engineer's confirmation is the row's Ready (ADR 0026).",
+                       "At Tier 1 on a full route, where the tiers file's decisions table lists no plan decision, no "
+                       "person approves the plan, so a sub-agent lane never builds such a row: a person starts its "
+                       "build by hand.",
+                       "a hands-on build keeps a person in the session for its judgement calls, and at Tier 3 waits for "
+                       "the person to confirm its restatement, so a person starts it."):
+            self.assertIn(phrase, inputs, phrase)
+        self.assertNotIn("a hands-on build waits for the person to confirm its restatement in the session", inputs)
+        coordinator = skill("parallel-lanes").split("Coordinator mode, step by step:", 1)[1].split("**A stacked", 1)[0]
+        self.assertIn("A build whose plan no person approved (at Tier 1 on a full route) goes the second way.",
+                      coordinator)
+
+    def test_a_lane_releases_where_the_table_says(self):
+        lane = self.lane()
+        self.assertIn("a person's decision is needed, as the tiers file's decisions table lists it for the row's tier "
+                      "(answers, the plan's approval at Tier 2 and 3, a pause or a Tier 3 restatement confirmation, the pull "
+                      "request review): write `waiting: <decision> by <who>`", lane)
+        self.assertIn("the stage is done and no person's decision follows it (the tiers file's decisions table): "
+                      "write nothing more, because the row is ready for its next stage, which a lane starts as "
+                      "coordinator step 3 says", lane)
+        self.assertIn("A hands-on build's restatement at Tier 3 and a pause are recorded as lines in the progress note",
+                      lane)
+
+
 if __name__ == "__main__":
     unittest.main()
