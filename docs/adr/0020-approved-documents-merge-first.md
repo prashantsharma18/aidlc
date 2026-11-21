@@ -4,6 +4,8 @@ Status: Accepted (2026-11-20; confirmed by the framework owner in the session). 
 Plan: `docs/plans/2026-11-19-plan-20-gates-that-hold.md` · Change list: A2 · Amends: ADR 0015 (where approvals live)
 
 Amended by ADR 0024 (2026-11-20): see the last section.
+Amended by ADR 0026 (proposed, 2026-11-21): each pull request approval is the record, and the design and the plan
+merge first together, in one pull request; see ADR 0026.
 
 ## Context
 Approvals before code were text lines (`CONFIRMED`, "approved by") and records on the work item. Nothing a script could

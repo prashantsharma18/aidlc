@@ -6,6 +6,8 @@ Design: `docs/design/2026-11-08-aidlc-4-routes-and-roadmap.md`
 Amended by ADR 0024 (2026-11-20): see the last section.
 Amended by ADR 0025 (proposed, 2026-11-21): one pull request per independent slice, when the plan marks its slices
 independent; see ADR 0025. ADR 0025 was accepted on 2026-11-21.
+Amended by ADR 0026 (proposed, 2026-11-21): route S, for the standard changes a team lists in its `AGENTS.md`; see ADR
+0026.
 
 ## Context
 The stages worked one at a time but did not fit together end to end. Stages disagreed about the pull request (one per

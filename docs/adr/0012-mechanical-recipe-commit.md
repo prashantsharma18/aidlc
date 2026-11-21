@@ -6,6 +6,8 @@ second exception beside the recipe commit.
 shortcut"
 
 Amended by ADR 0024 (2026-11-20): see the last section.
+Amended by ADR 0026 (proposed, 2026-11-21): the recipe pause is lifted for a recipe class listed in a team's
+`AGENTS.md` (route S): the code owner reads the recipe check at Merge; see ADR 0026.
 
 ## Context
 A framework upgrade changes dependency versions across a project and rewrites test syntax (for example JUnit 4 to 5
