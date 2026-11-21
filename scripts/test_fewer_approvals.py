@@ -609,10 +609,21 @@ class RouteSDocsTest(unittest.TestCase):
                            "| Recipe commit |", "| Dependency bump |", "| Defect fix (D1) |",
                            "No new dependency; never a major version",
                            "Work that passes a limit stops and takes its normal route; a class is never stretched.",
-                           "The tech lead approves this list once, in a pull request, as any rule."):
+                           "The tech lead approves this list once, in a pull request, as any rule.",
+                           "The AI reads the list as merged on the default branch, so a class added or changed on a "
+                           "branch is not approved.",
+                           "A class names what qualifies, its limits and its evidence, or it cannot be used.",
+                           "A package added to a lock file counts as a new dependency unless the class says otherwise.",
+                           "Route S is Tier 1 and one repository only."):
                 self.assertIn(phrase, block, f"{rel}: {phrase}")
             self.assertIn("A person decides only where the tiers file's decisions table says (ADR 0026)", flat(rel), rel)
         self.assertNotIn("<", outside_code(read(RULES_FILES[0])).split("## Standard changes", 1)[1].split("\n## ", 1)[0])
+
+    def test_the_quickstarts_count_nine_routes(self):
+        for rel in ("docs/quickstart/claude-code.md", "docs/quickstart/copilot.md", "docs/quickstart/codex-cursor.md"):
+            text = read(rel)
+            self.assertNotIn("the eight routes", text, rel)
+            self.assertIn("[the nine routes](../operating-model/routes.md)", text, rel)
 
     def test_onboard_proposes_the_three_classes(self):
         onboard = skill("aidlc-onboard")

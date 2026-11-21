@@ -25,6 +25,6 @@ A skill's text names no tool-specific command, so the same skills run unchanged.
 `disable-model-invocation` in Claude Code may load on their own in Copilot; ask for stage skills by name.
 
 Next: [how to adopt aidlc](../operating-model/adoption.md), on a new system or an existing one in phases, and
-[the eight routes](../operating-model/routes.md) `aidlc-start` chooses from.
+[the nine routes](../operating-model/routes.md) `aidlc-start` chooses from.
 
 The commands you type, stage by stage: [the README's table](../../README.md#commands-you-type).

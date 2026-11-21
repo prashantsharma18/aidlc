@@ -15,6 +15,6 @@ The agents in `agents/` are written for Claude Code; in these tools, a skill tha
 focused, read-only sub-task in the same session.
 
 Next: [how to adopt aidlc](../operating-model/adoption.md), on a new system or an existing one in phases, and
-[the eight routes](../operating-model/routes.md) `aidlc-start` chooses from.
+[the nine routes](../operating-model/routes.md) `aidlc-start` chooses from.
 
 The commands you type, stage by stage: [the README's table](../../README.md#commands-you-type).
