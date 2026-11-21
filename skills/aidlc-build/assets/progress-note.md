@@ -35,9 +35,11 @@ The decision log (ADR 0027): one row per judgement call, written when the call i
 per Assumption below. A judgement call is a choice the spec, the plan and the bundle left open, settled inside
 MAY CHANGE; anything a stop names is a stop, never a row. `owner` is who owns the area and should see the row, never
 an approval: no row waits. Write `- none` when the slice made no judgement call.
+Write `- none` only when there is no judgement call, no Deviation and no Assumption.
 - {{commit}} · {{decision}} · {{why}} · {{evidence: file:line, a test or a command}} · owner {{who owns the area}}
 
 ## Assumptions
+An assumption about how the work should behave that the spec does not say is a stop (`aidlc-build`'s Stop if), never an assumption: only a fact about the code you could not yet confirm is flagged for the reviewer.
 - {{assumption}} — {{confirmed in code at file:line | flagged for reviewer}}
 
 ## Context gaps noticed (B5)

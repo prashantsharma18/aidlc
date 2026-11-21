@@ -402,6 +402,26 @@ class BuildLogTest(unittest.TestCase):
                       "waits, and no one approves a row (ADR 0027). " + DECIDE, text)
         self.assertIsNone(re.search(r"code owner[^.;]* approves", text))
 
+    def test_fix_round_every_stop_if_is_a_stop_and_an_assumption_is_a_fact(self):
+        build = skill("aidlc-build")
+        step = build.split(" 7. Implement one step at a time.", 1)[1].split(" 8. Run the full test", 1)[0]
+        for phrase in ("So does every item under Stop if below, among them a spec that does not say how something "
+                       "should behave, a plan that looks wrong (never a new approach: it goes back to `aidlc-plan`) "
+                       "and a check that passes only by lowering the Quality bar. A choice of approach is a row only "
+                       "when the plan left two ways open.",
+                       "An Assumption is only a fact about the code not yet confirmed; behaviour the spec does not "
+                       "state is a stop.",
+                       "After step 1 moves a stacked slice, update each row's commit to the moved one.",
+                       "Write `- none` only when there is no judgement call, no Deviation and no Assumption."):
+            self.assertIn(phrase, step, phrase)
+        self.assertIn("You are logging an approach the plan did not name, or behaviour the spec does not state.",
+                      " ".join(section(build, "## Red flags").split()))
+        note = flat(self.NOTE)
+        self.assertIn("Write `- none` only when there is no judgement call, no Deviation and no Assumption.", note)
+        self.assertIn("An assumption about how the work should behave that the spec does not say is a stop "
+                      "(`aidlc-build`'s Stop if), never an assumption: only a fact about the code you could not yet "
+                      "confirm is flagged for the reviewer.", note.split("## Assumptions", 1)[1])
+
 
 if __name__ == "__main__":
     unittest.main()
