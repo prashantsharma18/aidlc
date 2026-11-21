@@ -434,5 +434,103 @@ class ReleaseTest(unittest.TestCase):
         self.assertIn("An approval that exists only in the chat still stops the release.", text)
 
 
+DECIDE_STAGES = ("aidlc-start", "aidlc-intent", "aidlc-specify", "aidlc-discover", "aidlc-design", "aidlc-plan",
+                 "aidlc-build", "aidlc-verify", "aidlc-review", "aidlc-release")
+BRIEF = "skills/aidlc-start/assets/standard-brief.md"
+
+
+def outside_code(text: str) -> str:
+    """The text a renderer treats as Markdown: fenced blocks, HTML comments and code spans removed."""
+    text = re.sub(r"(?ms)^```[a-z]*\n.*?^```$", "", text)
+    text = re.sub(r"(?s)<!--.*?-->", "", text)
+    return re.sub(r"`[^`\n]*`", "", text)
+
+
+class RouteSTest(unittest.TestCase):
+    """Task 7: route S, from the team's list of standard changes to build, verify and review."""
+
+    def test_exactly_the_ten_deciding_stages_carry_the_line(self):
+        found = sorted(p.parent.name for p in (ROOT / "skills").glob("*/SKILL.md")
+                       if DECIDE in p.read_text(encoding="utf-8"))
+        self.assertEqual(found, sorted(DECIDE_STAGES))
+        for name in DECIDE_STAGES:
+            assert_gate_line(self, name)
+
+    def test_start_recognises_a_listed_class_and_never_stretches_it(self):
+        raw = read("skills/aidlc-start/SKILL.md")
+        self.assertIn("  templates: [story-index, standard-brief]\n", raw.split("\n---", 1)[0])
+        start = skill("aidlc-start")
+        steps = section(start, "## Steps")
+        for phrase in ("**Standard change (route S, ADR 0026):** first, read the Standard changes section of the "
+                       "repository's `AGENTS.md`.",
+                       "When the work matches a class listed there and stays within every limit the class names, it "
+                       "takes route S",
+                       "Work that passes a limit (a major version, a new dependency, a Tier 2 risk), or matches a class "
+                       "only in part, takes its normal route below; say which limit it passed. A class is never "
+                       "stretched.",
+                       "A defect that matches a D1-fix class takes route D1",
+                       "S (a standard change)",
+                       "**Standard change (S):** inside the repository: this stage writes the standard brief, the "
+                       "engineer confirms it with its tier, then `aidlc-build`, `aidlc-verify`, `aidlc-review`.",
+                       "Write `plans/<KEY>/standard.md` from `assets/standard-brief.md`",
+                       "That confirmation is Ready on route S, the one decision before Merge"):
+            self.assertIn(phrase, steps, phrase)
+        self.assertIn("On route S, the engineer who confirms the standard brief confirms its tier: that is Ready",
+                      gate("aidlc-start"))
+        self.assertIn("S to the work's normal route", section(start, "## When to use"))
+        self.assertIn("Taking route S for work that passes a limit of its class, or for a class `AGENTS.md` does not "
+                      "list.", section(start, "## Red flags"))
+        self.assertIn("A class is never stretched.", section(start, "## Common excuses"))
+
+    def test_the_standard_brief_is_a_template_the_engineer_confirms(self):
+        text = read(BRIEF)
+        self.assertTrue(text.startswith("<!-- aidlc template: standard-brief -->\n# {{KEY}} · standard brief\n"))
+        block = text.split("## For the reviewer", 1)[1].split("```", 1)[0]
+        for label in ("**Asked of:**", "**Record it:**", "**Tier and main risk:**", "**Changed since the last version:**"):
+            self.assertIn(label, block)
+        self.assertIn("The engineer, to confirm the brief, its TIER and its MODE (Ready on route S, ADR 0026)", block)
+        fields = text.split("```text\n", 1)[1].split("\n```", 1)[0]
+        for field in ("STANDARD BRIEF · {{KEY}} · {{TITLE}}", "CLASS ", "WHAT ", "LIMITS ", "EVIDENCE ", "TIER ",
+                      "RECIPE ", "MODE ", "USE SKILLS ", "MAY CHANGE ", "MUST NOT ", "DONE WHEN ", "STOP IF ",
+                      "CONFIRMED "):
+            self.assertIn(field, fields, field)
+        self.assertIn("written by the AI when the engineer confirms the brief and its TIER", fields)
+        self.assertIn("a limit of the class would be passed (a major version, a new dependency, a Tier 2 risk)", fields)
+        out = outside_code(text)
+        self.assertEqual(re.findall(r"<(?!!--)[^<>\n]+>", out), [])
+        self.assertNotRegex(out, r"(?m)^[A-Z][A-Z /-]{2,}\s{2,}\S")
+        self.assertEqual(text.count("```") % 2, 0)
+
+    def test_the_index_knows_route_s(self):
+        start, plan = (read(f"skills/{s}/assets/story-index.md") for s in ("aidlc-start", "aidlc-plan"))
+        self.assertEqual(start, plan)
+        self.assertIn("ROUTE      <F0 | F1 | F2 | C | D1 | D2 | G>   (or S: a standard change that AGENTS.md lists, ADR 0026)", start)
+
+    def test_build_verify_and_review_read_the_standard_brief(self):
+        build = skill("aidlc-build")
+        self.assertIn("or, on route S, the confirmed standard brief `plans/<KEY>/standard.md`, which serves the same way "
+                      "(its slice is named `standard`)", build)
+        self.assertIn("On route S, for a recipe class that `AGENTS.md`'s Standard changes section lists, do not pause: "
+                      "the evidence file's Recipe commits section shows the re-run, and the code owner reads it at "
+                      "Merge (ADR 0026).", build)
+        self.assertIn("On route S, its STANDARD line names the class and shows each limit held.", build)
+        self.assertIn("the recipe review (except for a listed recipe class on route S, step 5)", gate("aidlc-build"))
+        self.assertIn("The standard brief's CONFIRMED line is empty or still holds its placeholder, its TIER is not 1, "
+                      "or the work would pass one of its LIMITS", section(build, "## Stop if"))
+        self.assertIn("On route S, the standard brief `plans/<KEY>/standard.md`", section(skill("aidlc-verify"),
+                                                                                           "## Inputs"))
+        review = skill("aidlc-review")
+        self.assertIn("on route S the standard brief `plans/<KEY>/standard.md`", section(review, "## Inputs"))
+        self.assertIn("On route S, the code owner approves `standard.md` with the change, and checks that the evidence "
+                      "file's STANDARD line names the class and shows each limit held.", review)
+        self.assertIn("On route S the standard brief (`plans/<KEY>/standard.md`) is the bundle the same way",
+                      flat("agents/reviewer-compliance.md"))
+
+    def test_the_evidence_file_names_the_class(self):
+        copies = {read(f"skills/{s}/assets/review-evidence.md") for s in ("aidlc-build", "aidlc-review")}
+        self.assertEqual(len(copies), 1)
+        self.assertIn("STANDARD   {{on route S: the class, and each limit with how it held | none}}", copies.pop())
+
+
 if __name__ == "__main__":
     unittest.main()

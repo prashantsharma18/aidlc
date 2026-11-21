@@ -4,7 +4,7 @@
 ```text
 SOURCE     <work item link>
 KIND       <new feature | change request | defect | incident follow-up | new system>
-ROUTE      <F0 | F1 | F2 | C | D1 | D2 | G>
+ROUTE      <F0 | F1 | F2 | C | D1 | D2 | G>   (or S: a standard change that AGENTS.md lists, ADR 0026)
 LEVEL      <repository | workspace root | part <n> of <m> in <repository>>
 CURRENT    spec v<n> · contract <provider> v<MAJOR.MINOR.PATCH>        (the story's approved versions; a part leaves this line out)
 PINS       spec v<n> @ <home commit> · plan v<n> · contract <provider> v<MAJOR.MINOR.PATCH>        (a part: what its latest bundle builds on, the spec at the home repository's commit; a contract's version is its published tag's, the tag in contracts/<provider>/SOURCE; a story leaves this line out)
