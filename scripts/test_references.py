@@ -320,5 +320,51 @@ class BuildTest(Layout, unittest.TestCase):
                       "follow it.", flat(section(skill_md(self.NAME), "## Inputs")))
 
 
+CHANGES = "docs/design/2026-11-19-aidlc-6-change-list.md"
+
+
+class DocsTest(unittest.TestCase):
+    """Task 7: the contributor rules, the map and the change list say where a case's steps live; aidlc 7.2.0."""
+
+    def test_agents_md_lets_a_stage_keep_a_case_in_references(self):
+        standards = flat(read("AGENTS.md").split("## Standards\n", 1)[1].split("\n## ", 1)[0])
+        for phrase in ("A stage skill may keep the steps of one route or case in `references/<case>.md` (Plan 26), under "
+                       "three rules.",
+                       "A reference never holds a gate: no Gate, Stop if, Common excuses, Red flags or Rules section, "
+                       "and every stop and decision stays in `SKILL.md`, which the reference points to.",
+                       "`SKILL.md` names each reference with the condition to read it, at the step where the case "
+                       "begins, and each reference opens with the line that says which step sends you there.",
+                       "A rule is written once: a rule another file owns is a pointer to that file.",
+                       "A \"Load the `<name>` skill\" phrase stays in `SKILL.md`.",
+                       "`scripts/validate.py` checks that a reference holds no gate section and that `SKILL.md` names "
+                       "it."):
+            self.assertIn(phrase, standards, phrase)
+        bullet = read("AGENTS.md").split("\n- A stage skill may keep the steps", 1)[1].split("\n- ", 1)[0]
+        self.assertTrue(all(len(line) <= 120 for line in bullet.splitlines()), bullet)
+
+    def test_the_codebase_map_says_where_a_case_lives(self):
+        mapping = flat(read("docs/codebase-map.md"))
+        for phrase in ("five of them keep the steps of one route or case in `references/`, read on a named condition",
+                       "A route's or case's steps in a stage skill: its `references/<case>.md`, named in `SKILL.md` with "
+                       "the condition to read it; its stops and decisions stay in `SKILL.md`.",
+                       "A stage skill's reference never holds a Gate, Stop if, Common excuses, Red flags or Rules "
+                       "section, and its `SKILL.md` names it; `scripts/validate.py` checks both."):
+            self.assertIn(phrase, mapping, phrase)
+
+    def test_the_change_list_and_the_version(self):
+        changes = read(CHANGES)
+        table = changes.split("## 10. After Plan 26 (2026-11-21)", 1)[1]
+        self.assertRegex(table, r"(?m)^\| D3 \| Covered, as instructions \|")
+        self.assertIn("`docs/plans/2026-11-21-plan-26-shorter-stage-skills.md`", table)
+        self.assertIn("aidlc 7.2.0", table)
+        self.assertNotIn("Needs the owner's decision", changes)
+        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "7.2.0")
+
+    def test_a_lane_reads_a_reference_from_the_skill_folder(self):
+        lanes = flat(read("skills/parallel-lanes/SKILL.md"))
+        self.assertIn("A `references/<file>.md` path that the stage skill names is in the folder of that `SKILL.md`: "
+                      "read it from there, never from the repository.", lanes)
+
+
 if __name__ == "__main__":
     unittest.main()

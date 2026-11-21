@@ -136,7 +136,8 @@ Lane mode, step by step:
    by its stage skill, exactly as that skill says: a sub-agent lane reads the stage skill's file at the absolute path
    its brief names and follows it in full; a lane a person started runs the stage the person's second message starts
    (step 1). Its gates, the evidence file, the verdict from someone who did not write the change, and every Stop if
-   hold unchanged. Commit after every step.
+   hold unchanged. A `references/<file>.md` path that the stage skill names is in the folder of that `SKILL.md`: read it
+   from there, never from the repository. Commit after every step.
 6. Release when any of these happens, then end. A lane writes a wait into the row of the next unfinished stage,
    never into a row already done; when the wait ends, that row reads `to do` again. While a stage runs, that is its
    own row; once it has marked its row done, it is the next stage's row. So each cell has one writer at a time, and a

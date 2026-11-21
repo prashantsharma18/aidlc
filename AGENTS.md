@@ -29,6 +29,13 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
   excuses, Red flags, Rules; a workflow name never starts with `aidlc-` or with an "-ing" word; a real noun ending in
   "ing" goes into `ING_NOUNS` in `scripts/validate.py`. `using-aidlc` (`metadata.kind: map`) keeps the open format. A
   stage step commands a practice with "Load the `<name>` skill"; `scripts/test_loads.py` holds the table.
+- A stage skill may keep the steps of one route or case in `references/<case>.md` (Plan 26), under three rules. A
+  reference never holds a gate: no Gate, Stop if, Common excuses, Red flags or Rules section, and every stop and
+  decision stays in `SKILL.md`, which the reference points to. `SKILL.md` names each reference with the condition to
+  read it, at the step where the case begins, and each reference opens with the line that says which step sends you
+  there. A rule is written once: a rule another file owns is a pointer to that file. A "Load the `<name>` skill"
+  phrase stays in `SKILL.md`. `scripts/validate.py` checks that a reference holds no gate section and that `SKILL.md`
+  names it.
 - Templates (`skills/aidlc-*/assets/`) are read rendered by the people who approve them: a placeholder outside a
   code block is written `{{…}}`, because GitHub drops `<word>` as an HTML tag; a block of FIELD lines
   sits in a ```text fence; and every document a person approves opens with a `## For the reviewer` section naming who

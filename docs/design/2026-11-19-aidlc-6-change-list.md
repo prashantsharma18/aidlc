@@ -271,3 +271,13 @@ sections 6 to 8 say.
 |---|---|---|
 | C6 | Covered, as instructions | Ready is the work, its acceptance criteria, its tier and its route. The ROUTE line carries its facts; the tech lead owns the route, and a technical person checks it at the first technical decision; a route change after Ready that touches the tier, the scope, the criteria or the controls is decided again |
 | B4 | Covered, as instructions | The progress note's decision log: one row per judgement call, with its commit, evidence and owner, written when the call is made; `aidlc-review` copies the rows into the pull request description by owner; the compliance reviewer checks them; the code owner reads them at Merge |
+
+## 10. After Plan 26 (2026-11-21)
+
+Plan 26 (`docs/plans/2026-11-21-plan-26-shorter-stage-skills.md`, design
+`docs/design/2026-11-21-shorter-stage-skills.md`) builds item D3 as instructions, in aidlc 7.2.0. It updates this item
+of section 6; the rest stand as sections 6 to 9 say.
+
+| Item | State after Plan 26 | How |
+|---|---|---|
+| D3 | Covered, as instructions | `aidlc-specify`, `aidlc-design`, `aidlc-start`, `aidlc-plan` and `aidlc-build` keep their main path and every gate in `SKILL.md`, and move the steps of one route or case into `references/<case>.md`, read on a named condition: amendments, route G, route S, several repositories, re-routing, the briefs, revisions, independent and stacked slices, and the recipe check. The text moved word for word; no decision and no stop changed. `scripts/validate.py` checks that a reference holds no gate section and that `SKILL.md` names it. Three skills stay above the design's word targets (Plan 26, item W1) |

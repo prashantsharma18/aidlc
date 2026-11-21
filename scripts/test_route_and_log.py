@@ -576,7 +576,7 @@ class DocsTest(unittest.TestCase):
         self.assertRegex(table, r"(?m)^\| B4 \| Covered, as instructions \|")
         self.assertIn("`docs/plans/2026-11-21-plan-25-route-in-ready-and-decision-log.md`", table)
         self.assertIn("aidlc 7.1.0", table)
-        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "7.1.0")
+        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "7.2.0")
 
 
 NEW_CASES = {"gate-build-decision-log": ("gate", "/aidlc:aidlc-build SHIP-95 slice 1."),
