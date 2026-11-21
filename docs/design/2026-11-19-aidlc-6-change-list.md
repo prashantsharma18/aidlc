@@ -232,7 +232,8 @@ The plugin's major version: 6.0.0 (approved 2026-11-20).
 
 Plan 23 (`docs/plans/2026-11-21-plan-23-parallel-lanes.md`, ADR 0025 proposed) builds parallel work as instructions:
 the workflow skill `parallel-lanes`, a `QUEUE.md` a person keeps, and git worktrees as the lock. It updates these
-items of section 6; the rest stand as section 6 says.
+items of section 6; the rest stand as section 6 says. The plugin's version for Plan 23 is aidlc 6.1.0, a minor release, because it adds a
+skill and changes no route.
 
 | Item | State after Plan 23 | How |
 |---|---|---|

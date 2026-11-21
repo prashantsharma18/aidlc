@@ -1411,6 +1411,15 @@ class FinalReviewTest(unittest.TestCase):
         bundle = read("skills/aidlc-plan/assets/task-bundle.md")
         self.assertIn("slice 1 runs on the part's branch, whatever this line says", bundle)
 
+    def test_the_agents_file_keeps_its_width(self):
+        standards = read("AGENTS.md").split("## Standards\n", 1)[1].split("\n## ", 1)[0]
+        workflow_bullet = standards.split("\n- ", 1)[0]
+        self.assertTrue(all(len(line) <= 120 for line in workflow_bullet.splitlines()), workflow_bullet)
+
+    def test_the_change_list_names_the_version(self):
+        changes = read("docs/design/2026-11-19-aidlc-6-change-list.md")
+        self.assertIn("aidlc 6.1.0", changes.split("## 7. After Plan 23 (2026-11-21)", 1)[1])
+
     def test_the_evals_match_the_skill(self):
         self.assertFalse((ROOT / "evals/gate-lane-plan-approval/graders/removes-its-worktree.md").exists())
         self.assertIn("ended before claiming", read("evals/gate-lane-plan-approval/graders/waiting.md"))
@@ -1424,6 +1433,13 @@ class FinalReviewTest(unittest.TestCase):
             self.assertRegex(bundle, r"(?m)^MODE        delegate$")
             self.assertRegex(bundle, r"(?m)^TIER        1$")
 
+    def test_the_record_holds_the_final_review_and_the_rulings(self):
+        record = read(RecordTest.RECORD)
+        self.assertNotIn("still to come", record)
+        owner = record.split("## For the owner", 1)[1]
+        for ruling in ("R1", "R2", "R3", "R4", "R5"):
+            self.assertIn(ruling, owner, ruling)
+        self.assertIn("FinalReviewTest", record)
 
 
 if __name__ == "__main__":
