@@ -108,8 +108,11 @@ not collide in the story's documents.
   for a second part in the same repository. The `.worktrees/` folder is ignored through `.git/info/exclude`, so
   nothing is committed.
 - **Claim.** The first claim of a row creates its branch: `git worktree add -b <branch> .worktrees/<folder>
-  origin/<default branch>` (a stacked slice starts from the branch it depends on). Every later claim:
-  `git worktree add .worktrees/<folder> <branch>`.
+  origin/<default branch>` (a stacked slice starts from its parent's local branch, which exists under the one-clone rule below). Every later
+  claim: `git worktree add .worktrees/<folder> <branch>`, then `git merge --ff-only origin/<branch>` in the worktree
+  when the remote branch exists; a lane that cannot fast-forward removes the worktree and reports. Only an error
+  saying the branch or folder `already exists`, or `is already checked out` or `is already used by worktree`, means
+  another lane holds the row. Any other error ends the lane with `stopped: claim failed: <error>`.
 - **Why only one lane wins.** All worktrees of one repository share one `.git`, and git refuses to check out a
   branch that another worktree already has. If two lanes claim the same row at the same moment, git's own lock lets
   one through; the other's command fails, and it takes the next row.
@@ -121,7 +124,9 @@ not collide in the story's documents.
 
 ## `parallel-lanes`, lane mode
 1. Fetch, and read `QUEUE.md` on the default branch.
-2. Take the first ready row that clashes with no running lane (see Clashes). With no ready row, report and end.
+2. Take the row the brief or the person names. With no row named, take the first ready row that clashes with no
+   running lane (see Clashes). With no ready row, report and end. A sub-agent lane whose brief does not match what it
+   may run ends without claiming and writes no state.
 3. Claim it (the lock above). If the claim fails, go back to step 2 with the next row.
 4. Run the row's next unfinished stage by its stage skill, exactly as that skill says, in this worktree. Stage
    gates, the evidence file, the non-author verdict and every Stop if hold unchanged. Commit after every step.
@@ -136,7 +141,8 @@ not collide in the story's documents.
 
 ## `parallel-lanes`, coordinator mode
 1. Fetch every repository the queue names, read `QUEUE.md` and each row's state.
-2. List worktrees (`git worktree list` in each repository). A worktree with no running lane is shown to the person;
+2. List worktrees (`git worktree list` in each repository; only those under `.worktrees/` count as lanes). A worktree
+   with no running lane is shown to the person;
    it is removed only after the person confirms, because it may hold uncommitted work.
 3. Start lanes up to MAX LANES minus the running ones, each told only its row. Which stage decides how:
    - **build, verify and review, on a row whose plan a person approved:** start the lane with the AI tool's own way of
@@ -192,8 +198,10 @@ Slice 3 stacks on slice 2, and a person merges slice 2's pull request:
 2. It moves only slice 3's own commits onto the updated default branch:
    `git fetch` then `git rebase --onto origin/<default branch> <slice 2's last commit> <slice 3's branch>`. With
    `--onto` and slice 2's old tip, this works when the host squashed slice 2 into one commit.
-3. It pushes with `git push --force-with-lease`, which fails rather than overwrite anything else, on the lane's own
-   branch only, and asks first unless the team's `AGENTS.md` lets a lane push its own branch.
+3. Before it rebases, when the remote branch exists, it checks `git merge-base --is-ancestor origin/<slice 3's branch>
+   <slice 3's branch>` and stops if that fails, because a person pushed there. It pushes with
+   `git push --force-with-lease --force-if-includes`, which fails rather than overwrite a push the lane has not seen,
+   on the lane's own branch only, and asks first unless the team's `AGENTS.md` lets a lane push its own branch.
 4. Slice 3's pull request now targets the default branch. Many hosts retarget it themselves when slice 2's branch is
    deleted; otherwise a person retargets it.
 5. The verdict rule applies: if the rebase brought in other code from the default branch, the earlier PASS is void,

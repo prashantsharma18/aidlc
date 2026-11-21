@@ -1,8 +1,8 @@
 <!-- aidlc template: queue -->
 # Queue
 
-The order of ready work, read by the `parallel-lanes` skill. A person writes this file and commits it on the default
-branch: in the repository, or in the home repository for a workspace. The coordinator only drafts rows for that
+The order of ready work, read by the `parallel-lanes` skill. A person writes this file and commits and pushes it on the
+default branch: in the repository, or in the home repository for a workspace. The coordinator only drafts rows for that
 person to confirm, and lanes never write it. A row's state (waiting, stopped, done or ready) is read from the row's
 own files, never kept here (ADR 0025).
 

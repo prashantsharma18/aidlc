@@ -28,13 +28,13 @@ For one item a person works on by hand, run its stage directly; no lane is neede
 
 ## Inputs
 - `QUEUE.md` on the default branch: in the repository, or in the home repository for a workspace. A person writes it
-  from `assets/queue.md`. Read it after `git fetch`, with `git show origin/<default branch>:QUEUE.md`.
+  from `assets/queue.md`, commits and pushes it, because lanes read the default branch on the remote. Read it after `git fetch`, with `git show origin/<default branch>:QUEUE.md`.
 - Each row's own files, on its branch, or on the default branch before the branch exists: the index
   `plans/<KEY>/README.md` (`plans/<KEY>/slice-<n>/README.md` for a slice on its own branch), the plan, the bundles
   and the progress notes. For a part in another repository, run `git -C <repository> fetch`, then
   `git -C <repository> show <branch>:plans/<KEY>/README.md`.
 - The team's `AGENTS.md`: whether a lane may push its own branch, and whether force-push is forbidden.
-- `git worktree list`, in each repository the queue names. Every worktree there counts as a running lane.
+- `git worktree list`, in each repository the queue names. Every worktree under `.worktrees/` there counts as a running lane; the main copy does not.
 
 **How the run reaches its lanes.** Every stage skill, and this one, starts only when a person names it: the AI never
 starts a stage by itself (ADR 0025). A sub-agent lane cannot start such a skill, so it reads the skill's file by its
@@ -75,14 +75,21 @@ Its branch is the one written in the row.
 ## Steps
 Lane mode, step by step:
 1. Fetch (`git fetch`), and read `QUEUE.md` on the default branch. `git check-ignore -q .worktrees/` must succeed;
-   if it fails, stop: `aidlc-onboard` adds the line that keeps worktrees out of every commit.
-2. Take the first ready row, in queue order, that clashes with no running lane. With no ready row, report and end.
+   if it fails, stop: `aidlc-onboard` adds the line that keeps worktrees out of every commit. For a part row, run
+   steps 1 to 3 in the row's repository (`git -C <repository>`, or from inside it).
+2. Take the row your brief or the person names. With no row named, take the first ready row, in queue order, that
+   clashes with no running lane. With no ready row, report and end. A sub-agent lane whose brief does not match what
+   it may run (the row's next stage is not build, verify or review, the row's plan no person approved, or the brief
+   names another stage) ends without claiming, writes no state, and reports back.
 3. Claim it. When the row's branch exists neither here nor on the remote, this is the first claim, and it creates the
    branch: `git worktree add -b <branch> .worktrees/<folder> origin/<default branch>` (a stacked slice starts from
-   its parent's branch, `origin/<parent branch>`, instead). Every later claim:
-   `git worktree add .worktrees/<folder> <branch>`. If the command fails, because the folder exists or another
-   worktree has the branch, another lane holds the row: go back to step 2 for the next row. Never pass `--force` or
-   `-f`, never use `-B`, and never remove or work in a worktree you did not create.
+   its parent's local branch, `<parent branch>`, which exists under the one-clone rule below, instead). Every later
+   claim: `git worktree add .worktrees/<folder> <branch>`, then, when `origin/<branch>` exists,
+   `git merge --ff-only origin/<branch>` in the worktree. If it cannot fast-forward, remove the worktree and report;
+   a person decides. Only an error saying `already exists`, `is already checked out` or `is already used by worktree`
+   means another lane holds the row: take the next row, or end if your row was named. Any other error ends the lane
+   with `stopped: claim failed: <error>`, never skipped silently. Never pass `--force` or `-f`, never use `-B`, and
+   never remove or work in a worktree you did not create.
 4. In the worktree, read the row's state on its branch again. If it is waiting, stopped or done after all, remove the
    worktree (`git worktree remove .worktrees/<folder>`) and go back to step 2.
 5. Work only in your worktree. If the row is a stacked slice whose parent has merged or moved, update it first (see
@@ -90,9 +97,7 @@ Lane mode, step by step:
    by its stage skill, exactly as that skill says: a sub-agent lane reads the stage skill's file at the absolute path
    its brief names and follows it in full; a lane a person started runs the stage the person's words name. Its gates,
    the evidence file, the verdict from someone who did not write the change, and every Stop if hold unchanged. Commit
-   after every step. A sub-agent lane whose row's next stage is not build, verify or review, whose row's plan no
-   person approved, or whose brief names another stage, does no stage work: it releases with
-   `waiting: start <stage> by <who>`.
+   after every step.
 6. Release when any of these happens, then end:
    - a person's decision is needed (answers, the plan's approval, a pause confirmation, the pull request review):
      write `waiting: <decision> by <who>` in the row's stage row;
@@ -101,13 +106,13 @@ Lane mode, step by step:
      unless the team's `AGENTS.md` lets a lane push its own branch.
 
    Release means: commit, `git worktree remove .worktrees/<folder>` (never `--force`), and report the row and its
-   state in one line. If git will not remove the worktree, something is uncommitted: commit it, or report it; never
-   force it.
+   state in one line. If git will not remove the worktree, something is uncommitted: commit only the row's own work;
+   anything else is reported, never committed. Never force it.
 7. Never write `QUEUE.md`, never write to another repository, never approve, never merge.
 
 Coordinator mode, step by step:
 1. Fetch every repository the queue names (`git -C <repository> fetch`), then read `QUEUE.md` and each row's state.
-2. List the worktrees (`git worktree list` in each repository). Show the person any worktree with no running lane;
+2. List the worktrees (`git worktree list` in each repository). Show the person any worktree under `.worktrees/` with no running lane;
    remove one only after the person confirms, because it may hold uncommitted work.
 3. Start lanes up to MAX LANES minus the lanes running now, one per ready row that clashes with nothing, each told
    only its row. The row's next stage decides how:
@@ -127,25 +132,28 @@ Coordinator mode, step by step:
    `git show origin/<default branch>:plans/<KEY>/slice-2/README.md`) or the person confirmed it in this session
    (ADR 0023).
 2. Name slice 2's last commit, the one slice 3 was built on: `git merge-base <slice 3's branch> origin/<slice 2's branch>`
-   while slice 2's branch exists; otherwise its head commit as the review tool shows it, or ask the person. Never
-   guess it.
-3. Move only slice 3's own commits onto the updated default branch: `git fetch`, then
+   while slice 2's branch exists; when it is gone, use slice 2's local branch, or `origin/<slice 2's branch>` while it
+   survives, otherwise its head commit as the review tool shows it, or ask the person. Never guess it.
+3. When `origin/<slice 3's branch>` exists, check that nobody else pushed to it:
+   `git merge-base --is-ancestor origin/<slice 3's branch> <slice 3's branch>`. Stop if it fails: a person's commit
+   is on the remote branch, and a rebase and a force-push would erase it.
+4. Move only slice 3's own commits onto the updated default branch: `git fetch`, then
    `git rebase --onto origin/<default branch> <slice 2's last commit> <slice 3's branch>`. With `--onto` and slice 2's
    old tip, this works when the code host squashed slice 2 into one commit.
-4. Push with `git push --force-with-lease`, which fails rather than overwrite a push it has not seen, on this lane's
-   own branch only. Ask the person first, unless the team's `AGENTS.md` lets a lane push its own branch. If the team
+5. Push with `git push --force-with-lease --force-if-includes`, which fails rather than overwrite a push this lane has
+   not seen or included, on this lane's own branch only. Ask the person first, unless the team's `AGENTS.md` lets a lane push its own branch. If the team
    forbids force-push (a rule in its `AGENTS.md`), stop and ask.
-5. Slice 3's pull request now targets the default branch. Many code hosts retarget it themselves when slice 2's branch
+6. Slice 3's pull request now targets the default branch. Many code hosts retarget it themselves when slice 2's branch
    is deleted; otherwise a person retargets it.
-6. The verdict rule applies: when `git diff --name-only <judged commit> HEAD -- ':(top)' ':(top,exclude)plans/<KEY>/'`
+7. The verdict rule applies: when `git diff --name-only <judged commit> HEAD -- ':(top)' ':(top,exclude)plans/<KEY>/'`
    prints a path, the rebase brought in other code, the earlier verdict is void, and slice 3 is verified and reviewed
    again.
-7. A rebase conflict stops the lane: run `git rebase --abort`, write `stopped: rebase conflict in <files>`, release,
+8. A rebase conflict stops the lane: run `git rebase --abort`, write `stopped: rebase conflict in <files>`, release,
    and leave the decision to a person. Never merge the default branch into slice 3 yourself.
 
 When slice 2's branch gained commits before it merged, move slice 3 onto it the same way:
 `git rebase --onto origin/<slice 2's branch> <slice 2's old commit> <slice 3's branch>`, with the old commit named as
-in step 2.
+in step 2. Ask before the push and void the earlier verdict as above.
 
 ## Stop if
 - `.worktrees/` is not ignored in this clone (`git check-ignore -q .worktrees/` fails).

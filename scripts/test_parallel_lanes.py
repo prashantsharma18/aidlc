@@ -224,7 +224,6 @@ class ParallelLanesTest(unittest.TestCase):
         lane = text.split("Lane mode, step by step:", 1)[1].split("Coordinator mode, step by step:")[0]
         self.assertIn("a sub-agent lane reads the stage skill's file at the absolute path its brief names and follows it "
                       "in full", lane)
-        self.assertIn("releases with `waiting: start <stage> by <who>`", lane)
         coordinator = text.split("Coordinator mode, step by step:", 1)[1].split("**A stacked slice", 1)[0]
         for phrase in ("build, verify or review, on a row whose plan a person approved: start a sub-agent lane",
                        "Its brief opens with `Read <absolute path>/skills/parallel-lanes/SKILL.md before anything "
@@ -240,7 +239,7 @@ class ParallelLanesTest(unittest.TestCase):
     def test_lane_mode_follows_the_design(self):
         lane = skill("parallel-lanes").split("Lane mode, step by step:", 1)[1].split("Coordinator mode, step by step:")[0]
         order = [lane.index(p) for p in ("Fetch (`git fetch`), and read `QUEUE.md` on the default branch",
-                                         "Take the first ready row, in queue order, that clashes with no running lane",
+                                         "With no row named, take the first ready row, in queue order, that clashes with no running lane",
                                          "`git worktree add -b <branch> .worktrees/<folder> origin/<default branch>`",
                                          "`git worktree add .worktrees/<folder> <branch>`",
                                          "read the row's state on its branch again",
@@ -329,7 +328,7 @@ class ParallelLanesTest(unittest.TestCase):
         for phrase in ("`git show origin/<default branch>:plans/<KEY>/slice-2/README.md`",
                        "`git merge-base <slice 3's branch> origin/<slice 2's branch>`", "Never guess it.",
                        "`git rebase --onto origin/<default branch> <slice 2's last commit> <slice 3's branch>`",
-                       "this works when the code host squashed slice 2 into one commit", "`git push --force-with-lease`",
+                       "this works when the code host squashed slice 2 into one commit", "`git push --force-with-lease --force-if-includes`",
                        "Ask the person first, unless the team's `AGENTS.md` lets a lane push its own branch.",
                        "If the team forbids force-push (a rule in its `AGENTS.md`), stop and ask.",
                        "Many code hosts retarget it themselves when slice 2's branch is deleted; otherwise a person "
@@ -358,12 +357,163 @@ class ParallelLanesTest(unittest.TestCase):
             self.assertEqual(opening, "text")
         self.assertEqual(re.findall(r"<(?!!--)[^<>\n]+>", outside_code(queue)), [])
         text = flat(QUEUE)
-        for phrase in ("A person writes this file and commits it on the default branch", "lanes never write it",
+        for phrase in ("A person writes this file and commits and pushes it on the default branch", "lanes never write it",
                        "never an `aidlc/` prefix", "The default is 3, because people's review time is the real limit",
                        "For parts it copies the coordination plan's order; for slices it copies the bundles' `DEPENDS "
                        "ON` lines"):
             self.assertIn(phrase, text, phrase)
         self.assertIn("`assets/queue.md`", skill("parallel-lanes"))
+
+
+class ParallelLanesFixRoundTest(unittest.TestCase):
+    """Task 3 fix round: a lane never overwrites a person's push, never reads a stale branch, takes the row it is
+    given, and each claim, release and exclude rule is proved against real git."""
+
+    @staticmethod
+    def remote_with(folder: str, branch: str):
+        """A bare origin, a lane clone and a person's clone, each with the identity git needs."""
+        base = Path(folder)
+        origin, lane, person = base / "origin.git", base / "lane", base / "person"
+        subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(origin)], check=True, env=clean_env())
+        subprocess.run(["git", "clone", "-q", str(origin), str(lane)], check=True, env=clean_env(),
+                       stderr=subprocess.DEVNULL)
+        for repo in (lane,):
+            git(repo, "config", "user.email", "a@example.com")
+            git(repo, "config", "user.name", "a")
+        git(lane, "checkout", "-q", "-b", "main")
+        (lane / "README.md").write_text("x\n", encoding="utf-8")
+        git(lane, "add", "-A")
+        git(lane, "commit", "-q", "-m", "base")
+        git(lane, "push", "-q", "-u", "origin", "main")
+        git(lane, "checkout", "-q", "-b", branch)
+        (lane / "work.txt").write_text("1\n", encoding="utf-8")
+        git(lane, "add", "-A")
+        git(lane, "commit", "-q", "-m", "work")
+        git(lane, "push", "-q", "-u", "origin", branch)
+        subprocess.run(["git", "clone", "-q", str(origin), str(person)], check=True, env=clean_env(),
+                       stderr=subprocess.DEVNULL)
+        git(person, "config", "user.email", "p@example.com")
+        git(person, "config", "user.name", "p")
+        git(person, "checkout", "-q", branch)
+        return lane, person
+
+    def test_a_persons_push_stops_the_stacked_update(self):
+        stacked = skill("parallel-lanes").split("**A stacked slice after its parent merges.**", 1)[1].split(
+            "## Stop if", 1)[0]
+        ancestry = command(stacked, "git merge-base --is-ancestor").replace("<slice 3's branch>", "feat/s3")
+        push = command(stacked, "git push --force-with-lease")
+        self.assertIn("--force-if-includes", push)
+        self.assertIn("Stop if it fails", stacked)
+        with tempfile.TemporaryDirectory() as folder:
+            lane, person = self.remote_with(folder, "feat/s3")
+            git(lane, "checkout", "-q", "main")
+            git(lane, "checkout", "-q", "feat/s3")
+            self.assertEqual(sh(ancestry, lane).returncode, 0)
+            (person / "theirs.txt").write_text("a person's work\n", encoding="utf-8")
+            git(person, "add", "-A")
+            git(person, "commit", "-q", "-m", "a person's commit")
+            git(person, "push", "-q", "origin", "feat/s3")
+            git(lane, "fetch", "-q")
+            self.assertNotEqual(sh(ancestry, lane).returncode, 0)
+            git(lane, "commit", "-q", "--amend", "-m", "work, rewritten")
+            self.assertNotEqual(sh(push, lane).returncode, 0)
+            self.assertIn("a person's commit", git(person, "log", "--format=%s", "origin/feat/s3").stdout)
+            self.assertNotEqual(sh("git push --force-with-lease --force-if-includes", lane).returncode, 0)
+            self.assertEqual(git(lane, "ls-remote", "origin", "feat/s3").stdout.split()[0],
+                             git(person, "rev-parse", "HEAD").stdout.strip())
+
+    def test_a_later_claim_fast_forwards_to_the_remote_branch(self):
+        lanes = skill("parallel-lanes").split("Lane mode, step by step:", 1)[1].split(
+            "Coordinator mode, step by step:")[0]
+        later = command(lanes, "git worktree add .worktrees/")
+        forward = command(lanes, "git merge --ff-only origin/")
+        with tempfile.TemporaryDirectory() as folder:
+            lane, person = self.remote_with(folder, "feat/SHIP-12-eta-limit")
+            git(lane, "checkout", "-q", "main")
+            (person / "more.txt").write_text("more\n", encoding="utf-8")
+            git(person, "add", "-A")
+            git(person, "commit", "-q", "-m", "ahead")
+            git(person, "push", "-q", "origin", "feat/SHIP-12-eta-limit")
+            git(lane, "fetch", "-q")
+            fill = lambda line: line.replace("<branch>", "feat/SHIP-12-eta-limit").replace("<folder>", "SHIP-12")
+            self.assertEqual(sh(fill(later), lane).returncode, 0)
+            wt = lane / ".worktrees" / "SHIP-12"
+            self.assertNotEqual(git(wt, "rev-parse", "HEAD").stdout, git(wt, "rev-parse", "origin/feat/SHIP-12-eta-limit").stdout)
+            self.assertEqual(sh(fill(forward), wt).returncode, 0)
+            self.assertEqual(git(wt, "rev-parse", "HEAD").stdout, git(wt, "rev-parse", "origin/feat/SHIP-12-eta-limit").stdout)
+
+    def test_only_a_taken_row_is_read_as_taken(self):
+        text = skill("parallel-lanes")
+        for phrase in ("`already exists`", "`is already checked out`", "`is already used by worktree`",
+                       "`stopped: claim failed: <error>`", "never skipped silently",
+                       "a stacked slice starts from its parent's local branch"):
+            self.assertIn(phrase, text, phrase)
+        with tempfile.TemporaryDirectory() as folder:
+            lane, _ = self.remote_with(folder, "feat/SHIP-12-eta-limit")
+            git(lane, "checkout", "-q", "main")
+            bad = sh("git worktree add -b feat/SHIP-40-s3 .worktrees/SHIP-40-s3 origin/feat/nope", lane)
+            self.assertNotEqual(bad.returncode, 0)
+            for taken in ("already exists", "is already checked out", "is already used by worktree"):
+                self.assertNotIn(taken, bad.stderr)
+            self.assertEqual(sh("git worktree add .worktrees/A feat/SHIP-12-eta-limit", lane).returncode, 0)
+            held = sh("git worktree add .worktrees/B feat/SHIP-12-eta-limit", lane)
+            self.assertTrue(any(w in held.stderr for w in ("is already checked out", "is already used by worktree")))
+
+    def test_a_lane_takes_the_row_it_is_given(self):
+        text = skill("parallel-lanes")
+        for phrase in ("Take the row your brief or the person names. With no row named, take the first ready row",
+                       "ends without claiming, writes no state, and reports back"):
+            self.assertIn(phrase, text, phrase)
+        self.assertNotIn("releases with `waiting: start <stage> by <who>`", text)
+
+    def test_running_lanes_are_the_worktrees_under_worktrees(self):
+        text = skill("parallel-lanes")
+        self.assertIn("Every worktree under `.worktrees/` there counts as a running lane; the main copy does not.", text)
+        self.assertIn("Show the person any worktree under `.worktrees/` with no running lane", text)
+
+    def test_a_part_runs_its_claim_in_its_repository(self):
+        text = skill("parallel-lanes")
+        self.assertIn("For a part row, run steps 1 to 3 in the row's repository (`git -C <repository>`", text)
+
+    def test_the_queue_is_committed_and_pushed(self):
+        self.assertIn("commits and pushes", skill("parallel-lanes"))
+        self.assertIn("commits and pushes it", flat(QUEUE))
+
+    def test_the_stacked_fallbacks_and_release_scope(self):
+        text = skill("parallel-lanes")
+        for phrase in ("use slice 2's local branch, or `origin/<slice 2's branch>` while it survives, otherwise its head "
+                       "commit as the review tool shows it, or ask the person",
+                       "Ask before the push and void the earlier verdict as above.",
+                       "commit only the row's own work; anything else is reported, never committed"):
+            self.assertIn(phrase, text, phrase)
+
+    def test_release_refuses_a_dirty_worktree_and_a_later_claim_succeeds(self):
+        text = skill("parallel-lanes")
+        remove = command(text, "git worktree remove .worktrees/")
+        self.assertNotIn("--force", remove)
+        with tempfile.TemporaryDirectory() as folder:
+            lane, _ = self.remote_with(folder, "feat/SHIP-12-eta-limit")
+            git(lane, "checkout", "-q", "main")
+            fill = lambda line: line.replace("<branch>", "feat/SHIP-12-eta-limit").replace("<folder>", "SHIP-12")
+            self.assertEqual(sh("git worktree add .worktrees/SHIP-12 feat/SHIP-12-eta-limit", lane).returncode, 0)
+            wt = lane / ".worktrees" / "SHIP-12"
+            (wt / "work.txt").write_text("dirty\n", encoding="utf-8")
+            self.assertNotEqual(sh(fill(remove), lane).returncode, 0)
+            self.assertTrue(wt.exists())
+            git(wt, "checkout", "--", "work.txt")
+            self.assertEqual(sh(fill(remove), lane).returncode, 0)
+            self.assertEqual(sh("git worktree add .worktrees/SHIP-12 feat/SHIP-12-eta-limit", lane).returncode, 0)
+
+    def test_the_exclude_file_keeps_worktrees_out_of_every_commit(self):
+        with tempfile.TemporaryDirectory() as folder:
+            lane, _ = self.remote_with(folder, "feat/SHIP-12-eta-limit")
+            git(lane, "checkout", "-q", "main")
+            (lane / ".git" / "info").mkdir(exist_ok=True)
+            with open(lane / ".git" / "info" / "exclude", "a", encoding="utf-8") as handle:
+                handle.write(".worktrees/\n")
+            self.assertEqual(sh("git worktree add .worktrees/SHIP-12 feat/SHIP-12-eta-limit", lane).returncode, 0)
+            self.assertEqual(git(lane, "check-ignore", "-q", ".worktrees/", check=False).returncode, 0)
+            self.assertEqual(git(lane, "status", "--porcelain").stdout, "")
 
 
 if __name__ == "__main__":

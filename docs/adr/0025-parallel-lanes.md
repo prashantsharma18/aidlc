@@ -51,7 +51,7 @@ needs no code-host feature. Git already holds a lock that fits: a branch is chec
   plan without `DEPENDS ON` lines works as before. This amends ADR 0015's "one branch and one pull request per
   repository part".
 - A stacked slice may start once its parent's build is done, and merges after its parent. After the parent merges, it
-  moves only its own commits with `git rebase --onto`, pushes with `--force-with-lease` after asking (unless the
+  moves only its own commits with `git rebase --onto`, checks first that nobody else pushed to its branch, pushes with `--force-with-lease --force-if-includes` after asking (unless the
   team's `AGENTS.md` allows a lane to push its own branch), and is verified and reviewed again when the rebase brought
   in other code. A conflict stops the lane. It never merges the default branch into itself.
 - aidlc still ships no script and no workflow, and needs no code-host feature.
