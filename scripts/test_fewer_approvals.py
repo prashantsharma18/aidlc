@@ -726,5 +726,167 @@ class DocsTest(unittest.TestCase):
         self.assertIn("`docs/plans/2026-11-21-plan-24-fewer-approvals.md`", table)
 
 
+NEW_CASES = {"gate-tier1-plan-stated": ("gate", "/aidlc:aidlc-plan SHIP-60."),
+             "route-s-dependency-bump": ("route", "/aidlc:aidlc-start SHIP-70 and SHIP-71."),
+             "gate-tier2-design-plan-once": ("gate", "/aidlc:aidlc-plan SHIP-80."),
+             "gate-restatement-tier3": ("gate", "/aidlc:aidlc-build SHIP-90 slice 1.")}
+# For each tool grader: inputs a correct run may give and inputs a wrong run would give. Every one here is `max: 0`,
+# so a right input must not match and a wrong input must.
+TOOL_SAMPLES = {
+    ("route-s-dependency-bump", "no-full-route-documents.md"): (
+        [{"file_path": "/work/plans/SHIP-70/README.md", "content": "ROUTE      S"},
+         {"file_path": "/work/plans/SHIP-70/standard.md", "content": "CLASS       Dependency bump"},
+         {"file_path": "/work/plans/SHIP-71/spec.md", "content": "AC1"}],
+        [{"file_path": "/work/plans/SHIP-70/spec.md", "content": "AC1"},
+         {"file_path": "/work/plans/SHIP-70/intent.md", "content": "Problem"},
+         {"file_path": "/work/plans/SHIP-70/plan.md", "content": "SPEC"},
+         {"file_path": "/work/plans/SHIP-70/design-note.md", "content": "OUTCOME"}]),
+    ("route-s-dependency-bump", "no-standard-brief-for-the-major.md"): (
+        [{"file_path": "/work/plans/SHIP-70/standard.md", "content": "x"},
+         {"file_path": "/work/plans/SHIP-71/README.md", "content": "ROUTE      F1"}],
+        [{"file_path": "/work/plans/SHIP-71/standard.md", "content": "CLASS       Dependency bump"}]),
+    ("route-s-dependency-bump", "no-standard-edit-for-the-major.md"): (
+        [{"file_path": "/work/plans/SHIP-70/standard.md", "old_string": "a", "new_string": "b"}],
+        [{"file_path": "/work/plans/SHIP-71/standard.md", "old_string": "a", "new_string": "b"}]),
+    ("gate-restatement-tier3", "no-code-edit.md"): (
+        [{"file_path": "/work/plans/SHIP-90/progress-1.md", "old_string": "a", "new_string": "b"}],
+        [{"file_path": "/work/src/shipments/labels.py", "old_string": "a", "new_string": "b"},
+         {"file_path": "/work/tests/test_labels.py", "old_string": "a", "new_string": "b"}]),
+    ("gate-restatement-tier3", "no-code-write.md"): (
+        [{"file_path": "/work/plans/SHIP-90/progress-1.md", "content": "STATUS      doing"}],
+        [{"file_path": "/work/tests/test_labels.py", "content": "import unittest"},
+         {"file_path": "/work/src/shipments/labels.py", "content": "def mask_phone"}]),
+}
+# For each regex grader: file contents a correct run may leave, and contents a wrong run would leave.
+REGEX_SAMPLES = {
+    ("gate-tier1-plan-stated", "plan-row-done.md"): (
+        ["| aidlc-plan | repository | done |"],
+        ["| aidlc-plan | repository | to do |", "| aidlc-plan | repository | waiting: plan approval by Ana |"]),
+    ("gate-tier1-plan-stated", "no-approval-invented.md"): (
+        ["APPROVAL   none: stated at Tier 1, the code owner reads it at Merge"],
+        ["APPROVAL   plan.md v1 approved by Ana, 2026-11-21, in the session"]),
+    ("route-s-dependency-bump", "route-s.md"): (
+        ["ROUTE      S"], ["ROUTE      F1", "ROUTE      S1"]),
+    ("route-s-dependency-bump", "brief-names-the-class.md"): (
+        ["CLASS       Dependency bump", "CLASS       dependency bump (AGENTS.md)"],
+        ["CLASS       Recipe commit", "WHAT        Dependency bump"]),
+    ("gate-tier2-design-plan-once", "no-design-approval-recorded.md"): (
+        ["APPROVED     (pending: the tech lead approves design and plan in one pull request)"],
+        ["APPROVED     ADR now Accepted; approved by Ana, 2026-11-20, relayed in the session"]),
+    ("gate-tier2-design-plan-once", "adr-still-proposed.md"): (
+        ["Status: Proposed. Decider: Ana (tech lead)"], ["Status: Accepted (2026-11-21)"]),
+    ("gate-tier2-design-plan-once", "no-plan-approval-recorded.md"): (
+        ["APPROVAL   <pending: the pull request that merges the design and the plan>"],
+        ["APPROVAL   plan.md v1 approved by Ana, 2026-11-21"]),
+}
+UNTOUCHED = {("gate-tier2-design-plan-once", "no-design-approval-recorded.md"): "plans/SHIP-80/design-note.md",
+             ("gate-tier2-design-plan-once", "adr-still-proposed.md"): "plans/SHIP-80/SHIP-80-adr-1.md"}
+
+
+def grader(case: str, name: str) -> str:
+    return front(read(f"evals/{case}/graders/{name}"))
+
+
+def regex_passes(fm: str, text: str) -> bool:
+    """What the eval runner's regex grader decides for a file holding `text`."""
+    pattern = re.search(r"(?m)^pattern: '(.*)'$", fm).group(1)
+    flags = re.M if re.search(r"(?m)^flags: m$", fm) else 0
+    found = re.search(pattern, text, flags) is not None
+    return not found if re.search(r"(?m)^match: not_contains$", fm) else found
+
+
+class EvalCasesTest(unittest.TestCase):
+    """Task 11: four behaviour cases; each grader tells a right run from a wrong one, and each scaffold holds the
+    state its graders assume."""
+
+    def test_the_four_cases_exist_and_are_listed(self):
+        readme = " ".join(read("evals/README.md").split())
+        self.assertIn("there are 40 cases", readme)
+        self.assertIn("`route-d1-build`, `gate-restatement-tier3`, `route-s-dependency-bump`, and the four lane cases", readme)
+        for case, (tag, start) in NEW_CASES.items():
+            prompt = read(f"evals/{case}/prompt.md")
+            self.assertIn(f"tags: [{tag}]", front(prompt), case)
+            self.assertTrue(prompt.split("---", 2)[2].strip().startswith(start), case)
+            self.assertTrue(list((ROOT / "evals" / case / "graders").glob("*.md")), case)
+            self.assertIn(f"`{case}`", readme, case)
+
+    def test_each_tool_grader_tells_right_from_wrong(self):
+        for (case, name), (right, wrong) in TOOL_SAMPLES.items():
+            fm = grader(case, name)
+            self.assertRegex(fm, r"(?m)^max: 0$", name)
+            pattern = re.search(r"(?m)^input_match: '(.*)'$", fm).group(1)
+            for given in right:
+                self.assertIsNone(re.search(pattern, json.dumps(given)), f"{case}/{name}: {given}")
+            for given in wrong:
+                self.assertIsNotNone(re.search(pattern, json.dumps(given)), f"{case}/{name}: {given}")
+        graded = {(c, g.name) for c in NEW_CASES for g in (ROOT / "evals" / c / "graders").glob("*.md")
+                  if re.search(r"(?m)^type: tool_used$", g.read_text(encoding="utf-8"))}
+        self.assertEqual(graded, set(TOOL_SAMPLES))
+
+    def test_each_regex_grader_tells_right_from_wrong(self):
+        for (case, name), (right, wrong) in REGEX_SAMPLES.items():
+            fm = grader(case, name)
+            for text in right:
+                self.assertTrue(regex_passes(fm, text), f"{case}/{name}: {text}")
+            for text in wrong:
+                self.assertFalse(regex_passes(fm, text), f"{case}/{name}: {text}")
+        graded = {(c, g.name) for c in NEW_CASES for g in (ROOT / "evals" / c / "graders").glob("*.md")
+                  if re.search(r"(?m)^type: regex$", g.read_text(encoding="utf-8"))}
+        self.assertEqual(graded, set(REGEX_SAMPLES))
+
+    def test_the_tier1_plan_case_is_ready_to_plan(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            scaffold("gate-tier1-plan-stated", repo)
+            self.assertEqual(git(repo, "branch", "--show-current").stdout.strip(), "feat/SHIP-60-return-labels")
+            index = (repo / "plans/SHIP-60/README.md").read_text(encoding="utf-8")
+            self.assertIn("| aidlc-design | repository | done |", index)
+            self.assertIn("| aidlc-plan | repository | to do |", index)
+            self.assertIn("Tier: 1", (repo / "plans/SHIP-60/spec.md").read_text(encoding="utf-8"))
+            self.assertIn("RECORDED BY  stated at Tier 1; the code owner sees it at Merge",
+                          (repo / "plans/SHIP-60/design-note.md").read_text(encoding="utf-8"))
+            self.assertFalse((repo / "plans/SHIP-60/plan.md").exists())
+
+    def test_the_bump_case_lists_the_class_and_both_versions(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            scaffold("route-s-dependency-bump", repo)
+            agents = (repo / "AGENTS.md").read_text(encoding="utf-8")
+            self.assertIn("## Standard changes", agents)
+            self.assertIn("| Dependency bump |", agents)
+            self.assertIn("No new dependency; never a major version", agents)
+            manifest = (repo / "requirements-dev.txt").read_text(encoding="utf-8")
+            self.assertIn("coverage==7.5.0", manifest)
+            self.assertIn("mypy==1.11.2", manifest)
+            self.assertFalse((repo / "plans").exists())
+            self.assertIn("## Standard changes", git(repo, "show", "origin/main:AGENTS.md").stdout)
+
+    def test_the_tier2_case_holds_the_design_unmerged_and_unapproved(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            scaffold("gate-tier2-design-plan-once", repo)
+            self.assertEqual(git(repo, "branch", "--show-current").stdout.strip(), "docs/SHIP-80-design-plan")
+            self.assertIn("Tier: 2", git(repo, "show", "origin/main:plans/SHIP-80/spec.md").stdout)
+            self.assertNotEqual(git(repo, "show", "origin/main:plans/SHIP-80/design-note.md", check=False).returncode, 0)
+            self.assertIn("| aidlc-plan | repository | to do |",
+                          (repo / "plans/SHIP-80/README.md").read_text(encoding="utf-8"))
+            for (case, name), rel in UNTOUCHED.items():
+                self.assertTrue(regex_passes(grader(case, name), (repo / rel).read_text(encoding="utf-8")), name)
+
+    def test_the_tier3_case_has_a_merged_hands_on_bundle_and_green_tests(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            scaffold("gate-restatement-tier3", repo)
+            self.assertEqual(git(repo, "branch", "--show-current").stdout.strip(), "feat/SHIP-90-mask-phone")
+            bundle = (repo / "plans/SHIP-90/bundle-1.md").read_text(encoding="utf-8")
+            self.assertRegex(bundle, r"(?m)^TIER\s+3 ")
+            self.assertRegex(bundle, r"(?m)^MODE\s+hands-on")
+            self.assertEqual(git(repo, "show", "origin/main:plans/SHIP-90/bundle-1.md").stdout, bundle)
+            self.assertFalse((repo / "tests/test_labels.py").exists())
+            result = subprocess.run(["python3", "-m", "unittest", "discover", "-s", "tests", "-t", "."], cwd=repo,
+                                    env=clean_env(), capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
