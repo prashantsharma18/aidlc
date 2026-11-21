@@ -29,7 +29,7 @@ the same result with git worktrees, a queue file a person keeps, and the AI tool
 | What kind of skill | A new third kind, **workflow** (`metadata.kind: workflow`), kept apart from stage skills and practice skills |
 | Its name | `parallel-lanes`, invoked as `/aidlc:parallel-lanes`; no `aidlc-` prefix, because it is not a stage |
 | Branch names | aidlc's existing names (`<type>/<KEY>-<slug>`), written in each queue row; never an `aidlc/` prefix |
-| Who starts a stage in a lane | The middle option, done pstack's way: every stage keeps `disable-model-invocation: true`, and so does `parallel-lanes`. A person starts intent, specify, design and plan. A person starts the coordinator once; after a row's plan is approved, its sub-agent lanes run build, verify and review by reading those stage skill files by path. No switch is removed. |
+| Who starts a stage in a lane | The middle option, done pstack's way: every stage that has `disable-model-invocation: true` keeps it (`aidlc-onboard` and `aidlc-verify` have none), and so does `parallel-lanes`. A person starts intent, specify, design and plan. A person starts the coordinator once; after a row's plan is approved, its sub-agent lanes run build, verify and review by reading those stage skill files by path. No switch is removed. |
 | Slices | Independent slices become sibling pull requests, stacked where one builds on another, only when the plan marks them independent |
 
 ## A third kind of skill: workflow
@@ -77,8 +77,9 @@ MAX LANES   3
 - **Row** is an item, a slice (`<KEY> slice <n>`) or a part (`<KEY> part <n>`).
 - **Branch** is the row's branch, named by the existing rule (`<type>/<KEY>-<slug>`; `feat/<KEY>-<part>` across
   repositories), plus `-s<n>` for a slice. Writing it in the row makes it fixed: every lane claims the same name.
-- **Depends on** is `none` or the rows that must be merged first. For parts it copies the coordination plan's order;
-  for slices it copies the bundles' `DEPENDS ON` lines.
+- **Depends on** is `none` or the rows that must be done first. For parts it copies the coordination plan's order;
+  for slices it copies the bundles' `DEPENDS ON` lines. A slice stacked on another slice is the one exception: its
+  Order clash ends when its parent's build is done (the parent's progress note reads STATUS `done`).
 - A row leaves the queue when the person removes it, after its merged row reads done on the default branch.
 
 ## A row's state lives in its own files
@@ -89,8 +90,16 @@ the repository that owns them (ADR 0022: one owner per fact):
 |---|---|
 | waiting: `<decision> by <who>` | its stage row's Status in the index, or the progress note's STATUS (`paused: …` counts as waiting) |
 | stopped: `<reason>` | the same places |
-| done | the index's merged row, on the default branch (`git show origin/<default branch>:plans/<KEY>/README.md`) |
-| ready | none of the above, and every row it depends on is done |
+| done | the index's merged row, on the default branch (`git show origin/<default branch>:plans/<KEY>/README.md`; for a slice row, its own index `plans/<KEY>/slice-<n>/README.md`) |
+| ready | none of the above, and every row it depends on is done; or waiting on a decision that can now be had |
+
+A waiting row is resumed by a lane once the decision it waits for is checkable where the stage says (a plan or
+design merged on the default branch; a pull request's approval or merge in the review tool or in git; the tracker),
+or, for a lane a person started, once the decider gives it in that session. The lane records it as the stage says
+(ADR 0023) and continues with the next step. A decision that is only a person's word is resumed by a lane the person
+starts by hand with that word. The coordinator never relays a decision to a sub-agent. A hands-on build's
+restatement confirmation is recorded like a pause, as the line `- restatement confirmed by <name>, <YYYY-MM-DD>` in
+the progress note.
 
 The index's Status column gains one value, `waiting: <decision> by <who>`, next to `to do`, `doing`, `done` and
 `stopped: <reason>`. For a part, the index is the part's own `plans/<KEY>/README.md` in its own repository, on the
@@ -104,29 +113,39 @@ not collide in the story's documents.
 
 ## The lock: git worktrees
 - Each lane works in `.worktrees/<folder>` inside the row's repository. The folder name is fixed by the row: `<KEY>`
-  for an item or a part (`.worktrees/SHIP-12`), `<KEY>-s<n>` for a slice (`.worktrees/SHIP-12-s3`), and `<KEY>-p<n>`
-  for a second part in the same repository. The `.worktrees/` folder is ignored through `.git/info/exclude`, so
-  nothing is committed.
-- **Claim.** The first claim of a row creates its branch: `git worktree add -b <branch> .worktrees/<folder>
-  origin/<default branch>` (a stacked slice starts from its parent's local branch, which exists under the one-clone rule below). Every later
+  for an item or a part (`.worktrees/SHIP-12`), `<KEY>-s<n>` for a slice (`.worktrees/SHIP-12-s3`), `<KEY>-p<n>`
+  for a second part in the same repository, and `.worktrees/<KEY>-p<n>-s<m>` for a slice of that part on its own
+  branch, whose files are in `plans/<KEY>/part-<n>/slice-<m>/`. The `.worktrees/` folder is ignored through
+  `.git/info/exclude`, so nothing is committed.
+- **The workspace root from a lane.** The folder above a lane's worktree is `.worktrees/`, not the workspace root. The
+  workspace root is the folder that holds `WORKSPACE.md`, three levels up; a stage reads `../stories/<KEY>/` from the
+  repository's root.
+- **Claim.** The first claim of a row creates its branch:
+  `git worktree add --no-track -b <branch> .worktrees/<folder> origin/<default branch>`, where `--no-track` keeps the
+  default branch from becoming the new branch's upstream (a stacked slice starts from its parent's local branch, which
+  exists under the one-clone rule below). Every later
   claim: `git worktree add .worktrees/<folder> <branch>`, then `git merge --ff-only origin/<branch>` in the worktree
   when the remote branch exists; a lane that cannot fast-forward removes the worktree and reports. Only an error
   saying the branch or folder `already exists`, or `is already checked out` or `is already used by worktree`, means
   another lane holds the row. Any other error ends the lane with `stopped: claim failed: <error>`.
 - **Why only one lane wins.** All worktrees of one repository share one `.git`, and git refuses to check out a
   branch that another worktree already has. If two lanes claim the same row at the same moment, git's own lock lets
-  one through; the other's command fails, and it takes the next row.
-- **After claiming,** the lane reads the row's state on the branch again. If it is waiting, stopped or done after
-  all, the lane removes the worktree and takes the next row.
+  one through; the other's command fails, and it takes the next row only when no row was named.
+- **After claiming,** the lane reads the row's state on the branch again. If it is stopped or done after all, or
+  waiting on a decision it cannot have, the lane removes the worktree and takes the next row only when no row was
+  named. If it is waiting on a decision it can have, it resumes the row, as above.
 - **The limit of this lock, stated as a rule.** Lanes for one repository start from one clone on one machine:
   worktrees of different clones do not see each other. A person does not check out a queued branch in their own
   working copy while lanes may claim it.
 
 ## `parallel-lanes`, lane mode
+A person starts a lane by hand with two messages in one session: first lane mode with the row, which claims it, then
+the stage's own command, the person's words that start the stage.
+
 1. Fetch, and read `QUEUE.md` on the default branch.
 2. Take the row the brief or the person names. With no row named, take the first ready row that clashes with no
    running lane (see Clashes). With no ready row, report and end. A sub-agent lane whose brief does not match what it
-   may run ends without claiming and writes no state.
+   may run (including a build whose bundle's MODE is hands-on) ends without claiming and writes no state.
 3. Claim it (the lock above). If the claim fails, taken: the next row only when no row was named, otherwise end and
    report; any other error stops (`stopped: claim failed: <error>`, reported, written nowhere).
 4. Run the row's next unfinished stage by its stage skill, exactly as that skill says, in this worktree. Stage
@@ -135,38 +154,60 @@ not collide in the story's documents.
    - a person's decision is needed (answers, plan approval, a pause confirmation, the pull request review): write
      `waiting: <decision> by <who>` in the row's stage row;
    - a Stop if fires: write `stopped: <reason>`;
+   - a sub-agent lane reaches the reviewer passes: write `waiting: reviewer passes at <commit>` (see "Reviewer passes
+     from a sub-agent lane");
    - the stage asks to push or to open the pull request: write `waiting: push and open the pull request by <who>`,
-     unless the team's `AGENTS.md` lets a lane push its own branch.
+     unless the team's `AGENTS.md` lets a lane push its own branch. It goes in the verify row, the next stage's row:
+     build's own row stays as build step 10 marks it, so no two writers share one cell. The wait is over when
+     `origin/<branch>` holds the branch's last commit (`git merge-base --is-ancestor <branch> origin/<branch>`) and
+     the pull request exists, checked in the review tool or said by the person in a lane they started; the lane then
+     writes `to do` in the verify row in place of the wait, and verify is the row's next unfinished stage.
    Release means: commit, `git worktree remove .worktrees/<folder>` (never `--force`), and report the row and its state.
 6. Never write `QUEUE.md`, never write to another repository, never approve, never merge.
 
 ## `parallel-lanes`, coordinator mode
 1. Fetch every repository the queue names, read `QUEUE.md` and each row's state.
 2. List worktrees (`git worktree list` in each repository; only those under `.worktrees/` count as lanes). A worktree
-   with no running lane is shown to the person;
-   it is removed only after the person confirms, because it may hold uncommitted work.
+   with no running lane is shown to the person, and so is any folder in `.worktrees/` that git does not list, because
+   a claim onto it fails with `already exists` and reads as taken. Either is removed only after the person confirms,
+   because it may hold uncommitted work.
 3. Start lanes up to MAX LANES minus the running ones, each told only its row. Which stage decides how:
-   - **build, verify and review, on a row whose plan a person approved:** start the lane with the AI tool's own way of
+   - **build, verify and review, on a row whose plan a person approved, and a build only when the bundle's MODE is a
+     delegate mode:** start the lane with the AI tool's own way of
      starting sessions where there is one (in Claude Code, a background sub-agent per lane). The lane's brief opens
      with `Read <absolute path>/skills/parallel-lanes/SKILL.md before anything else.` and names the row and the stage
      skill's absolute path (`<plugin root>/skills/aidlc-build/SKILL.md`), which the lane reads and follows in full;
-   - **intent, specify, design and plan, or a tool with no such feature:** give the person the exact words to start
-     the lane by hand in its worktree, naming the stage (for example `/aidlc:aidlc-plan SHIP-15`).
+   - **intent, specify, design and plan, a hands-on build, a wait that needs a person's word, or a tool with no such
+     feature:** give the person the exact words to start the lane by hand, as two messages in one session (for
+     example `/aidlc:parallel-lanes lane SHIP-15`, then `/aidlc:aidlc-plan SHIP-15`).
+   The coordinator never relays a decision to a sub-agent: a brief carries the row, the skill paths and, after
+   reviewer passes, the reviewers' reports.
 4. When a lane reports back, read its row's state and start the next ready row. A row whose lane reports that it needs
    a stage only a person starts is handed to the person with the exact start words, listed in the report as
    `needs <stage> started by <who>`, and not sent to a sub-agent again until a person has started that stage.
-5. Report one table to the person: running, waiting on whom, stopped and why, next in line.
+5. Report one table to the person: running, waiting on whom, stopped and why, next in line. Each waiting row is
+   listed with what it waits for and, when a person's word is needed, the exact words to resume it by hand.
 6. Draft new queue rows (from approved plans, or from the tracker it only reads) for the person to confirm. Never
    write `QUEUE.md`, never approve, never merge.
 
+## Reviewer passes from a sub-agent lane
+Sub-agents cannot start sub-agents. A sub-agent lane that reaches the reviewer passes (build step 9, review step 3)
+writes the evidence file, commits it, and releases with `waiting: reviewer passes at <commit>`. The coordinator, a
+top-level session, claims the row's worktree, dispatches the reviewer agents with that evidence file, removes the
+worktree, then starts a lane for the row whose brief carries the reviewers' reports, quoted as data; that lane
+records the verdicts as the stage says and continues. A lane a person started runs the passes itself.
+
 ## How a person-started run reaches its lanes
-Every stage skill keeps `disable-model-invocation: true`: the AI never starts a stage by itself in an ordinary chat.
+Every stage that has `disable-model-invocation: true` keeps it (`aidlc-onboard` and `aidlc-verify` have none, as
+`using-aidlc` says): the AI never starts such a stage by itself in an ordinary chat.
 `parallel-lanes` has the same switch. Starting the coordinator is a person's act, and it is the go-ahead for the run.
 A sub-agent lane cannot start a skill with that switch, so it reads the skill's file by its absolute path and follows
 it in full, as pstack's delegates do (`cursor/plugins`, `pstack/skills/poteto-mode/SKILL.md`: "The operator's rules live
 in skills that only load from a slash command, so they reach another agent no other way"). The coordinator sends
 sub-agent lanes only to build, verify and review, and only on a row whose plan a person approved (ADR 0023), because
-those stages run between two people's decisions (the plan approval and the pull request review). Intent, specify,
+those stages run between two people's decisions (the plan approval and the pull request review), and sends a build
+only when the bundle's MODE is a delegate mode, because a hands-on build needs the person to confirm its restatement
+in the session. Intent, specify,
 design and plan need a person's answers and approval anyway, so a person starts them. Reading a file by path works in
 every AI tool, so the same protocol serves Copilot and Codex once their adapters exist. aidlc borrows pstack's way of
 passing instructions, not its autonomy: a lane still stops and frees its slot at every person's decision.
@@ -174,7 +215,7 @@ passing instructions, not its autonomy: a lane still stops and frees its slot at
 ## Clashes: when a ready row is held back
 | Clash | Rule |
 |---|---|
-| Order | A row waits until every row it depends on is done. |
+| Order | A row waits until every row it depends on is done. A stacked slice's Order clash ends when its parent's build is done. |
 | Same files | Only once building starts: if the row's approved bundle shares a MAY CHANGE path with a bundle another lane is building, the later row waits. When in doubt, it waits. Planning and specs run side by side. |
 | Same contract | One open change per API contract: a second row that changes the same contract waits. |
 | A shared fact changes | The lane's existing Stop if fires (`stopped: changes <fact>`); the person decides whether to open a change request. Nothing is opened automatically. |
@@ -230,7 +271,7 @@ aidlc still ships no script and no workflow, and needs no code-host feature.
 - **Free structure tests:** the workflow kind's sections and naming checks in the validator; the skill's two modes; the template's fields; the one release line
   identical in every stage skill; the Status value in both index copies; no script or tool-specific command named.
 - **Behaviour evals** (paid, run when a key or token is available):
-  - a lane that finds its row's worktree already taken claims the next row instead;
+  - a lane that finds its row's worktree already taken claims the next row instead, when no row was named;
   - a lane that reaches the plan approval writes `waiting:`, removes its worktree and does not go on;
   - the coordinator starts no more than MAX LANES and holds back a row whose MAY CHANGE overlaps a running bundle;
   - a stacked slice after its parent merged is rebased with `--onto`, not merged.

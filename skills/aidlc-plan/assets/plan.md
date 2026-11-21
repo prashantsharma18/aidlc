@@ -24,9 +24,10 @@ accepted; no architecture decision hidden; rollback concrete; slices safe in ord
 has a scope test and concrete stop conditions.
 Fields (check each against the files before asking for approval):
 - the plan's own fields (SPEC, APPROACH, FILES, TESTS, ORDER, RISKS, ROLLBACK, OPEN) are filled, or "none"
-- every bundle field filled, or "none"; no placeholder left
+- every bundle field filled, or "none" (except DEPENDS ON, below); no placeholder left
 - DEPENDS ON lines only when the plan marks its slices independent (ADR 0025): then on every bundle,
-  each "none" or one slice; each slice on its own branch has its index plans/<KEY>/slice-<n>/README.md
+  each "none" or one existing earlier slice, so no cycle forms; each slice on its own branch has its index
+  plans/<KEY>/slice-<n>/README.md
 - each MODE allowed at its TIER (delegate with checkpoints: Tiers 1 and 2; delegate: Tier 1)
 - a part of a story across several repositories is at Tier 2 or above (ADR 0021)
 - every STOP IF holds "an existing assertion would need to change", "a new dependency seems

@@ -16,7 +16,7 @@ TESTS BEFORE {{passed}} passed, {{failed}} failed, {{skipped}} skipped at {{comm
 
 ## Pauses confirmed (by the person)
 The person confirms each pause by telling the AI, which writes the line with the name given (ADR 0023).
-- {{checkpoint n | recipe review}} confirmed by {{name}}, {{YYYY-MM-DD}} ({{in the session}})
+- {{restatement | checkpoint n | recipe review}} confirmed by {{name}}, {{YYYY-MM-DD}} ({{in the session}})
 
 ## Session plan
 - [ ] 1 {{step}} — files: {{...}} — check: {{...}}

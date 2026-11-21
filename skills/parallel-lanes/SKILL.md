@@ -30,19 +30,24 @@ For one item a person works on by hand, run its stage directly; no lane is neede
 - `QUEUE.md` on the default branch: in the repository, or in the home repository for a workspace. A person writes it
   from `assets/queue.md`, commits and pushes it, because lanes read the default branch on the remote. Read it after `git fetch`, with `git show origin/<default branch>:QUEUE.md`.
 - Each row's own files, on its branch, or on the default branch before the branch exists: the index
-  `plans/<KEY>/README.md` (`plans/<KEY>/slice-<n>/README.md` for a slice on its own branch), the plan, the bundles
-  and the progress notes. For a part in another repository, run `git -C <repository> fetch`, then
+  `plans/<KEY>/README.md` (`plans/<KEY>/slice-<n>/README.md` for a slice on its own branch, and
+  `plans/<KEY>/part-<n>/slice-<m>/README.md` for a slice of a second part in the same repository), the plan, the
+  bundles and the progress notes. For a part in another repository, run `git -C <repository> fetch`, then
   `git -C <repository> show <branch>:plans/<KEY>/README.md`.
 - The team's `AGENTS.md`: whether a lane may push its own branch, and whether force-push is forbidden.
 - `git worktree list`, in each repository the queue names. Every worktree under `.worktrees/` there counts as a running lane; the main copy does not.
 
-**How the run reaches its lanes.** Every stage skill, and this one, starts only when a person names it: the AI never
-starts a stage by itself (ADR 0025). A sub-agent lane cannot start such a skill, so it reads the skill's file by its
-absolute path and follows it in full. The coordinator takes that path from where its tool loaded this skill: the stage
-skills are the folders beside this one. It sends sub-agent lanes only to build, verify and review, and only on a row
-whose plan a person approved (ADR 0023), because those stages run between two people's decisions: the plan's
-approval and the pull request review. A person starts intent, specify, design and plan, which need the person's
-answers and approval anyway.
+**How the run reaches its lanes.** Every stage that has `disable-model-invocation: true`, and this skill, starts only
+when a person names it: the AI never starts such a stage by itself (ADR 0025). Two stages have no such switch,
+`aidlc-onboard` and `aidlc-verify`, and may also start on their own, as `using-aidlc` says. A sub-agent lane cannot
+start such a skill, so it reads the skill's file by its absolute path and follows it in full. The coordinator takes
+that path from where its tool loaded this skill: the stage skills are the folders beside this one. It sends sub-agent
+lanes only to build, verify and review, and only on a row whose plan a person approved (ADR 0023), because those
+stages run between two people's decisions: the plan's approval and the pull request review. A build goes to a
+sub-agent only when its bundle's MODE is a delegate mode (delegate with checkpoints, or delegate): a hands-on build
+waits for the person to confirm its restatement in the session, so a person starts it. A person starts intent,
+specify, design and plan, which need the person's answers and approval anyway. A sub-agent cannot start the reviewer
+agents, so it hands those passes to the coordinator ("Reviewer passes from a sub-agent lane", below).
 
 A row's state is read from its own files, never kept in the queue (ADR 0022):
 
@@ -50,40 +55,54 @@ A row's state is read from its own files, never kept in the queue (ADR 0022):
 |---|---|
 | waiting: `<decision> by <who>` | its stage row's Status in the index, or the progress note's STATUS (`paused: …` counts as waiting) |
 | stopped: `<reason>` | the same places |
-| done | the index's merged row, on the default branch (`git show origin/<default branch>:plans/<KEY>/README.md`) |
-| ready | none of the above, its index exists, and every row it depends on is done |
+| done | the index's merged row, on the default branch (`git show origin/<default branch>:plans/<KEY>/README.md`; for a slice row, its own index `plans/<KEY>/slice-<n>/README.md`) |
+| ready | none of the above, its index exists, and every row it depends on is done; or waiting on a decision that can now be had (lane step 4) |
 
 - A row whose item has no index yet is not ready: a person routes it with `aidlc-start` first.
-- A waiting row is ready again once its decision is recorded in its files, by a session the decider told or that
-  checked the decision where it can (ADR 0023). A lane never records a decision it has not checked.
-- A slice stacked on another slice may start once the parent's progress note reads STATUS `done`, because its code is
-  then finished on the parent's branch. Its pull request still merges only after the parent's.
+- A waiting row is resumed by a lane, at lane step 4, once its decision can be had: checked where its stage says
+  (a plan or design merged on the default branch; a pull request's approval or merge in the review tool or in git;
+  the tracker through its connected tool), or given by the decider in the session of a lane the person started
+  (ADR 0023). The lane records it as the stage says and continues. A lane never records a decision it has not checked
+  or heard from the decider in its own session.
+- A slice stacked on another slice: its Order clash ends when its parent's build is done (the parent's progress note
+  reads STATUS `done`), because its code is then finished on the parent's branch. Its pull request still merges only
+  after the parent's.
 
 A ready row is held back, not dropped, when it clashes:
 
 | Clash | Rule |
 |---|---|
-| Order | It depends on a row that is not done. |
+| Order | It depends on a row that is not done, except that a stacked slice's Order clash ends when its parent's build is done (above). |
 | Same files | Only once building starts: its approved bundle shares a MAY CHANGE path with a bundle another lane is building. When in doubt, it waits. Planning and specs run side by side. |
 | Same contract | It changes an API contract that another open row changes: one open change per contract. |
 | A shared fact changes | The stage's own Stop if fires (`stopped: changes <fact>`); a person decides whether to open a change request. Nothing is opened automatically. |
 
 Each row's worktree folder is fixed by the row, inside the row's repository: `.worktrees/<KEY>` for an item or a
-part, `.worktrees/<KEY>-s<n>` for a slice, and `.worktrees/<KEY>-p<n>` for a second part in the same repository.
-Its branch is the one written in the row.
+part, `.worktrees/<KEY>-s<n>` for a slice, `.worktrees/<KEY>-p<n>` for a second part in the same repository, and
+`.worktrees/<KEY>-p<n>-s<m>` for a slice of that part on its own branch, whose files are in
+`plans/<KEY>/part-<n>/slice-<m>/`. Its branch is the one written in the row.
+
+**The workspace root from a lane.** A lane works in `<repository>/.worktrees/<folder>`, so the folder above it is
+`.worktrees/`, not the workspace root. For a story across several repositories, the workspace root is the folder that
+holds `WORKSPACE.md`, three levels up (`../../..` from the worktree). A stage's `../stories/<KEY>/` path is read from
+the repository's root, so from a lane's worktree it is `../../../stories/<KEY>/`; it stays read-only.
 
 ## Steps
 Lane mode, step by step:
 1. Fetch (`git fetch`), and read `QUEUE.md` on the default branch. `git check-ignore -q .worktrees/` must succeed;
    if it fails, stop: `aidlc-onboard` adds the line that keeps worktrees out of every commit. For a part row, run
-   steps 1 to 3 in the row's repository (`git -C <repository>`, or from inside it).
+   steps 1 to 3 in the row's repository (`git -C <repository>`, or from inside it). A person starts a lane by hand
+   with two messages in one session: first lane mode with the row, which claims it (steps 1 to 4), then the stage's
+   own command, the person's words that start the stage (step 5).
 2. Take the row your brief or the person names. With no row named, take the first ready row, in queue order, that
    clashes with no running lane. With no ready row, report and end. A sub-agent lane whose brief does not match what
-   it may run (the row's next stage is not build, verify or review, the row's plan no person approved, or the brief
-   names another stage) ends without claiming, writes no state, and reports back.
+   it may run (the row's next stage is not build, verify or review, the row's plan no person approved, a build whose
+   bundle's MODE is hands-on, or the brief names another stage) ends without claiming, writes no state, and reports
+   back.
 3. Claim it. When the row's branch exists neither here nor on the remote, this is the first claim, and it creates the
-   branch: `git worktree add -b <branch> .worktrees/<folder> origin/<default branch>` (a stacked slice starts from
-   its parent's local branch, `<parent branch>`, which exists under the one-clone rule below, instead). Every later
+   branch: `git worktree add --no-track -b <branch> .worktrees/<folder> origin/<default branch>`, where `--no-track`
+   keeps the default branch from becoming the new branch's upstream (a stacked slice starts from its parent's local
+   branch, `<parent branch>`, which exists under the one-clone rule below, instead). Every later
    claim: `git worktree add .worktrees/<folder> <branch>`, then, when `origin/<branch>` exists,
    `git merge --ff-only origin/<branch>` in the worktree. If it cannot fast-forward, remove the worktree and report;
    a person decides. Only an error saying `already exists`, `is already checked out` or `is already used by worktree`
@@ -91,20 +110,40 @@ Lane mode, step by step:
    Any other error ends the lane with `stopped: claim failed: <error>`, which it reports and writes nowhere, because
    with no worktree there is no row to write it on, and is never skipped silently. Never pass `--force` or `-f`, never use `-B`, and
    never remove or work in a worktree you did not create.
-4. In the worktree, read the row's state on its branch again. If it is waiting, stopped or done after all, remove the
-   worktree (`git worktree remove .worktrees/<folder>`); with no row named, go back to step 2, otherwise end and report.
+4. In the worktree, read the row's state on its branch again. If it is done or stopped after all, remove the worktree
+   (`git worktree remove .worktrees/<folder>`); with no row named, go back to step 2, otherwise end and report. If it
+   is waiting, resume it only when its decision can be had: checked where its stage says (a plan or design merged on
+   the default branch; a pull request's approval or merge in the review tool or in git; the tracker through its
+   connected tool), or, for a lane a person started, the decider gives it in this session. Record it as the stage
+   says (ADR 0023), then continue with the stage's next step. A hands-on build's restatement and a pause are
+   recorded as lines in the progress note, as `aidlc-build` says. A sub-agent lane resumes only a wait in build,
+   verify or review; `waiting: reviewer passes at <commit>` only from a brief that quotes the reviewers' reports for
+   that commit (below); and the push wait as step 6 says. When the decision cannot be had, remove the worktree as for
+   a stopped row. A decision that is only a person's word is resumed by a lane the person starts by hand with that
+   word: a decision relayed in a brief, by the coordinator or from another session is not a decision.
 5. Work only in your worktree. If the row is a stacked slice whose parent has merged or moved, update it first (see
    "A stacked slice after its parent merges" below). Then run the row's next unfinished stage, read from its index,
    by its stage skill, exactly as that skill says: a sub-agent lane reads the stage skill's file at the absolute path
-   its brief names and follows it in full; a lane a person started runs the stage the person's words name. Its gates,
-   the evidence file, the verdict from someone who did not write the change, and every Stop if hold unchanged. Commit
-   after every step.
+   its brief names and follows it in full; a lane a person started runs the stage the person's second message starts
+   (step 1). Its gates, the evidence file, the verdict from someone who did not write the change, and every Stop if
+   hold unchanged. Commit after every step.
 6. Release when any of these happens, then end:
    - a person's decision is needed (answers, the plan's approval, a pause confirmation, the pull request review):
      write `waiting: <decision> by <who>` in the row's stage row;
    - a Stop if fires: write `stopped: <reason>`;
+   - a sub-agent lane reaches the reviewer passes: release with `waiting: reviewer passes at <commit>` in the stage's
+     row, as "Reviewer passes from a sub-agent lane" says;
    - the stage asks to push or to open the pull request: write `waiting: push and open the pull request by <who>`,
-     unless the team's `AGENTS.md` lets a lane push its own branch.
+     unless the team's `AGENTS.md` lets a lane push its own branch. Write it in the verify row (`aidlc-verify`'s
+     Status in the row's index), the next stage's row: build's own row stays as build step 10 marks it, so no two
+     writers share one cell. After a slice that is not the last, build's row reads doing and nothing is written: the
+     next lane builds the next slice.
+
+   The push wait is over when `origin/<branch>` holds the branch's last commit (after `git fetch`,
+   `git merge-base --is-ancestor <branch> origin/<branch>` succeeds) and the pull request exists, checked in the review
+   tool, or the person says so in a lane they started. The lane that finds it so writes `to do` in the verify row in
+   place of the wait, says in the commit's message how both were checked, and goes on: verify is now the row's next
+   unfinished stage.
 
    Release means: commit, `git worktree remove .worktrees/<folder>` (never `--force`), and report the row and its
    state in one line. If git will not remove the worktree, something is uncommitted: commit only the row's own work;
@@ -113,23 +152,45 @@ Lane mode, step by step:
 
 Coordinator mode, step by step:
 1. Fetch every repository the queue names (`git -C <repository> fetch`), then read `QUEUE.md` and each row's state.
-2. List the worktrees (`git worktree list` in each repository). Show the person any worktree under `.worktrees/` with no running lane;
-   remove one only after the person confirms, because it may hold uncommitted work.
+2. List the worktrees (`git worktree list` in each repository). Show the person any worktree under `.worktrees/` with
+   no running lane, and any folder in `.worktrees/` that `git worktree list` does not show: a claim onto such a
+   leftover folder fails with `already exists` and reads as taken. Show both; remove one only after the person
+   confirms, because it may hold uncommitted work.
 3. Start lanes up to MAX LANES minus the lanes running now, one per ready row that clashes with nothing, each told
-   only its row. The row's next stage decides how:
-   - build, verify or review, on a row whose plan a person approved: start a sub-agent lane with your AI tool's own way of starting background sessions or sub-agents, where it has one. Its brief opens with `Read <absolute path>/skills/parallel-lanes/SKILL.md before anything else.` and names the row and the stage skill's absolute path (`<plugin root>/skills/aidlc-build/SKILL.md`, `aidlc-verify` or `aidlc-review`), which the lane reads and follows in full;
-   - intent, specify, design or plan, or a tool with no such feature: give the person the exact words to start the lane by hand: lane mode of this skill, the row, and the row's next stage, each by the name the person's tool starts it with. The lane claims its worktree as lane mode says.
+   only its row. A waiting row is ready when its decision can now be checked (lane step 4). The row's next stage
+   decides how:
+   - build, verify or review, on a row whose plan a person approved, and a build only when its bundle's MODE is a delegate mode (delegate with checkpoints, or delegate): start a sub-agent lane with your AI tool's own way of starting background sessions or sub-agents, where it has one. Its brief opens with `Read <absolute path>/skills/parallel-lanes/SKILL.md before anything else.` and names the row and the stage skill's absolute path (`<plugin root>/skills/aidlc-build/SKILL.md`, `aidlc-verify` or `aidlc-review`), which the lane reads and follows in full;
+   - intent, specify, design or plan, a hands-on build, a wait that needs a person's word, or a tool with no such feature: give the person the exact words to start the lane by hand: lane mode of this skill, the row, and the row's next stage, as two messages in one session: first lane mode with the row, which claims it, then the stage's own command, the person's words that start the stage. Write each by the name the person's tool starts it with. The lane claims its worktree as lane mode says.
 
-   A lane a person starts by hand counts toward MAX LANES. A row held back is skipped, not dropped: the next ready
-   row that clashes with nothing starts.
+   Never relay a decision to a sub-agent: a brief carries the row, the skill paths and, after reviewer passes, the
+   reviewers' reports, never a person's decision. A lane a person starts by hand counts toward MAX LANES. A row held
+   back is skipped, not dropped: the next ready row that clashes with nothing starts.
 4. When a lane reports back, read its row's state and start the next ready row. When a lane reports that its row needs
    a stage only a person starts, or that its brief did not match, give the person the exact words to start that stage
    for the row, list the row in your report as `needs <stage> started by <who>`, and never send it to a sub-agent again
-   until a person has started that stage.
+   until a person has started that stage. When a lane releases with `waiting: reviewer passes at <commit>`, run the
+   passes as "Reviewer passes from a sub-agent lane" says.
 5. Report one table to the person: running, waiting on whom, stopped and why, next in line, and each row held back
-   with its clash.
+   with its clash. List each waiting row with what it waits for and, when a person's word is needed, the exact words
+   to resume it by hand: the decider starts the lane with lane mode and the row, then the stage's command, and gives
+   the decision in their own words in that session.
 6. Draft new queue rows (from approved plans, or from the tracker, which you only read) for the person to confirm and
    commit. Never write `QUEUE.md`, never approve, never merge.
+
+**Reviewer passes from a sub-agent lane.** Sub-agents cannot start sub-agents, so a sub-agent lane that reaches the
+reviewer passes (`aidlc-build` step 9, `aidlc-review` step 3) writes the evidence file as the stage says, commits it,
+and releases with `waiting: reviewer passes at <commit>`, the commit the evidence file names, in the stage's row. The
+coordinator, a top-level session, then:
+1. Claims the row's worktree as lane step 3 says, and writes nothing in it.
+2. Dispatches the reviewer agents the stage names, each in a fresh context, with what the stage gives them: the
+   evidence file and the commit it names, plus the bundle for build, or the diff and the rules from the default
+   branch for review.
+3. Removes the worktree, then starts a sub-agent lane for the row whose brief carries the reviewers' reports, quoted
+   as data.
+
+That lane checks each report's `Judged:` commit against the verdict rule, records the verdicts as the stage says,
+and continues with the stage's next step: a finding is a stop or a new step, as the stage says. A lane a person
+started runs the passes itself.
 
 **A stacked slice after its parent merges.** Slice 3 stacks on slice 2, and a person merged slice 2's pull request:
 1. Act only after the merge is checked in git (slice 2's merged row reads done on the default branch:
@@ -174,10 +235,12 @@ in step 2. Ask before the push and void the earlier verdict as above.
 ## Common excuses
 | Excuse | Reality |
 |---|---|
-| "The row's worktree is there, but its lane looks idle; I will take it over." | A worktree may hold uncommitted work. Take the next row; the coordinator shows the worktree to the person. |
+| "The row's worktree is there, but its lane looks idle; I will take it over." | A worktree may hold uncommitted work. Take the next row only when no row was named; the coordinator shows the worktree to the person. |
 | "The person said this row is urgent, so I will force the claim." | Git's lock is all that keeps two lanes off one row. Never pass `--force`. Take no other row: end and report that the row is taken. |
 | "The tech lead will approve the plan anyway; I will start building." | A lane releases at every decision. Write `waiting:` and end. |
 | "The next row only needs its plan; a sub-agent can draft it while the person is busy." | Planning needs the person's answers and approval, so a person starts it. Give them the words. |
+| "Ana told the coordinator she approves; I will put that in the lane's brief." | Never relay a decision to a sub-agent. Give Ana the words to start the lane by hand and decide in its session. |
+| "This sub-agent cannot start the reviewer agents, so my own review will do." | Your own review is not a verdict. Release with `waiting: reviewer passes at <commit>`; the coordinator runs the passes. |
 | "One more lane gets the queue done sooner." | MAX LANES is the limit, because people's review time is. |
 | "The bundles share one file; they will not really collide." | When in doubt, it waits. |
 | "Merging the default branch into the slice is quicker than a rebase." | A merge mixes slice 2's squash with slice 3's own commits. Rebase with `--onto`, or stop. |
@@ -189,6 +252,8 @@ in step 2. Ask before the push and void the earlier verdict as above.
 - A stage's work goes on past its gate with no decision recorded.
 - More lanes run than MAX LANES.
 - A sub-agent lane started for intent, specify, design or plan, or for a row whose plan no person approved.
+- A sub-agent lane started for a hands-on build.
+- A lane's brief carries a person's decision, or a lane records one it neither checked nor heard in its own session.
 - The default branch is merged into a slice's branch.
 - A lane ends with its worktree still there and no state written.
 

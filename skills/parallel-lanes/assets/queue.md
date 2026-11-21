@@ -30,5 +30,6 @@ The rows above are an example: replace them with your own.
   for slices it copies the bundles' `DEPENDS ON` lines. A slice stacked on another slice may start once its parent's
   build is done; `parallel-lanes` says how.
 - Each row's worktree folder follows from the row: `.worktrees/<KEY>` for an item or a part, `.worktrees/<KEY>-s<n>`
-  for a slice, and `.worktrees/<KEY>-p<n>` for a second part in the same repository.
+  for a slice, `.worktrees/<KEY>-p<n>` for a second part in the same repository, and `.worktrees/<KEY>-p<n>-s<m>` for
+  a slice of that part on its own branch.
 - A row leaves the queue when the person removes it, after its merged row reads done on the default branch.

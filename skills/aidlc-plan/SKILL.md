@@ -42,7 +42,7 @@ the spec, the design note, the plan and the bundle with one file, `plans/<KEY>/b
 **Slice 0** (route G): the first slice of each new repository, the skeleton.
 
 ## Inputs
-Where this runs: inside the repository whose part you are working on. For a story that spans several repositories, read your part's row in the workspace's `../stories/<KEY>/coordination-plan.md` (read-only) and the design it points to; the branch is `feat/<KEY>-<part>` and the pull request title is `[<KEY>] part <n> of <m>: <what>`. Started at the workspace root: name the repository to open, and stop. A one-repository story runs entirely in that repository.
+Where this runs: inside the repository whose part you are working on. For a story that spans several repositories, read your part's row in the workspace's `../stories/<KEY>/coordination-plan.md`, from the repository's root (read-only; from a lane's worktree, the workspace root is the folder that holds `WORKSPACE.md`, as `parallel-lanes` says) and the design it points to; the branch is `feat/<KEY>-<part>` and the pull request title is `[<KEY>] part <n> of <m>: <what>`. Started at the workspace root: name the repository to open, and stop. A one-repository story runs entirely in that repository.
 
 The approved spec and its version, the approved design note (always), the evidence pack (when discover ran), and the repository's rules and codebase map. In brief mode, the inputs are the work item (its reproduction and evidence) and the written SOURCE of the expected behaviour; no spec or design note is needed. For a feature brief, the inputs are the work item and its acceptance criteria as their owner wrote them; no spec or design note is needed. On slice 0 of route G there is no map yet: the approved design and `new-system.md` take its place. If an input is missing, say which stage produces it and stop; never plan around it.
 
@@ -64,15 +64,16 @@ The approved spec and its version, the approved design note (always), the eviden
    **Independent slices (ADR 0025).** When slices do not build on each other, the plan may mark them, so lanes
    (`parallel-lanes`) build them at the same time and each is reviewed on its own: give every bundle a `DEPENDS ON`
    line, `none` or the one slice it builds on. The first slice runs on the part's branch. A later slice whose
-   `DEPENDS ON` names the slice before it, on that branch, continues it, as today. Every other slice gets its own row,
-   branch `<branch>-s<n>` and pull request, titled `[<KEY>] slice <n> of <m>: <what>`: with `none` it starts from the
-   default branch (a sibling pull request), and with a slice it starts from that slice's branch (a stacked pull
-   request, which merges after it). A slice's own branch holds that slice only. `DEPENDS ON` names at most one slice:
-   when a slice needs two, plan them on one branch, each building on the one before it. Such a slice keeps its index
-   and its pull request's documents in `plans/<KEY>/slice-<n>/`, so sibling pull requests never edit the same file.
-   The plan, its bundles and these indexes merge on the default branch first, in their own pull request (ADR 0020),
-   so every slice's branch starts from them. A plan without `DEPENDS ON` lines works as before: one branch, one pull
-   request, slices as commits.
+   `DEPENDS ON` names the slice before it, on that branch, continues it, as today. Every other slice gets its own
+   row, branch `<branch>-s<n>` and pull request, titled `[<KEY>] slice <n> of <m>: <what>`: with `none` it starts
+   from the default branch (a sibling pull request), and with a slice it starts from that slice's branch (a stacked
+   pull request, which merges after it). A slice's own branch holds that slice only. `DEPENDS ON` names at most one
+   slice, and only an existing slice earlier in the plan, so the slices never form a cycle: when a slice needs two,
+   plan them on one branch, each building on the one before it. Such a slice keeps its index and its pull request's
+   documents in `plans/<KEY>/slice-<n>/`, so sibling pull requests never edit the same file. The plan, its bundles
+   and these indexes merge on the default branch first, in their own pull request (ADR 0020), so every slice's branch
+   starts from them. A plan without `DEPENDS ON` lines works as before: one branch, one pull request, slices as
+   commits.
 6. Rate the tier with `assets/tiers.md` and propose a MODE per slice within what the tier allows: hands-on (every tier), delegate with checkpoints (Tiers 1 and 2) or delegate (Tier 1). A part of a story across several repositories is at least Tier 2 (ADR 0021); the plan's checklist catches a Tier 1 part. Write them in each bundle's TIER and MODE lines; the tech lead decides with the bundle. If unsure, choose the more hands-on mode. At Tier 2, delegate with checkpoints puts a CHECKPOINT in DO before each step that touches a contract or another owner's code. A slice with a RECIPE stops for the person's review of the recipe commit in every mode.
 7. Draft one bundle per slice, `plans/<KEY>/bundle-<slice>.md`, by filling `assets/task-bundle.md`:
    - pin the spec, plan and contract versions in PINS, and copy that line into the part index. For a part of a story

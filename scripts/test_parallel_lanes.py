@@ -72,7 +72,8 @@ class AdrTest(unittest.TestCase):
                        "git refuses to check out a branch that another worktree already has",
                        "Lanes for one repository start from one clone on one machine",
                        "`waiting: <decision> by <who>`", "sibling pull requests", "`git rebase --onto`",
-                       "`plans/<KEY>/slice-<n>/`", "keeps `disable-model-invocation: true`, and so does `parallel-lanes`",
+                       "`plans/<KEY>/slice-<n>/`",
+                       "every stage that has `disable-model-invocation: true` keeps it, and so does `parallel-lanes`",
                        "`Read <absolute path>/skills/parallel-lanes/SKILL.md before anything else.`",
                        "`pstack/skills/poteto-mode/SKILL.md`",
                        "only load from a slash command, so they reach another agent no other way",
@@ -214,7 +215,8 @@ class ParallelLanesTest(unittest.TestCase):
 
     def test_the_run_reaches_its_lanes_by_path(self):
         text = skill("parallel-lanes")
-        for phrase in ("Every stage skill, and this one, starts only when a person names it",
+        for phrase in ("Every stage that has `disable-model-invocation: true`, and this skill, starts only when a person "
+                       "names it",
                        "A sub-agent lane cannot start such a skill, so it reads the skill's file by its absolute path "
                        "and follows it in full.",
                        "the stage skills are the folders beside this one",
@@ -225,12 +227,14 @@ class ParallelLanesTest(unittest.TestCase):
         self.assertIn("a sub-agent lane reads the stage skill's file at the absolute path its brief names and follows it "
                       "in full", lane)
         coordinator = text.split("Coordinator mode, step by step:", 1)[1].split("**A stacked slice", 1)[0]
-        for phrase in ("build, verify or review, on a row whose plan a person approved: start a sub-agent lane",
+        for phrase in ("build, verify or review, on a row whose plan a person approved, and a build only when its "
+                       "bundle's MODE is a delegate mode (delegate with checkpoints, or delegate): start a sub-agent lane",
                        "Its brief opens with `Read <absolute path>/skills/parallel-lanes/SKILL.md before anything "
                        "else.` and names the row and the stage skill's absolute path "
                        "(`<plugin root>/skills/aidlc-build/SKILL.md`, `aidlc-verify` or `aidlc-review`)",
-                       "intent, specify, design or plan, or a tool with no such feature: give the person the exact "
-                       "words to start the lane by hand: lane mode of this skill, the row, and the row's next stage",
+                       "intent, specify, design or plan, a hands-on build, a wait that needs a person's word, or a tool "
+                       "with no such feature: give the person the exact words to start the lane by hand: lane mode of "
+                       "this skill, the row, and the row's next stage",
                        "A lane a person starts by hand counts toward MAX LANES."):
             self.assertIn(phrase, coordinator, phrase)
         self.assertIn("A sub-agent lane started for intent, specify, design or plan, or for a row whose plan no person "
@@ -240,7 +244,7 @@ class ParallelLanesTest(unittest.TestCase):
         lane = skill("parallel-lanes").split("Lane mode, step by step:", 1)[1].split("Coordinator mode, step by step:")[0]
         order = [lane.index(p) for p in ("Fetch (`git fetch`), and read `QUEUE.md` on the default branch",
                                          "With no row named, take the first ready row, in queue order, that clashes with no running lane",
-                                         "`git worktree add -b <branch> .worktrees/<folder> origin/<default branch>`",
+                                         "`git worktree add --no-track -b <branch> .worktrees/<folder> origin/<default branch>`",
                                          "`git worktree add .worktrees/<folder> <branch>`",
                                          "read the row's state on its branch again",
                                          "run the row's next unfinished stage",
@@ -270,7 +274,8 @@ class ParallelLanesTest(unittest.TestCase):
 
     def test_the_clash_rules(self):
         text = skill("parallel-lanes")
-        for phrase in ("| Order | It depends on a row that is not done. |",
+        for phrase in ("| Order | It depends on a row that is not done, except that a stacked slice's Order clash ends "
+                       "when its parent's build is done (above). |",
                        "Only once building starts: its approved bundle shares a MAY CHANGE path with a bundle another "
                        "lane is building. When in doubt, it waits. Planning and specs run side by side.",
                        "one open change per contract", "Nothing is opened automatically.",
@@ -282,11 +287,13 @@ class ParallelLanesTest(unittest.TestCase):
         for phrase in ("| waiting: `<decision> by <who>` | its stage row's Status in the index, or the progress "
                        "note's STATUS (`paused: …` counts as waiting) |",
                        "| done | the index's merged row, on the default branch (`git show origin/<default "
-                       "branch>:plans/<KEY>/README.md`) |",
+                       "branch>:plans/<KEY>/README.md`; for a slice row, its own index `plans/<KEY>/slice-<n>/README.md`) |",
                        "`git -C <repository> show <branch>:plans/<KEY>/README.md`",
                        "A row whose item has no index yet is not ready",
-                       "A lane never records a decision it has not checked.",
-                       "may start once the parent's progress note reads STATUS `done`"):
+                       "A lane never records a decision it has not checked or heard from the decider in its own "
+                       "session.",
+                       "its Order clash ends when its parent's build is done (the parent's progress note reads STATUS "
+                       "`done`)"):
             self.assertIn(phrase, text, phrase)
 
     def test_the_lock_and_its_limit(self):
@@ -302,7 +309,7 @@ class ParallelLanesTest(unittest.TestCase):
 
     def test_git_lets_only_one_lane_claim_a_row(self):
         text = skill("parallel-lanes")
-        first, later = command(text, "git worktree add -b "), command(text, "git worktree add .worktrees/")
+        first, later = command(text, "git worktree add --no-track -b "), command(text, "git worktree add .worktrees/")
         with tempfile.TemporaryDirectory() as folder:
             repo = Path(folder)
             git(repo, "init", "-q", "-b", "main")
@@ -1129,6 +1136,261 @@ class RecordTest(unittest.TestCase):
 
     def test_the_record_has_no_open_slot(self):
         self.assertNotIn("{{", read(self.RECORD))
+
+
+def lane_steps() -> str:
+    return skill("parallel-lanes").split("Lane mode, step by step:", 1)[1].split("Coordinator mode, step by step:")[0]
+
+
+def coordinator_steps() -> str:
+    return skill("parallel-lanes").split("Coordinator mode, step by step:", 1)[1].split(
+        "**Reviewer passes from a sub-agent lane.**", 1)[0]
+
+
+def reviewer_passes() -> str:
+    return skill("parallel-lanes").split("**Reviewer passes from a sub-agent lane.**", 1)[1].split(
+        "**A stacked slice after its parent merges.**", 1)[0]
+
+
+class FinalReviewTest(unittest.TestCase):
+    """Plan 23 final review: a waiting row is resumed (R1, R4), sub-agent lanes hand the reviewer passes to the
+    coordinator (R3), a sub-agent builds only a delegate bundle (R2), a hand-started lane is two messages (R5), a
+    lane finds the workspace root, and the minor items."""
+
+    ADR = "docs/adr/0025-parallel-lanes.md"
+
+    def test_i1_a_waiting_row_resumes_when_its_decision_can_be_had(self):
+        lane = lane_steps()
+        for phrase in ("If it is done or stopped after all, remove the worktree",
+                       "If it is waiting, resume it only when",
+                       "a plan or design merged on the default branch; a pull request's approval or merge in the "
+                       "review tool or in git; the tracker through its connected tool",
+                       "for a lane a person started, the decider gives it in this session",
+                       "Record it as the stage says (ADR 0023), then continue with the stage's next step.",
+                       "A decision that is only a person's word is resumed by a lane the person starts by hand with "
+                       "that word",
+                       "A sub-agent lane resumes only a wait in build, verify or review"):
+            self.assertIn(phrase, lane, phrase)
+        self.assertIn("A lane never records a decision it has not checked or heard from the decider in its own "
+                      "session.", skill("parallel-lanes"))
+        coordinator = coordinator_steps()
+        self.assertIn("Never relay a decision to a sub-agent", coordinator)
+        self.assertIn("List each waiting row with what it waits for and, when a person's word is needed, the exact "
+                      "words to resume it by hand", coordinator)
+        for rel in (self.ADR, DESIGN):
+            self.assertIn("The coordinator never relays a decision to a sub-agent.", flat(rel), rel)
+            self.assertIn("a plan or design merged on the default branch", flat(rel), rel)
+
+    def test_i1_the_restatement_confirmation_has_a_recorded_line(self):
+        build = skill("aidlc-build").split(" 2. Read the bundle's TIER", 1)[1].split(" 3. Load every skill", 1)[0]
+        self.assertIn("Hands-on: wait for the person to confirm.", build)
+        self.assertIn("`- restatement confirmed by <name>, <YYYY-MM-DD>`", build)
+        note = read("skills/aidlc-build/assets/progress-note.md")
+        self.assertIn("- {{restatement | checkpoint n | recipe review}} confirmed by {{name}}", note)
+
+    def test_r4_the_push_wait_has_its_own_cell_and_ends_on_a_check(self):
+        lane = lane_steps()
+        for phrase in ("write `waiting: push and open the pull request by <who>`, unless the team's `AGENTS.md` lets a "
+                       "lane push its own branch",
+                       "Write it in the verify row (`aidlc-verify`'s Status in the row's index), the next stage's row: "
+                       "build's own row stays as build step 10 marks it, so no two writers share one cell.",
+                       "and the pull request exists, checked in the review tool, or the person says so in a lane they "
+                       "started",
+                       "writes `to do` in the verify row in place of the wait"):
+            self.assertIn(phrase, lane, phrase)
+        for rel in (self.ADR, DESIGN):
+            self.assertIn("so no two writers share one cell", flat(rel), rel)
+
+    def test_r4_the_push_check_tells_a_pushed_branch_from_one_not_pushed(self):
+        check = command(lane_steps(), "git merge-base --is-ancestor <branch>").replace("<branch>", "feat/SHIP-12-eta")
+        with tempfile.TemporaryDirectory() as folder:
+            lane, _ = ParallelLanesFixRoundTest.remote_with(folder, "feat/other")
+            git(lane, "checkout", "-q", "-b", "feat/SHIP-12-eta", "main")
+            (lane / "eta.txt").write_text("1\n", encoding="utf-8")
+            git(lane, "add", "-A")
+            git(lane, "commit", "-q", "-m", "slice 1")
+            self.assertNotEqual(sh(check, lane).returncode, 0)
+            git(lane, "push", "-q", "origin", "feat/SHIP-12-eta")
+            git(lane, "fetch", "-q")
+            self.assertEqual(sh(check, lane).returncode, 0)
+            (lane / "eta.txt").write_text("2\n", encoding="utf-8")
+            git(lane, "commit", "-q", "-am", "a commit not pushed")
+            self.assertNotEqual(sh(check, lane).returncode, 0)
+
+    def test_r1_a_resumed_claim_reads_the_wait_and_records_on_the_same_branch(self):
+        lanes = lane_steps()
+        first, later = command(lanes, "git worktree add --no-track -b "), command(lanes, "git worktree add .worktrees/")
+        remove = command(lanes, "git worktree remove .worktrees/")
+        fill = lambda line: (line.replace("<branch>", "feat/SHIP-21-days").replace("<folder>", "SHIP-21")
+                             .replace("<default branch>", "main"))
+        with tempfile.TemporaryDirectory() as folder:
+            lane, _ = ParallelLanesFixRoundTest.remote_with(folder, "feat/other")
+            git(lane, "checkout", "-q", "main")
+            self.assertEqual(sh(fill(first), lane).returncode, 0)
+            wt = lane / ".worktrees" / "SHIP-21"
+            (wt / "plans" / "SHIP-21").mkdir(parents=True)
+            index = wt / "plans" / "SHIP-21" / "README.md"
+            index.write_text("| aidlc-build | repository | waiting: checkpoint 2 by Ana |\n", encoding="utf-8")
+            git(wt, "add", "-A")
+            git(wt, "commit", "-q", "-m", "SHIP-21: waiting")
+            self.assertEqual(sh(fill(remove), lane).returncode, 0)
+            self.assertEqual(sh(fill(later), lane).returncode, 0)
+            self.assertIn("waiting: checkpoint 2 by Ana", index.read_text(encoding="utf-8"))
+            index.write_text("| aidlc-build | repository | doing |\n", encoding="utf-8")
+            git(wt, "commit", "-q", "-am", "SHIP-21: checkpoint 2 confirmed by Ana in the session")
+            self.assertEqual(sh(fill(remove), lane).returncode, 0)
+            self.assertEqual(git(lane, "log", "-1", "--format=%s", "feat/SHIP-21-days").stdout.strip(),
+                             "SHIP-21: checkpoint 2 confirmed by Ana in the session")
+
+    def test_i2_sub_agent_lanes_hand_the_reviewer_passes_to_the_coordinator(self):
+        passes = reviewer_passes()
+        for phrase in ("Sub-agents cannot start sub-agents",
+                       "(`aidlc-build` step 9, `aidlc-review` step 3)",
+                       "releases with `waiting: reviewer passes at <commit>`",
+                       "The coordinator, a top-level session,",
+                       "whose brief carries the reviewers' reports, quoted as data",
+                       "records the verdicts as the stage says",
+                       "A lane a person started runs the passes itself."):
+            self.assertIn(phrase, passes, phrase)
+        self.assertIn("a sub-agent lane reaches the reviewer passes: release with `waiting: reviewer passes at "
+                      "<commit>`", lane_steps())
+        clause = "a sub-agent lane, which cannot start agents, hands these passes to the coordinator, as `parallel-lanes` says"
+        self.assertIn(clause, section(skill("aidlc-build"), "## Steps").split(" 9. ", 1)[1].split(" 10. ", 1)[0])
+        self.assertIn(clause, section(skill("aidlc-review"), "## Steps").split(" 3. ", 1)[1].split(" 4. ", 1)[0])
+        for rel in (self.ADR, DESIGN):
+            self.assertIn("`waiting: reviewer passes at <commit>`", flat(rel), rel)
+
+    def test_r2_a_sub_agent_builds_only_a_delegate_bundle(self):
+        self.assertIn("A build goes to a sub-agent only when its bundle's MODE is a delegate mode",
+                      section(skill("parallel-lanes"), "## Inputs"))
+        self.assertIn("a build whose bundle's MODE is hands-on", lane_steps())
+        coordinator = coordinator_steps()
+        self.assertIn("a build only when its bundle's MODE is a delegate mode (delegate with checkpoints, or "
+                      "delegate)", coordinator)
+        self.assertIn("a hands-on build", coordinator)
+        self.assertIn("A sub-agent lane started for a hands-on build.", section(skill("parallel-lanes"), "## Red flags"))
+        for rel in (self.ADR, DESIGN):
+            self.assertIn("only when the bundle's MODE is a delegate mode", flat(rel), rel)
+
+    def test_i3_a_hand_started_lane_is_two_messages(self):
+        self.assertIn("A person starts a lane by hand with two messages in one session: first lane mode with the row, "
+                      "which claims it (steps 1 to 4), then the stage's own command, the person's words that start "
+                      "the stage (step 5).", lane_steps())
+        self.assertIn("as two messages in one session: first lane mode with the row, which claims it, then the "
+                      "stage's own command, the person's words that start the stage", coordinator_steps())
+        for rel in (self.ADR, DESIGN):
+            self.assertIn("two messages in one session", flat(rel), rel)
+
+    def test_i4_a_lane_finds_the_workspace_root(self):
+        self.assertIn("the workspace root is the folder that holds `WORKSPACE.md`, three levels up",
+                      skill("parallel-lanes"))
+        for name in ("aidlc-build", "aidlc-plan", "aidlc-verify", "aidlc-review"):
+            self.assertIn("`../stories/<KEY>/coordination-plan.md`, from the repository's root (read-only; from a "
+                          "lane's worktree, the workspace root is the folder that holds `WORKSPACE.md`, as "
+                          "`parallel-lanes` says)", section(skill(name), "## Inputs"), name)
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "WORKSPACE.md").write_text("# Workspace\n", encoding="utf-8")
+            repo = root / "orders-api"
+            repo.mkdir()
+            git(repo, "init", "-q", "-b", "main")
+            (repo / "README.md").write_text("x\n", encoding="utf-8")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "base")
+            git(repo, "worktree", "add", "-q", "-b", "feat/SHIP-15-orders-api", ".worktrees/SHIP-15")
+            wt = repo / ".worktrees" / "SHIP-15"
+            self.assertFalse((wt / ".." / "WORKSPACE.md").exists())
+            self.assertTrue((wt / ".." / ".." / ".." / "WORKSPACE.md").exists())
+
+    def test_i5_release_checks_every_slice_index(self):
+        step1 = section(skill("aidlc-release"), "## Steps").split(" 2. Choose the strategy", 1)[0]
+        self.assertIn("every slice index `plans/<KEY>/slice-<n>/README.md` on the default branch has its `merged` row "
+                      "reading done (`git show origin/<default branch>:plans/<KEY>/slice-<n>/README.md`;", step1)
+
+    def test_i6_the_invocation_switch_is_named_exactly(self):
+        without = sorted(path.parent.name for path in (ROOT / "skills").glob("aidlc-*/SKILL.md")
+                         if "\ndisable-model-invocation: true\n" not in path.read_text(encoding="utf-8"))
+        self.assertEqual(without, ["aidlc-onboard", "aidlc-verify"])
+        inputs = section(skill("parallel-lanes"), "## Inputs")
+        self.assertIn("Every stage that has `disable-model-invocation: true`, and this skill, starts only when a person "
+                      "names it", inputs)
+        self.assertIn("`aidlc-onboard` and `aidlc-verify`", inputs)
+        adr = flat(self.ADR)
+        self.assertIn("every stage that has `disable-model-invocation: true` keeps it, and so does `parallel-lanes`", adr)
+        self.assertIn("`aidlc-onboard` and `aidlc-verify`", adr)
+        self.assertNotIn("every stage skill keeps `disable-model-invocation: true`", adr)
+        self.assertIn("every stage that has `disable-model-invocation: true`", flat(DESIGN))
+
+    def test_the_first_claim_never_tracks_the_default_branch(self):
+        first = command(lane_steps(), "git worktree add --no-track -b ")
+        with tempfile.TemporaryDirectory() as folder:
+            lane, _ = ParallelLanesFixRoundTest.remote_with(folder, "feat/other")
+            git(lane, "checkout", "-q", "main")
+            claim = first.replace("<branch>", "feat/SHIP-15-label").replace("<folder>", "SHIP-15") \
+                .replace("<default branch>", "main")
+            self.assertEqual(sh(claim, lane).returncode, 0)
+            self.assertNotEqual(git(lane, "rev-parse", "--abbrev-ref", "feat/SHIP-15-label@{upstream}",
+                                    check=False).returncode, 0)
+            tracked = sh("git worktree add -b feat/SHIP-16-x .worktrees/SHIP-16 origin/main", lane)
+            self.assertEqual(tracked.returncode, 0)
+            self.assertEqual(git(lane, "rev-parse", "--abbrev-ref", "feat/SHIP-16-x@{upstream}").stdout.strip(),
+                             "origin/main")
+        for rel in (DESIGN,):
+            self.assertIn("`git worktree add --no-track -b <branch> .worktrees/<folder> origin/<default branch>`",
+                          flat(rel), rel)
+
+    def test_one_wording_for_when_a_stacked_slice_starts(self):
+        wording = "its Order clash ends when its parent's build is done"
+        for text in (skill("parallel-lanes"), flat(DESIGN)):
+            self.assertIn(wording, text)
+        self.assertIn("| Order | It depends on a row that is not done, except that a stacked slice's Order clash ends "
+                      "when its parent's build is done (above). |", skill("parallel-lanes"))
+        self.assertNotIn("the rows that must be merged first", flat(DESIGN))
+
+    def test_the_done_row_and_a_second_parts_slices(self):
+        text = skill("parallel-lanes")
+        for phrase in ("for a slice row, its own index `plans/<KEY>/slice-<n>/README.md`",
+                       "`.worktrees/<KEY>-p<n>-s<m>` for a slice of that part on its own branch",
+                       "`plans/<KEY>/part-<n>/slice-<m>/`"):
+            self.assertIn(phrase, text, phrase)
+            self.assertIn(phrase.split("`")[1], flat(DESIGN), phrase)
+        self.assertIn("`.worktrees/<KEY>-p<n>-s<m>`", flat(QUEUE))
+
+    def test_the_coordinator_shows_folders_git_does_not_list(self):
+        self.assertIn("any folder in `.worktrees/` that `git worktree list` does not show", coordinator_steps())
+        with tempfile.TemporaryDirectory() as folder:
+            lane, _ = ParallelLanesFixRoundTest.remote_with(folder, "feat/SHIP-12-eta-limit")
+            git(lane, "checkout", "-q", "main")
+            (lane / ".worktrees" / "SHIP-12").mkdir(parents=True)
+            (lane / ".worktrees" / "SHIP-12" / "left.txt").write_text("x\n", encoding="utf-8")
+            self.assertNotIn(".worktrees/SHIP-12", git(lane, "worktree", "list").stdout)
+            stale = sh("git worktree add .worktrees/SHIP-12 feat/SHIP-12-eta-limit", lane)
+            self.assertNotEqual(stale.returncode, 0)
+            self.assertIn("already exists", stale.stderr)
+
+    def test_the_adr_names_the_push_exception(self):
+        self.assertIn("and before every push (unless the team's `AGENTS.md` lets a lane push its own branch)",
+                      flat(self.ADR))
+
+    def test_the_next_row_only_when_no_row_was_named(self):
+        self.assertIn("Take the next row only when no row was named; the coordinator shows the worktree to the person.",
+                      section(skill("parallel-lanes"), "## Common excuses"))
+        design = flat(DESIGN)
+        for phrase in ("the other's command fails, and it takes the next row only when no row was named",
+                       "the lane removes the worktree and takes the next row only when no row was named",
+                       "claims the next row instead, when no row was named"):
+            self.assertIn(phrase, design, phrase)
+
+    def test_depends_on_names_an_existing_earlier_slice(self):
+        checklist = flat("skills/aidlc-plan/assets/plan.md")
+        self.assertIn('every bundle field filled, or "none" (except DEPENDS ON, below); no placeholder left', checklist)
+        self.assertIn('each "none" or one existing earlier slice, so no cycle forms', checklist)
+        step5 = skill("aidlc-plan").split(" 5. Slice the work", 1)[1].split(" 6. Rate the tier", 1)[0]
+        self.assertIn("`DEPENDS ON` names at most one slice, and only an existing slice earlier in the plan, so the "
+                      "slices never form a cycle", step5)
+        bundle = read("skills/aidlc-plan/assets/task-bundle.md")
+        self.assertIn("slice 1 runs on the part's branch, whatever this line says", bundle)
+
 
 
 if __name__ == "__main__":
