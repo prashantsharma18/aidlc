@@ -2,7 +2,7 @@
 # {{KEY}} · task bundle · {{SLICE}}
 
 ## For the reviewer
-- **Asked of:** The tech lead, to approve this slice, its MODE and its boundaries, with the plan and the design (Tier 2 and 3); at Tier 1 the bundle is stated with the plan, and the code owner reads it at Merge (ADR 0026)
+- **Asked of:** The tech lead, to approve this slice, its MODE and its boundaries, with the plan and the design (Tier 2 and 3); at Tier 1 the bundle is stated with the plan, and the code owner reads it at Merge, except a plan with independent slices, which the tech lead approves (ADR 0026)
 - **Record it:** On the work item with the plan's version and commit; a changed bundle is approved again (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}

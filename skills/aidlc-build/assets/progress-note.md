@@ -11,7 +11,7 @@ MODE        {{the bundle's MODE; hands-on when the bundle has none}}
 TESTS BEFORE {{passed}} passed, {{failed}} failed, {{skipped}} skipped at {{commit}}, before any change
 ```
 
-## Restatement (delegate modes)
+## Restatement (stated at Tier 1 and 2 in every mode; at Tier 3 confirmed under Pauses confirmed)
 - {{goal, criteria covered, MAY CHANGE and STOP IF, with file references}}
 
 ## Pauses confirmed (by the person)

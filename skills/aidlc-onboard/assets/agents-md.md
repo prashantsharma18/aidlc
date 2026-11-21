@@ -23,7 +23,7 @@
   incident, `aidlc-operate` and `aidlc-feedback`.
 - Tests first: a failing test before any code; for a defect, a test that reproduces it.
 - Every change is reviewed in a pull request by a code owner who did not write it.
-- A person decides only where the tiers file's decisions table says (ADR 0026): at Tier 1, Ready and Merge, and Release only when users see the change. A
+- A person decides only where the tiers file's decisions table says (ADR 0026): at Tier 1, Ready and Merge, and Release only when users see the change; a plan with independent slices is still approved. A
   standard change listed below takes route S.
 
 ## Map

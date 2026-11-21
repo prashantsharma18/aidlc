@@ -967,5 +967,68 @@ class RecordTest(unittest.TestCase):
         self.assertNotIn("{{", read(self.RECORD))
 
 
+class FinalReviewTest(unittest.TestCase):
+    """The final review's findings: Tier 3 decides deploy and flag; the independent-slices exception is stated
+    everywhere a Tier 1 plan is; build, specify, design, compliance and routes wording."""
+
+    EXCEPTION_FILES = (
+        "skills/aidlc-plan/assets/plan.md", "skills/aidlc-plan/assets/task-bundle.md", "skills/using-aidlc/SKILL.md",
+        "docs/operating-model/routes.md", "docs/operating-model/tiers.md", "README.md", "starter/repo/AGENTS.md",
+        "skills/aidlc-onboard/assets/agents-md.md", "skills/aidlc-plan/SKILL.md")
+
+    def test_release_gate_flag_rule_is_tier_1_and_2(self):
+        self.assertIn("turning a flag on is the release. The flag rule applies at Tier 1 and 2; at Tier 3 both the "
+                      "deploy and turning the flag on are decided.", gate("aidlc-release"))
+
+    def test_independent_slices_exception_is_everywhere(self):
+        for rel in self.EXCEPTION_FILES:
+            self.assertRegex(flat(rel), r"(?i)independent slices|slices are independent", rel)
+        plan = skill("aidlc-plan")
+        self.assertIn("A plan with independent slices is the exception: it waits for the tech lead at every tier "
+                      "(ADR 0025).", plan)
+        self.assertEqual(plan.count("A plan with independent slices is the exception"), 2)
+        self.assertIn("unless the slices are independent: then the tech lead approves, as at Tier 2.",
+                      flat("skills/aidlc-plan/assets/plan.md"))
+        self.assertIn("none at Tier 1 unless slices are independent", flat("docs/operating-model/routes.md"))
+        self.assertIn("ADR 0026); a plan with independent slices is still approved; people approve", flat("README.md"))
+        for rel in ("docs/operating-model/tiers.md", "starter/repo/AGENTS.md",
+                    "skills/aidlc-onboard/assets/agents-md.md"):
+            self.assertIn("Release only when users see the change; a plan with independent slices is still approved",
+                          flat(rel), rel)
+        self.assertIn("A plan with independent slices is still approved by the tech lead at Tier 1",
+                      flat("skills/using-aidlc/SKILL.md"))
+
+    def test_build_wording(self):
+        build = skill("aidlc-build")
+        self.assertIn("Hands-on: wait for the person to confirm. (This wait is Tier 3's; at Tier 1 and 2 see below.)",
+                      build)
+        self.assertIn("not a separate stop before the push (ADR 0026). The engineer decides the findings on the pull "
+                      "request, before the code owner's approval; high and medium findings block the merge.",
+                      gate("aidlc-build"))
+
+    def test_specify_gate_names_the_tiers(self):
+        self.assertIn("At Tier 2 and 3 the spec also merges to the default branch first", gate("aidlc-specify"))
+
+    def test_compliance_compares_the_standard_changes_section(self):
+        text = flat("agents/reviewer-compliance.md")
+        self.assertIn("compares the commit's `Recipe:` trailer with the evidence file's STANDARD line", text)
+        self.assertIn("the Standard changes section of `AGENTS.md` as merged on the default branch", text)
+
+    def test_progress_note_restatement_heading(self):
+        text = read("skills/aidlc-build/assets/progress-note.md")
+        self.assertIn("## Restatement (stated at Tier 1 and 2 in every mode; at Tier 3 confirmed under Pauses "
+                      "confirmed)", text)
+
+    def test_design_wireframe_approval_is_in_the_pull_request(self):
+        self.assertIn("the product owner approves it (at Tier 2 and 3, in the pull request that merges the design "
+                      "and the plan)", skill("aidlc-design"))
+
+    def test_routes_release_hexagon_and_s_row(self):
+        routes = read("docs/operating-model/routes.md")
+        self.assertIn('releaseok{{"Release approver, when users see the change (always at Tier 3)"}}', routes)
+        s_row = [line for line in routes.splitlines() if line.startswith("| S · standard change")][0]
+        self.assertIn("release when users see the change", s_row)
+
+
 if __name__ == "__main__":
     unittest.main()

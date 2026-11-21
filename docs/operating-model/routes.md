@@ -55,7 +55,7 @@ Three rules sit under the tree:
 | D2 · defect, full route | Any defect that fails the fast-path test | As F1 or F2; the reproduction is the spec's first criterion | As F1; the product owner decides behaviour nobody wrote down |
 | I · incident | An alert fires or an incident is open | operate (no story), people contain, the incident record and a follow-up item, feedback | On-call; a person runs every runbook step; the product owner accepts the follow-up |
 | G · new system | No code yet | start, intent, specify, design (`new-system.md`), then per repository onboard (prepare), slice 0, onboard (confirm); then F1 or F2 and release | Architect or tech lead; consumers; the product owner for a wireframe |
-| S · standard change | A class of work the team lists in `AGENTS.md`'s Standard changes, within every limit it names; Tier 1, one repository | start (it writes `standard.md`), the engineer confirms, build, verify, review, merge | The engineer confirms the standard brief and its tier (Ready); a code owner approves brief and change in the pull request (Merge) |
+| S · standard change | A class of work the team lists in `AGENTS.md`'s Standard changes, within every limit it names; Tier 1, one repository | start (it writes `standard.md`), the engineer confirms, build, verify, review, merge, release when users see the change | The engineer confirms the standard brief and its tier (Ready); a code owner approves brief and change in the pull request (Merge) |
 
 In every diagram below, a hexagon is a person's decision. The agent drafts every document; it never approves one.
 
@@ -88,17 +88,17 @@ flowchart LR
     specok --> discover["aidlc-discover, when needed"]
     discover --> design["aidlc-design"]
     design --> plan["aidlc-plan"]
-    plan --> planok{{"Tech lead or architect approves, or records none needed, with the plan: one pull request at Tier 2 and 3, none at Tier 1"}}
+    plan --> planok{{"Tech lead or architect approves, or records none needed, with the plan: one pull request at Tier 2 and 3, none at Tier 1 unless slices are independent"}}
     planok --> build["aidlc-build, one slice at a time"]
     build --> verify["aidlc-verify"]
     verify --> review["aidlc-review"]
     review --> merge{{"Code owner approves the pull request"}}
     merge --> release["aidlc-release"]
-    release --> releaseok{{"Release approver"}}
+    release --> releaseok{{"Release approver, when users see the change (always at Tier 3)"}}
 ```
 
 Everything runs inside the repository, and every document lives in `plans/<KEY>/`, on the story's branch. At Tier 1 a
-person decides only Ready and Merge, and Release only when users see the change: the plan and a "none needed" design are stated, and the code owner sees spec,
+person decides only Ready and Merge, and Release only when users see the change: the plan (unless its slices are independent) and a "none needed" design are stated, and the code owner sees spec,
 plan and code together in the pull request. At Tier 2 and 3 the spec, then the design with the plan, merge first;
 each pull request approval is the record, and the AI writes the tracker entry from it, asking before posting (ADR
 0026). The story's documents travel in the same pull request as the code at Tier 1.
