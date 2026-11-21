@@ -109,6 +109,8 @@ skill's `SKILL.md` by its absolute path must find `references/` beside it, which
 
 ## Needs the owner's decision
 
+**Approved by the owner in the session, 2026-11-21:** H1–H9, R1–R9, V1 and V2 (7.2.0), W1 (the reached word counts as the test limits; further cuts in a later design) and O1, including the controller's ruling on where a sub-agent lane finds a stage skill's references; execution subagent-driven.
+
 **Approved by the owner in the session, 2026-11-21:** V1 (7.2.0), in the design's "Owner decisions" table. The
 design's "The tests" decision approves H1 to H9 in principle; each is listed here for the owner's yes.
 
