@@ -345,6 +345,18 @@ class DesignPlanTest(unittest.TestCase):
             self.assertIn("to confirm the brief, its TIER and its MODE", text, name)
             self.assertIn("written by the AI when the engineer confirms the brief and its TIER", text, name)
 
+    def test_one_pull_request_is_the_single_repository_case(self):
+        across = ("For a story across several repositories, Decision 2 is still one decision, taken by the same tech "
+                  "lead on the home design pull request and on each part's plan pull request, each approval recorded "
+                  "on its own pull request, never as a separate tracker approval.")
+        for name in ("aidlc-design", "aidlc-plan"):
+            text = gate(name)
+            self.assertIn("In a single repository, ", text, name)
+            self.assertIn(across, text, name)
+        step = skill("aidlc-design").split(" 1. Ask the three questions", 1)[1].split(" 2. When the change adds", 1)[0]
+        self.assertIn("state the note and go on: the approval comes with the plan, on the combined pull request "
+                      "(across repositories, as Decision 2)", step)
+
 
 if __name__ == "__main__":
     unittest.main()
