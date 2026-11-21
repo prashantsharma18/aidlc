@@ -127,7 +127,8 @@ not collide in the story's documents.
 2. Take the row the brief or the person names. With no row named, take the first ready row that clashes with no
    running lane (see Clashes). With no ready row, report and end. A sub-agent lane whose brief does not match what it
    may run ends without claiming and writes no state.
-3. Claim it (the lock above). If the claim fails, go back to step 2 with the next row.
+3. Claim it (the lock above). If the claim fails, taken: the next row only when no row was named, otherwise end and
+   report; any other error stops (`stopped: claim failed: <error>`, reported, written nowhere).
 4. Run the row's next unfinished stage by its stage skill, exactly as that skill says, in this worktree. Stage
    gates, the evidence file, the non-author verdict and every Stop if hold unchanged. Commit after every step.
 5. Release when any of these happens, then end:
@@ -151,7 +152,9 @@ not collide in the story's documents.
      skill's absolute path (`<plugin root>/skills/aidlc-build/SKILL.md`), which the lane reads and follows in full;
    - **intent, specify, design and plan, or a tool with no such feature:** give the person the exact words to start
      the lane by hand in its worktree, naming the stage (for example `/aidlc:aidlc-plan SHIP-15`).
-4. When a lane reports back, read its row's state and start the next ready row.
+4. When a lane reports back, read its row's state and start the next ready row. A row whose lane reports that it needs
+   a stage only a person starts is handed to the person with the exact start words, listed in the report as
+   `needs <stage> started by <who>`, and not sent to a sub-agent again until a person has started that stage.
 5. Report one table to the person: running, waiting on whom, stopped and why, next in line.
 6. Draft new queue rows (from approved plans, or from the tracker it only reads) for the person to confirm. Never
    write `QUEUE.md`, never approve, never merge.
@@ -200,7 +203,7 @@ Slice 3 stacks on slice 2, and a person merges slice 2's pull request:
    `--onto` and slice 2's old tip, this works when the host squashed slice 2 into one commit.
 3. Before it rebases, when the remote branch exists, it checks `git merge-base --is-ancestor origin/<slice 3's branch>
    <slice 3's branch>` and stops if that fails, because a person pushed there. It pushes with
-   `git push --force-with-lease --force-if-includes`, which fails rather than overwrite a push the lane has not seen,
+   `git push --force-with-lease --force-if-includes origin <slice 3's branch>`, which fails rather than overwrite a push the lane has not seen,
    on the lane's own branch only, and asks first unless the team's `AGENTS.md` lets a lane push its own branch.
 4. Slice 3's pull request now targets the default branch. Many hosts retarget it themselves when slice 2's branch is
    deleted; otherwise a person retargets it.

@@ -328,7 +328,7 @@ class ParallelLanesTest(unittest.TestCase):
         for phrase in ("`git show origin/<default branch>:plans/<KEY>/slice-2/README.md`",
                        "`git merge-base <slice 3's branch> origin/<slice 2's branch>`", "Never guess it.",
                        "`git rebase --onto origin/<default branch> <slice 2's last commit> <slice 3's branch>`",
-                       "this works when the code host squashed slice 2 into one commit", "`git push --force-with-lease --force-if-includes`",
+                       "this works when the code host squashed slice 2 into one commit", "`git push --force-with-lease --force-if-includes origin <slice 3's branch>`",
                        "Ask the person first, unless the team's `AGENTS.md` lets a lane push its own branch.",
                        "If the team forbids force-push (a rule in its `AGENTS.md`), stop and ask.",
                        "Many code hosts retarget it themselves when slice 2's branch is deleted; otherwise a person "
@@ -514,6 +514,73 @@ class ParallelLanesFixRoundTest(unittest.TestCase):
             self.assertEqual(sh("git worktree add .worktrees/SHIP-12 feat/SHIP-12-eta-limit", lane).returncode, 0)
             self.assertEqual(git(lane, "check-ignore", "-q", ".worktrees/", check=False).returncode, 0)
             self.assertEqual(git(lane, "status", "--porcelain").stdout, "")
+
+
+class ParallelLanesRoundTwoTest(unittest.TestCase):
+    """Task 3 fix round 2: one rule for a taken row, the coordinator hands stage starts to the person, and the push
+    names its branch."""
+
+    def test_a_named_row_that_is_taken_ends_the_lane(self):
+        text = skill("parallel-lanes")
+        for phrase in ("means another lane holds the row. If your row was named, end and report; with no row named, take "
+                       "the next ready row.",
+                       "ends the lane with `stopped: claim failed: <error>`, which it reports and writes nowhere, "
+                       "because with no worktree there is no row to write it on, and is never skipped silently",
+                       "Take no other row: end and report that the row is taken."):
+            self.assertIn(phrase, text, phrase)
+        self.assertNotIn("Take the next row and say so.", text)
+
+    def test_the_coordinator_hands_stage_starts_to_the_person(self):
+        coordinator = skill("parallel-lanes").split("Coordinator mode, step by step:", 1)[1].split(
+            "**A stacked slice", 1)[0]
+        for phrase in ("When a lane reports that its row needs a stage only a person starts, or that its brief did not "
+                       "match, give the person the exact words to start that stage for the row, list the row in your "
+                       "report as `needs <stage> started by <who>`, and never send it to a sub-agent again until a "
+                       "person has started that stage.",):
+            self.assertIn(phrase, coordinator, phrase)
+
+    def test_the_push_names_its_branch_and_a_rebase_not_pushed_is_the_persons(self):
+        stacked = skill("parallel-lanes").split("**A stacked slice after its parent merges.**", 1)[1].split(
+            "## Stop if", 1)[0]
+        self.assertIn("`git push --force-with-lease --force-if-includes origin <slice 3's branch>`", stacked)
+        for phrase in ("A slice rebased but not pushed makes a later claim's `--ff-only` and the ancestry check fail",
+                       "push it with the same lease command, or tell a lane to (asking first), never a plain push"):
+            self.assertIn(phrase, stacked, phrase)
+
+    def test_the_design_agrees(self):
+        design = " ".join(read(DESIGN).split())
+        for phrase in ("taken: the next row only when no row was named, otherwise end and report; any other error stops",
+                       "`needs <stage> started by <who>`",
+                       "`git push --force-with-lease --force-if-includes origin <slice 3's branch>`"):
+            self.assertIn(phrase, design, phrase)
+
+    def test_the_refspec_push_succeeds_when_nobody_else_pushed(self):
+        stacked = skill("parallel-lanes").split("**A stacked slice after its parent merges.**", 1)[1]
+        push = command(stacked, "git push --force-with-lease").replace("<slice 3's branch>", "feat/s3")
+        with tempfile.TemporaryDirectory() as folder:
+            lane, _ = ParallelLanesFixRoundTest.remote_with(folder, "feat/other")
+            git(lane, "checkout", "-q", "-b", "feat/s3", "main")
+            (lane / "s3.txt").write_text("1\n", encoding="utf-8")
+            git(lane, "add", "-A")
+            git(lane, "commit", "-q", "-m", "s3")
+            git(lane, "push", "-q", "origin", "feat/s3")
+            git(lane, "fetch", "-q")
+            git(lane, "commit", "-q", "--amend", "-m", "s3, rebased")
+            self.assertNotEqual(sh("git push --force-with-lease --force-if-includes", lane).returncode, 0)
+            git(lane, "commit", "-q", "--amend", "-m", "s3, rebased again")
+            self.assertEqual(sh(push, lane).returncode, 0)
+            self.assertEqual(git(lane, "ls-remote", "origin", "feat/s3").stdout.split()[0],
+                             git(lane, "rev-parse", "HEAD").stdout.strip())
+
+    def test_a_claim_onto_an_existing_folder_is_read_as_taken(self):
+        with tempfile.TemporaryDirectory() as folder:
+            lane, _ = ParallelLanesFixRoundTest.remote_with(folder, "feat/SHIP-12-eta-limit")
+            git(lane, "checkout", "-q", "main")
+            git(lane, "branch", "feat/other")
+            self.assertEqual(sh("git worktree add .worktrees/SHIP-12 feat/SHIP-12-eta-limit", lane).returncode, 0)
+            taken = sh("git worktree add .worktrees/SHIP-12 feat/other", lane)
+            self.assertNotEqual(taken.returncode, 0)
+            self.assertIn("already exists", taken.stderr)
 
 
 if __name__ == "__main__":

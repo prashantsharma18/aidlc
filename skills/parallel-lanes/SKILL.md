@@ -87,11 +87,12 @@ Lane mode, step by step:
    claim: `git worktree add .worktrees/<folder> <branch>`, then, when `origin/<branch>` exists,
    `git merge --ff-only origin/<branch>` in the worktree. If it cannot fast-forward, remove the worktree and report;
    a person decides. Only an error saying `already exists`, `is already checked out` or `is already used by worktree`
-   means another lane holds the row: take the next row, or end if your row was named. Any other error ends the lane
-   with `stopped: claim failed: <error>`, never skipped silently. Never pass `--force` or `-f`, never use `-B`, and
+   means another lane holds the row. If your row was named, end and report; with no row named, take the next ready row.
+   Any other error ends the lane with `stopped: claim failed: <error>`, which it reports and writes nowhere, because
+   with no worktree there is no row to write it on, and is never skipped silently. Never pass `--force` or `-f`, never use `-B`, and
    never remove or work in a worktree you did not create.
 4. In the worktree, read the row's state on its branch again. If it is waiting, stopped or done after all, remove the
-   worktree (`git worktree remove .worktrees/<folder>`) and go back to step 2.
+   worktree (`git worktree remove .worktrees/<folder>`); with no row named, go back to step 2, otherwise end and report.
 5. Work only in your worktree. If the row is a stacked slice whose parent has merged or moved, update it first (see
    "A stacked slice after its parent merges" below). Then run the row's next unfinished stage, read from its index,
    by its stage skill, exactly as that skill says: a sub-agent lane reads the stage skill's file at the absolute path
@@ -121,7 +122,10 @@ Coordinator mode, step by step:
 
    A lane a person starts by hand counts toward MAX LANES. A row held back is skipped, not dropped: the next ready
    row that clashes with nothing starts.
-4. When a lane reports back, read its row's state and start the next ready row.
+4. When a lane reports back, read its row's state and start the next ready row. When a lane reports that its row needs
+   a stage only a person starts, or that its brief did not match, give the person the exact words to start that stage
+   for the row, list the row in your report as `needs <stage> started by <who>`, and never send it to a sub-agent again
+   until a person has started that stage.
 5. Report one table to the person: running, waiting on whom, stopped and why, next in line, and each row held back
    with its clash.
 6. Draft new queue rows (from approved plans, or from the tracker, which you only read) for the person to confirm and
@@ -140,9 +144,12 @@ Coordinator mode, step by step:
 4. Move only slice 3's own commits onto the updated default branch: `git fetch`, then
    `git rebase --onto origin/<default branch> <slice 2's last commit> <slice 3's branch>`. With `--onto` and slice 2's
    old tip, this works when the code host squashed slice 2 into one commit.
-5. Push with `git push --force-with-lease --force-if-includes`, which fails rather than overwrite a push this lane has
-   not seen or included, on this lane's own branch only. Ask the person first, unless the team's `AGENTS.md` lets a lane push its own branch. If the team
-   forbids force-push (a rule in its `AGENTS.md`), stop and ask.
+5. Push with `git push --force-with-lease --force-if-includes origin <slice 3's branch>`, which fails rather than
+   overwrite a push this lane has not seen or included, on this lane's own branch only; the branch is named because a
+   stacked claim has no upstream. Ask the person first, unless the team's `AGENTS.md` lets a lane push its own branch.
+   If the team forbids force-push (a rule in its `AGENTS.md`), stop and ask. A slice rebased but not pushed makes a
+   later claim's `--ff-only` and the ancestry check fail: a person must push it with the same lease command, or tell a
+   lane to (asking first), never a plain push.
 6. Slice 3's pull request now targets the default branch. Many code hosts retarget it themselves when slice 2's branch
    is deleted; otherwise a person retargets it.
 7. The verdict rule applies: when `git diff --name-only <judged commit> HEAD -- ':(top)' ':(top,exclude)plans/<KEY>/'`
@@ -168,7 +175,7 @@ in step 2. Ask before the push and void the earlier verdict as above.
 | Excuse | Reality |
 |---|---|
 | "The row's worktree is there, but its lane looks idle; I will take it over." | A worktree may hold uncommitted work. Take the next row; the coordinator shows the worktree to the person. |
-| "The person said this row is urgent, so I will force the claim." | Git's lock is all that keeps two lanes off one row. Never pass `--force`. Take the next row and say so. |
+| "The person said this row is urgent, so I will force the claim." | Git's lock is all that keeps two lanes off one row. Never pass `--force`. Take no other row: end and report that the row is taken. |
 | "The tech lead will approve the plan anyway; I will start building." | A lane releases at every decision. Write `waiting:` and end. |
 | "The next row only needs its plan; a sub-agent can draft it while the person is busy." | Planning needs the person's answers and approval, so a person starts it. Give them the words. |
 | "One more lane gets the queue done sooner." | MAX LANES is the limit, because people's review time is. |
