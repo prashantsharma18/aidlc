@@ -1,6 +1,6 @@
 # 0025 · Parallel lanes: a workflow skill, a queue file and git worktrees
 
-Status: Proposed (2026-11-21). · Decider: Prashant Sharma (framework owner)
+Status: Proposed (2026-11-21). Accepted (2026-11-21; confirmed by the framework owner in the session). · Decider: Prashant Sharma (framework owner)
 Design: `docs/design/2026-11-21-parallel-lanes.md` · Plan: `docs/plans/2026-11-21-plan-23-parallel-lanes.md` ·
 Amends: ADR 0015 (one branch and one pull request per repository part)
 
