@@ -866,7 +866,7 @@ class EvalCasesTest(unittest.TestCase):
 
     def test_the_four_cases_exist_and_are_listed(self):
         readme = " ".join(read("evals/README.md").split())
-        self.assertIn("there are 40 cases", readme)
+        self.assertIn("there are 42 cases", readme)
         self.assertIn("`route-d1-build`, `gate-restatement-tier3`, `route-s-dependency-bump`, `gate-tier2-design-plan-once`, and the four lane cases", readme)
         for case, (tag, start) in NEW_CASES.items():
             prompt = read(f"evals/{case}/prompt.md")

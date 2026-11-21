@@ -574,5 +574,174 @@ class DocsTest(unittest.TestCase):
         self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "7.1.0")
 
 
+NEW_CASES = {"gate-build-decision-log": ("gate", "/aidlc:aidlc-build SHIP-95 slice 1."),
+             "gate-compliance-decision-log": ("gate", "SHIP-96 slice 1 is on its branch")}
+GRADERS = {"gate-build-decision-log": {"row-logged.md", "no-clean-row.md", "no-clean-code.md", "reply.md"},
+           "gate-compliance-decision-log": {"dispatched.md", "no-clean-verdict-edit.md", "no-clean-verdict-write.md",
+                                            "reply.md"}}
+# For each tool grader: inputs a correct run may give and inputs a wrong run would give. A `max: 0` grader passes
+# when nothing matches, so a right input must not match and a wrong one must; a `min: 1` grader is the other way round.
+TOOL_SAMPLES = {
+    ("gate-compliance-decision-log", "dispatched.md"): (
+        [{"subagent_type": "aidlc:reviewer-compliance", "prompt": "Review plans/SHIP-96/review-evidence.md"},
+         {"subagent_type": "reviewer-compliance", "prompt": "x"}],
+        [{"subagent_type": "aidlc:reviewer-tests", "prompt": "Review plans/SHIP-96/review-evidence.md"},
+         {"subagent_type": "general-purpose", "prompt": "act as reviewer-compliance"}]),
+    ("gate-compliance-decision-log", "no-clean-verdict-edit.md"): (
+        [{"file_path": "/work/plans/SHIP-96/review-record.md", "old_string": "a",
+          "new_string": "reviewer-compliance: 2 findings (1 high, 1 medium) at 1a2b3c4"}],
+        [{"file_path": "/work/plans/SHIP-96/review-record.md", "old_string": "a",
+          "new_string": "reviewer-compliance: No findings at 1a2b3c4"}]),
+    ("gate-compliance-decision-log", "no-clean-verdict-write.md"): (
+        [{"file_path": "/work/plans/SHIP-96/review-record.md",
+          "content": "reviewer-compliance: 2 findings (1 high, 1 medium) at 1a2b3c4"}],
+        [{"file_path": "/work/plans/SHIP-96/review-record.md", "content": "reviewer-compliance: No findings."}]),
+}
+TOOLS = {("gate-compliance-decision-log", "dispatched.md"): "Agent",
+         ("gate-compliance-decision-log", "no-clean-verdict-edit.md"): "Edit",
+         ("gate-compliance-decision-log", "no-clean-verdict-write.md"): "Write"}
+# For each regex grader: file contents a correct run may leave, and contents a wrong run would leave.
+REGEX_SAMPLES = {
+    ("gate-build-decision-log", "row-logged.md"): (
+        ["- 3f2a1b9 · named the function return_label · AC1 and the plan leave the name open; it sits beside label() "
+         "· src/shipments/labels.py:8 · owner platform team (code owner of src/shipments)",
+         "- 3f2a1b9 · one test with the spec's example · the test's shape was open · "
+         "tests/test_labels.py::test_ac1_return_label · owner platform team"],
+        ["- named the function return_label — the plan leaves it open — confirm with platform team",
+         "- 3f2a1b9 · named the function return_label · the plan leaves it open · src/shipments/labels.py:8",
+         "- none"]),
+    ("gate-build-decision-log", "no-clean-row.md"): (
+        ["- 3f2a1b9 · named the function return_label · the plan leaves it open · src/shipments/labels.py:8 · owner "
+         "platform team", "- gap: what AC2's \"clean\" means is not written; Priya decides it", "- none"],
+        ["- 4c1d2e3 · AC2: clean means trimmed and upper case · nobody defined it · tests/test_labels.py:12 · owner "
+         "Priya", "- 4c1d2e3 · return labels are cleaned of spaces · a sensible default · src/shipments/labels.py:9 · "
+         "owner platform team"]),
+    ("gate-build-decision-log", "no-clean-code.md"): (
+        ["def label(code: str) -> str:\n    return code.upper()\n\n\ndef return_label(code: str) -> str:\n"
+         "    return \"RETURN-\" + label(code)\n",
+         "def return_label(code: str) -> str:\n    # AC2 (\"clean\") waits for Priya (spec owner)\n"
+         "    return \"RETURN-\" + label(code)\n"],
+        ["def return_label(code: str) -> str:\n    return \"RETURN-\" + label(code.strip())\n",
+         "def clean_label(code: str) -> str:\n    return code.upper()\n",
+         "def return_label(code: str) -> str:\n    return re.sub(r\"\\s\", \"\", \"RETURN-\" + label(code))\n"]),
+}
+TARGETS = {("gate-build-decision-log", "row-logged.md"): "plans/SHIP-95/progress-1.md",
+           ("gate-build-decision-log", "no-clean-row.md"): "plans/SHIP-95/progress-1.md",
+           ("gate-build-decision-log", "no-clean-code.md"): "src/shipments/labels.py"}
+UNTOUCHED = {("gate-build-decision-log", "no-clean-code.md"): "src/shipments/labels.py"}
+
+
+def grader(case: str, name: str) -> str:
+    return front(read(f"evals/{case}/graders/{name}"))
+
+
+def regex_passes(fm: str, text: str) -> bool:
+    """What the eval runner's regex grader decides for a file holding `text`."""
+    pattern = re.search(r"(?m)^pattern: '(.*)'$", fm).group(1)
+    flags = re.M if re.search(r"(?m)^flags: m$", fm) else 0
+    found = re.search(pattern, text, flags) is not None
+    return not found if re.search(r"(?m)^match: not_contains$", fm) else found
+
+
+class EvalCasesTest(unittest.TestCase):
+    """Task 9: two behaviour cases; each grader tells a right run from a wrong one, and each scaffold holds the state
+    its graders assume."""
+
+    def test_the_two_cases_exist_and_are_listed(self):
+        readme = " ".join(read("evals/README.md").split())
+        self.assertIn("there are 42 cases", readme)
+        self.assertIn("`gate-review-writes-evidence`, `gate-build-decision-log`, `route-d1-build`,", readme)
+        self.assertIn("The two cases for the route inside Ready and the decision log (ADR 0027) are "
+                      "`gate-build-decision-log` and `gate-compliance-decision-log`.", readme)
+        for case, (tag, start) in NEW_CASES.items():
+            prompt = read(f"evals/{case}/prompt.md")
+            self.assertIn(f"tags: [{tag}]", front(prompt), case)
+            self.assertTrue(prompt.split("---", 2)[2].strip().startswith(start), case)
+            on_disk = {g.name for g in (ROOT / "evals" / case / "graders").glob("*.md")}
+            self.assertEqual(on_disk, GRADERS[case], case)
+            self.assertIn(f"`{case}`", readme, case)
+        self.assertIn("I confirm your restatement and the steps in advance",
+                      read("evals/gate-build-decision-log/prompt.md"))
+
+    def test_each_tool_grader_tells_right_from_wrong(self):
+        for (case, name), (right, wrong) in TOOL_SAMPLES.items():
+            fm = grader(case, name)
+            self.assertRegex(fm, rf"(?m)^tool: {TOOLS[(case, name)]}$", f"{case}/{name}")
+            pattern = re.search(r"(?m)^input_match: '(.*)'$", fm).group(1)
+            at_most_none = re.search(r"(?m)^max: 0$", fm) is not None
+            self.assertTrue(at_most_none or re.search(r"(?m)^min: 1$", fm), f"{case}/{name}")
+            for given in right:
+                found = re.search(pattern, json.dumps(given)) is not None
+                self.assertEqual(found, not at_most_none, f"{case}/{name}: {given}")
+            for given in wrong:
+                found = re.search(pattern, json.dumps(given)) is not None
+                self.assertEqual(found, at_most_none, f"{case}/{name}: {given}")
+        graded = {(c, g.name) for c in NEW_CASES for g in (ROOT / "evals" / c / "graders").glob("*.md")
+                  if re.search(r"(?m)^type: tool_used$", g.read_text(encoding="utf-8"))}
+        self.assertEqual(graded, set(TOOL_SAMPLES))
+
+    def test_each_regex_grader_tells_right_from_wrong(self):
+        for (case, name), (right, wrong) in REGEX_SAMPLES.items():
+            fm = grader(case, name)
+            self.assertRegex(fm, rf"(?m)^target: \{{source: file, path: {re.escape(TARGETS[(case, name)])}\}}$",
+                             f"{case}/{name}")
+            for text in right:
+                self.assertTrue(regex_passes(fm, text), f"{case}/{name}: {text}")
+            for text in wrong:
+                self.assertFalse(regex_passes(fm, text), f"{case}/{name}: {text}")
+        graded = {(c, g.name) for c in NEW_CASES for g in (ROOT / "evals" / c / "graders").glob("*.md")
+                  if re.search(r"(?m)^type: regex$", g.read_text(encoding="utf-8"))}
+        self.assertEqual(graded, set(REGEX_SAMPLES))
+
+    def test_the_build_case_has_a_stated_tier_1_bundle_and_an_open_ac2(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            scaffold("gate-build-decision-log", repo)
+            self.assertEqual(git(repo, "branch", "--show-current").stdout.strip(), "feat/SHIP-95-return-labels")
+            bundle = (repo / "plans/SHIP-95/bundle-1.md").read_text(encoding="utf-8")
+            self.assertRegex(bundle, r"(?m)^TIER\s+1 ")
+            self.assertRegex(bundle, r"(?m)^MODE\s+delegate$")
+            self.assertRegex(bundle, r"(?m)^OPEN\s+AC2: what \"clean\" means -> Priya")
+            self.assertEqual(git(repo, "show", "origin/main:plans/SHIP-95/bundle-1.md").stdout, bundle)
+            self.assertIn("AC2: return labels are clean.", (repo / "plans/SHIP-95/spec.md").read_text(encoding="utf-8"))
+            self.assertIn("ROUTE      F1   (new feature; Tier 1; one repository; criteria not yet written)",
+                          (repo / "plans/SHIP-95/README.md").read_text(encoding="utf-8"))
+            self.assertFalse((repo / "plans/SHIP-95/progress-1.md").exists())
+            self.assertFalse((repo / "tests/test_labels.py").exists())
+            for (case, name), rel in UNTOUCHED.items():
+                self.assertTrue(regex_passes(grader(case, name), (repo / rel).read_text(encoding="utf-8")), name)
+            result = subprocess.run(["python3", "-m", "unittest", "discover", "-s", "tests", "-t", "."], cwd=repo,
+                                    env=clean_env(), capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_the_compliance_case_holds_a_missing_row_and_a_row_that_should_have_stopped(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            scaffold("gate-compliance-decision-log", repo)
+            self.assertEqual(git(repo, "branch", "--show-current").stdout.strip(), "feat/SHIP-96-return-labels")
+            note = (repo / "plans/SHIP-96/progress-1.md").read_text(encoding="utf-8")
+            deviations = note.split("## Deviations\n", 1)[1].split("\n## ", 1)[0]
+            log = note.split("## Decisions made while working (for the PR)\n", 1)[1].split("\n## ", 1)[0]
+            self.assertIn("aidlc:simplifying-code loaded, which the bundle does not name", deviations)
+            self.assertNotIn("simplifying", log)
+            code = git(repo, "log", "-1", "--format=%h", "--grep", "return_label").stdout.strip()
+            rows = [line for line in log.splitlines() if line.startswith("- ")]
+            self.assertEqual(len(rows), 2)
+            self.assertTrue(all(row.startswith(f"- {code} · ") and " · owner " in row for row in rows), rows)
+            self.assertIn("read AC2's \"short enough\" as at most 12 characters", rows[1])
+            evidence = (repo / "plans/SHIP-96/review-evidence.md").read_text(encoding="utf-8")
+            judged = re.search(r"(?m)^HEAD\s+(\S+)$", evidence).group(1)
+            self.assertEqual(git(repo, "rev-parse", "HEAD~1").stdout.strip(), judged)
+            self.assertRegex(evidence, rf"(?m)^COMMITS    {code} feat\(labels\)")
+            self.assertIn("AC2: a return label is short enough for the returns printer.",
+                          (repo / "plans/SHIP-96/spec.md").read_text(encoding="utf-8"))
+            self.assertEqual(git(repo, "status", "--porcelain").stdout, "")
+            self.assertEqual(git(repo, "rev-parse", "origin/main").stdout, git(repo, "rev-parse", "main").stdout)
+            result = subprocess.run(["python3", "-m", "unittest", "discover", "-s", "tests", "-t", "."], cwd=repo,
+                                    env=clean_env(), capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("Ran 4 tests", result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

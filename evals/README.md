@@ -41,16 +41,18 @@ claude plugin eval . --trust-plugin --no-publish --tag routing language --runs 3
   --model claude-sonnet-5-5 --max-cost-usd 15
 ```
 
-Pin `--model` for any run you compare over time. A run costs about $0.10 to $0.60; there are 40 cases.
+Pin `--model` for any run you compare over time. A run costs about $0.10 to $0.60; there are 42 cases.
 Scaffold commits ignore your global git hooks and signing (`-c core.hooksPath=/dev/null -c commit.gpgsign=false`).
 Cases that need Bash (the build stage, and the review stage that writes the evidence file) cannot run where the Bash
 sandbox refuses, for example when `~/.docker/contexts` is a symbolic link; run those in CI or in the local container
 (`container/README.md`). The Bash cases are `gate-assertion-change`, `gate-amended-assertion`, `gate-scope`,
-`gate-dependency`, `gate-delegate-tier2`, `gate-stale-verdict`, `gate-review-writes-evidence`, `route-d1-build`,
+`gate-dependency`, `gate-delegate-tier2`, `gate-stale-verdict`, `gate-review-writes-evidence`, `gate-build-decision-log`, `route-d1-build`,
 `gate-restatement-tier3`, `route-s-dependency-bump`, `gate-tier2-design-plan-once`, and the four lane cases,
 `gate-lane-worktree-taken`, `gate-lane-plan-approval`, `gate-coordinator-clash` and `gate-lane-stacked-rebase`. The
 lane cases make git worktrees inside the scaffold, so they expect to run in the folder the scaffold was built in.
 The four cases for decisions by tier and standard changes (ADR 0026) are `gate-tier1-plan-stated`,
 `route-s-dependency-bump`, `gate-tier2-design-plan-once` and `gate-restatement-tier3`.
+The two cases for the route inside Ready and the decision log (ADR 0027) are `gate-build-decision-log` and
+`gate-compliance-decision-log`.
 Results go to `results/`, which git ignores. Add `--case <name>` to run one case. A low score is a finding about the
 kit: record it; never weaken a grader to make it pass.

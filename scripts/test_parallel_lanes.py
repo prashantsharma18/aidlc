@@ -973,7 +973,7 @@ class LaneCasesTest(unittest.TestCase):
 
     def test_the_four_cases_exist_and_are_listed(self):
         readme = " ".join(read("evals/README.md").split())
-        self.assertIn("there are 40 cases", readme)
+        self.assertIn("there are 42 cases", readme)
         for case in LANE_CASES:
             prompt = read(f"evals/{case}/prompt.md")
             self.assertIn("tags: [gate]", front(prompt), case)
