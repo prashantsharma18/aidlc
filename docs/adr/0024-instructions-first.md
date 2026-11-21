@@ -1,6 +1,6 @@
 # 0024 · Instructions first; checks live in the team's project
 
-Status: Proposed (2026-11-20). · Decider: Prashant Sharma (framework owner)
+Status: Accepted (2026-11-21; confirmed by the framework owner in the session). Proposed 2026-11-20. · Decider: Prashant Sharma (framework owner)
 Design: `docs/design/2026-11-20-instructions-first.md` · Plan: `docs/plans/2026-11-20-plan-22-instructions-first.md` ·
 Supersedes: ADR 0019 · Amends: ADRs 0012, 0015, 0016, 0017, 0020, 0021, 0022, 0023
 
