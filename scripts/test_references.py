@@ -239,8 +239,10 @@ class PlanTest(Layout, unittest.TestCase):
                        "three design questions; any yes, stop: it is route D2, and `aidlc-start` re-routes it.",
                        "- In feature brief mode (route F0, `references/brief-mode.md`), step 1. A criterion not written "
                        "on the work item by its owner, or an ambiguity only the owner can settle, means stop: it is "
-                       "route F1, and `aidlc-start` re-routes it. Step 3 checks the rest of the fast-path test there. "
-                       "Any of these means stop: it is route F1, and `aidlc-start` re-routes it.",
+                       "route F1, and `aidlc-start` re-routes it. Step 3 checks the rest of the fast-path test there: the "
+                       "tier rises above 1, a design question is yes or uncertain, a new dependency seems necessary, "
+                       "stored data or a schema changes, or the work needs more than one slice or more than the "
+                       "pull-request size. Any of these means stop: it is route F1, and `aidlc-start` re-routes it.",
                        "- On slice 0 of route G (`references/route-g.md`), a package the generator added that "
                        "DEPENDENCIES does not list is a stop for the design's approver."):
             self.assertIn(phrase, stops, phrase)
@@ -266,6 +268,22 @@ class PlanTest(Layout, unittest.TestCase):
             self.assertIn(phrase, steps, phrase)
         self.assertIn("If an input is missing, say which stage produces it and stop; never plan around it.",
                       flat(section(skill_md(self.NAME), "## Inputs")))
+
+    def test_the_review_fixes(self):
+        skill = skill_md(self.NAME)
+        stops = flat(section(skill, "## Stop if"))
+        self.assertIn("Step 3 checks the rest of the fast-path test there: the tier rises above 1, a design question is "
+                      "yes or uncertain, a new dependency seems necessary, stored data or a schema changes, or the work "
+                      "needs more than one slice or more than the pull-request size.", stops)
+        steps = flat(section(skill, "## Steps"))
+        self.assertTrue(steps.startswith("## Steps Brief mode (route D1) and feature brief mode (route F0): read "
+                                         "`references/brief-mode.md` now and follow it, in place of steps 1 to 9."))
+        self.assertIn("also do step 8 of `references/revision.md`; for a part of a story across several repositories, "
+                      "step 8 of `references/several-repositories.md`; for a plan with independent slices, step 8 of "
+                      "`references/independent-slices.md`.", steps)
+        self.assertIn("Sent here from `aidlc-plan` Steps, before step 1, in brief mode (route D1) or feature brief mode "
+                      "(route F0); this skill's Gate, Stop if and Rules still apply.", flat(self.ref("brief-mode.md")))
+        self.assertTrue(self.ref("several-repositories.md").split("**Step 8.**")[0].rstrip().endswith("(ADR 0022)."))
 
 
 if __name__ == "__main__":

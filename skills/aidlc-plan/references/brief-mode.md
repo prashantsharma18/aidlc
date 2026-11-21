@@ -1,6 +1,6 @@
 # Brief mode: routes D1 and F0
 
-Sent here from `aidlc-plan` brief mode (route D1) or feature brief mode (route F0), after step 9; this skill's Gate, Stop if and Rules still apply.
+Sent here from `aidlc-plan` Steps, before step 1, in brief mode (route D1) or feature brief mode (route F0); this skill's Gate, Stop if and Rules still apply.
 
 **Inputs.** In brief mode, the inputs are the work item (its reproduction and evidence) and the written SOURCE of the
 expected behaviour; no spec or design note is needed. For a feature brief, the inputs are the work item and its

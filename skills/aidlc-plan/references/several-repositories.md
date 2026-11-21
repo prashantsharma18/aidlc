@@ -4,7 +4,7 @@ Sent here from `aidlc-plan` step 7 or step 8, a part of a story across several r
 
 **Step 7.** For a part of a story across several repositories, the spec pin also names the home repository's commit
 where the approved spec merged: `spec v<n> @ <commit>`. Once a part pins it, nothing under `stories/<KEY>/` is moved or
-renamed; a change is a new version (ADR 0022);
+renamed; a change is a new version (ADR 0022).
 
 **Step 8.** For a part of a story across several repositories, also write the part index `plans/<KEY>/README.md` from
 `assets/story-index.md`: LEVEL `part <n> of <m> in <repository>`, the PINS line of the latest bundle, and the rows

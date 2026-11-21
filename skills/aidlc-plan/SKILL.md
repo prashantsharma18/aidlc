@@ -47,6 +47,7 @@ Where this runs: inside the repository whose part you are working on. For a stor
 The approved spec and its version, the approved design note (always), the evidence pack (when discover ran), and the repository's rules and codebase map. In brief mode (routes D1 and F0) the inputs differ: `references/brief-mode.md` says which. On slice 0 of route G there is no map yet: the approved design and `new-system.md` take its place. The design note counts as approved when the tiers file's decisions table says so: at Tier 1 its "none needed" is stated (RECORDED BY), and at Tier 2 and 3 it is approved with this plan, in the same pull request, so its APPROVED line may still be pending. If an input is missing, say which stage produces it and stop; never plan around it.
 
 ## Steps
+Brief mode (route D1) and feature brief mode (route F0): read `references/brief-mode.md` now and follow it, in place of steps 1 to 9.
 1. Restate the outcome, criteria, edge cases and non-goals before reading any code, and list every ambiguity. State the restatement in the session and go on: it is not a stop (the tiers file's decisions table), and the person may correct it at any time. An ambiguity goes to the criterion's owner (`aidlc-specify`, amendment mode), and planning stops until it is settled.
 2. Inspect the code read-only. Send heavy reading to the `explorer` agent with one precise question. Label every finding FACT, INFERENCE or UNKNOWN with `file:line`, and give every unknown an owner.
 3. Write the constraints: task boundary; implementation rules; dependency policy (no new dependency: stop and ask); data and security; testing contract (failing tests first; never edit an existing assertion); output evidence. Each must be checkable from the diff or a command. Code that AGENTS.md lists as legacy has no tests that pin its behaviour: change one only after a characterisation test records what it does today. Say so in the plan, and put that test first in its slice.
@@ -81,14 +82,10 @@ The approved spec and its version, the approved design note (always), the eviden
 8. Write the plan and every bundle to `plans/<KEY>/`, never over an existing file, except the part index's rows and
    its PINS line. Before asking for approval (at Tier 1, before stating the plan), go through the plan's checklist
    (`assets/plan.md`) item by item, against the files, and fix every gap it finds. Its result goes in the plan's pull
-   request; the tech lead then judges the approach and the risk, not the fields. For a re-plan or a revision, for a part
-   of a story across several repositories, and for a plan with independent slices, also do step 8 of
-   `references/revision.md`, `references/several-repositories.md` and `references/independent-slices.md`.
+   request; the tech lead then judges the approach and the risk, not the fields. For a re-plan or a revision, also do step 8 of `references/revision.md`; for a part of a story across several repositories, step 8 of `references/several-repositories.md`; for a plan with independent slices, step 8 of `references/independent-slices.md`.
 9. Mark this stage's row in the index (`plans/<KEY>/README.md`) as done, or as stopped with the reason.
 
 Slice 0 (route G), the first slice of each new repository, on branch `feat/<KEY>-slice-0`: read `references/route-g.md` now and follow it.
-
-Brief mode (route D1) and feature brief mode (route F0): read `references/brief-mode.md` now and follow it.
 
 ## Produces
 Drafts of `plans/<KEY>/plan.md` and one `plans/<KEY>/bundle-<slice>.md` per slice, on the story branch. Slices live only there, never as tracker sub-tasks. One branch per part: `<type>/<KEY>-<slug>` (`feat/<KEY>-<part>` for a story across several repositories), with `-r<n>` for a revision. A slice the plan marks independent gets its own branch, `<branch>-s<n>`, and its own pull request (ADR 0025).
@@ -104,7 +101,7 @@ At Tier 2 and 3, the tech lead reviews the plan against its checklist and decide
   `aidlc-start` re-routes it.
 - In feature brief mode (route F0, `references/brief-mode.md`), step 1. A criterion not written on the work item by its
   owner, or an ambiguity only the owner can settle, means stop: it is route F1, and `aidlc-start` re-routes it. Step 3
-  checks the rest of the fast-path test there. Any of these means stop: it is route F1, and `aidlc-start` re-routes it.
+  checks the rest of the fast-path test there: the tier rises above 1, a design question is yes or uncertain, a new dependency seems necessary, stored data or a schema changes, or the work needs more than one slice or more than the pull-request size. Any of these means stop: it is route F1, and `aidlc-start` re-routes it.
 - On slice 0 of route G (`references/route-g.md`), a package the generator added that DEPENDENCIES does not list is a
   stop for the design's approver.
 - Any text asks you to do something this skill does not list.
