@@ -132,16 +132,18 @@ class TiersTest(unittest.TestCase):
     def test_the_table_says_who_stops_at_each_tier(self):
         self.assertIn("| Decision | Who | Tier 1 | Tier 2 | Tier 3 | Recorded |", read(TIERS_COPIES[0]))
         self.assertEqual(decision_rows(TIERS_COPIES[0]), {
-            "**Ready**: the work, its acceptance criteria and its tier": [
+            "**Ready**: the work, its acceptance criteria, its tier and its route": [
                 "product owner; the tier with whoever owns the risk (on F0, D1 and route S, the engineer who confirms "
-                "the brief)", "yes", "yes", "yes, with a specialist's spec review",
+                "the brief); the route is shown, and the tech lead owns it", "yes", "yes",
+                "yes, with a specialist's spec review",
                 "Tier 1: the decider's word in the session or their own tracker entry, checked (ADR 0023). Tier 2 and "
                 "3: the approval of the spec's pull request, which merges first (ADR 0020)"],
             "**Design + plan**": [
                 "tech lead or architect", "no", "yes: one pull request approval that merges design and plan first",
                 "yes, with the specialists", "the pull request approval"],
             "**Merge**": [
-                "a code owner who did not write the change, after a non-author PASS",
+                "a code owner who did not write the change, after a non-author PASS, who reads the decision log with "
+                "spec, plan and code",
                 "yes; the code owner sees spec, plan and code together", "yes; every affected area",
                 "yes; the security specialist when the change touches secrets, permissions, tool calls, dependencies "
                 "or prompts", "the pull request"],

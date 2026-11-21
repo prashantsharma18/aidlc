@@ -122,5 +122,56 @@ class AdrTest(unittest.TestCase):
                       "session).", text)
 
 
+def decision_rows(rel: str) -> dict:
+    """The decisions table's rows, by their first cell."""
+    table = read(rel).split("## Decisions by tier", 1)[1]
+    return {cells[0]: cells[1:] for cells in
+            ([c.strip() for c in line.strip().strip("|").split(" | ")] for line in table.splitlines()
+             if line.startswith("| **"))}
+
+
+class TiersTest(unittest.TestCase):
+    """Task 2: Ready shows the route and Merge reads the log, in every tiers copy."""
+
+    def test_every_copy_shows_the_route_in_ready_and_the_log_at_merge(self):
+        texts = {read(rel) for rel in TIERS_COPIES}
+        self.assertEqual(len(texts), 1)
+        self.assertEqual(read(TIERS_DOCS).split("\n", 1)[1], texts.pop())
+        rows = decision_rows(TIERS_COPIES[0])
+        self.assertNotIn("**Ready**: the work, its acceptance criteria and its tier", rows)
+        ready = rows["**Ready**: the work, its acceptance criteria, its tier and its route"]
+        self.assertEqual(ready[0], "product owner; the tier with whoever owns the risk (on F0, D1 and route S, the "
+                                   "engineer who confirms the brief); the route is shown, and the tech lead owns it")
+        self.assertEqual(ready[1:4], ["yes", "yes", "yes, with a specialist's spec review"])
+        merge = rows["**Merge**"]
+        self.assertEqual(merge[0], "a code owner who did not write the change, after a non-author PASS, who reads the "
+                                   "decision log with spec, plan and code")
+        self.assertEqual(merge[1], "yes; the code owner sees spec, plan and code together")
+
+    def test_the_rules_say_who_checks_the_route_and_that_no_row_waits(self):
+        text = flat(TIERS_COPIES[0]).split("## Decisions by tier", 1)[1]
+        for phrase in ("The route (ADR 0027): Ready shows it, and the tech lead owns it; the product owner sees it and "
+                       "does not decide it.",
+                       "the kind of work, the tier, the repositories the work changes, and whether its criteria are "
+                       "written",
+                       "on F0, D1 and route S, the engineer who confirms the brief, at Ready;",
+                       "on F1, D2 and C at Tier 1, the code owner, at Merge, where the pull request description shows "
+                       "the ROUTE line (for a plan with independent slices, first the tech lead who approves it);",
+                       "at Tier 2 and 3, the tech lead or architect, at Design + plan, in the same pull request;",
+                       "on route G, the tech lead or architect who approves `new-system.md`.",
+                       "A route change after Ready that touches the tier, the scope, the criteria or the controls is "
+                       "decided again, as `aidlc-start` says; a lighter route is chosen only at the start.",
+                       "The decision log (ADR 0027):", "No row waits, and no one approves a row."):
+            self.assertIn(phrase, text, phrase)
+        self.assertLess(text.index("The route (ADR 0027)"), text.index("Where a pull request approval is the record"))
+
+    def test_the_operating_model_says_it(self):
+        tiers = flat("docs/operating-model/tiers.md").split("## Who decides at each tier", 1)[1]
+        self.assertIn("Ready shows the route, which the tech lead owns, and a technical person checks it at the first "
+                      "technical decision; the code owner reads the AI's decision log at Merge", tiers)
+        self.assertIn("Ready and Merge, and Release only when users see the change; a plan with independent slices is "
+                      "still approved", tiers)
+
+
 if __name__ == "__main__":
     unittest.main()

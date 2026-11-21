@@ -23,15 +23,28 @@ disagrees says so, and the stage revises.
 
 | Decision | Who | Tier 1 | Tier 2 | Tier 3 | Recorded |
 |---|---|---|---|---|---|
-| **Ready**: the work, its acceptance criteria and its tier | product owner; the tier with whoever owns the risk (on F0, D1 and route S, the engineer who confirms the brief) | yes | yes | yes, with a specialist's spec review | Tier 1: the decider's word in the session or their own tracker entry, checked (ADR 0023). Tier 2 and 3: the approval of the spec's pull request, which merges first (ADR 0020) |
+| **Ready**: the work, its acceptance criteria, its tier and its route | product owner; the tier with whoever owns the risk (on F0, D1 and route S, the engineer who confirms the brief); the route is shown, and the tech lead owns it | yes | yes | yes, with a specialist's spec review | Tier 1: the decider's word in the session or their own tracker entry, checked (ADR 0023). Tier 2 and 3: the approval of the spec's pull request, which merges first (ADR 0020) |
 | **Design + plan** | tech lead or architect | no | yes: one pull request approval that merges design and plan first | yes, with the specialists | the pull request approval |
-| **Merge** | a code owner who did not write the change, after a non-author PASS | yes; the code owner sees spec, plan and code together | yes; every affected area | yes; the security specialist when the change touches secrets, permissions, tool calls, dependencies or prompts | the pull request |
+| **Merge** | a code owner who did not write the change, after a non-author PASS, who reads the decision log with spec, plan and code | yes; the code owner sees spec, plan and code together | yes; every affected area | yes; the security specialist when the change touches secrets, permissions, tool calls, dependencies or prompts | the pull request |
 | **Release** | release approver | only when users see the change | only when users see the change | always; a named approver and a rehearsed rollback | change management, cited in the readiness record |
 | **Restatement** of a hands-on build | the engineer | no: stated | no: stated | yes, per slice | the progress note's `restatement confirmed by` line |
 
 "When users see the change": a change behind a flag that is still off needs no release decision until the flag goes
 on; turning a flag on is the release. The flag rule applies at Tier 1 and 2; at Tier 3 both the deploy and turning the
 flag on are decided.
+
+The route (ADR 0027): Ready shows it, and the tech lead owns it; the product owner sees it and does not decide it. A
+technical person checks the ROUTE line's facts (the kind of work, the tier, the repositories the work changes, and
+whether its criteria are written) at the first technical decision this table lists for the route: on F0, D1 and route
+S, the engineer who confirms the brief, at Ready; on F1, D2 and C at Tier 1, the code owner, at Merge, where the pull
+request description shows the ROUTE line (for a plan with independent slices, first the tech lead who approves it); at
+Tier 2 and 3, the tech lead or architect, at Design + plan, in the same pull request; on route G, the tech lead or
+architect who approves `new-system.md`. A route change after Ready that touches the tier, the scope, the criteria or
+the controls is decided again, as `aidlc-start` says; a lighter route is chosen only at the start.
+
+The decision log (ADR 0027): the AI logs each judgement call it makes while building, one row each in the progress
+note, and the pull request description groups the rows by owner. The code owner reads them at Merge, with spec, plan
+and code. No row waits, and no one approves a row.
 
 Where a pull request approval is the record, the AI writes the tracker entry from it, with how it was confirmed, and
 asks before posting (ADR 0023). When the AI cannot read the review tool, the decider confirms in the session.

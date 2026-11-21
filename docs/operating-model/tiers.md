@@ -30,4 +30,8 @@ is Ready and Merge, and Release only when users see the change; a plan with inde
 users see the change. Tier 3 adds the specialists, Release always, and the hands-on restatement per slice. Every other
 stage states what it did and goes on; a person who disagrees says so.
 
+Ready shows the route, which the tech lead owns, and a technical person checks it at the first technical decision; the
+code owner reads the AI's decision log at Merge, with the spec, the plan and the code
+([tiers-table.md](tiers-table.md#decisions-by-tier), ADR 0027).
+
 Guide: 1.10.
