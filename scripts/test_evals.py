@@ -18,6 +18,14 @@ def cases() -> list[Path]:
     return sorted(p.parent for p in EVALS.glob("*/prompt.md"))
 
 
+def scaffold_env() -> dict[str, str]:
+    """The environment for a scaffold or a fixture run: the caller's, minus every GIT_* variable. A scaffold runs
+    `git init` and commits; an inherited GIT_DIR or GIT_WORK_TREE would point those at the caller's repository."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    return env
+
+
 def front(text: str) -> str:
     return text.split("---", 2)[1] if text.startswith("---") else ""
 
@@ -51,7 +59,7 @@ class EvalsTest(unittest.TestCase):
     def test_the_fixtures_build_a_green_repository(self):
         result = subprocess.run(["python3", "-m", "unittest", "discover", "-s", "tests", "-t", "."],
                                 cwd=EVALS / "fixtures" / "shipments", capture_output=True, text=True,
-                                env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+                                env=scaffold_env())
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_results_are_ignored(self):
@@ -78,7 +86,7 @@ class EvalsTest(unittest.TestCase):
                 continue
             with tempfile.TemporaryDirectory() as tmp:
                 result = subprocess.run(["bash", str(case / "setup.sh")], cwd=tmp, capture_output=True, text=True,
-                                        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+                                        env=scaffold_env())
                 self.assertEqual(result.returncode, 0, f"{case.name}: {result.stderr[-300:]}")
 
     def test_scaffold_commits_ignore_the_operators_hooks_and_signing(self):
@@ -117,6 +125,35 @@ class EvalsTest(unittest.TestCase):
                     self.assertIn("file_path", fm, f"{case.name}/{name}")
                 if re.search(r"before:|after:", fm):
                     self.assertIn("file_path", fm, f"{case.name}/{name}")
+
+
+class ScaffoldIsolationTest(unittest.TestCase):
+    """A scaffold runs `git init` and commits. It must never reach the caller's repository through an inherited
+    GIT_DIR or GIT_WORK_TREE (this once rewrote aidlc's own repository during a test run)."""
+
+    def test_a_scaffold_never_touches_the_callers_repository(self):
+        import tempfile
+        from unittest import mock
+        clean = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        case = next(c for c in cases() if (c / "setup.sh").is_file())
+        with tempfile.TemporaryDirectory() as victim, tempfile.TemporaryDirectory() as tmp:
+            git = ["git", "-c", "user.email=v@example.com", "-c", "user.name=v", "-c", "commit.gpgsign=false",
+                   "-c", "core.hooksPath=/dev/null"]
+            subprocess.run(["git", "init", "-q", victim], check=True, env=clean)
+            subprocess.run([*git, "-C", victim, "commit", "-q", "--allow-empty", "-m", "victim"], check=True, env=clean)
+            head = subprocess.run(["git", "-C", victim, "rev-parse", "HEAD"], capture_output=True, text=True,
+                                  env=clean).stdout
+            # GIT_DIR alone is the dangerous case: the scaffold's `git init` and commit then land in the victim.
+            with mock.patch.dict(os.environ, {"GIT_DIR": f"{victim}/.git"}):
+                result = subprocess.run(["bash", str(case / "setup.sh")], cwd=tmp, capture_output=True, text=True,
+                                        env=scaffold_env())
+            self.assertEqual(result.returncode, 0, result.stderr[-300:])
+            after = subprocess.run(["git", "-C", victim, "rev-parse", "HEAD"], capture_output=True, text=True,
+                                   env=clean).stdout
+            worktree = subprocess.run(["git", "-C", victim, "config", "--local", "--get", "core.worktree"],
+                                      capture_output=True, text=True, env=clean).stdout
+            self.assertEqual(after, head)
+            self.assertEqual(worktree, "")
 
 
 if __name__ == "__main__":
