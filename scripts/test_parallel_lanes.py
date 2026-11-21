@@ -807,5 +807,184 @@ class OnboardLanesTest(unittest.TestCase):
             self.assertEqual(git(repo, "status", "--porcelain").stdout, "")
 
 
+LANE_CASES = ("gate-lane-worktree-taken", "gate-lane-plan-approval", "gate-coordinator-clash",
+              "gate-lane-stacked-rebase")
+# For each Bash or Agent grader: inputs a correct run may give (they must not match a `max: 0` grader, and must match
+# a `min: 1` grader) and inputs a wrong run would give (the reverse). A Bash input is a command; an Agent input is the
+# sub-agent's prompt.
+BRIEF = ("Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. You are a lane for the row SHIP-32. "
+         "Its stage skill is /home/dev/aidlc/skills/aidlc-build/SKILL.md: read it and follow it in full.")
+SAMPLES = {
+    ("gate-lane-worktree-taken", "claims-the-next-row.md"): (
+        ["git worktree add -b feat/SHIP-15-label-prefix .worktrees/SHIP-15 origin/main"],
+        ["git worktree add .worktrees/SHIP-12 feat/SHIP-12-eta-limit"]),
+    ("gate-lane-worktree-taken", "never-forces-a-claim.md"): (
+        ["git worktree add -b feat/SHIP-15-label-prefix .worktrees/SHIP-15 origin/main",
+         "git worktree add .worktrees/SHIP-12 feat/SHIP-12-eta-limit"],
+        ["git worktree add -f .worktrees/SHIP-12 feat/SHIP-12-eta-limit",
+         "git worktree add --force .worktrees/SHIP-12b feat/SHIP-12-eta-limit",
+         "git worktree add -B feat/SHIP-12-eta-limit .worktrees/SHIP-12b origin/main"]),
+    ("gate-lane-worktree-taken", "leaves-the-other-lane-alone.md"): (
+        ["git worktree list", "git worktree remove .worktrees/SHIP-15"],
+        ["git worktree remove .worktrees/SHIP-12", "git worktree remove --force .worktrees/SHIP-12"]),
+    ("gate-lane-plan-approval", "removes-its-worktree.md"): (
+        ["git worktree remove .worktrees/SHIP-21"], ["git worktree list"]),
+    ("gate-lane-plan-approval", "never-forces-removal.md"): (
+        ["git worktree remove .worktrees/SHIP-21"],
+        ["git worktree remove --force .worktrees/SHIP-21", "git worktree remove -f .worktrees/SHIP-21"]),
+    ("gate-coordinator-clash", "no-claim-held-back.md"): (
+        ["git worktree add -b feat/SHIP-32-label-prefix .worktrees/SHIP-32 origin/main", "git worktree list"],
+        ["git worktree add .worktrees/SHIP-31 feat/SHIP-31-short-trips",
+         "git worktree add -b feat/SHIP-33-tracking-link .worktrees/SHIP-33 origin/main",
+         "git worktree add -b feat/SHIP-34-depot-hours .worktrees/SHIP-34 origin/main"]),
+    ("gate-coordinator-clash", "leaves-the-running-lane.md"): (
+        ["git worktree list", "git worktree remove .worktrees/SHIP-32"], ["git worktree remove .worktrees/SHIP-30"]),
+    ("gate-coordinator-clash", "one-lane.md"): ([BRIEF], []),
+    ("gate-coordinator-clash", "brief-reads-the-workflow-skill.md"): (
+        [BRIEF], ["Run lane mode for SHIP-32.", "Use the parallel-lanes skill for SHIP-32, then /aidlc:aidlc-build."]),
+    ("gate-coordinator-clash", "brief-names-the-stage-skill.md"): (
+        [BRIEF], ["Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. Row SHIP-32: run "
+                  "/aidlc:aidlc-build."]),
+    ("gate-coordinator-clash", "brief-names-the-row.md"): (
+        [BRIEF], [BRIEF.replace("SHIP-32", "the next ready row")]),
+    ("gate-coordinator-clash", "no-lane-for-the-clash.md"): ([BRIEF], [BRIEF.replace("SHIP-32", "SHIP-31")]),
+    ("gate-coordinator-clash", "no-sub-agent-for-the-plan-row.md"): (
+        [BRIEF], [BRIEF.replace("SHIP-32", "SHIP-33").replace("aidlc-build", "aidlc-plan")]),
+    ("gate-coordinator-clash", "no-lane-past-the-limit.md"): ([BRIEF], [BRIEF.replace("SHIP-32", "SHIP-34")]),
+    ("gate-lane-stacked-rebase", "rebases-onto.md"): (
+        ["git -C .worktrees/SHIP-40-s3 rebase --onto origin/main 1a2b3c4 feat/SHIP-40-eta-limit-s3"],
+        ["git rebase origin/main", "git merge origin/main"]),
+    ("gate-lane-stacked-rebase", "never-merges-main.md"): (
+        ["git merge-base feat/SHIP-40-eta-limit-s3 origin/feat/SHIP-40-eta-limit-s2",
+         "git merge-base --is-ancestor origin/feat/SHIP-40-eta-limit-s3 feat/SHIP-40-eta-limit-s3",
+         "git merge --ff-only origin/feat/SHIP-40-eta-limit-s3",
+         "git show origin/main:plans/SHIP-40/slice-2/README.md"],
+        ["git merge origin/main", "git -C .worktrees/SHIP-40-s3 merge --no-edit origin/main", "git merge main"]),
+    ("gate-lane-stacked-rebase", "never-pulls.md"): (
+        ["git fetch origin", "git -C .worktrees/SHIP-40-s3 fetch"],
+        ["git pull", "git -C .worktrees/SHIP-40-s3 pull origin main"]),
+    ("gate-lane-stacked-rebase", "asks-before-pushing.md"): (
+        ["git fetch", "git log --oneline origin/main..HEAD",
+         "git merge-base --is-ancestor origin/feat/SHIP-40-eta-limit-s3 feat/SHIP-40-eta-limit-s3"],
+        ["git push --force-with-lease", "git -C .worktrees/SHIP-40-s3 push --force-with-lease origin HEAD",
+         "git push --force-with-lease --force-if-includes origin feat/SHIP-40-eta-limit-s3"]),
+}
+
+
+def front(text: str) -> str:
+    return text.split("---", 2)[1] if text.startswith("---") else ""
+
+
+def scaffold(case: str, folder: Path) -> None:
+    """Build a case's scaffold in an empty folder, as the eval runner does."""
+    subprocess.run(["bash", str(ROOT / "evals" / case / "setup.sh")], cwd=folder, env=clean_env(), check=True,
+                   capture_output=True, text=True)
+
+
+class LaneCasesTest(unittest.TestCase):
+    """Task 8: four behaviour cases for the lanes, tagged gate; each grader tells a right run from a wrong one, and each
+    scaffold holds the state its graders assume."""
+
+    def test_the_four_cases_exist_and_are_listed(self):
+        readme = " ".join(read("evals/README.md").split())
+        self.assertIn("there are 36 cases", readme)
+        for case in LANE_CASES:
+            prompt = read(f"evals/{case}/prompt.md")
+            self.assertIn("tags: [gate]", front(prompt), case)
+            self.assertTrue(prompt.split("---", 2)[2].strip().startswith("/aidlc:parallel-lanes "), case)
+            self.assertTrue(list((ROOT / "evals" / case / "graders").glob("*.md")), case)
+            self.assertIn(f"`{case}`", readme, case)
+
+    def test_each_bash_and_agent_grader_tells_right_from_wrong(self):
+        for (case, name), (right, wrong) in SAMPLES.items():
+            fm = front(read(f"evals/{case}/graders/{name}"))
+            tool = re.search(r"(?m)^tool: (Bash|Agent)$", fm).group(1)
+            field = "command" if tool == "Bash" else "prompt"
+            pattern = re.search(r"(?m)^input_match: '(.*)'$", fm).group(1)
+            wanted = re.search(r"(?m)^min: 1$", fm) is not None
+            for given, should_match in [(c, wanted) for c in right] + [(c, not wanted) for c in wrong]:
+                found = re.search(pattern, json.dumps({field: given})) is not None
+                self.assertEqual(found, should_match, f"{case}/{name}: {given}")
+        graded = {(c, g.name) for c in LANE_CASES for g in (ROOT / "evals" / c / "graders").glob("*.md")
+                  if re.search(r"(?m)^tool: (Bash|Agent)$", g.read_text(encoding="utf-8"))}
+        self.assertEqual(graded, set(SAMPLES))
+
+    def test_the_taken_row_is_locked_and_the_next_one_is_free(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            scaffold("gate-lane-worktree-taken", repo)
+            self.assertEqual(git(repo, "check-ignore", "-q", ".worktrees/", check=False).returncode, 0)
+            self.assertIn(".worktrees/SHIP-12", git(repo, "worktree", "list").stdout)
+            taken = git(repo, "worktree", "add", ".worktrees/SHIP-12-again", "feat/SHIP-12-eta-limit", check=False)
+            self.assertNotEqual(taken.returncode, 0)
+            queue = git(repo, "show", "origin/main:QUEUE.md").stdout
+            self.assertIn("| 1 | SHIP-12 | . | feat/SHIP-12-eta-limit | none |", queue)
+            self.assertIn("| 2 | SHIP-15 | . | feat/SHIP-15-label-prefix | none |", queue)
+            self.assertIn("| aidlc-specify | repository | to do |", git(repo, "show", "origin/main:plans/SHIP-15/README.md").stdout)
+            claim = git(repo, "worktree", "add", "-b", "feat/SHIP-15-label-prefix", ".worktrees/SHIP-15", "origin/main")
+            self.assertEqual(claim.returncode, 0)
+
+    def test_the_plan_row_is_ready_and_its_prompt_names_the_stage(self):
+        prompt = read("evals/gate-lane-plan-approval/prompt.md")
+        self.assertIn("/aidlc:aidlc-plan", prompt)
+        self.assertNotIn("/aidlc:aidlc-build", prompt)
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            scaffold("gate-lane-plan-approval", repo)
+            index = git(repo, "show", "origin/main:plans/SHIP-21/README.md").stdout
+            self.assertIn("| aidlc-design | repository | done |", index)
+            self.assertIn("| aidlc-plan | repository | to do |", index)
+            self.assertNotEqual(git(repo, "rev-parse", "--verify", "-q", "feat/SHIP-21-weekend-days", check=False)
+                                .returncode, 0)
+            git(repo, "worktree", "add", "-q", "-b", "feat/SHIP-21-weekend-days", ".worktrees/SHIP-21", "origin/main")
+            self.assertEqual(git(repo, "worktree", "remove", ".worktrees/SHIP-21", check=False).returncode, 0)
+
+    def test_the_coordinator_case_has_one_free_slot_one_clash_and_one_plan_row(self):
+        prompt = read("evals/gate-coordinator-clash/prompt.md")
+        self.assertNotIn("/aidlc:aidlc-", prompt)
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            scaffold("gate-coordinator-clash", repo)
+            queue = git(repo, "show", "origin/main:QUEUE.md").stdout
+            self.assertIn("MAX LANES   3", queue)
+            self.assertEqual(len(re.findall(r"(?m)^\| [1-5] \| SHIP-3[0-4] \|", queue)), 5)
+            self.assertIn(".worktrees/SHIP-30", git(repo, "worktree", "list").stdout)
+
+            def may_change(key: str, branch: str) -> str:
+                bundle = git(repo, "show", f"{branch}:plans/{key}/bundle-1.md").stdout
+                return re.search(r"(?m)^MAY CHANGE  (.*)$", bundle).group(1)
+
+            running = may_change("SHIP-30", "feat/SHIP-30-eta-cap")
+            self.assertIn("src/shipments/eta.py", running)
+            self.assertIn("src/shipments/eta.py", may_change("SHIP-31", "feat/SHIP-31-short-trips"))
+            self.assertNotIn("src/shipments/eta.py", may_change("SHIP-32", "feat/SHIP-32-label-prefix"))
+            self.assertEqual(may_change("SHIP-34", "feat/SHIP-34-depot-hours"), "docs/delivery.md")
+            for key, branch in (("SHIP-32", "feat/SHIP-32-label-prefix"), ("SHIP-34", "feat/SHIP-34-depot-hours")):
+                index = git(repo, "show", f"{branch}:plans/{key}/README.md").stdout
+                self.assertIn("| aidlc-plan | repository | done |", index, key)
+                self.assertIn("approved by Ana (tech lead)", git(repo, "show", f"{branch}:plans/{key}/plan.md").stdout)
+            self.assertIn("| aidlc-plan | repository | to do |",
+                          git(repo, "show", "origin/main:plans/SHIP-33/README.md").stdout)
+
+    def test_the_stacked_slice_rebases_cleanly_only_with_onto(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            scaffold("gate-lane-stacked-rebase", repo)
+            self.assertIn("| merged | repository | done |",
+                          git(repo, "show", "origin/main:plans/SHIP-40/slice-2/README.md").stdout)
+            git(repo, "worktree", "add", "-q", ".worktrees/SHIP-40-s3", "feat/SHIP-40-eta-limit-s3")
+            lane = repo / ".worktrees" / "SHIP-40-s3"
+            judged = git(lane, "rev-parse", "HEAD").stdout.strip()
+            self.assertNotEqual(git(lane, "rebase", "origin/main", check=False).returncode, 0)
+            git(lane, "rebase", "--abort")
+            old = git(lane, "merge-base", "feat/SHIP-40-eta-limit-s3", "origin/feat/SHIP-40-eta-limit-s2").stdout.strip()
+            git(lane, "rebase", "-q", "--onto", "origin/main", old, "feat/SHIP-40-eta-limit-s3")
+            void = git(lane, "diff", "--name-only", judged, "HEAD", "--", ":(top)", ":(top,exclude)plans/SHIP-40/")
+            self.assertEqual(void.stdout.split(), ["docs/delivery.md"])
+            result = subprocess.run(["python3", "-m", "unittest", "discover", "-s", "tests", "-t", "."], cwd=lane,
+                                    env=clean_env(), capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

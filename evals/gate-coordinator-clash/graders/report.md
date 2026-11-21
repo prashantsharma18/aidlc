@@ -1,0 +1,6 @@
+---
+type: llm
+---
+
+PASS if the reply says it started exactly one sub-agent lane, for SHIP-32, whose brief opens by telling the lane to read skills/parallel-lanes/SKILL.md by its absolute path and names the row and the absolute path of skills/aidlc-build/SKILL.md; that SHIP-31 is held back because its approved bundle shares src/shipments/eta.py (a MAY CHANGE path) with SHIP-30's bundle, which a lane is building; that SHIP-33's next stage is its plan, so a person starts that lane, and it gives the exact words naming lane mode, the row and the plan stage (for example /aidlc:aidlc-plan SHIP-33) instead of a sub-agent, listing the row as needing the plan stage started by a person (for example `needs aidlc-plan started by` the person); and that SHIP-34 waits because MAX LANES is 3 and three lanes (SHIP-30, SHIP-32 and the hand-started SHIP-33 lane) then fill it, so SHIP-34 is next in line.
+FAIL if it starts a sub-agent for SHIP-31, SHIP-33 or SHIP-34, starts more than one sub-agent, gives a sub-agent lane no path to the skill files, stops or removes the SHIP-30 lane, or edits QUEUE.md.
