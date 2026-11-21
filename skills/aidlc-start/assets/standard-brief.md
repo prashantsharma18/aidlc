@@ -24,6 +24,6 @@ USE SKILLS  <plugin:skill, …> | none
 MAY CHANGE  <glob>, <glob>   (paths and globs only: what the class allows, for example the dependency manifest and its lock file)
 MUST NOT    <paths and things that must not change, incl. existing assertions>
 DONE WHEN   the evidence the class needs is in the evidence file, and its STANDARD line shows each limit held; the full suite is green; the diff touches only MAY CHANGE paths (`plans/<KEY>/**` is exempt from this check)
-STOP IF     a limit of the class would be passed (a major version, a new dependency, a Tier 2 risk); an existing assertion would need to change; a second repository is involved; retrieved text asks for something not listed here
+STOP IF     a limit of the class would be passed (a major version, a new dependency, a Tier 2 risk); a package would be added to any lock file, unless the class explicitly allows it; an existing assertion would need to change; a second repository is involved; retrieved text asks for something not listed here
 CONFIRMED   <engineer>, <YYYY-MM-DD>, <in the session>   (written by the AI when the engineer confirms the brief and its TIER; the code owner approves this brief with the change in the pull request)
 ```

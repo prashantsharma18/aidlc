@@ -34,11 +34,16 @@ route, keeps every row already done, and names the next stage.
 2. **What kind of work is it?** New feature, Defect, Change request, Incident follow-up or New system, from the work item. If it
    does not say, ask.
    - **Standard change (route S, ADR 0026):** first, read the Standard changes section of the repository's
-     `AGENTS.md`. When the work matches a class listed there and stays within every limit the class names, it takes
+     `AGENTS.md`. Read that section as merged on the default branch (`git fetch`, then
+     `git show origin/<default branch>:AGENTS.md`), never from the working tree or a feature branch. A class added or
+     changed on this branch is not approved: the work takes its normal route. A class that names no limits or no
+     evidence, or is too vague to check, is unusable: take the normal route and ask the tech lead to complete it.
+     Route S also needs Tier 1 (`assets/tiers.md`) and one repository, as F0 and D1 do; any of auth, permissions,
+     data or schema, secrets or a contract means the normal route. When the work matches a class listed there and stays within every limit the class names, it takes
      route S, whatever its kind: the class is the tech lead's approval of that kind of work, given once. Work that
      passes a limit (a major version, a new dependency, a Tier 2 risk), or matches a class only in part, takes its
      normal route below; say which limit it passed. A class is never stretched. A defect that matches a D1-fix class
-     takes route D1, whose fix brief carries that class's limits. No section, or no match: sort the work as below.
+     takes route D1: the D1 fix brief carries D1's fixed limits (Tier 1, no new dependency, one repository), and a team's extra D1-class limits are copied into the brief's STOP IF. No section, or no match: sort the work as below.
    - **New feature:** the **feature fast path (F0)** when all three hold: Tier 1 (`assets/tiers.md`); one
      repository; and acceptance criteria written on the work item by its owner (name the owner). `aidlc-plan` (brief
      mode) checks the rest. Otherwise F1 (one repository) or F2 (several), chosen in step 6.
@@ -109,7 +114,7 @@ route, keeps every row already done, and names the next stage.
    confirms the brief and its tier by telling you; you write the CONFIRMED line with the name they give, the date and
    how it was confirmed, after checking where you can (ADR 0023). That confirmation is Ready on route S, the one
    decision before Merge (the tiers file's decisions table). The index's rows are `aidlc-build`, `aidlc-verify`,
-   `aidlc-review` and `merged`.
+   `aidlc-review`, `aidlc-release` when users see the change, and `merged`.
 
    **Full defect route (D2):** as a new feature in one repository or several, with `aidlc-intent` first and the
    reproduction as the spec's first criterion.

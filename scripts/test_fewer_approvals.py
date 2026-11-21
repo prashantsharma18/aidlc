@@ -531,6 +531,32 @@ class RouteSTest(unittest.TestCase):
         self.assertEqual(len(copies), 1)
         self.assertIn("STANDARD   {{on route S: the class, and each limit with how it held | none}}", copies.pop())
 
+    def test_route_s_reads_the_approved_list_and_matches_exactly(self):
+        steps = section(skill("aidlc-start"), "## Steps")
+        for phrase in ("Read that section as merged on the default branch (`git fetch`, then "
+                       "`git show origin/<default branch>:AGENTS.md`), never from the working tree or a feature branch.",
+                       "A class added or changed on this branch is not approved: the work takes its normal route.",
+                       "A class that names no limits or no evidence, or is too vague to check, is unusable: take the "
+                       "normal route and ask the tech lead to complete it.",
+                       "Route S also needs Tier 1 (`assets/tiers.md`) and one repository, as F0 and D1 do; any of auth, "
+                       "permissions, data or schema, secrets or a contract means the normal route.",
+                       "the D1 fix brief carries D1's fixed limits (Tier 1, no new dependency, one repository), and "
+                       "a team's extra D1-class limits are copied into the brief's STOP IF",
+                       "`aidlc-release` when users see the change"):
+            self.assertIn(" ".join(phrase.split()), " ".join(steps.split()), phrase)
+        self.assertNotRegex(steps, r"(?i)read the standard changes section of the repository's\s+`AGENTS.md`\.\s+When")
+        build = skill("aidlc-build")
+        self.assertIn("The pause lifts only when the brief's RECIPE and the commit's `Recipe:` trailer name the class's "
+                      "tool and version exactly; otherwise pause as usual.", build)
+        self.assertIn("a package added to any lock file counts as a new dependency unless the class explicitly allows it",
+                      section(build, "## Stop if"))
+        self.assertIn("compares the commit's `Recipe:` trailer with the evidence file's STANDARD line",
+                      flat("agents/reviewer-compliance.md"))
+        brief = read(BRIEF)
+        self.assertIn("a package would be added to any lock file, unless the class explicitly allows it", brief)
+        self.assertIn("the packages added to lock files, or none", read("skills/aidlc-build/assets/review-evidence.md"))
+
+
 
 if __name__ == "__main__":
     unittest.main()

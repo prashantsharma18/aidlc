@@ -18,7 +18,7 @@ HEAD       {{git rev-parse HEAD: the commit the reviewers judge}}
 BASE       {{git fetch, then git merge-base HEAD origin/<default branch>}}
 BRANCH     {{git branch --show-current}}
 WRITTEN    {{YYYY-MM-DD}}, by {{the build session | the review session}}
-STANDARD   {{on route S: the class, and each limit with how it held | none}}
+STANDARD   {{on route S: the class, and each limit with how it held | none}}   (route S: also the packages added to lock files, or none)
 ```
 
 ## Changed files (reviewer-compliance)
