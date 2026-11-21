@@ -29,7 +29,15 @@ def flat(rel: str) -> str:
 
 
 def skill(name: str) -> str:
-    return flat(f"skills/{name}/SKILL.md")
+    """The skill's SKILL.md, then its references/*.md in name order, whitespace-collapsed (Plan 26)."""
+    files = sorted((ROOT / "skills" / name / "references").glob("*.md"))
+    return " ".join([flat(f"skills/{name}/SKILL.md")] + [flat(p.relative_to(ROOT).as_posix()) for p in files])
+
+
+def refs(name: str) -> str:
+    """A skill's references/*.md in name order, whitespace-collapsed (Plan 26)."""
+    return " ".join(flat(p.relative_to(ROOT).as_posix())
+                    for p in sorted((ROOT / "skills" / name / "references").glob("*.md")))
 
 
 def section(text: str, heading: str) -> str:
@@ -471,7 +479,7 @@ class RouteSTest(unittest.TestCase):
         raw = read("skills/aidlc-start/SKILL.md")
         self.assertIn("  templates: [story-index, standard-brief]\n", raw.split("\n---", 1)[0])
         start = skill("aidlc-start")
-        steps = section(start, "## Steps")
+        steps = section(start, "## Steps") + " " + refs("aidlc-start")
         for phrase in ("**Standard change (route S, ADR 0026):** first, read the Standard changes section of the "
                        "repository's `AGENTS.md`.",
                        "When the work matches a class listed there and stays within every limit the class names, it "
@@ -543,7 +551,7 @@ class RouteSTest(unittest.TestCase):
         self.assertIn("STANDARD   {{on route S: the class, and each limit with how it held | none}}", copies.pop())
 
     def test_route_s_reads_the_approved_list_and_matches_exactly(self):
-        steps = section(skill("aidlc-start"), "## Steps")
+        steps = section(skill("aidlc-start"), "## Steps") + " " + refs("aidlc-start")
         for phrase in ("Read that section as merged on the default branch (`git fetch`, then "
                        "`git show origin/<default branch>:AGENTS.md`), never from the working tree or a feature branch.",
                        "A class added or changed on this branch is not approved: the work takes its normal route.",

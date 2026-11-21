@@ -28,7 +28,15 @@ def flat(rel: str) -> str:
 
 
 def skill(name: str) -> str:
-    return flat(f"skills/{name}/SKILL.md")
+    """The skill's SKILL.md, then its references/*.md in name order, whitespace-collapsed (Plan 26)."""
+    files = sorted((ROOT / "skills" / name / "references").glob("*.md"))
+    return " ".join([flat(f"skills/{name}/SKILL.md")] + [flat(p.relative_to(ROOT).as_posix()) for p in files])
+
+
+def refs(name: str) -> str:
+    """A skill's references/*.md in name order, whitespace-collapsed (Plan 26)."""
+    return " ".join(flat(p.relative_to(ROOT).as_posix())
+                    for p in sorted((ROOT / "skills" / name / "references").glob("*.md")))
 
 
 def section(text: str, heading: str) -> str:
@@ -638,7 +646,8 @@ class SlicePlanTest(unittest.TestCase):
                       lines[0])
 
     def test_the_plan_marks_slices_independent_only_on_purpose(self):
-        step5 = skill("aidlc-plan").split(" 5. Slice the work", 1)[1].split(" 6. Rate the tier", 1)[0]
+        step5 = (skill("aidlc-plan").split(" 5. Slice the work", 1)[1].split(" 6. Rate the tier", 1)[0] + " "
+                 + refs("aidlc-plan"))
         for phrase in ("**Independent slices (ADR 0025).**",
                        "give every bundle a `DEPENDS ON` line, `none` or the one slice it builds on",
                        "The first slice runs on the part's branch.",
@@ -678,7 +687,7 @@ class SiblingSlicesTest(unittest.TestCase):
     never merged."""
 
     def test_a_slice_on_its_own_branch_edits_only_its_own_files(self):
-        build = section(skill("aidlc-build"), "## Inputs")
+        build = section(skill("aidlc-build"), "## Inputs") + " " + refs("aidlc-build")
         self.assertIn("it keeps its index, its evidence file and its pull request's documents in "
                       "`plans/<KEY>/slice-<n>/`, and its progress note stays `plans/<KEY>/progress-<n>.md`", build)
         self.assertIn("It edits only its own row, its own progress note and its own evidence file, so sibling pull "
@@ -693,7 +702,8 @@ class SiblingSlicesTest(unittest.TestCase):
         self.assertIn("(or `<branch>-s<n>` for a slice on its own branch)", section(skill("aidlc-build"), "## Produces"))
 
     def test_a_stacked_slice_is_moved_never_merged(self):
-        step1 = section(skill("aidlc-build"), "## Steps").split(" 2. Read the bundle's TIER", 1)[0]
+        step1 = (section(skill("aidlc-build"), "## Steps").split(" 2. Read the bundle's TIER", 1)[0] + " "
+                 + refs("aidlc-build"))
         self.assertIn("is moved first, as `parallel-lanes` says under \"A stacked slice after its parent merges\"", step1)
         self.assertIn("(read its `SKILL.md`, in the folder beside this skill's)", step1)
         self.assertIn("its own commits only, with `git rebase --onto`, never by merging the default branch into it",
@@ -1409,7 +1419,8 @@ class FinalReviewTest(unittest.TestCase):
         checklist = flat("skills/aidlc-plan/assets/plan.md")
         self.assertIn('every bundle field filled, or "none" (except DEPENDS ON, below); no placeholder left', checklist)
         self.assertIn('each "none" or one existing earlier slice, so no cycle forms', checklist)
-        step5 = skill("aidlc-plan").split(" 5. Slice the work", 1)[1].split(" 6. Rate the tier", 1)[0]
+        step5 = (skill("aidlc-plan").split(" 5. Slice the work", 1)[1].split(" 6. Rate the tier", 1)[0] + " "
+                 + refs("aidlc-plan"))
         self.assertIn("`DEPENDS ON` names at most one slice, and only an existing slice earlier in the plan, so the "
                       "slices never form a cycle", step5)
         bundle = read("skills/aidlc-plan/assets/task-bundle.md")

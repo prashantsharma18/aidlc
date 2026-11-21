@@ -274,5 +274,43 @@ class ValidateTest(unittest.TestCase):
         self.assertTrue(any("scripts/go.py" in p for p in problems), problems)
 
 
+class StageReferencesTest(unittest.TestCase):
+    """Plan 26: a stage skill's references hold the steps of one case; its gates stay in SKILL.md."""
+
+    NAMED = STAGE_BODY.replace("## Produces", "On route G: read `references/route-g.md` now and follow it.\n## Produces")
+    CASE = "# Route G\n\nSent here from `aidlc-plan` step 5; this skill's Gate, Stop if and Rules still apply.\n\n1. x\n"
+
+    def check(self, name, body, refs):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            text = practice(name, body=body) if not name.startswith("aidlc-") else skill(name, body=body)
+            package(root, {name: text})
+            for file_name, ref in refs.items():
+                (root / "skills" / name / "references").mkdir(exist_ok=True)
+                (root / "skills" / name / "references" / file_name).write_text(ref, encoding="utf-8")
+            return validate.validate(root)
+
+    def test_a_named_reference_with_no_gate_has_no_problems(self):
+        self.assertEqual(self.check("aidlc-plan", self.NAMED, {"route-g.md": self.CASE}), [])
+
+    def test_a_reference_never_holds_a_gate_section(self):
+        for heading in ("## Gate", "## Stop if", "## Common excuses", "## Red flags", "## Rules"):
+            problems = self.check("aidlc-plan", self.NAMED, {"route-g.md": self.CASE + f"\n{heading}\nx\n"})
+            self.assertTrue(any("references/route-g.md" in p and heading in p for p in problems), (heading, problems))
+
+    def test_a_heading_that_only_starts_like_a_gate_is_not_one(self):
+        self.assertEqual(self.check("aidlc-plan", self.NAMED, {"route-g.md": self.CASE + "\n## Rules of thumb\nx\n"}),
+                         [])
+
+    def test_every_reference_of_a_stage_skill_is_named_in_its_skill_md(self):
+        problems = self.check("aidlc-plan", self.NAMED, {"route-g.md": self.CASE, "revision.md": self.CASE})
+        self.assertTrue(any("references/revision.md" in p and "does not name it" in p for p in problems), problems)
+        self.assertFalse(any("references/route-g.md" in p for p in problems), problems)
+
+    def test_a_practice_keeps_its_references_as_today(self):
+        self.assertEqual(self.check("writing-tests", PRACTICE_BODY, {"checklist.md": "# Checklist\n\n## Rules\nx\n"}),
+                         [])
+
+
 if __name__ == "__main__":
     unittest.main()

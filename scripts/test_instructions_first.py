@@ -23,7 +23,15 @@ def flat(rel: str) -> str:
 
 
 def skill(name: str) -> str:
-    return flat(f"skills/{name}/SKILL.md")
+    """The skill's SKILL.md, then its references/*.md in name order, whitespace-collapsed (Plan 26)."""
+    files = sorted((ROOT / "skills" / name / "references").glob("*.md"))
+    return " ".join([flat(f"skills/{name}/SKILL.md")] + [flat(p.relative_to(ROOT).as_posix()) for p in files])
+
+
+def refs(name: str) -> str:
+    """A skill's references/*.md in name order, whitespace-collapsed (Plan 26)."""
+    return " ".join(flat(p.relative_to(ROOT).as_posix())
+                    for p in sorted((ROOT / "skills" / name / "references").glob("*.md")))
 
 
 def section(text: str, heading: str) -> str:
@@ -605,7 +613,8 @@ class FinalReviewTest(unittest.TestCase):
                         "git diff <commit>^ <commit> -- ':(top)<test path>'"):
             self.assertIn(command, text, command)
         self.assertNotRegex(text, r"-- '<|-- plans/")
-        step5 = skill("aidlc-build").split("5. **When the bundle has a RECIPE", 1)[1].split(" 6. ", 1)[0]
+        step5 = (skill("aidlc-build").split("5. **When the bundle has a RECIPE", 1)[1].split(" 6. ", 1)[0] + " "
+                 + refs("aidlc-build"))
         self.assertIn("git diff <commit>^ <commit> -- ':(top)<test path>'", step5)
         self.assertIn("`cd \"$(git rev-parse --show-toplevel)\"`", step5)
         self.assertNotIn("-- '<test paths>'", step5)
@@ -647,7 +656,8 @@ class FinalReviewTest(unittest.TestCase):
                                                        "run the test command there again, for the commit's count")]
             self.assertEqual(order, sorted(order), rel)
             self.assertIn("because the recipe then changes the worktree", recipe, rel)
-        step5 = skill("aidlc-build").split("5. **When the bundle has a RECIPE", 1)[1].split(" 6. ", 1)[0]
+        step5 = (skill("aidlc-build").split("5. **When the bundle has a RECIPE", 1)[1].split(" 6. ", 1)[0] + " "
+                 + refs("aidlc-build"))
         lowered = step5.lower()
         order = [lowered.index(p.lower()) for p in ("run the repository's test command (named in `AGENTS.md`) there "
                                                     "first, for the parent's count", "run the approved command",

@@ -12,7 +12,9 @@ def read(rel: str) -> str:
 
 
 def skill(name: str) -> str:
-    return read(f"skills/{name}/SKILL.md")
+    """The skill's SKILL.md, then its references/*.md in name order, whitespace-collapsed (Plan 26)."""
+    files = sorted((ROOT / "skills" / name / "references").glob("*.md"))
+    return " ".join([read(f"skills/{name}/SKILL.md")] + [read(p.relative_to(ROOT).as_posix()) for p in files])
 
 
 def section(body: str, heading: str) -> str:

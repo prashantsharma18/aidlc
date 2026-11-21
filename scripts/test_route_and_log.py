@@ -34,7 +34,9 @@ def flat(rel: str) -> str:
 
 
 def skill(name: str) -> str:
-    return flat(f"skills/{name}/SKILL.md")
+    """The skill's SKILL.md, then its references/*.md in name order, whitespace-collapsed (Plan 26)."""
+    files = sorted((ROOT / "skills" / name / "references").glob("*.md"))
+    return " ".join([flat(f"skills/{name}/SKILL.md")] + [flat(p.relative_to(ROOT).as_posix()) for p in files])
 
 
 def section(text: str, heading: str) -> str:

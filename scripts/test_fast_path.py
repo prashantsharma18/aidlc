@@ -12,7 +12,15 @@ def read(rel: str) -> str:
 
 
 def skill(name: str) -> str:
-    return read(f"skills/{name}/SKILL.md")
+    """The skill's SKILL.md, then its references/*.md in name order, whitespace-collapsed (Plan 26)."""
+    files = sorted((ROOT / "skills" / name / "references").glob("*.md"))
+    return " ".join([read(f"skills/{name}/SKILL.md")] + [read(p.relative_to(ROOT).as_posix()) for p in files])
+
+
+def refs(name: str) -> str:
+    """A skill's references/*.md in name order, whitespace-collapsed (Plan 26)."""
+    return " ".join(read(p.relative_to(ROOT).as_posix())
+                    for p in sorted((ROOT / "skills" / name / "references").glob("*.md")))
 
 
 def section(body: str, heading: str) -> str:
@@ -177,7 +185,8 @@ class ReviewFixesTest(unittest.TestCase):
         start = skill("aidlc-start")
         self.assertIn("**An index for this key already exists**", section(start, "## Steps"))
         self.assertIn("(re-routed from <old route>, <YYYY-MM-DD>: <reason>)", start)
-        self.assertIn("`stories/<KEY>/README.md`", section(start, "**An index for this key already exists**"))
+        self.assertIn("`stories/<KEY>/README.md`", section(start, "**An index for this key already exists**") + " "
+                      + refs("aidlc-start"))
         plan = skill("aidlc-plan")
         self.assertEqual(plan.count("it is route D2, and `aidlc-start` re-routes it"), 2)
         self.assertIn("it is route F1, and `aidlc-start` re-routes it. 2.", plan)

@@ -53,6 +53,9 @@ WHOLE_TOOLS = {"Read", "Edit", "Write", "Bash", "Grep", "Glob"}
 SKILL_DIRS = ("assets", "references", "scripts")
 NAMED_FILE = re.compile(r"`((?:assets|references|scripts)/[A-Za-z0-9._-]+)`")
 TEXT_SUFFIXES = {".md", ".py", ".sh", ".txt", ".json", ".yml", ".yaml"}
+# A stage skill keeps every gate in SKILL.md; its references/ hold only the steps of one case, and SKILL.md names each
+# one with the condition to read it (docs/design/2026-11-21-shorter-stage-skills.md).
+GATE_SECTIONS = ("## Gate", "## Stop if", "## Common excuses", "## Red flags", "## Rules")
 
 
 def front_matter(text: str) -> dict[str, str] | None:
@@ -88,6 +91,22 @@ def check_sections(rel: str, text: str, sections: tuple[str, ...], gate_where: s
     return problems
 
 
+def check_references(folder: Path, folder_rel: str, text: str) -> list[str]:
+    """A stage skill's reference holds no gate section, and the skill's SKILL.md names it."""
+    problems = []
+    for ref in sorted((folder / "references").glob("*")):
+        if not ref.is_file():
+            continue
+        rel = f"{folder_rel}/references/{ref.name}"
+        if f"`references/{ref.name}`" not in text:
+            problems.append(f"{rel}: SKILL.md does not name it; name it with the condition to read it")
+        if ref.suffix in TEXT_SUFFIXES:
+            body = ref.read_text(encoding="utf-8")
+            problems += [f"{rel}: holds '{h}'; a reference never holds a gate, which stays in SKILL.md"
+                         for h in GATE_SECTIONS if re.search(rf"(?m)^{re.escape(h)}[ \t]*$", body)]
+    return problems
+
+
 def check_skill(path: Path, root: Path) -> list[str]:
     rel = path.relative_to(root).as_posix()
     folder_rel = path.parent.relative_to(root).as_posix()
@@ -115,6 +134,7 @@ def check_skill(path: Path, root: Path) -> list[str]:
         problems += check_sections(rel, text, WORKFLOW_SECTIONS, "the Rules")
     elif folder.startswith(HOUSE_PREFIXES):
         problems += check_sections(rel, text, SECTIONS, "the gate")
+        problems += check_references(path.parent, folder_rel, text)
     elif KIND_PRACTICE.search(head) and folder not in EARLIER_PRACTICES:
         problems += check_sections(rel, text, PRACTICE_SECTIONS, "the Rules")
     problems += portability(rel, text)
