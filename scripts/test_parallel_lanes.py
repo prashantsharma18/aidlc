@@ -162,6 +162,27 @@ class WorkflowKindTest(unittest.TestCase):
         self.assertIn("a workflow name never starts with `aidlc-` or with an \"-ing\" word", standards)
         self.assertIn("`using-aidlc` (`metadata.kind: map`) keeps the open format", standards)
 
+    def test_a_workflow_name_may_start_with_a_noun_that_ends_in_ing(self):
+        for name in ("ring-buffer", "thing-map", "string-tools", "spring-lanes", "ingest-queue"):
+            self.assertEqual(self.check({name: workflow(name)}), [], name)
+
+    def test_the_other_kinds_are_unaffected_next_to_a_workflow(self):
+        stage_body = WORKFLOW_BODY.replace("## Steps\n1. x\n", "## Steps\n1. x\n## Produces\nx\n## Gate\nx\n")
+        practice_body = WORKFLOW_BODY.replace("## Inputs\nx\n", "").replace("## Stop if", "## Checks\nx\n## Stop if")
+        skills = {"parallel-lanes": workflow("parallel-lanes"),
+                  "aidlc-stage": workflow("aidlc-stage", stage_body, "stage"),
+                  "doing-checks": workflow("doing-checks", practice_body, "practice")}
+        self.assertEqual(self.check(skills), [])
+        broken = dict(skills, **{"aidlc-stage": workflow("aidlc-stage", WORKFLOW_BODY, "stage")})
+        self.assertTrue(any("missing section '## Produces'" in p for p in self.check(broken)))
+
+    def test_a_workflow_kind_in_the_body_or_unindented_is_not_a_workflow(self):
+        in_body = workflow("parallel-lanes", "# Essay\n  kind: workflow\n", "other")
+        top_level = ("---\nname: parallel-lanes\ndescription: Runs work. Use when needed.\nkind: workflow\n---\n"
+                     "# Essay\n")
+        self.assertEqual(self.check({"parallel-lanes": in_body}), [])
+        self.assertEqual(self.check({"parallel-lanes": top_level}), [])
+
 
 if __name__ == "__main__":
     unittest.main()

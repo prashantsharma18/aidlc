@@ -26,7 +26,7 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
   practice`) keep: When to use, Steps, Checks, Stop if, Common excuses, Red flags, Rules; the eight earlier practices
   keep their own structure. Workflow skills (`metadata.kind: workflow`, ADR 0025) run work across sessions and keep:
   When to use, Inputs, Steps, Stop if, Common excuses, Red flags, Rules; a workflow name never starts with `aidlc-` or
-  with an "-ing" word. `using-aidlc` (`metadata.kind: map`) keeps the open format. A stage step commands a practice
+  with an "-ing" word; a real noun ending in "ing" goes into `ING_NOUNS` in `scripts/validate.py`. `using-aidlc` (`metadata.kind: map`) keeps the open format. A stage step commands a practice
   with "Load the `<name>` skill"; `scripts/test_loads.py` holds the table.
 - Templates (`skills/aidlc-*/assets/`) are read rendered by the people who approve them: a placeholder outside a
   code block is written `{{…}}`, because GitHub drops `<word>` as an HTML tag; a block of FIELD lines

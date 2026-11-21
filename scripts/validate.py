@@ -34,7 +34,8 @@ KIND_PRACTICE = re.compile(r"^[ \t]+kind:[ \t]*['\"]?practice['\"]?[ \t]*(#.*)?$
 WORKFLOW_SECTIONS = ("## When to use", "## Inputs", "## Steps", "## Stop if", "## Common excuses", "## Red flags",
                      "## Rules")
 KIND_WORKFLOW = re.compile(r"^[ \t]+kind:[ \t]*['\"]?workflow['\"]?[ \t]*(#.*)?$", re.M)
-ING_WORD = re.compile(r"^[a-z0-9]+ing(-|$)")
+ING_WORD = re.compile(r"^[a-z]{3,}ing(-|$)")
+ING_NOUNS = frozenset({"string", "spring"})  # first words that end in "ing" but are nouns, not doing words
 # The eight earlier practices keep their own structure, so PRACTICE_SECTIONS does not apply to them.
 # This list only shrinks.
 EARLIER_PRACTICES = frozenset({"adding-observability", "building-user-interfaces", "debugging-failures",
@@ -109,7 +110,7 @@ def check_skill(path: Path, root: Path) -> list[str]:
     if KIND_WORKFLOW.search(head):
         if folder.startswith(HOUSE_PREFIXES):
             problems.append(f"{rel}: a workflow name never starts with 'aidlc-', which marks a stage")
-        if ING_WORD.match(folder):
+        if ING_WORD.match(folder) and folder.split("-")[0] not in ING_NOUNS:
             problems.append(f"{rel}: a workflow name never starts with an '-ing' word, which marks a practice")
         problems += check_sections(rel, text, WORKFLOW_SECTIONS, "the Rules")
     elif folder.startswith(HOUSE_PREFIXES):
