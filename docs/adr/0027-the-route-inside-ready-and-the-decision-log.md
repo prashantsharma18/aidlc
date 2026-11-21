@@ -1,6 +1,6 @@
 # 0027 · The route inside Ready, and the decision log
 
-Status: Proposed (2026-11-21). · Decider: Prashant Sharma (framework owner)
+Status: Proposed (2026-11-21). Accepted (2026-11-21; confirmed by the framework owner in the session). · Decider: Prashant Sharma (framework owner)
 Design: `docs/design/2026-11-21-route-in-ready-and-decision-log.md` · Plan:
 `docs/plans/2026-11-21-plan-25-route-in-ready-and-decision-log.md` · Amends: ADR 0026 (the Ready row of the
 decisions table)

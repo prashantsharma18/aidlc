@@ -263,7 +263,7 @@ a decision, and route S for the standard changes a team lists in its `AGENTS.md`
 
 ## 9. After Plan 25 (2026-11-21)
 
-Plan 25 (`docs/plans/2026-11-21-plan-25-route-in-ready-and-decision-log.md`, ADR 0027 proposed) builds the rest of
+Plan 25 (`docs/plans/2026-11-21-plan-25-route-in-ready-and-decision-log.md`, ADR 0027 accepted) builds the rest of
 C6 and item B4 as instructions, in aidlc 7.1.0. It updates these items of sections 6 and 8; the rest stand as
 sections 6 to 8 say.
 
