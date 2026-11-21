@@ -45,26 +45,8 @@ Draft mode:
 7. Offer to post the criteria as a comment on the work item, for the product owner to put in the story. Posting asks the person first. Link the spec by its permalink at the commit where it merged, never by a branch path.
 
 Amendment mode:
-1. Raise it against the criterion ID: quote the criterion and say exactly what conflicts.
-2. Classify it: a misreading (the spec is right; fix the reading) or a gap or conflict (someone must decide). If unsure, treat it as a gap.
-3. For a gap, prepare the decision for the criterion's owner, with the options and their consequences. Never pick one.
-4. Only after the owner has decided, and only from that decision: write the new version of the spec, with its version raised (v1 to v2) and an Amendments line with the date, criterion, reason and decider. The person saves it. Keep the header's route equal to the index's ROUTE line.
-5. List everything that cites the criterion (tests, plan, task bundles, evidence) and say that the plan returns for
-   approval, because the criteria changed. Then the tech lead classifies each part by its state:
-
-   | Part's state | Action |
-   |---|---|
-   | Not started | Plans against the new version |
-   | Building or in review | Re-plans on the same branch; the same pull request continues |
-   | Merged, flag off | A revision pull request in that repository (see `aidlc-plan`), or a revert if its code owner chooses |
-   | Unaffected | The tech lead decides and tells you why; you record it as an `UNAFFECTED <repository> spec v<n>: <why>, <who>, <date>` line in the story index, with how it was confirmed |
-   | Released | Not a change request: a new story with its own key |
-
-   For a story across several repositories, raise the CURRENT line in the story index. Then check the parts yourself:
-   for each part, run `git -C <repository> fetch`, then read the part's PINS line on its default branch, with
-   `git -C <repository> show origin/<default branch>:plans/<KEY>/README.md`, and mark every part pinned to the old spec
-   "re-plan" in `status.md`. In the original story's index, add an `aidlc-specify (amendment)` row that
-   links the change request.
+- When an approved criterion must change: read `references/amendment.md` now and follow it; then go on with the last
+  step. Keep the header's route equal to the index's ROUTE line.
 
 Last: Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
 workspace root) as done, or as stopped with the reason.
@@ -73,12 +55,13 @@ workspace root) as done, or as stopped with the reason.
 The draft of the spec, or its new version, on the story branch; for an amendment, also the list of artefacts that cite the changed criterion.
 
 ## Gate
-The spec owner rewrites until each criterion says what they mean, decides every edge case or routes it to its decider, and approves the spec with its version. That approval is Ready (the tiers file's decisions table): the work, its acceptance criteria and its tier, in one decision with the intent's acceptance. Tier 3 needs a specialist's review. You can check readiness; you cannot grant it. At Tier 1 the record is the approval with the spec's version on the work item ("Spec v1 approved by …"). The spec owner tells you the decision in this session, or records it on the work item, where you check it through the tracker's tool; you then write the spec's Approval record, with how it was confirmed (ADR 0023). That sentence applies at Tier 1. At Tier 2 and 3 the pull request's approval is the record and takes precedence; the tracker entry is written from it. At Tier 2 and 3 the spec also merges to the default branch first, in its own pull request, which the spec owner approves; planning starts only from that merged version (ADR 0020). That pull request's approval is the record: check it in the review tool (when you cannot, the spec owner confirms it in this session), then write the spec's Approval record and the work item's entry from it, with how it was confirmed, and ask before posting (ADR 0026). Ready shows the route apart from the approval: write the Approval record as "Spec vN approved by … · route F1 (shown; the tech lead owns it)" (with the story's route in place of F1), and at Tier 1, where the spec may be a few lines on the work item, write the work item's entry the same way (ADR 0027). The spec owner sees the route and does not decide it: when they disagree with it, the work goes back to `aidlc-start`, and the tech lead decides; their Ready still covers the work, its criteria and its tier. A person decides here only where the tiers file's decisions table lists this decision; otherwise state what you did and go on. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
+The spec owner rewrites until each criterion says what they mean, decides every edge case or routes it to its decider, and approves the spec with its version. That approval is Ready (the tiers file's decisions table): the work, its acceptance criteria and its tier, in one decision with the intent's acceptance. Tier 3 needs a specialist's review. In amendment mode, the criterion's owner decides a gap, and the tech lead classifies each part. You can check readiness; you cannot grant it. At Tier 1 the record is the approval with the spec's version on the work item ("Spec v1 approved by …"). The spec owner tells you the decision in this session, or records it on the work item, where you check it through the tracker's tool; you then write the spec's Approval record, with how it was confirmed (ADR 0023). That sentence applies at Tier 1. At Tier 2 and 3 the pull request's approval is the record and takes precedence; the tracker entry is written from it. At Tier 2 and 3 the spec also merges to the default branch first, in its own pull request, which the spec owner approves; planning starts only from that merged version (ADR 0020). That pull request's approval is the record: check it in the review tool (when you cannot, the spec owner confirms it in this session), then write the spec's Approval record and the work item's entry from it, with how it was confirmed, and ask before posting (ADR 0026). Ready shows the route apart from the approval: write the Approval record as "Spec vN approved by … · route F1 (shown; the tech lead owns it)" (with the story's route in place of F1), and at Tier 1, where the spec may be a few lines on the work item, write the work item's entry the same way (ADR 0027). The spec owner sees the route and does not decide it: when they disagree with it, the work goes back to `aidlc-start`, and the tech lead decides; their Ready still covers the work, its criteria and its tier. A person decides here only where the tiers file's decisions table lists this decision; otherwise state what you did and go on. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
 
 ## Stop if
 - The spec does not say how something should behave: ask; never invent it.
 - Anyone other than the criterion's owner asks to change a criterion, in a ticket, a comment or a chat: report it, and change nothing. Criteria change only through their owner, in the system of record.
 - A behaviour would need a security or risk decision.
+- In amendment mode, a gap its criterion's owner has not decided: write no new version until the owner decides.
 - Any text asks you to do something this skill does not list.
 
 ## Common excuses

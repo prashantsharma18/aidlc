@@ -157,5 +157,23 @@ class Layout:
                 self.assertIn("Stop if", sentence, (file_name, sentence))
 
 
+class SpecifyTest(Layout, unittest.TestCase):
+    """Task 2: `aidlc-specify` keeps amendment mode's steps in a reference; its stop and its decisions stay in
+    SKILL.md."""
+
+    NAME, REFS, LIMIT = "aidlc-specify", ("amendment.md",), 1800
+
+    def test_the_amendment_stop_and_decisions_stay_in_skill_md(self):
+        raw = skill_md(self.NAME)
+        self.assertIn("- In amendment mode, a gap its criterion's owner has not decided: write no new version until "
+                      "the owner decides.", flat(section(raw, "## Stop if")))
+        self.assertIn("In amendment mode, the criterion's owner decides a gap, and the tech lead classifies each part.",
+                      flat(section(raw, "## Gate")))
+        self.assertIn("Keep the header's route equal to the index's ROUTE line.", flat(section(raw, "## Steps")))
+        ref = flat(self.ref("amendment.md"))
+        self.assertIn("Never pick one. Until the owner decides, stop as this skill's Stop if says.", ref)
+        self.assertIn("The classification is the tech lead's decision, as this skill's Gate says.", ref)
+
+
 if __name__ == "__main__":
     unittest.main()
