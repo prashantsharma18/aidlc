@@ -161,22 +161,12 @@ class ReviewFixesTest(unittest.TestCase):
 class SkillWordingTest(unittest.TestCase):
     """Follow-ups from Plan 18: the skills say what the documents say."""
 
-    TIERS = [f"skills/{s}/assets/tiers.md" for s in
-             ("aidlc-start", "aidlc-intent", "aidlc-specify", "aidlc-discover", "aidlc-plan", "aidlc-review")]
-
     def test_route_i_starts_at_aidlc_operate_everywhere(self):
         for rel in ("skills/using-aidlc/SKILL.md", "docs/operating-model/lifecycle.md"):
             text = " ".join(read(rel).split())
             self.assertNotIn("`aidlc-start` chooses one.", text, rel)
             self.assertNotIn("`aidlc-start` chooses one;", text, rel)
             self.assertIn("route I starts at `aidlc-operate` when an alert fires", text, rel)
-
-    def test_the_tech_lead_approves_the_plan_at_every_tier(self):
-        for rel in self.TIERS + ["docs/operating-model/tiers-table.md"]:
-            row = next(line for line in read(rel).splitlines() if line.startswith("| Approvals"))
-            tier1 = row.split("|")[2]
-            self.assertIn("tech lead approves the plan", tier1, rel)
-            self.assertIn("the engineer confirms a fast-path brief", tier1, rel)
 
 
 class CommandsTest(unittest.TestCase):

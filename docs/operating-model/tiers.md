@@ -23,4 +23,11 @@ The eight stages always apply; the tier decides how much of each you do. The tab
 
 A higher tier means more enforcement, checkpoints and approvers, never more stages.
 
+## Who decides at each tier
+
+A person stops only where [the decisions table](tiers-table.md#decisions-by-tier) says so (ADR 0026). At Tier 1 that
+is Ready and Merge. Tier 2 adds Design + plan, approved once in the pull request that merges them, and Release when
+users see the change. Tier 3 adds the specialists, Release always, and the hands-on restatement per slice. Every other
+stage states what it did and goes on; a person who disagrees says so.
+
 Guide: 1.10.

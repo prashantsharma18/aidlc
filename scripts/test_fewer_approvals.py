@@ -105,5 +105,90 @@ class AdrTest(unittest.TestCase):
             self.assertTrue(text.rstrip().split("\n## ")[-1].startswith("Amended by ADR 0024 (2026-11-20)"), name)
 
 
+TIERS_DOCS = "docs/operating-model/tiers-table.md"
+
+
+def decision_rows(rel: str) -> dict:
+    """The decisions table's rows, by their first cell."""
+    table = read(rel).split("## Decisions by tier", 1)[1]
+    return {cells[0]: cells[1:] for cells in
+            ([c.strip() for c in line.strip().strip("|").split(" | ")] for line in table.splitlines()
+             if line.startswith("| **"))}
+
+
+class TiersTest(unittest.TestCase):
+    """Task 2: one decisions-by-tier table, identical in the six copies and in the operating model's copy."""
+
+    def test_the_six_copies_are_identical_and_the_docs_copy_matches(self):
+        texts = {read(rel) for rel in TIERS_COPIES}
+        self.assertEqual(len(texts), 1)
+        text = texts.pop()
+        self.assertTrue(text.startswith("# Risk tiers\n\n"))
+        first, rest = read(TIERS_DOCS).split("\n", 1)
+        self.assertTrue(first.startswith("<!-- ") and first.endswith(" -->"), first)
+        self.assertIn("change all seven together", first)
+        self.assertEqual(rest, text)
+
+    def test_the_table_says_who_stops_at_each_tier(self):
+        self.assertIn("| Decision | Who | Tier 1 | Tier 2 | Tier 3 | Recorded |", read(TIERS_COPIES[0]))
+        rows = decision_rows(TIERS_COPIES[0])
+        self.assertEqual(list(rows), ["**Ready**: the work, its acceptance criteria and its tier", "**Design + plan**",
+                                      "**Merge**", "**Release**", "**Restatement** of a hands-on build"])
+        ready, plan, merge, release, restate = rows.values()
+        self.assertIn("on F0, D1 and route S, the engineer who confirms the brief", ready[0])
+        self.assertEqual(ready[1:4], ["yes", "yes", "yes, with a specialist's spec review"])
+        self.assertIn("Tier 2 and 3: the approval of the spec's pull request, which merges first (ADR 0020)", ready[4])
+        self.assertEqual(plan[1:5], ["no", "yes: one pull request approval that merges design and plan first",
+                                     "yes, with the specialists", "the pull request approval"])
+        self.assertEqual(merge[0], "a code owner who did not write the change, after a non-author PASS")
+        self.assertEqual(merge[1], "yes; the code owner sees spec, plan and code together")
+        self.assertIn("the security specialist when the change touches secrets, permissions, tool calls, dependencies "
+                      "or prompts", merge[3])
+        self.assertEqual(release[1:3], ["only when users see the change", "only when users see the change"])
+        self.assertEqual(release[3], "always; a named approver and a rehearsed rollback")
+        self.assertEqual(release[4], "change management, cited in the readiness record")
+        self.assertEqual(restate[1:4], ["no: stated", "no: stated", "yes, per slice"])
+
+    def test_the_rules_under_the_table(self):
+        text = flat(TIERS_COPIES[0]).split("## Decisions by tier", 1)[1]
+        for phrase in ("A person stops only where this section says so (ADR 0026).",
+                       "A stage that is not a decision for its tier still runs and still writes its document.",
+                       "A person who disagrees says so, and the stage revises.",
+                       "a change behind a flag that is still off needs no release decision until the flag goes on; "
+                       "turning a flag on is the release.",
+                       "Where a pull request approval is the record, the AI writes the tracker entry from it, with how "
+                       "it was confirmed, and asks before posting (ADR 0023). When the AI cannot read the review tool, "
+                       "the decider confirms in the session.",
+                       "Kept at every tier, unchanged:",
+                       "A new dependency, a quality-bar exception, and an assertion change (the criterion's owner "
+                       "decides).", "Checkpoints where the bundle's MODE puts them.",
+                       "a contract change (its consumers), a wireframe for a new screen (the product owner)",
+                       "The person pushes: the AI holds no push credential.",
+                       "Every decision in operate, feedback and onboard, and every `parallel-lanes` person action.",
+                       "The AI never approves or merges (ADR 0023).",
+                       "A change of tier, up or down, is a Ready decision at every tier",
+                       "A plan that marks its slices independent merges first at every tier (ADR 0025)"):
+            self.assertIn(phrase, text, phrase)
+
+    def test_the_old_rows_name_no_plan_approval_at_tier_1(self):
+        for rel in TIERS_COPIES + (TIERS_DOCS,):
+            lines = read(rel).splitlines()
+            approvals = next(line for line in lines if line.startswith("| Approvals")).split("|")
+            self.assertIn("no plan approval", approvals[2], rel)
+            self.assertIn("the engineer confirms a fast-path or standard brief, with its tier", approvals[2], rel)
+            self.assertNotIn("tech lead approves the plan", approvals[2], rel)
+            self.assertIn("design and plan, approved by the tech lead in one pull request", approvals[3], rel)
+            design = next(line for line in lines if line.startswith("| Design |")).split("|")
+            self.assertIn("which the AI states in the plan; the code owner sees it at Merge", design[2], rel)
+            plan = next(line for line in lines if line.startswith("| Plan |")).split("|")
+            self.assertIn("`standard.md`, route S", plan[2], rel)
+
+    def test_the_operating_model_points_to_the_table(self):
+        tiers = flat("docs/operating-model/tiers.md")
+        self.assertIn("## Who decides at each tier", tiers)
+        self.assertIn("[the decisions table](tiers-table.md#decisions-by-tier)", tiers)
+        self.assertIn("At Tier 1 that is Ready and Merge", tiers)
+
+
 if __name__ == "__main__":
     unittest.main()
