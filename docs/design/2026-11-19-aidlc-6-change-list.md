@@ -249,7 +249,7 @@ skill and changes no route.
 
 ## 8. After Plan 24 (2026-11-21)
 
-Plan 24 (`docs/plans/2026-11-21-plan-24-fewer-approvals.md`, ADR 0026 proposed) builds fewer approvals as
+Plan 24 (`docs/plans/2026-11-21-plan-24-fewer-approvals.md`, ADR 0026 accepted) builds fewer approvals as
 instructions: one decisions-by-tier table in the tiers file every stage reads, one Gate line in each stage that holds
 a decision, and route S for the standard changes a team lists in its `AGENTS.md`. It updates these items of section
 6; the rest stand as sections 6 and 7 say.

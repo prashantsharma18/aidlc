@@ -1,6 +1,6 @@
 # 0026 · Decisions by tier, and standard changes
 
-Status: Proposed (2026-11-21). · Decider: Prashant Sharma (framework owner)
+Status: Proposed (2026-11-21). Accepted (2026-11-21; confirmed by the framework owner in the session). · Decider: Prashant Sharma (framework owner)
 Design: `docs/design/2026-11-21-fewer-approvals.md` · Plan: `docs/plans/2026-11-21-plan-24-fewer-approvals.md` ·
 Amends: ADR 0012 (the recipe pause for a listed recipe class), ADR 0015 (route S), ADR 0020 (the pull request
 approval is the record)
