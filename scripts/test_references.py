@@ -286,5 +286,36 @@ class PlanTest(Layout, unittest.TestCase):
         self.assertTrue(self.ref("several-repositories.md").split("**Step 8.**")[0].rstrip().endswith("(ADR 0022)."))
 
 
+class BuildTest(Layout, unittest.TestCase):
+    """Task 6: `aidlc-build` keeps the recipe check, slice 0 and slices on their own branch in references; the recipe
+    pause, route S's exception and every stop stay in SKILL.md."""
+
+    NAME, REFS = "aidlc-build", ("recipe-commit.md", "route-g.md", "stacked-slices.md")
+    LIMIT = 3900  # the design's target is 2,500; this cut reaches 3,862 (item W1)
+
+    def test_the_recipe_pause_and_its_exception_stay_in_step_5(self):
+        step5 = flat(skill_md(self.NAME)).split("5. **When the bundle has a RECIPE", 1)[1].split(" 6. ", 1)[0]
+        for phrase in ("Then run the recipe check: read `references/recipe-commit.md` now and follow it.",
+                       "Stop for the person's review of that commit, in every mode: set STATUS to `paused: recipe "
+                       "review`.",
+                       "On route S, for a recipe class that `AGENTS.md`'s Standard changes section lists, do not pause",
+                       "The pause lifts only when the brief's RECIPE and the commit's `Recipe:` trailer name the "
+                       "class's tool and version exactly; otherwise pause as usual.",
+                       "Fixes come after it, as ordinary steps under every gate."):
+            self.assertIn(phrase, step5, phrase)
+        self.assertIn("That review is this skill's recipe pause, step 5.", flat(self.ref("route-g.md")))
+
+    def test_step_1_keeps_its_stop_and_names_both_cases(self):
+        step1 = flat(skill_md(self.NAME)).split(" 1. ", 1)[1].split(" 2. Read the bundle's TIER", 1)[0]
+        for phrase in ("For a stacked slice whose parent merged, or whose parent's branch gained commits: read "
+                       "`references/stacked-slices.md` now and follow it.",
+                       "If it is red or skips tests, stop: the environment is fixed first.",
+                       "On slice 0 of route G: read `references/route-g.md` now and follow it; it says which steps "
+                       "change."):
+            self.assertIn(phrase, step1, phrase)
+        self.assertIn("For a slice that the plan gave its own branch: read `references/stacked-slices.md` now and "
+                      "follow it.", flat(section(skill_md(self.NAME), "## Inputs")))
+
+
 if __name__ == "__main__":
     unittest.main()
