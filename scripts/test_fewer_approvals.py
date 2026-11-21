@@ -358,5 +358,54 @@ class DesignPlanTest(unittest.TestCase):
                       "(across repositories, as Decision 2)", step)
 
 
+class BuildReviewTest(unittest.TestCase):
+    """Task 5: one restatement wait (Tier 3), one diff review (the findings), one code-owner approval (Merge)."""
+
+    def test_the_three_gates_carry_the_line(self):
+        for name in ("aidlc-build", "aidlc-verify", "aidlc-review"):
+            assert_gate_line(self, name)
+
+    def test_the_restatement_waits_only_at_tier_3(self):
+        step = skill("aidlc-build").split(" 2. Read the bundle's TIER", 1)[1].split(" 3. Load every skill", 1)[0]
+        order = [step.index(p) for p in (
+            "At Tier 3, where every slice is hands-on, the restatement is a person's decision, per slice (the tiers "
+            "file's decisions table).",
+            "Hands-on: wait for the person to confirm.",
+            "A confirmation given before you have stated the restatement does not count at Tier 3: state it, then wait.",
+            "At Tier 1 and 2 the restatement is stated, not waited on, in every mode: say it in the session, write it "
+            "under Restatement in the progress note (step 4) and go on without waiting; the person may correct it at "
+            "any time, and reads it with the diff.",
+            "Checkpoints still stop where the bundle's MODE puts them (step 7).")]
+        self.assertEqual(order, sorted(order))
+        self.assertNotIn("Delegate with checkpoints or delegate: write the restatement", step)
+        self.assertIn("after the slice's task bundle is approved (at Tier 1, once the plan has stated it",
+                      skill("aidlc-build"))
+        self.assertIn("Use when a slice's task bundle is approved, or at Tier 1 stated with its plan.", skill("aidlc-build"))
+
+    def test_the_diff_is_reviewed_once_as_the_findings(self):
+        build = gate("aidlc-build")
+        self.assertNotIn("the person reviews the diff before pushing", build)
+        self.assertIn("and the person pushes: you hold no push credential.", build)
+        self.assertIn("The engineer's review of the diff is their decision on each review finding, once, in "
+                      "`aidlc-review`: not a separate stop before the push (ADR 0026).", build)
+        self.assertIn("Deciding the findings is the engineer's review of the diff, once: there is no separate review "
+                      "of the diff before the push (ADR 0026).", skill("aidlc-review"))
+
+    def test_the_code_owner_approves_once_at_merge(self):
+        verify = gate("aidlc-verify")
+        self.assertNotIn("a code owner who did not write the change approves it", verify)
+        self.assertIn("The code owner's approval is one decision, Merge, taken once at `aidlc-review`'s gate (ADR "
+                      "0026): this stage asks for no approval of its own.", verify)
+        review = gate("aidlc-review")
+        self.assertIn("This is Merge (the tiers file's decisions table), the one code-owner approval of the change: at "
+                      "Tier 1 the code owner sees spec, plan and code together, and at Tier 3 the security specialist "
+                      "decides when the change touches secrets, permissions, tool calls, dependencies or prompts.",
+                      review)
+        self.assertIn("A code owner who is neither the author nor the pusher approves, after a non-author PASS", review)
+        approving = [name for name in ("aidlc-build", "aidlc-verify", "aidlc-review")
+                     if re.search(r"code owner[^.;]* approves", gate(name))]
+        self.assertEqual(approving, ["aidlc-review"])
+
+
 if __name__ == "__main__":
     unittest.main()

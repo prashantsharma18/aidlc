@@ -41,7 +41,7 @@ The pull request's CI results (the checks and their logs, test reports), or, whe
 The evidence table and the pull request description; updating the pull request asks the person first.
 
 ## Gate
-The team's CI is green on the pull request; every row points to the trusted run, or is listed as unproved with a decision; and a code owner who did not write the change approves it. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
+The team's CI is green on the pull request, and every row points to the trusted run, or is listed as unproved with a decision. The code owner's approval is one decision, Merge, taken once at `aidlc-review`'s gate (ADR 0026): this stage asks for no approval of its own. A person decides here only where the tiers file's decisions table lists this decision; otherwise state what you did and go on. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
 
 ## Stop if
 - A CI check is red, missing or skipped: report it, and never describe the change as passing.
