@@ -557,6 +557,68 @@ class RouteSTest(unittest.TestCase):
         self.assertIn("the packages added to lock files, or none", read("skills/aidlc-build/assets/review-evidence.md"))
 
 
+RULES_FILES = ("skills/aidlc-onboard/assets/agents-md.md", "starter/repo/AGENTS.md")
+
+
+class RouteSDocsTest(unittest.TestCase):
+    """Task 8: route S is listed wherever routes are, and the rules file holds the team's standard changes."""
+
+    def test_the_map_lists_route_s_and_who_decides(self):
+        text = skill("using-aidlc")
+        self.assertIn("and each stops only where the tiers file's decisions table lists a decision for its tier "
+                      "(ADR 0026).", text)
+        self.assertIn("`aidlc-start` chooses one of the other eight;", text)
+        routes = section(text, "## The routes")
+        self.assertIn("| S · standard change | A class of work the team lists in the Standard changes section of "
+                      "`AGENTS.md`, within every limit the class names; Tier 1, one repository |", routes)
+        lifecycle = section(text, "## The lifecycle")
+        for row in ("| 6 | `aidlc-plan` | The plan and one task bundle per slice | Inside each repository | Tech lead, "
+                    "with the design, in one pull request (Tier 2 and 3); stated at Tier 1 | `aidlc-build` |",
+                    "| The person pushes; at Tier 3, the restatement per slice |",
+                    "| 8 | `aidlc-verify` | The evidence table from CI | Inside the repository | No one: the code owner "
+                    "decides once, at review (Merge) | `aidlc-review` |",
+                    "| Release approver, when users see the change (always at Tier 3) |"):
+            self.assertIn(row, lifecycle, row)
+
+    def test_the_routes_document_draws_route_s(self):
+        routes = read("docs/operating-model/routes.md")
+        self.assertIn("### S · standard change", routes)
+        self.assertIn('item["A work item or a new requirement"] --> standard{"A standard change AGENTS.md lists, within '
+                      'its limits?"}', routes)
+        self.assertIn('standard -->|"yes"| S["S · standard change"]', routes)
+        self.assertIn("| S · standard change | A class of work the team lists in `AGENTS.md`'s Standard changes",
+                      routes)
+        self.assertIn('confirm{{"Engineer confirms standard.md and its tier"}}', routes)
+        self.assertIn("    S --> F1: a limit of its class is passed", routes)
+        self.assertIn("| S | none: the standard brief stands in | `plans/<KEY>/standard.md`, the progress note |", routes)
+        flat_routes = " ".join(routes.split())
+        self.assertIn("At Tier 1 a person decides only Ready and Merge", flat_routes)
+        self.assertIn("A defect that matches the D1-fix class takes route D1", flat_routes)
+        self.assertIn("**Nine routes**", read("docs/operating-model/lifecycle.md"))
+        self.assertIn("standard changes the team lists (S)", flat("docs/operating-model/lifecycle.md"))
+        self.assertIn("The nine routes, drawn", read("README.md"))
+        self.assertIn("A standard change the team lists in its `AGENTS.md` takes route S", flat("README.md"))
+
+    def test_the_rules_file_holds_the_standard_changes(self):
+        for rel in RULES_FILES:
+            text = read(rel)
+            self.assertIn("## Standard changes", text, rel)
+            self.assertLess(text.index("## Standard changes"), text.index("## Rules and what enforces them"), rel)
+            block = " ".join(text.split("## Standard changes", 1)[1].split("\n## ", 1)[0].split())
+            for phrase in ("takes route S (`aidlc-start`, ADR 0026)", "| Class | What qualifies | Limits | Evidence |",
+                           "| Recipe commit |", "| Dependency bump |", "| Defect fix (D1) |",
+                           "No new dependency; never a major version",
+                           "Work that passes a limit stops and takes its normal route; a class is never stretched.",
+                           "The tech lead approves this list once, in a pull request, as any rule."):
+                self.assertIn(phrase, block, f"{rel}: {phrase}")
+            self.assertIn("A person decides only where the tiers file's decisions table says (ADR 0026)", flat(rel), rel)
+        self.assertNotIn("<", outside_code(read(RULES_FILES[0])).split("## Standard changes", 1)[1].split("\n## ", 1)[0])
+
+    def test_onboard_proposes_the_three_classes(self):
+        onboard = skill("aidlc-onboard")
+        self.assertIn("For the Standard changes section, propose the three classes the template suggests", onboard)
+        self.assertIn("the tech lead approves the list in the pull request, as any rule (ADR 0026)", onboard)
+
 
 if __name__ == "__main__":
     unittest.main()

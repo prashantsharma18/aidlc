@@ -9,7 +9,7 @@ metadata:
 
 aidlc has four kinds of skill.
 
-- **Stage skills** (`aidlc-*`) say which step you are in, what it produces and who approves it. A person starts each one by name (`aidlc-onboard` and `aidlc-verify` may also start on their own), and each stops for its approver.
+- **Stage skills** (`aidlc-*`) say which step you are in, what it produces and who approves it. A person starts each one by name (`aidlc-onboard` and `aidlc-verify` may also start on their own), and each stops only where the tiers file's decisions table lists a decision for its tier (ADR 0026).
 - **Practice skills** say how to do a kind of work well. They load inside a stage: a stage step commands them, the slice's task bundle names them in USE SKILLS, or, outside the stages, Claude picks them by their description.
 - **Workflow skills** say how work runs across sessions. `parallel-lanes` runs several pieces of work at once, each in its own git worktree, from a `QUEUE.md` a person keeps; a lane releases at every person's decision (ADR 0025). A person starts its coordinator or a lane by name, as with a stage; the coordinator's sub-agent lanes read `parallel-lanes` and the build, verify and review skills by path.
 - **The map** is this skill, `using-aidlc`: the stages in order, the routes, and the practice for each kind of work.
@@ -23,22 +23,22 @@ A "pull request" is the code host's review request: a pull request on GitHub, Bi
 | # | Stage | Produces | Runs | Approved by | Next |
 |---|---|---|---|---|---|
 | 0 | `aidlc-onboard` | `AGENTS.md`, the codebase map, the Quality bar, the starter files | Once per repository or workspace | The person, through a reviewed pull request | `aidlc-start` |
-| 1 | `aidlc-start` | The story's index: the kind of work, the repositories, the next stage | Workspace root or repository | The product owner owns the story; the tech lead agrees the route | `aidlc-intent` |
-| 2 | `aidlc-intent` | The intent statement and a provisional tier | Story level | Product owner | `aidlc-specify` |
-| 3 | `aidlc-specify` | Acceptance criteria with IDs, edge cases with deciders | Story level | Spec owner | `aidlc-discover` when the tier or an unknown asks, else `aidlc-design` |
-| 4 | `aidlc-discover` | The evidence pack: what the change touches | Story level | Tech lead (proceed, escalate or raise the tier) | `aidlc-design` |
-| 5 | `aidlc-design` | The design note, the ADR, the contract and its failing tests | Story level | Tech lead or architect; consumers for a contract | `aidlc-plan` |
-| 6 | `aidlc-plan` | The plan and one task bundle per slice | Inside each repository | Tech lead | `aidlc-build` |
-| 7 | `aidlc-build` | One slice: tests, commits, a progress note | Inside the repository, a fresh session per slice | The person reviews the diff and pushes | The next slice, then `aidlc-verify` |
-| 8 | `aidlc-verify` | The evidence table from CI | Inside the repository | A code owner who did not write the change | `aidlc-review` |
-| 9 | `aidlc-review` | The pull request description, dispositions, the review record | Inside the repository | A code owner who is neither author nor pusher; specialists by tier | `aidlc-release` once merged |
-| 10 | `aidlc-release` | Readiness, the change record, stop criteria | Story level | Release approver | `aidlc-operate` when an alert fires |
+| 1 | `aidlc-start` | The story's index: the kind of work, the repositories, the next stage; on route S, the standard brief | Workspace root or repository | The product owner owns the story; the tech lead agrees the route; on route S, the engineer confirms the standard brief and its tier (Ready) | `aidlc-intent` |
+| 2 | `aidlc-intent` | The intent statement and a provisional tier | Story level | Product owner, inside Ready, with the spec | `aidlc-specify` |
+| 3 | `aidlc-specify` | Acceptance criteria with IDs, edge cases with deciders | Story level | Spec owner: Ready, with the tier | `aidlc-discover` when the tier or an unknown asks, else `aidlc-design` |
+| 4 | `aidlc-discover` | The evidence pack: what the change touches | Story level | Tech lead (proceed, with the design and the plan; to escalate or raise the tier is Ready) | `aidlc-design` |
+| 5 | `aidlc-design` | The design note, the ADR, the contract and its failing tests | Story level | Tech lead or architect, with the plan, in one pull request (Tier 2 and 3); consumers for a contract; stated at Tier 1 | `aidlc-plan` |
+| 6 | `aidlc-plan` | The plan and one task bundle per slice | Inside each repository | Tech lead, with the design, in one pull request (Tier 2 and 3); stated at Tier 1 | `aidlc-build` |
+| 7 | `aidlc-build` | One slice: tests, commits, a progress note | Inside the repository, a fresh session per slice | The person pushes; at Tier 3, the restatement per slice | The next slice, then `aidlc-verify` |
+| 8 | `aidlc-verify` | The evidence table from CI | Inside the repository | No one: the code owner decides once, at review (Merge) | `aidlc-review` |
+| 9 | `aidlc-review` | The pull request description, dispositions, the review record | Inside the repository | A code owner who is neither author nor pusher (Merge); specialists by tier; the engineer decides each finding | `aidlc-release` once merged |
+| 10 | `aidlc-release` | Readiness, the change record, stop criteria | Story level | Release approver, when users see the change (always at Tier 3) | `aidlc-operate` when an alert fires |
 | 11 | `aidlc-operate` | The incident record and a new work item | Story level | On-call owns the incident; people act | `aidlc-feedback` |
 | 12 | `aidlc-feedback` | Each lesson routed to a test, an eval case, the context, a guardrail or a checklist | Story level | The owner of each source | — |
 
 ## The routes
 
-`aidlc-start` chooses one of the other seven; route I starts at `aidlc-operate` when an alert fires. Several
+`aidlc-start` chooses one of the other eight; route I starts at `aidlc-operate` when an alert fires. Several
 repositories: the workspace root holds the story and tracks every part. One
 repository: everything happens in that repository.
 
@@ -52,6 +52,7 @@ repository: everything happens in that repository.
 | D2 · defect, full route | Any other defect | As F1 or F2; the reproduction is the spec's first criterion |
 | I · incident | An alert fires or an incident is open | `aidlc-operate` (no story), then `aidlc-feedback`; the follow-up enters at `aidlc-start` |
 | G · new system | No code yet: a new product, service or application | `aidlc-intent` (when needed), `aidlc-specify`, `aidlc-design` (the new system's decisions); in each new repository `aidlc-onboard` (new mode, prepare), `aidlc-plan` (slice 0), `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-onboard` (new mode, confirm); then the story's criteria as in F1 or F2, and `aidlc-release` |
+| S · standard change | A class of work the team lists in the Standard changes section of `AGENTS.md`, within every limit the class names; Tier 1, one repository | `aidlc-start` writes the standard brief, the engineer confirms it with its tier, `aidlc-build`, `aidlc-verify`, `aidlc-review` |
 
 ## The practice map
 

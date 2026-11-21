@@ -30,7 +30,7 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
 
 - **Start every piece of work with `aidlc-start`**: a new requirement, a story, a defect, a change request or an
   incident follow-up. It decides the kind of work and which repositories change, chooses the route (the `using-aidlc`
-  skill lists them), and says where the next stage runs. A new system starts the same way, in an empty repository or a new workspace (route G).
+  skill lists them), and says where the next stage runs. A new system starts the same way, in an empty repository or a new workspace (route G). A standard change the team lists in its `AGENTS.md` takes route S: a brief the engineer confirms, then build, verify and review.
 - **One repository:** every stage runs there; documents in `plans/<KEY>/`.
 - **Several repositories:** story-level stages run at the workspace root and keep their documents in `stories/<KEY>/`;
   each repository's part (plan, build, verify, review) runs inside that repository, on branch `feat/<KEY>-<part>`.
@@ -63,7 +63,7 @@ checks work only on public repositories. A private repository needs GitHub Pro (
 The check code aidlc 5 shipped (the slice, plan, recipe, contract and status scripts, and the starter workflows) is
 kept under the tag `checks-v1`: [docs/archive/checks-v1.md](docs/archive/checks-v1.md).
 
-The eight routes, drawn: [docs/operating-model/routes.md](docs/operating-model/routes.md). How to adopt aidlc on a new or an
+The nine routes, drawn: [docs/operating-model/routes.md](docs/operating-model/routes.md). How to adopt aidlc on a new or an
 existing system, and who approves what: [docs/operating-model/adoption.md](docs/operating-model/adoption.md). The
 operating model: [docs/operating-model/workspace-and-repositories.md](docs/operating-model/workspace-and-repositories.md).
 

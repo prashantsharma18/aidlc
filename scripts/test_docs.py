@@ -118,8 +118,8 @@ class ReviewFixesTest(unittest.TestCase):
 
     def test_i4_route_i_starts_at_aidlc_operate(self):
         self.assertNotIn('kind -->|"an alert fires"|', read(ROUTES))
-        self.assertIn("one of seven routes", self.routes)
-        self.assertIn("The eighth, I, does not start there", self.routes)
+        self.assertIn("one of eight routes", self.routes)
+        self.assertIn("The ninth, I, does not start there", self.routes)
 
     def test_i5_the_sheet_holds_every_stage_gate(self):
         for row in ("The provisional tier", "Proceed, escalate or raise the tier after discovery", "A wireframe",

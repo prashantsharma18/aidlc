@@ -1,8 +1,9 @@
 # Routes
 
-`aidlc-start` sends every piece of work down one of seven routes. It asks two questions: what kind of work is this,
-and how many repositories does it change? The answer fixes which stages run, where their documents live, and who
-approves. The eighth, I, does not start there: when an alert fires, the person runs `aidlc-operate`, and the
+`aidlc-start` sends every piece of work down one of eight routes. It first checks the team's list of standard changes
+in `AGENTS.md`: work that matches a class within its limits takes route S. Otherwise it asks two questions: what kind
+of work is this, and how many repositories does it change? The answer fixes which stages run, where their documents
+live, and who approves. The ninth, I, does not start there: when an alert fires, the person runs `aidlc-operate`, and the
 follow-up comes back through `aidlc-start` as a defect.
 
 The `using-aidlc` skill holds the same routes as a table. This page draws them.
@@ -12,7 +13,9 @@ The `using-aidlc` skill holds the same routes as a table. This page draws them.
 ```mermaid
 flowchart TD
     alert["An alert fires"] -->|"not through aidlc-start: run aidlc-operate"| I["I · incident"]
-    item["A work item or a new requirement"] --> kind{"What kind of work?"}
+    item["A work item or a new requirement"] --> standard{"A standard change AGENTS.md lists, within its limits?"}
+    standard -->|"yes"| S["S · standard change"]
+    standard -->|"no, or a limit is passed"| kind{"What kind of work?"}
     kind -->|"no code yet"| G["G · new system"]
     kind -->|"a change to a story in progress"| C["C · change request"]
     kind -->|"a change to a released story"| newstory["A new story with its own key"]
@@ -44,14 +47,15 @@ Three rules sit under the tree:
 
 | Route | When | Stages | Approvals |
 |---|---|---|---|
-| F0 · feature, fast path | Tier 1, one repository, criteria written on the work item by their owner; no design change, new dependency or data change; one slice | start, plan (brief mode: `brief.md`), the engineer confirms, build, verify, review, merge | The engineer confirms the brief; a code owner approves brief and change in the pull request |
-| F1 · feature, one repository | A new capability or changed behaviour in one repository | start, intent (if needed), specify, discover (when needed), design, plan, build per slice, verify, review, release | Product owner, spec owner, tech lead or architect (design), tech lead (plan) on the tracker; a code owner approves the pull request; the release approver |
+| F0 · feature, fast path | Tier 1, one repository, criteria written on the work item by their owner; no design change, new dependency or data change; one slice | start, plan (brief mode: `brief.md`), the engineer confirms, build, verify, review, merge | The engineer confirms the brief and its tier (Ready); a code owner approves brief and change in the pull request (Merge) |
+| F1 · feature, one repository | A new capability or changed behaviour in one repository | start, intent (if needed), specify, discover (when needed), design, plan, build per slice, verify, review, release | Ready: the product owner and the spec owner, with the tier; at Tier 2 and 3, design and plan in one pull request (tech lead or architect); a code owner at Merge; the release approver when users see the change (always at Tier 3) |
 | F2 · feature, several repositories | Two or more repositories, or unsure | Root: start, intent, specify, discover, design with the contract and the coordination plan. Each repository: plan, build, verify, review. Root: release | As F1; consumers approve contract changes; each repository's own code owner |
 | C · change request | An approved criterion must change before release | specify (amendment), the criterion's owner decides, the tech lead classifies each part, then each part by its state | Criterion owner; tech lead; re-planned parts approved again |
-| D1 · defect, fast path | Tier 1, one repository, reproduced, expected behaviour written | start, plan (brief mode: `fix.md`), the engineer confirms, build (reproducing test first), verify, review, merge | The engineer confirms the brief; a code owner approves brief and fix in the pull request |
+| D1 · defect, fast path | Tier 1, one repository, reproduced, expected behaviour written | start, plan (brief mode: `fix.md`), the engineer confirms, build (reproducing test first), verify, review, merge | The engineer confirms the brief and its tier (Ready); a code owner approves brief and fix in the pull request (Merge) |
 | D2 · defect, full route | Any defect that fails the fast-path test | As F1 or F2; the reproduction is the spec's first criterion | As F1; the product owner decides behaviour nobody wrote down |
 | I · incident | An alert fires or an incident is open | operate (no story), people contain, the incident record and a follow-up item, feedback | On-call; a person runs every runbook step; the product owner accepts the follow-up |
 | G · new system | No code yet | start, intent, specify, design (`new-system.md`), then per repository onboard (prepare), slice 0, onboard (confirm); then F1 or F2 and release | Architect or tech lead; consumers; the product owner for a wireframe |
+| S · standard change | A class of work the team lists in `AGENTS.md`'s Standard changes, within every limit it names; Tier 1, one repository | start (it writes `standard.md`), the engineer confirms, build, verify, review, merge | The engineer confirms the standard brief and its tier (Ready); a code owner approves brief and change in the pull request (Merge) |
 
 In every diagram below, a hexagon is a person's decision. The agent drafts every document; it never approves one.
 
@@ -60,7 +64,7 @@ In every diagram below, a hexagon is a person's decision. The agent drafts every
 ```mermaid
 flowchart LR
     start["aidlc-start"] --> plan["aidlc-plan, brief mode"]
-    plan --> confirm{{"Engineer confirms brief.md"}}
+    plan --> confirm{{"Engineer confirms brief.md and its tier"}}
     confirm --> build["aidlc-build"]
     build --> verify["aidlc-verify"]
     verify --> review["aidlc-review"]
@@ -80,12 +84,11 @@ stage: the normal pipeline ships the change.
 flowchart LR
     start["aidlc-start"] --> intent["aidlc-intent, if needed"]
     intent --> specify["aidlc-specify"]
-    specify --> specok{{"Spec owner approves the spec"}}
+    specify --> specok{{"Ready: the spec owner approves the spec, with its tier"}}
     specok --> discover["aidlc-discover, when needed"]
     discover --> design["aidlc-design"]
-    design --> designok{{"Tech lead or architect approves, or records none needed"}}
-    designok --> plan["aidlc-plan"]
-    plan --> planok{{"Tech lead approves plan and bundles"}}
+    design --> plan["aidlc-plan"]
+    plan --> planok{{"Tech lead or architect approves, or records none needed, with the plan: one pull request at Tier 2 and 3, none at Tier 1"}}
     planok --> build["aidlc-build, one slice at a time"]
     build --> verify["aidlc-verify"]
     verify --> review["aidlc-review"]
@@ -94,9 +97,11 @@ flowchart LR
     release --> releaseok{{"Release approver"}}
 ```
 
-Everything runs inside the repository, and every document lives in `plans/<KEY>/`, on the story's branch. Approvals
-are recorded on the tracker with the document's version and commit. The story's documents travel in the same pull
-request as the code.
+Everything runs inside the repository, and every document lives in `plans/<KEY>/`, on the story's branch. At Tier 1 a
+person decides only Ready and Merge, and Release only when users see the change: the plan and a "none needed" design are stated, and the code owner sees spec,
+plan and code together in the pull request. At Tier 2 and 3 the spec, then the design with the plan, merge first;
+each pull request approval is the record, and the AI writes the tracker entry from it, asking before posting (ADR
+0026). The story's documents travel in the same pull request as the code at Tier 1.
 
 ### F2 · feature, several repositories
 
@@ -142,7 +147,7 @@ The change runs in the original story's index, never a new one. See
 ```mermaid
 flowchart LR
     start["aidlc-start"] --> plan["aidlc-plan, brief mode"]
-    plan --> confirm{{"Engineer confirms fix.md"}}
+    plan --> confirm{{"Engineer confirms fix.md and its tier"}}
     confirm --> build["aidlc-build: the reproducing test fails first"]
     build --> verify["aidlc-verify"]
     verify --> review["aidlc-review"]
@@ -194,6 +199,30 @@ flowchart TB
 Each step's pull request merges before the next starts. With several repositories, a person creates each one the
 design's layout names and runs `aidlc-onboard` again at the workspace root, so `WORKSPACE.md` lists them. Approving
 `new-system.md` approves the dependencies and scaffold commands it pins.
+
+### S · standard change
+
+```mermaid
+flowchart LR
+    start["aidlc-start: the work matches a class in AGENTS.md"] --> brief["aidlc-start writes standard.md"]
+    brief --> confirm{{"Engineer confirms standard.md and its tier"}}
+    confirm --> build["aidlc-build"]
+    build --> verify["aidlc-verify"]
+    verify --> review["aidlc-review"]
+    review --> merge{{"Code owner approves the pull request"}}
+    start -.->|"a limit is passed"| normal["The work's normal route"]
+    build -.->|"a limit is passed"| reroute["aidlc-start re-routes it"]
+```
+
+For work the tech lead approved once, as a class in the Standard changes section of `AGENTS.md` (ADR 0026).
+`aidlc-onboard` proposes three classes: a recipe commit with an approved tool and version; a dependency patch or
+minor bump within the team's policy (no new dependency, never a major version); and a D1 defect fix that stays Tier 1.
+`aidlc-start` copies the class's name, limits and evidence into `plans/<KEY>/standard.md`, and the engineer confirms
+it with its tier. There is no intent, spec, design or plan approval, and no release stage unless users see the
+change. The code owner still approves the pull request after a non-author PASS; the evidence file names the class and
+shows its limits held. For a listed recipe class, the build makes no separate recipe-review pause: the code owner
+reads the recipe check at Merge. A defect that matches the D1-fix class takes route D1, whose fix brief already
+carries its limits. Work that passes a limit takes its normal route: a class is never stretched.
 
 ## Linked parts (F2)
 
@@ -254,6 +283,7 @@ stateDiagram-v2
     F0 --> F1: a criterion its owner did not write, a design question is yes, a new dependency, a data change, a second slice, or the tier rises
     F0 --> F2: a second repository is involved
     D1 --> D2: no written expected behaviour, a design question is yes, the tier rises, a second repository, or an architectural cause
+    S --> F1: a limit of its class is passed, a major version, a new dependency or a Tier 2 risk, and the work takes its normal route
 ```
 
 `aidlc-start` keeps every row already done, gives the new route's stages a "to do" row, and writes the ROUTE line as
@@ -265,6 +295,7 @@ spans several repositories, the story moves to `stories/<KEY>/` at the workspace
 | Route | Story documents | Part documents | The index |
 |---|---|---|---|
 | F0, D1 | none: the brief stands in | `plans/<KEY>/brief.md` or `fix.md`, the progress note | `plans/<KEY>/README.md` |
+| S | none: the standard brief stands in | `plans/<KEY>/standard.md`, the progress note | `plans/<KEY>/README.md` |
 | F1, D2 in one repository, C on such a story | `plans/<KEY>/`: intent, spec, evidence pack, design note, plan, bundles | progress notes, in the same folder | `plans/<KEY>/README.md` |
 | F2, D2 across repositories, C on such a story | `stories/<KEY>/` at the root: intent, spec, evidence pack, design, contract, coordination plan | `plans/<KEY>/` in each repository | one per repository, plus `stories/<KEY>/status.md`, derived |
 | G | the design documents and `new-system.md` in the home | slice 0's bundle and progress note | as F1 or F2 |
