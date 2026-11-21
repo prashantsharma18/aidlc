@@ -760,5 +760,24 @@ class SiblingSlicesTest(unittest.TestCase):
             self.assertEqual(void, ["delivery.md"])
 
 
+class SliceEvidencePathTest(unittest.TestCase):
+    """Task 6 fix: every stage that writes or reads the evidence file names the slice folder's copy."""
+
+    def test_the_slice_evidence_path_is_named_everywhere(self):
+        path = "`plans/<KEY>/slice-<n>/review-evidence.md`"
+        build, review = skill("aidlc-build"), skill("aidlc-review")
+        self.assertIn(f"commit it on its own ({path} for a slice on its own branch); its Recipe", build)
+        self.assertIn(f"and the evidence file `plans/<KEY>/review-evidence.md` ({path} for a slice on its own branch).",
+                      section(build, "## Produces"))
+        self.assertIn(f"commit it on its own ({path} for a slice on its own branch), at the "
+                      "pull request's head.", review)
+        self.assertIn(f"In `plans/<KEY>/` (`plans/<KEY>/slice-<n>/` for a slice on its own branch), on the part's branch",
+                      section(review, "## Produces"))
+        self.assertIn("A slice on its own branch edits the same documents in `plans/<KEY>/slice-<n>/`.",
+                      section(build, "## Rules"))
+        for name in ("reviewer-tests", "reviewer-compliance"):
+            self.assertIn(f"{path} for a slice on its own branch", read(f"agents/{name}.md").replace("\n  ", " "), name)
+
+
 if __name__ == "__main__":
     unittest.main()
