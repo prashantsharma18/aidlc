@@ -246,3 +246,17 @@ skill and changes no route.
 | E5 | Still dropped | No dispatcher ships, so there is no dispatcher key to fence |
 | Decision D1 | Kept, without a script | Local git worktrees first; the lanes of one repository start from one clone |
 | Decision D7 | Applied | A lane writes one repository; a story's parts are rows of the home repository's `QUEUE.md` |
+
+## 8. After Plan 24 (2026-11-21)
+
+Plan 24 (`docs/plans/2026-11-21-plan-24-fewer-approvals.md`, ADR 0026 proposed) builds fewer approvals as
+instructions: one decisions-by-tier table in the tiers file every stage reads, one Gate line in each stage that holds
+a decision, and route S for the standard changes a team lists in its `AGENTS.md`. It updates these items of section
+6; the rest stand as sections 6 and 7 say.
+
+| Item | State after Plan 24 | How |
+|---|---|---|
+| C1 | Covered, as instructions | The decisions-by-tier table: at Tier 1, Ready and Merge, and Release only when users see the change; Tier 2 adds Design + plan in one pull request, and Release when users see the change; Tier 3 adds the specialists, Release always and the hands-on restatement per slice. No decision is asked twice |
+| C3 | Covered, as instructions | Route S: the Standard changes section of `AGENTS.md`, three suggested classes from `aidlc-onboard`, the standard brief from `aidlc-start`; the recipe-review pause lifted for a listed recipe class |
+| C6 | Open | Intent, route and Ready as one first approval: a later plan |
+```

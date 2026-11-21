@@ -35,7 +35,8 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
 - **Several repositories:** story-level stages run at the workspace root and keep their documents in `stories/<KEY>/`;
   each repository's part (plan, build, verify, review) runs inside that repository, on branch `feat/<KEY>-<part>`.
   The story stays one tracker item; its parts are rows of the coordination plan.
-- **Gates:** each skill drafts and stops; people approve in the pull request and the tracker, or tell the AI, which
+- **Gates:** each skill drafts, and stops only where the tiers file's decisions table lists a decision for the tier
+  (at Tier 1, Ready and Merge, and Release only when users see the change; ADR 0026); people approve in the pull request and the tracker, or tell the AI, which
   records each decision after checking it (ADR 0023). Tests come first; an
   existing test assertion is never changed to make a test pass.
 - **Several at once:** the `parallel-lanes` workflow skill runs lanes, each in its own git worktree, from a
@@ -69,19 +70,19 @@ operating model: [docs/operating-model/workspace-and-repositories.md](docs/opera
 
 ## Commands you type
 
-The stage skills are the commands. Each drafts its documents and stops at a person's gate. In Claude Code, type
+The stage skills are the commands. Each drafts its documents and stops where the decisions table puts a person's decision. In Claude Code, type
 them as below; in Copilot, Codex or Cursor, ask for the skill by name ("use aidlc-start for SHIP-12").
 
 | You type | When | It writes |
 |---|---|---|
 | `/aidlc:aidlc-onboard` | Once per repository or workspace; `new prepare` and `new confirm` for a new system | `AGENTS.md` and the codebase map |
-| `/aidlc:aidlc-start SHIP-12` | Every new piece of work: a story, a defect, a change request, an incident follow-up, a new system | The story's index, with its route |
+| `/aidlc:aidlc-start SHIP-12` | Every new piece of work: a story, a defect, a change request, an incident follow-up, a new system | The story's index, with its route; on route S, the standard brief |
 | `/aidlc:aidlc-intent SHIP-12` | No story yet, or a vague one | The intent, for the product owner |
 | `/aidlc:aidlc-specify SHIP-12` | To write or amend the criteria | The spec |
 | `/aidlc:aidlc-discover SHIP-12` | When the tier or an unknown asks what the change touches | The evidence pack |
 | `/aidlc:aidlc-design SHIP-12` | Always before planning; most end at "none needed" | The design note, ADR drafts, contract changes |
 | `/aidlc:aidlc-plan SHIP-12` | Once the spec is approved; on the fast paths, brief mode | The plan and one bundle per slice, or `fix.md` or `brief.md` |
-| `/aidlc:aidlc-build SHIP-12 1` | One approved slice at a time | Commits and the slice's progress note |
+| `/aidlc:aidlc-build SHIP-12 1` | One slice at a time, from its approved bundle (at Tier 1, the stated one, or the approved one for independent slices) | Commits and the slice's progress note |
 | `/aidlc:aidlc-verify SHIP-12` | When the pull request's checks have run | The evidence table and the pull request description |
 | `/aidlc:aidlc-review SHIP-12` | Before the code owner reviews | The review record |
 | `/aidlc:aidlc-release SHIP-12` | When every part is merged | The readiness and change records, with stop criteria |

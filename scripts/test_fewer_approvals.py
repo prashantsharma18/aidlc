@@ -669,5 +669,62 @@ class LanesTest(unittest.TestCase):
                       lane)
 
 
+class DocsTest(unittest.TestCase):
+    """Task 10: the documents a team reads say what the decisions table says."""
+
+    def test_the_sheet_is_redrawn_from_the_table(self):
+        sheet = flat("docs/operating-model/adoption.md").split("## Who approves what", 1)[1]
+        self.assertIn("A person decides only where the tiers file's decisions table says", sheet)
+        self.assertIn("At Tier 1 that is Ready and Merge, and Release only when users see the change.", sheet)
+        self.assertIn("| Decision | Who | When | Where it is recorded |", sheet)
+        for row in ("| **Ready**: the story, its acceptance criteria and its tier |", "| **Design + plan**, with each "
+                    "bundle's MODE |", "| **Merge** |", "| **Release** |", "| The hands-on restatement |",
+                    "| A standard change list |", "| The push |"):
+            self.assertIn(row, sheet, row)
+        self.assertIn("| Tier 2 and 3: one pull request that merges both first; at Tier 1 the AI states them, except a "
+                      "plan with independent slices, which the tech lead approves |", sheet)
+        self.assertIn("route S then needs only Ready and Merge, and Release only when users see the change", sheet)
+        self.assertNotIn("| The tracker, with the plan's version and commit |", sheet)
+        self.assertIn("bundles the tech lead approves with the design at Tier 2 and 3 (stated at Tier 1, except a plan "
+                      "with independent slices, which the tech lead approves)",
+                      flat("docs/operating-model/adoption.md"))
+
+    def test_the_operating_model_says_who_decides(self):
+        roles = read("docs/operating-model/roles.md")
+        self.assertIn("| Tier | Ready | Design + plan | Merge | Release |", roles)
+        self.assertIn("| 1 | Product owner (on F0, D1 and S, the engineer confirms the brief and its tier) | None: the "
+                      "AI states them, except a plan with independent slices, which the tech lead approves; the code "
+                      "owner reads them at Merge |", roles)
+        self.assertNotIn("| 1 | Tech lead, on the work item (a short plan) |", roles)
+        lifecycle = read("docs/operating-model/lifecycle.md")
+        self.assertIn("| At Tier 2 and 3, the pull request approval, written to the work item with the plan's version "
+                      "and commit; at Tier 1 the plan is stated, except a plan with independent slices, which the "
+                      "tech lead approves |", lifecycle)
+        self.assertIn("[the decisions table](tiers-table.md#decisions-by-tier)", lifecycle)
+        self.assertIn("the tech lead approves designs and plans, at Tier 2 and 3 in one pull request (ADR 0026)",
+                      flat("docs/operating-model/workspace-and-repositories.md"))
+
+    def test_the_readme_and_the_map_say_where_a_person_decides(self):
+        readme = flat("README.md")
+        self.assertIn("**Gates:** each skill drafts, and stops only where the tiers file's decisions table lists a "
+                      "decision for the tier (at Tier 1, Ready and Merge, and Release only when users see the change; "
+                      "ADR 0026)", readme)
+        self.assertIn("or tell the AI, which records each decision after checking it (ADR 0023)", readme)
+        self.assertIn("Each drafts its documents and stops where the decisions table puts a person's decision.", readme)
+        self.assertIn("| `/aidlc:aidlc-build SHIP-12 1` | One slice at a time, from its approved bundle (at Tier 1, "
+                      "the stated one, or the approved one for independent slices) |", readme)
+        self.assertIn("- Who decides at a gate: the decisions table in the six identical `assets/tiers.md` copies and "
+                      "`docs/operating-model/tiers-table.md`", flat("docs/codebase-map.md"))
+
+    def test_the_change_list_marks_what_plan_24_covers(self):
+        changes = read("docs/design/2026-11-19-aidlc-6-change-list.md")
+        table = changes.split("## 8. After Plan 24 (2026-11-21)", 1)[1]
+        self.assertRegex(table, r"(?m)^\| C1 \| Covered, as instructions \|")
+        self.assertRegex(table, r"(?m)^\| C3 \| Covered, as instructions \|")
+        self.assertRegex(table, r"(?m)^\| C6 \| Open \|")
+        self.assertIn("at Tier 1, Ready and Merge, and Release only when users see the change;", table)
+        self.assertIn("`docs/plans/2026-11-21-plan-24-fewer-approvals.md`", table)
+
+
 if __name__ == "__main__":
     unittest.main()

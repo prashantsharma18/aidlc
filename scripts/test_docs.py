@@ -127,11 +127,6 @@ class ReviewFixesTest(unittest.TestCase):
                     "The rules file and the codebase map", "Monitoring and rollback"):
             self.assertIn(f"| {row} |", self.sheet, row)
 
-    def test_i6_the_tech_lead_approves_the_plan_at_every_tier(self):
-        roles = read("docs/operating-model/roles.md")
-        self.assertNotIn("| 1 | In the PR description |", roles)
-        self.assertIn("| 1 | Tech lead, on the work item (a short plan) |", roles)
-
     def test_minors_in_routes(self):
         for phrase in ("Root->>A: status marks part 1 re-plan", "once `aidlc-plan` or `aidlc-build` reads the code",
                        "for D1, the written expected behaviour and the three design questions",

@@ -83,7 +83,7 @@ Exit when the areas on next quarter's roadmap have their behaviour pinned.
 
 - New features take F0, F1 or F2; change requests take C; other defects take D2. `aidlc-specify` writes testable
   criteria, `aidlc-design` records the decisions (most end at "none needed"), `aidlc-plan` slices the work into
-  bundles the tech lead approves, and `aidlc-release` prepares the release and its stop criteria; a person or the pipeline ships it.
+  bundles the tech lead approves with the design at Tier 2 and 3 (stated at Tier 1, except a plan with independent slices, which the tech lead approves), and `aidlc-release` prepares the release and its stop criteria; a person or the pipeline ships it.
 - When a change spans repositories, set up a workspace (`starter/workspace/`, then `aidlc-onboard` at its root) and
   track the story there.
 
@@ -112,34 +112,41 @@ last column and says how it was confirmed; it never writes a name it was not giv
 can, even after being told. When the check disagrees, it records nothing and reports the difference to the
 decider. Nobody approves what they wrote: never the author, never the author's agent, never an AI reviewer.
 
-| Decision | Who | Where it is recorded |
-|---|---|---|
-| The story and its acceptance criteria | Product owner | The tracker |
-| The provisional tier | Product owner, with whoever owns the risk | The tracker |
-| The route | Tech lead agrees what `aidlc-start` proposes | The story's index |
-| The spec | Spec owner (specialists at Tier 3) | The tracker, with the spec's version |
-| A changed criterion | The criterion's owner | The spec's Amendments line |
-| Proceed, escalate or raise the tier after discovery | Tech lead, with the affected owners | The evidence pack and the work item |
-| Which parts a change affects | Tech lead | The story index (an `UNAFFECTED` line); re-planned parts on the tracker |
-| Design decisions, or "none needed" | Tech lead or architect | The design note's APPROVED or RECORDED BY line; ADRs in the folder `AGENTS.md` names |
-| A wireframe | Product owner | The tracker |
-| A contract change | Every consumer | The tracker, with the contract's version |
-| A new system's stack and dependencies | Architect or tech lead | The tracker, approving `new-system.md` |
-| The plan and its bundles, including each MODE | Tech lead | The tracker, with the plan's version and commit |
-| A fast-path brief (`fix.md`, `brief.md`) | The engineer confirms it and chooses its MODE; a code owner approves | The CONFIRMED line; the pull request |
-| A recipe commit (a tool's mechanical output) | The engineer reviews it (a scaffold as generated code) | The progress note's "confirmed by" line; the pull request |
-| Passing a checkpoint in a delegated slice | The engineer | The progress note's "confirmed by" line |
-| A new dependency | A person, asked first | The plan or the pull request |
-| An exception to the Quality bar | A person, with a reason, an owner and an expiry date | Next to the code, or in `AGENTS.md`'s Quality bar |
-| Each review finding | The engineer decides it; high and medium findings block the merge | The review record |
-| A specialist review (Tier 3) | The named specialist, who can block | The pull request |
-| The merge | A code owner who did not write or push the change | The pull request |
-| Merge rules on the code host, where the team has them (aidlc needs none) | A repository administrator | The code host |
-| Monitoring and rollback | The owning team confirms | The readiness record |
-| The release | Release approver (named at Tier 3) | Change management |
-| Containment of an incident | On-call; a person runs every runbook step | The incident record |
-| The incident follow-up item | Product owner accepts it | The tracker |
-| Where each lesson goes | The owner of each source | The feedback record |
-| The rules file and the codebase map | The person decides placement; code owners merge them | The pull request |
+A person decides only where the tiers file's decisions table says ([tiers-table.md](tiers-table.md), ADR 0026): the
+four decisions in bold, the hands-on restatement at Tier 3, and the decisions every tier keeps. At Tier 1 that is
+Ready and Merge, and Release only when users see the change. Every other stage states what it did and goes on; a
+person who disagrees says so.
+
+| Decision | Who | When | Where it is recorded |
+|---|---|---|---|
+| **Ready**: the story, its acceptance criteria and its tier | Product owner, with the spec owner; the tier with whoever owns the risk (on F0, D1 and S, the engineer who confirms the brief) | Every tier; Tier 3 adds a specialist's spec review | Tier 1: the tracker, or the brief's CONFIRMED line. Tier 2 and 3: the approval of the spec's pull request, which merges first |
+| The provisional tier | Product owner, with whoever owns the risk, inside Ready | Every tier | With Ready |
+| **Design + plan**, with each bundle's MODE | Tech lead or architect | Tier 2 and 3: one pull request that merges both first; at Tier 1 the AI states them, except a plan with independent slices, which the tech lead approves | The pull request approval; the AI writes the tracker entry from it, with the plan's version and commit |
+| Design decisions, or "none needed" | Tech lead or architect, inside Design + plan | Tier 2 and 3; at Tier 1 the AI states "none needed" in the plan | The design note's APPROVED or RECORDED BY line; ADRs in the folder `AGENTS.md` names |
+| Proceed, escalate or raise the tier after discovery | Tech lead, with the affected owners: proceed inside Design + plan; to escalate or raise the tier is Ready | When discovery runs | The evidence pack and the work item |
+| **Merge** | A code owner who did not write or push the change, after a non-author PASS | Every tier; at Tier 3 the security specialist when the change touches secrets, permissions, tool calls, dependencies or prompts | The pull request |
+| **Release** | Release approver (named at Tier 3); the readiness record cites the approval | Only when users see the change; always at Tier 3 | Change management |
+| The hands-on restatement | The engineer | Tier 3, per slice; stated at Tier 1 and 2 | The progress note's "confirmed by" line |
+| The route | Tech lead agrees what `aidlc-start` proposes, when reviewing the index | Every tier, without a stop | The story's index |
+| A standard change list | Tech lead, once, in a pull request, as any rule | Once; route S then needs only Ready and Merge, and Release only when users see the change | The Standard changes section of `AGENTS.md` |
+| A changed criterion | The criterion's owner | Every tier | The spec's Amendments line |
+| Which parts a change affects | Tech lead | Every tier | The story index (an `UNAFFECTED` line); re-planned parts on the tracker |
+| A wireframe | Product owner | Every tier; at Tier 2 and 3 in the pull request that merges the design and the plan | The tracker |
+| A contract change | Every consumer | Every tier; at Tier 2 and 3 in the pull request that merges the design | The tracker, with the contract's version |
+| A new system's stack and dependencies | Architect or tech lead | With the design (route G) | The tracker, approving `new-system.md` |
+| A fast-path or standard brief (`fix.md`, `brief.md`, `standard.md`) | The engineer confirms it and its tier (Ready) and chooses its MODE; a code owner approves it at Merge | Routes F0, D1 and S | The CONFIRMED line; the pull request |
+| A recipe commit (a tool's mechanical output) | The engineer reviews it (a scaffold as generated code); for a recipe class listed in `AGENTS.md`, on route S, the code owner at Merge | Every tier | The progress note's "confirmed by" line; the pull request |
+| Passing a checkpoint in a delegated slice | The engineer | Where the bundle's MODE puts one | The progress note's "confirmed by" line |
+| A new dependency | A person, asked first | Every tier | The plan or the pull request |
+| An exception to the Quality bar | A person, with a reason, an owner and an expiry date | Every tier | Next to the code, or in `AGENTS.md`'s Quality bar |
+| Each review finding | The engineer decides it; this is their review of the diff; high and medium findings block the merge | Every tier | The review record |
+| A specialist review (Tier 3) | The named specialist, who can block | Tier 3 | The pull request |
+| The push | The person who ran the session, who alone holds the push credential | Every tier | The code host |
+| Merge rules on the code host, where the team has them (aidlc needs none) | A repository administrator | Once | The code host |
+| Monitoring and rollback | The owning team confirms, with the release decision | With Release | The readiness record |
+| Containment of an incident | On-call; a person runs every runbook step | Every tier | The incident record |
+| The incident follow-up item | Product owner accepts it | Every tier | The tracker |
+| Where each lesson goes | The owner of each source | Every tier | The feedback record |
+| The rules file and the codebase map | The person decides placement; code owners merge them | Once, then by pull request | The pull request |
 
 Tiers add approvers, never stages: see [roles.md](roles.md) and [tiers.md](tiers.md).
