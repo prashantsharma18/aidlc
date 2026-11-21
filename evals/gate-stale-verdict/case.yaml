@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: gate-stale-verdict
+context:
+  scaffold_script: setup.sh

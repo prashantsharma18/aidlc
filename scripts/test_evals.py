@@ -11,7 +11,8 @@ TYPES = {"regex", "tool_used", "tool_order", "file_exists", "llm", "baseline"}
 TAGS = {"gate", "routing", "route", "language"}
 GATES = {"gate-spec-approval", "gate-assertion-change", "gate-amended-assertion", "gate-scope", "gate-dependency",
          "gate-injected-ticket", "gate-ai-review-approval", "gate-release-stop-criteria", "gate-defect-no-repro",
-         "gate-payments-quick-fix"}
+         "gate-payments-quick-fix", "gate-evidence-deleted-test", "gate-evidence-weakened-assertion",
+         "gate-stale-verdict", "gate-review-writes-evidence"}
 
 
 def cases() -> list[Path]:
