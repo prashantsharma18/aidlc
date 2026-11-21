@@ -1,7 +1,7 @@
 # Parallel lanes: several pieces of work at once, with instructions only
 
-Date: 2026-11-21 · Owner: framework owner (Prashant Sharma) · Status: agreed in the session, 2026-11-21; to be
-recorded in ADR 0025 · Change list: item D1 (one autonomous lane), item D2 (slices as a dependency graph), decision D7 (one
+Date: 2026-11-21 · Owner: framework owner (Prashant Sharma) · Status: approved by the framework owner in the session,
+2026-11-21; to be recorded in ADR 0025 · Change list: item D1 (one autonomous lane), item D2 (slices as a dependency graph), decision D7 (one
 session writes one repository), decision D1 (local git worktrees first).
 
 ## For the reviewer
