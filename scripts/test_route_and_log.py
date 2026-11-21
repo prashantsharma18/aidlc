@@ -258,5 +258,37 @@ class StartTest(unittest.TestCase):
         self.assertEqual(re.findall(r"<(?!!--)[^<>\n]+>", outside_code(text)), [])
 
 
+class SpecifyTest(unittest.TestCase):
+    """Task 4: the spec shows the route apart from the product owner's approval."""
+
+    def test_the_spec_template_shows_the_route(self):
+        spec = read("skills/aidlc-specify/assets/spec.md")
+        self.assertIn("Spec owner: {{OWNER}} · Tier: {{TIER}} · Route: {{ROUTE, from the story index's ROUTE line; "
+                      "shown, the tech lead owns it}} · Version: v1", spec)
+        self.assertIn("Spec {{version}} approved by {{owner}} on {{YYYY-MM-DD}}, {{how it was confirmed: checked on the "
+                      "work item, or in the session}} · route {{ROUTE}} (shown; the tech lead owns it). Reviewed by "
+                      "{{specialist}}.", spec)
+        block = flat("skills/aidlc-specify/assets/spec.md").split("## For the reviewer", 1)[1].split(" ## ", 1)[0]
+        self.assertIn("a specialist reviews at Tier 3; the route is shown with the spec, and the tech lead owns it "
+                      "(ADR 0027)", block)
+        self.assertIn("On the work item: \"Spec vN approved by name · route F1 (shown; the tech lead owns it)\"", block)
+
+    def test_specify_writes_the_route_and_never_decides_it(self):
+        specify = skill("aidlc-specify")
+        self.assertIn("Copy the route from the index's ROUTE line into the spec's header: Ready shows it, and the tech "
+                      "lead owns it (ADR 0027).", section(specify, "## Steps"))
+        text = gate("aidlc-specify")
+        for phrase in ("Ready shows the route apart from the approval: write the Approval record as \"Spec vN approved "
+                       "by … · route F1 (shown; the tech lead owns it)\", and at Tier 1, where the spec may be a few "
+                       "lines on the work item, write the work item's entry the same way (ADR 0027).",
+                       "The spec owner sees the route and does not decide it: when they disagree with it, the work "
+                       "goes back to `aidlc-start`, and the tech lead decides; their Ready still covers the work, its "
+                       "criteria and its tier.",
+                       DECIDE + " " + LANE + " You draft; you never approve."):
+            self.assertIn(phrase, text, phrase)
+        self.assertIn("You are recording the route as the spec owner's decision, or changing the route yourself: the "
+                      "tech lead owns it.", section(specify, "## Red flags"))
+
+
 if __name__ == "__main__":
     unittest.main()
