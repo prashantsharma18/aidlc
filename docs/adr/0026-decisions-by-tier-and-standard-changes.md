@@ -4,6 +4,8 @@ Status: Proposed (2026-11-21). Accepted (2026-11-21; confirmed by the framework 
 Design: `docs/design/2026-11-21-fewer-approvals.md` · Plan: `docs/plans/2026-11-21-plan-24-fewer-approvals.md` ·
 Amends: ADR 0012 (the recipe pause for a listed recipe class), ADR 0015 (route S), ADR 0020 (the pull request
 approval is the record)
+Amended by ADR 0027 (proposed, 2026-11-21): the Ready row also shows the route, which the tech lead owns, and the code
+owner reads the AI's decision log at Merge; see ADR 0027.
 
 ## Context
 People's decisions are the bottleneck. With parallel lanes (ADR 0025), more lanes make more waits on people. An
