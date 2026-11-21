@@ -1,15 +1,15 @@
 # Parallel lanes: several pieces of work at once, with instructions only
 
 Date: 2026-11-21 · Owner: framework owner (Prashant Sharma) · Status: agreed in the session, 2026-11-21; to be
-recorded in ADR 0025 · Change list: item D1 (`aidlc-run`), item D2 (slices as a dependency graph), decision D7 (one
+recorded in ADR 0025 · Change list: item D1 (one autonomous lane), item D2 (slices as a dependency graph), decision D7 (one
 session writes one repository), decision D1 (local git worktrees first).
 
 ## For the reviewer
 - Who decides: the framework owner, in this design's review and in ADR 0025.
 - Tier and main risk: a framework change. The main risk is two lanes changing the same thing at once, or a lane
   running past a person's decision. The lock, the clash rules and the release-at-every-gate rule below answer both.
-- What changed: aidlc gains one entry skill, `aidlc-run`, with a coordinator mode and a lane mode, and one template,
-  `QUEUE.md`. Independent slices become sibling pull requests. aidlc still ships no code and needs no code-host
+- What changed: aidlc gains a third kind of skill, **workflow**, and its first skill, `parallel-lanes`, with a
+  coordinator mode and a lane mode, and one template, `QUEUE.md`. Independent slices become sibling pull requests. aidlc still ships no code and needs no code-host
   feature (ADR 0024).
 
 ## Why
@@ -25,8 +25,30 @@ the same result with git worktrees, a queue file a person keeps, and the AI tool
 | Where the queue lives | A file in git, `QUEUE.md`, written by a person; the coordinator may draft rows for the person to confirm |
 | How lanes start | One protocol either way: the coordinator starts lanes with the AI tool's own feature where there is one (in Claude Code, background sub-agents), or a person starts one session per lane |
 | A lane at a person's decision | It records its state, commits, removes its worktree and ends; the slot frees; any free lane resumes the item later from its files |
-| Fitting it into the skills | Approach A: one new entry skill, `aidlc-run`; stage skills get one line each |
+| Fitting it into the skills | Approach A: one new skill; stage skills get one line each |
+| What kind of skill | A new third kind, **workflow** (`metadata.kind: workflow`), kept apart from stage skills and practice skills |
+| Its name | `parallel-lanes`, invoked as `/aidlc:parallel-lanes`; no `aidlc-` prefix, because it is not a stage |
+| Branch names | aidlc's existing names (`<type>/<KEY>-<slug>`), written in each queue row; never an `aidlc/` prefix |
 | Slices | Independent slices become sibling pull requests, stacked where one builds on another, only when the plan marks them independent |
+
+## A third kind of skill: workflow
+`parallel-lanes` is not a stage: it produces no delivery document and has no gate of its own; it stops wherever the
+stage it runs stops. It is not a practice: it is not an engineering habit a stage loads, and it sits above the stages,
+running several at once. So aidlc gets a third kind, kept apart from the other two:
+
+| Kind | Name | Marked by | Required sections (the validator checks them) | What it is |
+|---|---|---|---|---|
+| Stage | `aidlc-<stage>` | the `aidlc-` prefix | When to use, Inputs, Steps, Produces, Gate, Stop if, Common excuses, Red flags, Rules | One step of delivery, ending at a person's decision |
+| Practice | `<doing>-<thing>`, such as `writing-tests` | `metadata.kind: practice` | When to use, Steps, Checks, Stop if, Common excuses, Red flags, Rules | An engineering habit a stage loads |
+| **Workflow** | **a noun phrase that does not start with an "-ing" word**, such as `parallel-lanes` | **`metadata.kind: workflow`** | **When to use, Inputs, Steps, Stop if, Common excuses, Red flags, Rules** | **How work runs across sessions: queueing, lanes, coordination** |
+| Map | `using-aidlc` | `metadata.kind: map` | the open format only | The overview of the other kinds |
+
+- The validator gains the workflow kind's sections and two naming checks: a workflow name never starts with `aidlc-`
+  and never starts with an "-ing" word, so it cannot be mistaken for a stage or a practice.
+- `using-aidlc` and the README list the four kinds separately.
+- Folders stay flat (`skills/<name>/`), because the open skills format and Claude Code's plugin loader expect that.
+- A workflow skill never approves, never merges and writes no document a person approves; its Rules say so.
+- Later workflow skills join this kind, for example change list item D1, one autonomous lane.
 
 ## The pieces
 
@@ -35,7 +57,7 @@ the same result with git worktrees, a queue file a person keeps, and the AI tool
 | `QUEUE.md` | The order of ready work, on the default branch: in the repository, or in the home repository for a workspace | A person. The coordinator drafts rows; the person confirms and commits them. Lanes never write it. |
 | The item's own files | Its index `plans/<KEY>/README.md`, plan, bundles and progress notes, on the item's branch, as today | The lane working on it |
 | A lane | One AI session working one queue row in its own git worktree | Started by the coordinator or by a person |
-| The coordinator | `aidlc-run` in coordinator mode: reads the queue and each row's state, checks clashes, starts lanes, reports | Writes nothing but drafts for the person |
+| The coordinator | `parallel-lanes` in coordinator mode: reads the queue and each row's state, checks clashes, starts lanes, reports | Writes nothing but drafts for the person |
 
 ### `QUEUE.md`
 
@@ -96,7 +118,7 @@ not collide in the story's documents.
   worktrees of different clones do not see each other. A person does not check out a queued branch in their own
   working copy while lanes may claim it.
 
-## `aidlc-run`, lane mode
+## `parallel-lanes`, lane mode
 1. Fetch, and read `QUEUE.md` on the default branch.
 2. Take the first ready row that clashes with no running lane (see Clashes). With no ready row, report and end.
 3. Claim it (the lock above). If the claim fails, go back to step 2 with the next row.
@@ -111,7 +133,7 @@ not collide in the story's documents.
    Release means: commit, `git worktree remove .worktrees/<folder>` (never `--force`), and report the row and its state.
 6. Never write `QUEUE.md`, never write to another repository, never approve, never merge.
 
-## `aidlc-run`, coordinator mode
+## `parallel-lanes`, coordinator mode
 1. Fetch every repository the queue names, read `QUEUE.md` and each row's state.
 2. List worktrees (`git worktree list` in each repository). A worktree with no running lane is shown to the person;
    it is removed only after the person confirms, because it may hold uncommitted work.
@@ -166,17 +188,18 @@ Slice 3 stacks on slice 2, and a person merges slice 2's pull request:
 ## What changes in aidlc
 | New | Changed |
 |---|---|
-| `skills/aidlc-run/SKILL.md` (coordinator and lane modes; the stage-skill sections; ends "You draft; you never approve.") | Each stage skill: one identical line, "In a lane, release at your gate as `aidlc-run` says." |
-| `skills/aidlc-run/assets/queue.md` (the `QUEUE.md` template) | Both `story-index.md` copies: the Status column's `waiting: <decision> by <who>` value |
-| ADR 0025: lanes, the queue, the worktree lock, sibling slice pull requests (amends ADR 0015's one pull request per part) | `aidlc-plan`: the bundle's `DEPENDS ON` line; slice rows and branches when slices are independent |
+| `skills/parallel-lanes/SKILL.md` (`metadata.kind: workflow`; coordinator and lane modes; the workflow sections) | Each stage skill: one identical line, "In a lane, release at your gate as `parallel-lanes` says." |
+| `skills/parallel-lanes/assets/queue.md` (the `QUEUE.md` template) | Both `story-index.md` copies: the Status column's `waiting: <decision> by <who>` value |
+| ADR 0025: the workflow kind of skill, lanes, the queue, the worktree lock, sibling slice pull requests (amends ADR 0015's one pull request per part) | `aidlc-plan`: the bundle's `DEPENDS ON` line; slice rows and branches when slices are independent |
 | | `aidlc-build` and `aidlc-review`: one pull request per independent slice; a slice edits only its own row and note |
-| | `using-aidlc` and the README: where `aidlc-run` fits |
+| `scripts/validate.py`: the workflow kind's sections and its two naming checks (aidlc's own tooling) | `using-aidlc` and the README: the four kinds of skill, and where `parallel-lanes` fits |
+| | `AGENTS.md` Standards: the workflow kind and its sections |
 | | `aidlc-onboard`: the `.worktrees/` line in `.git/info/exclude`, and the one-clone rule |
 
 aidlc still ships no script and no workflow, and needs no code-host feature.
 
 ## How it is tested
-- **Free structure tests:** the skill's sections and its two modes; the template's fields; the one release line
+- **Free structure tests:** the workflow kind's sections and naming checks in the validator; the skill's two modes; the template's fields; the one release line
   identical in every stage skill; the Status value in both index copies; no script or tool-specific command named.
 - **Behaviour evals** (paid, run when a key or token is available):
   - a lane that finds its row's worktree already taken claims the next row instead;
