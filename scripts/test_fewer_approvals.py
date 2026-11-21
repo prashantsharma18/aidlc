@@ -270,5 +270,81 @@ class ReadyTest(unittest.TestCase):
                                     or "precedence" in sentence or "ask before" in sentence), sentence)
 
 
+class DesignPlanTest(unittest.TestCase):
+    """Task 4: design and plan are one decision at Tier 2 and 3, and none at Tier 1."""
+
+    def test_the_three_gates_carry_the_line(self):
+        for name in ("aidlc-discover", "aidlc-design", "aidlc-plan"):
+            assert_gate_line(self, name)
+
+    def test_discover_proceeds_with_the_design_and_waits_only_for_a_tier_change(self):
+        text = gate("aidlc-discover")
+        self.assertIn("To proceed is not a separate stop: at Tier 2 and 3 it is decided with the design and the plan, "
+                      "in their one pull request, and at Tier 1 the code owner sees the evidence pack at Merge.", text)
+        self.assertIn("To escalate, or to raise the tier, changes Ready, so it waits for the tech lead and whoever owns "
+                      "the risk.", text)
+        self.assertIn("8. Draft the decision for the tech lead: proceed, escalate, or raise the tier.",
+                      skill("aidlc-discover"))
+        self.assertNotIn("the accepted intent", skill("aidlc-discover"))
+
+    def test_design_is_stated_at_tier_1_and_approved_with_the_plan_above_it(self):
+        text = gate("aidlc-design")
+        for phrase in ("The tech lead or architect approves the design with the plan",
+                       "At Tier 1 the design is not a separate decision (the tiers file's decisions table): state "
+                       "\"none needed\" and its reason in the session and in the plan, and go on; the code owner sees "
+                       "it at Merge.",
+                       "A design question answered yes at Tier 1 raises the tier, which is a Ready decision: stop and "
+                       "say so.",
+                       "merges to the default branch first, in its own pull request, together with the plan, which "
+                       "the tech lead or architect approves once (ADR 0020, as ADR 0026 amends it): state the design "
+                       "and go on to `aidlc-plan`, because the decision comes once, on that pull request"):
+            self.assertIn(phrase, text, phrase)
+        step = skill("aidlc-design").split(" 1. Ask the three questions", 1)[1].split(" 2. When the change adds", 1)[0]
+        self.assertIn("At Tier 1 it is not a stop: state it in the session, write the RECORDED BY line as `stated at "
+                      "Tier 1; the code owner sees it at Merge`, and go on.", step)
+        note = read("skills/aidlc-design/assets/design-note.md")
+        self.assertIn("RECORDED BY  <tech lead or architect>, <YYYY-MM-DD>, <how it was confirmed> | stated at Tier 1; "
+                      "the code owner sees it at Merge", note)
+
+    def test_the_plan_waits_for_no_one_at_tier_1(self):
+        text = gate("aidlc-plan")
+        for phrase in ("At Tier 2 and 3, the tech lead reviews the plan against its checklist and decides, with the "
+                       "design, once (Design + plan in the tiers file's decisions table)",
+                       "That pull request approval is the record: the work item's entry is written from it (ADR 0026).",
+                       "At Tier 1 no one approves the plan: state it in the session, with its slices, their MODE and "
+                       "the design's \"none needed\", and go on",
+                       "where the code owner sees spec, plan and code together at Merge",
+                       "This is why at Tier 1 a plan with independent slices is the one plan that waits for the tech lead.",
+                       "At Tier 1 a bundle is built as the plan stated it, and a changed bundle is stated again.",
+                       "the engineer confirms the brief (`fix.md` or `brief.md`) and its tier, which is Ready on routes "
+                       "D1 and F0"):
+            self.assertIn(phrase, text, phrase)
+        plan = skill("aidlc-plan")
+        self.assertIn("State the restatement in the session and go on: it is not a stop (the tiers file's decisions "
+                      "table), and the person may correct it at any time.", plan)
+        self.assertNotIn("Wait for the person to confirm.", plan)
+        self.assertIn("at Tier 1 it states the plan and goes on", plan)
+        self.assertIn("at Tier 1 a \"none needed\" is stated", skill("aidlc-design"))
+        self.assertNotIn("Wait for the person. |", plan)
+        self.assertIn("You are waiting for a plan approval at Tier 1, where the tiers file's decisions table lists none.",
+                      section(plan, "## Red flags"))
+        self.assertEqual(plan.count("The engineer confirms its TIER with it: that is Ready on route"), 2)
+
+    def test_the_templates_say_who_decides_at_each_tier(self):
+        plan = flat("skills/aidlc-plan/assets/plan.md").split("## For the reviewer", 1)[1].split(" ## ", 1)[0]
+        self.assertIn("at Tier 1 no one: the plan is stated, and the code owner reads it at Merge", plan)
+        self.assertIn("At Tier 1: `none: stated at Tier 1, the code owner reads it at Merge`",
+                      flat("skills/aidlc-plan/assets/plan.md"))
+        bundle = flat("skills/aidlc-plan/assets/task-bundle.md")
+        self.assertIn("at Tier 1 the bundle is stated with the plan, and the code owner reads it at Merge", bundle)
+        self.assertIn("approved with the bundle at Tier 2 and 3)", bundle)
+        self.assertIn("0 Restate the goal and criteria with file references; at Tier 3 (hands-on) wait for "
+                      "confirmation; otherwise write it to the progress note and go on.", bundle)
+        for name in ("fix-brief", "feature-brief"):
+            text = flat(f"skills/aidlc-plan/assets/{name}.md")
+            self.assertIn("to confirm the brief, its TIER and its MODE", text, name)
+            self.assertIn("written by the AI when the engineer confirms the brief and its TIER", text, name)
+
+
 if __name__ == "__main__":
     unittest.main()

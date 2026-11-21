@@ -2,8 +2,8 @@
 # Plan: {{KEY}} · {{TITLE}}
 
 ## For the reviewer
-- **Asked of:** The tech lead, to approve the plan and its bundles
-- **Record it:** On the work item, with the plan's version and commit (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
+- **Asked of:** The tech lead, to approve the plan and its bundles with the design, in one pull request (Tier 2 and 3); at Tier 1 no one: the plan is stated, and the code owner reads it at Merge (ADR 0026)
+- **Record it:** The pull request's approval; the AI writes the entry on the work item from it, with the plan's version and commit, and asks before posting (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
 
@@ -36,5 +36,5 @@ Fields (check each against the files before asking for approval):
 - every criterion and edge case in the spec maps to a test here and to a slice's bundle
 
 APPROVAL   plan.md <version> (commit <sha>) approved by <tech lead>, <YYYY-MM-DD>, <on pull request n, checked in the review tool | in the session>. Conditions: <...>
-           (written by the AI after the tech lead decides; ADR 0023)
+           (written by the AI after the tech lead decides; ADR 0023. At Tier 1: `none: stated at Tier 1, the code owner reads it at Merge`)
 ```

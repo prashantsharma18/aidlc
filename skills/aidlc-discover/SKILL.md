@@ -24,12 +24,12 @@ disable-model-invocation: true
 # Discover: what does this change touch?
 
 ## When to use
-Before design or planning, when the provisional tier asks for discovery (`assets/tiers.md`), or whenever an owner, a consumer or today's behaviour is unknown. At Tier 2 and 3, no plan is approved without the evidence pack and its recorded decision.
+Before design or planning, when the provisional tier asks for discovery (`assets/tiers.md`), or whenever an owner, a consumer or today's behaviour is unknown. At Tier 2 and 3, no plan is approved without the evidence pack and its recorded decision; that decision is taken with the design and the plan, in their one pull request.
 
 ## Inputs
 Where this runs: read the story's index first: `stories/<KEY>/README.md` at the workspace root, `../stories/<KEY>/README.md` from inside one of its repositories, or `plans/<KEY>/README.md` in a lone repository. No index: ask the person to run `aidlc-start` first, and stop. When it routes the story to several repositories, run at the workspace root and write to `stories/<KEY>/`; started inside a repository for such a story, say so, name the workspace root, and stop. When it names one repository, run inside that repository: a one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`; started at the workspace root for such a story, name the repository to open, and stop.
 
-The question or the accepted intent, the provisional tier, `AGENTS.md` and the codebase map. Runtime evidence (audit logs, gateway logs) comes only from a person.
+The question or the intent, the provisional tier, `AGENTS.md` and the codebase map. Runtime evidence (audit logs, gateway logs) comes only from a person.
 
 ## Steps
 1. Propose one answerable question, for example "who reads or writes X, by what path, and what breaks if Y", with the dial ratings, the provisional tier, a time-box and the expected escalation level (L0–L3, the evidence pack's LEVEL field); the person sets them. Say early which access you will need, so slow requests start now.
@@ -39,7 +39,7 @@ The question or the accepted intent, the provisional tier, `AGENTS.md` and the c
 5. Map the owners (CODEOWNERS or the catalogue) and the contract files. Where a contract is missing, load the `designing-apis` skill and record what the contract must cover as a finding for `aidlc-design`. Ask each owner to confirm their dependants, and record who confirmed and when.
 6. Map each changing path to the tests that cover it. Where none exist, load the `writing-tests` skill and record which characterisation tests are needed, path by path, as a finding for `aidlc-plan`.
 7. Draft the evidence pack by filling `assets/evidence-pack.md`: one impact line per dependant, and a risk and mitigation for each unknown.
-8. Bring the decision to the tech lead: proceed, escalate, or raise the tier.
+8. Draft the decision for the tech lead: proceed, escalate, or raise the tier. To proceed, state it and go on; to escalate or raise the tier, stop for the tech lead (the Gate says why).
 9. Keep what you learned: for each finding worth keeping, propose a codebase-map line, an ADR or a test, as a draft for its owner.
 10. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
    workspace root) as done, or as stopped with the reason.
@@ -48,7 +48,7 @@ The question or the accepted intent, the provisional tier, `AGENTS.md` and the c
 The evidence pack, written to `plans/<KEY>/evidence-pack.md` (or `stories/<KEY>/evidence-pack.md`), and the explorer briefs you used.
 
 ## Gate
-The tech lead, with the affected owners, decides to proceed, escalate or raise the tier, and tells you; you record it on the evidence pack's DECISION line, with how it was confirmed (ADR 0023), and offer to post it on the work item. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
+The tech lead, with the affected owners, decides to proceed, escalate or raise the tier, and tells you; you record it on the evidence pack's DECISION line, with how it was confirmed (ADR 0023), and offer to post it on the work item. To proceed is not a separate stop: at Tier 2 and 3 it is decided with the design and the plan, in their one pull request, and at Tier 1 the code owner sees the evidence pack at Merge. Until then, the DECISION line holds your recommendation, marked as a draft. To escalate, or to raise the tier, changes Ready, so it waits for the tech lead and whoever owns the risk. A person decides here only where the tiers file's decisions table lists this decision; otherwise state what you did and go on. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
 
 ## Stop if
 - Access to logs or a database is needed: return it as UNKNOWN, with who can provide it.

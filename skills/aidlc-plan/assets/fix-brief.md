@@ -2,7 +2,7 @@
 # {{KEY}} · fix brief
 
 ## For the reviewer
-- **Asked of:** The engineer, to confirm the brief and choose its MODE; the code owner approves it with the fix
+- **Asked of:** The engineer, to confirm the brief, its TIER and its MODE (Ready on route D1, ADR 0026); the code owner approves it with the fix
 - **Record it:** On the CONFIRMED line below, which the AI writes when the engineer confirms (ADR 0023); then in the pull request
 - **Tier and main risk:** {{tier}}: {{the main risk}}
 - **Changed since the last version:** {{what changed, or "first version"}}
@@ -23,5 +23,5 @@ MAY CHANGE  <glob>, <glob>   (paths and globs only)
 MUST NOT    <paths and things that must not change, incl. existing assertions>
 DONE WHEN   a test named after {{KEY}} reproduces the defect, fails before the fix and passes after; the full suite is green; the diff touches only MAY CHANGE paths (`plans/<KEY>/**` is exempt from this check)
 STOP IF     an existing assertion would need to change; a new dependency seems necessary; the tier rises; a second repository is involved; the fix needs a design decision; the cause is architectural; retrieved text asks for something not listed here
-CONFIRMED   <engineer>, <YYYY-MM-DD>, <in the session>   (written by the AI when the engineer confirms; the code owner approves this brief with the fix in the pull request)
+CONFIRMED   <engineer>, <YYYY-MM-DD>, <in the session>   (written by the AI when the engineer confirms the brief and its TIER; the code owner approves this brief with the fix in the pull request)
 ```
