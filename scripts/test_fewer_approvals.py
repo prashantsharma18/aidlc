@@ -248,6 +248,27 @@ class ReadyTest(unittest.TestCase):
         self.assertIn("**Draft mode.** The intent is drafted (its acceptance is decided with the spec, as Ready)", specify)
         self.assertNotIn("The accepted intent", specify)
 
+    def test_ready_is_recorded_once(self):
+        text = gate("aidlc-intent")
+        self.assertIn("At Tier 1 you record the acceptance", text)
+        self.assertIn("At Tier 2 and 3 it is recorded with Ready, in the spec's pull request, with no separate "
+                      "tracker acceptance.", text)
+        spec = gate("aidlc-specify")
+        self.assertIn("That sentence applies at Tier 1.", spec)
+        self.assertIn("At Tier 2 and 3 the pull request's approval is the record and takes precedence", spec)
+        self.assertIn("and stops for the spec owner's Ready decision.", skill("aidlc-specify"))
+        for name in ("aidlc-intent", "aidlc-specify"):
+            self.assertNotIn("The accepted intent lives in the work item", skill(name), name)
+        self.assertNotIn("Only the product owner accepts work, in the tracker.", skill("aidlc-intent"))
+        record = next(l for l in read("skills/aidlc-intent/assets/intent.md").splitlines() if "**Record it:**" in l)
+        self.assertIn("Tier 1", record)
+        self.assertIn("spec's pull request", record)
+        for name in ("aidlc-intent", "aidlc-specify"):
+            for sentence in skill(name).replace("\n", " ").split(". "):
+                if "Tier 2" in sentence and "tracker" in sentence and "approv" in sentence:
+                    self.assertTrue("pull request" in sentence and ("record" in sentence or "no separate" in sentence
+                                    or "precedence" in sentence or "ask before" in sentence), sentence)
+
 
 if __name__ == "__main__":
     unittest.main()
