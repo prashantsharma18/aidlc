@@ -880,17 +880,22 @@ SAMPLES = {
         [BRIEF], [BRIEF.replace("SHIP-32", "the next ready row")]),
     ("gate-coordinator-clash", "no-lane-for-the-clash.md"): (
         [BRIEF, BRIEF + " SHIP-31 is held back for a clash with SHIP-30; leave .worktrees/SHIP-31 alone.",
-         BRIEF + " Rows held back: SHIP-31 (same files) and SHIP-34 (order)."],
+         BRIEF + " Rows held back: SHIP-31 (same files) and SHIP-34 (order).",
+         BRIEF + " Note: the row SHIP-31 is held back, so leave it alone."],
         [BRIEF.replace("SHIP-32", "SHIP-31"),
          "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. You are a lane for SHIP-31.",
-         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. Row: SHIP-31."]),
+         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. Row: SHIP-31.",
+         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. Row SHIP-31: build it."]),
     ("gate-coordinator-clash", "no-sub-agent-for-the-plan-row.md"): (
-        [BRIEF], [BRIEF.replace("SHIP-32", "SHIP-33").replace("aidlc-build", "aidlc-plan")]),
+        [BRIEF, BRIEF + " The row SHIP-33 is held back: its plan is the person's to start, not yours."],
+        [BRIEF.replace("SHIP-32", "SHIP-33").replace("aidlc-build", "aidlc-plan"),
+         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. You are a lane for SHIP-33."]),
     ("gate-coordinator-clash", "no-lane-past-the-limit.md"): (
-        [BRIEF, BRIEF + " SHIP-34 depends on this row; it waits until SHIP-32 is done."],
+        [BRIEF, BRIEF + " SHIP-34 depends on this row; it waits until SHIP-32 is done.",
+         BRIEF + " the row SHIP-34 is held back until this row is done."],
         [BRIEF.replace("SHIP-32", "SHIP-34"),
          "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. You are a lane for SHIP-34.",
-         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. Your row SHIP-34 is next."]),
+         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. Your row: SHIP-34."]),
     ("gate-lane-stacked-rebase", "rebases-onto.md"): (
         ["git -C .worktrees/SHIP-40-s3 rebase --onto origin/main 1a2b3c4 feat/SHIP-40-eta-limit-s3"],
         ["git rebase origin/main", "git merge origin/main"]),
@@ -1495,6 +1500,11 @@ class ReReviewFixTest(unittest.TestCase):
         for rel in (self.ADR, DESIGN, "README.md"):
             self.assertIn("for reviewer passes it claims a row's worktree and writes nothing in it", flat(rel), rel)
 
+    def test_the_mention_only_samples_exist_for_every_row_grader(self):
+        for name, key in (("no-lane-for-the-clash.md", "SHIP-31"), ("no-sub-agent-for-the-plan-row.md", "SHIP-33"),
+                          ("no-lane-past-the-limit.md", "SHIP-34")):
+            right, _ = SAMPLES[("gate-coordinator-clash", name)]
+            self.assertTrue(any(f"the row {key} is held back".lower() in sample.lower() for sample in right), name)
 
 
 if __name__ == "__main__":
