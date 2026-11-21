@@ -80,11 +80,13 @@ slice pull request edits only its own progress note, its own row and the evidenc
 not collide in the story's documents.
 
 ## The lock: git worktrees
-- Each lane works in `.worktrees/<row>` inside the row's repository (`.worktrees/SHIP-12`,
-  `.worktrees/SHIP-12-s3`). The folder is ignored through `.git/info/exclude`, so nothing is committed.
-- **Claim.** The first claim of a row creates its branch: `git worktree add -b <branch> .worktrees/<row>
+- Each lane works in `.worktrees/<folder>` inside the row's repository. The folder name is fixed by the row: `<KEY>`
+  for an item or a part (`.worktrees/SHIP-12`), `<KEY>-s<n>` for a slice (`.worktrees/SHIP-12-s3`), and `<KEY>-p<n>`
+  for a second part in the same repository. The `.worktrees/` folder is ignored through `.git/info/exclude`, so
+  nothing is committed.
+- **Claim.** The first claim of a row creates its branch: `git worktree add -b <branch> .worktrees/<folder>
   origin/<default branch>` (a stacked slice starts from the branch it depends on). Every later claim:
-  `git worktree add .worktrees/<row> <branch>`.
+  `git worktree add .worktrees/<folder> <branch>`.
 - **Why only one lane wins.** All worktrees of one repository share one `.git`, and git refuses to check out a
   branch that another worktree already has. If two lanes claim the same row at the same moment, git's own lock lets
   one through; the other's command fails, and it takes the next row.
@@ -106,7 +108,7 @@ not collide in the story's documents.
    - a Stop if fires: write `stopped: <reason>`;
    - the stage asks to push or to open the pull request: write `waiting: push and open the pull request by <who>`,
      unless the team's `AGENTS.md` lets a lane push its own branch.
-   Release means: commit, `git worktree remove .worktrees/<row>` (never `--force`), and report the row and its state.
+   Release means: commit, `git worktree remove .worktrees/<folder>` (never `--force`), and report the row and its state.
 6. Never write `QUEUE.md`, never write to another repository, never approve, never merge.
 
 ## `aidlc-run`, coordinator mode
