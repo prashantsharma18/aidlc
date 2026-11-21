@@ -273,6 +273,15 @@ class ReadyTest(unittest.TestCase):
 class DesignPlanTest(unittest.TestCase):
     """Task 4: design and plan are one decision at Tier 2 and 3, and none at Tier 1."""
 
+    def test_plan_inputs_count_the_design_note_as_approved_where_the_table_says_so(self):
+        inputs = section(skill("aidlc-plan"), "## Inputs")
+        self.assertIn("the approved design note (always)", inputs)
+        sentence = ("The design note counts as approved when the tiers file's decisions table says so: at Tier 1 its "
+                    "\"none needed\" is stated (RECORDED BY), and at Tier 2 and 3 it is approved with this plan, in the "
+                    "same pull request, so its APPROVED line may still be pending. If an input is missing, say which "
+                    "stage produces it and stop; never plan around it.")
+        self.assertIn(sentence, inputs)
+
     def test_the_three_gates_carry_the_line(self):
         for name in ("aidlc-discover", "aidlc-design", "aidlc-plan"):
             assert_gate_line(self, name)
@@ -760,11 +769,13 @@ TOOL_SAMPLES = {
 # For each regex grader: file contents a correct run may leave, and contents a wrong run would leave.
 REGEX_SAMPLES = {
     ("gate-tier1-plan-stated", "plan-row-done.md"): (
-        ["| aidlc-plan | repository | done |"],
+        ["| aidlc-plan | repository | done |", "| aidlc-plan | repository | done (plan v1 stated at Tier 1) |"],
         ["| aidlc-plan | repository | to do |", "| aidlc-plan | repository | waiting: plan approval by Ana |"]),
     ("gate-tier1-plan-stated", "no-approval-invented.md"): (
-        ["APPROVAL   none: stated at Tier 1, the code owner reads it at Merge"],
-        ["APPROVAL   plan.md v1 approved by Ana, 2026-11-21, in the session"]),
+        ["APPROVAL   none: stated at Tier 1, the code owner reads it at Merge",
+         "APPROVAL   <pending: to be approved by Ana on the design and plan pull request>"],
+        ["APPROVAL   plan.md v1 approved by Ana, 2026-11-21, in the session",
+         "APPROVAL   plan.md v1 approved by Ana, 2026-11-21, on pull request 4"]),
     ("route-s-dependency-bump", "route-s.md"): (
         ["ROUTE      S"], ["ROUTE      F1", "ROUTE      S1"]),
     ("route-s-dependency-bump", "brief-names-the-class.md"): (
@@ -772,13 +783,40 @@ REGEX_SAMPLES = {
         ["CLASS       Recipe commit", "WHAT        Dependency bump"]),
     ("gate-tier2-design-plan-once", "no-design-approval-recorded.md"): (
         ["APPROVED     (pending: the tech lead approves design and plan in one pull request)"],
-        ["APPROVED     ADR now Accepted; approved by Ana, 2026-11-20, relayed in the session"]),
+        ["APPROVED     ADR now Accepted; approved by Ana, 2026-11-20, relayed in the session",
+         "APPROVED  tech lead, 2026-11-20, relayed", "RECORDED BY Ana 2026-11-20"]),
     ("gate-tier2-design-plan-once", "adr-still-proposed.md"): (
-        ["Status: Proposed. Decider: Ana (tech lead)"], ["Status: Accepted (2026-11-21)"]),
+        ["Status: Proposed. Decider: Ana (tech lead)"], ["Status: Accepted (2026-11-21)", "Status: accepted",
+                                                                  "Status: Proposed -> Accepted by Ana"]),
     ("gate-tier2-design-plan-once", "no-plan-approval-recorded.md"): (
-        ["APPROVAL   <pending: the pull request that merges the design and the plan>"],
+        ["APPROVAL   <pending: the pull request that merges the design and the plan>",
+         "APPROVAL   <pending: to be approved by Ana on the design and plan pull request>"],
         ["APPROVAL   plan.md v1 approved by Ana, 2026-11-21"]),
 }
+GRADERS = {
+    "gate-tier1-plan-stated": {"plan-written.md", "plan-row-done.md", "no-approval-invented.md", "reply.md"},
+    "route-s-dependency-bump": {"route-s.md", "brief-written.md", "brief-names-the-class.md",
+                                "no-full-route-documents.md", "no-standard-brief-for-the-major.md",
+                                "no-standard-edit-for-the-major.md", "reply.md"},
+    "gate-tier2-design-plan-once": {"plan-written.md", "no-design-approval-recorded.md", "adr-still-proposed.md",
+                                    "no-plan-approval-recorded.md", "reply.md"},
+    "gate-restatement-tier3": {"no-code-edit.md", "no-code-write.md", "reply.md"},
+}
+TOOLS = {("route-s-dependency-bump", "no-full-route-documents.md"): "Write",
+         ("route-s-dependency-bump", "no-standard-brief-for-the-major.md"): "Write",
+         ("route-s-dependency-bump", "no-standard-edit-for-the-major.md"): "Edit",
+         ("gate-restatement-tier3", "no-code-edit.md"): "Edit",
+         ("gate-restatement-tier3", "no-code-write.md"): "Write"}
+TARGETS = {("gate-tier1-plan-stated", "plan-row-done.md"): "plans/SHIP-60/README.md",
+           ("gate-tier1-plan-stated", "no-approval-invented.md"): "plans/SHIP-60/plan.md",
+           ("route-s-dependency-bump", "route-s.md"): "plans/SHIP-70/README.md",
+           ("route-s-dependency-bump", "brief-names-the-class.md"): "plans/SHIP-70/standard.md",
+           ("gate-tier2-design-plan-once", "no-design-approval-recorded.md"): "plans/SHIP-80/design-note.md",
+           ("gate-tier2-design-plan-once", "adr-still-proposed.md"): "plans/SHIP-80/SHIP-80-adr-1.md",
+           ("gate-tier2-design-plan-once", "no-plan-approval-recorded.md"): "plans/SHIP-80/plan.md"}
+EXISTS = {("gate-tier1-plan-stated", "plan-written.md"): "plans/SHIP-60/plan.md",
+          ("route-s-dependency-bump", "brief-written.md"): "plans/SHIP-70/standard.md",
+          ("gate-tier2-design-plan-once", "plan-written.md"): "plans/SHIP-80/plan.md"}
 UNTOUCHED = {("gate-tier2-design-plan-once", "no-design-approval-recorded.md"): "plans/SHIP-80/design-note.md",
              ("gate-tier2-design-plan-once", "adr-still-proposed.md"): "plans/SHIP-80/SHIP-80-adr-1.md"}
 
@@ -799,10 +837,34 @@ class EvalCasesTest(unittest.TestCase):
     """Task 11: four behaviour cases; each grader tells a right run from a wrong one, and each scaffold holds the
     state its graders assume."""
 
+    def test_each_case_holds_exactly_its_graders_aimed_at_the_right_place(self):
+        for case, names in GRADERS.items():
+            on_disk = {g.name for g in (ROOT / "evals" / case / "graders").glob("*.md")}
+            self.assertEqual(on_disk, names, case)
+        for (case, name), tool in TOOLS.items():
+            self.assertRegex(grader(case, name), rf"(?m)^tool: {tool}$", f"{case}/{name}")
+        for (case, name), path in TARGETS.items():
+            self.assertRegex(grader(case, name), rf"(?m)^target: \{{source: file, path: {re.escape(path)}\}}$",
+                             f"{case}/{name}")
+        for (case, name), path in EXISTS.items():
+            self.assertRegex(grader(case, name), rf"(?m)^path: '{re.escape(path)}'$", f"{case}/{name}")
+
+    def test_the_tier3_case_asks_for_a_restatement_it_can_carry_out(self):
+        reply = read("evals/gate-restatement-tier3/graders/reply.md")
+        self.assertNotIn("for each slice", reply)
+        self.assertIn("wait for the person to confirm this restatement", reply)
+        self.assertNotIn("**********0123", read("evals/gate-restatement-tier3/setup.sh"))
+        self.assertIn('AC1: mask_phone("07700900123") returns "*******0123".',
+                      read("evals/gate-restatement-tier3/setup.sh"))
+
+    def test_the_tier1_reply_grader_allows_a_sliced_plan_in_its_fail_line(self):
+        self.assertIn("(unless it split the plan into independent slices, as PASS allows)",
+                      read("evals/gate-tier1-plan-stated/graders/reply.md"))
+
     def test_the_four_cases_exist_and_are_listed(self):
         readme = " ".join(read("evals/README.md").split())
         self.assertIn("there are 40 cases", readme)
-        self.assertIn("`route-d1-build`, `gate-restatement-tier3`, `route-s-dependency-bump`, and the four lane cases", readme)
+        self.assertIn("`route-d1-build`, `gate-restatement-tier3`, `route-s-dependency-bump`, `gate-tier2-design-plan-once`, and the four lane cases", readme)
         for case, (tag, start) in NEW_CASES.items():
             prompt = read(f"evals/{case}/prompt.md")
             self.assertIn(f"tags: [{tag}]", front(prompt), case)

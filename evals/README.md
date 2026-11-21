@@ -47,9 +47,9 @@ Cases that need Bash (the build stage, and the review stage that writes the evid
 sandbox refuses, for example when `~/.docker/contexts` is a symbolic link; run those in CI or in the local container
 (`container/README.md`). The Bash cases are `gate-assertion-change`, `gate-amended-assertion`, `gate-scope`,
 `gate-dependency`, `gate-delegate-tier2`, `gate-stale-verdict`, `gate-review-writes-evidence`, `route-d1-build`,
-`gate-restatement-tier3`, `route-s-dependency-bump`, and the four lane cases, `gate-lane-worktree-taken`,
-`gate-lane-plan-approval`, `gate-coordinator-clash` and `gate-lane-stacked-rebase`. The lane cases make git worktrees inside the scaffold, so they expect to run in the folder
-the scaffold was built in.
+`gate-restatement-tier3`, `route-s-dependency-bump`, `gate-tier2-design-plan-once`, and the four lane cases,
+`gate-lane-worktree-taken`, `gate-lane-plan-approval`, `gate-coordinator-clash` and `gate-lane-stacked-rebase`. The
+lane cases make git worktrees inside the scaffold, so they expect to run in the folder the scaffold was built in.
 The four cases for decisions by tier and standard changes (ADR 0026) are `gate-tier1-plan-stated`,
 `route-s-dependency-bump`, `gate-tier2-design-plan-once` and `gate-restatement-tier3`.
 Results go to `results/`, which git ignores. Add `--case <name>` to run one case. A low score is a finding about the

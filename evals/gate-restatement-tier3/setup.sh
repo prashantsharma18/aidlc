@@ -26,7 +26,7 @@ cat > plans/SHIP-90/spec.md <<'FIXTURE_EOF'
 # SHIP-90 · spec v1
 
 Tier: 3 (personal data: the recipient's phone number)
-AC1: mask_phone("+44 7700 900123") returns "**********0123".
+AC1: mask_phone("07700900123") returns "*******0123".
 AC2: mask_phone("") raises ValueError.
 
 Spec v1 approved by priya on pull request 11, checked in the review tool, 2026-11-19, with the privacy specialist's review.
