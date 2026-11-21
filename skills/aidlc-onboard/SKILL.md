@@ -102,6 +102,14 @@ New mode (route G), instead of steps 1 to 6:
 - On route G, mark its row in the index (`aidlc-onboard (prepare)` or `aidlc-onboard (confirm)`) as done, or as
   stopped with the reason.
 
+**Parallel lanes.** When the team will run lanes (`parallel-lanes`), set up the one clone the lanes start from. Check
+whether `.worktrees/` is ignored with `git check-ignore -q .worktrees/`; if it is not, add the line `.worktrees/` to
+git's own exclude file: `echo '.worktrees/' >> "$(git rev-parse --git-common-dir)/info/exclude"`. That file is never
+committed, so each lane's worktree stays out of every commit, and each clone that runs lanes needs the line once. Say
+the one-clone rule, and with the person's agreement add it to the "How work runs here" block of `AGENTS.md`: lanes for
+one repository start from one clone on one machine, because worktrees of different clones do not see each other, and
+nobody checks out a queued branch in their own working copy while lanes may claim it.
+
 Never overwrite an existing `AGENTS.md` or map: change it on a branch, so the person sees the diff in the pull request.
 
 ## Produces

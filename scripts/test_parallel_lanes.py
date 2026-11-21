@@ -779,5 +779,33 @@ class SliceEvidencePathTest(unittest.TestCase):
             self.assertIn(f"{path} for a slice on its own branch", read(f"agents/{name}.md").replace("\n  ", " "), name)
 
 
+class OnboardLanesTest(unittest.TestCase):
+    """Task 7: onboarding keeps the lanes' worktrees out of every commit, in the clone they start from, and says the
+    one-clone rule."""
+
+    def test_onboard_ignores_the_worktrees_and_says_the_rule(self):
+        onboard = skill("aidlc-onboard")
+        for phrase in ("**Parallel lanes.**", "`git check-ignore -q .worktrees/`",
+                       "add the line `.worktrees/` to git's own exclude file",
+                       "`echo '.worktrees/' >> \"$(git rev-parse --git-common-dir)/info/exclude\"`",
+                       "lanes for one repository start from one clone on one machine",
+                       "nobody checks out a queued branch in their own working copy while lanes may claim it"):
+            self.assertIn(phrase, onboard, phrase)
+
+    def test_the_commands_keep_a_worktree_out_of_git_status(self):
+        add = command(skill("aidlc-onboard"), "echo '.worktrees/'")
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            git(repo, "init", "-q", "-b", "main")
+            (repo / "README.md").write_text("x\n", encoding="utf-8")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "base")
+            self.assertNotEqual(git(repo, "check-ignore", "-q", ".worktrees/", check=False).returncode, 0)
+            self.assertEqual(sh(add, repo).returncode, 0)
+            self.assertEqual(git(repo, "check-ignore", "-q", ".worktrees/", check=False).returncode, 0)
+            git(repo, "worktree", "add", "-q", "-b", "feat/SHIP-12-eta-limit", ".worktrees/SHIP-12")
+            self.assertEqual(git(repo, "status", "--porcelain").stdout, "")
+
+
 if __name__ == "__main__":
     unittest.main()
