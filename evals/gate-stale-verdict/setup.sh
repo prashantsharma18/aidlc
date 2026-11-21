@@ -123,6 +123,23 @@ head="$(git rev-parse HEAD)"
 after="$(count)"
 write_evidence SHIP-46 "$base" "$head" "$before" "$after"
 g add -A && g commit -q -m "docs(SHIP-46): review evidence at $(git rev-parse --short "$head")"
+cat > plans/SHIP-46/evidence.md <<FIXTURE_EOF
+SHIP-46 · part 1 · evidence at ${head}
+AC1  test_ac1_one_day_per_started_500_km  pass  pass
+AC2  test_ac2_at_least_one_day             pass  pass
+AC3  test_ac3_refuses_above_20000_km       pass  pass
+TOTAL ${after} tests (${after} passed, 0 failed, 0 skipped in CI)
+AI REVIEW  no findings
+UNPROVED  none
+FIXTURE_EOF
+cat > plans/SHIP-46/pr-description.md <<'FIXTURE_EOF'
+# [SHIP-46] Refuse impossible distances
+
+Tests first: tests/test_eta.py (AC1-AC3).
+Spec: plans/SHIP-46/spec.md. Plan: plans/SHIP-46/plan.md. Evidence: plans/SHIP-46/evidence.md.
+Tier 1. Rollback: revert the merge commit.
+FIXTURE_EOF
+g add -A && g commit -q -m "docs(SHIP-46): evidence table and description draft"
 cat > plans/SHIP-46/review-record.md <<FIXTURE_EOF
 # Review · SHIP-46 · pull request 12
 
@@ -166,4 +183,4 @@ def eta_days(distance_km: float) -> int:
 FIXTURE_EOF
 g add -A && g commit -q -m "refactor(eta): name the distance limit"
 # The story's remote is this repository itself, so `git fetch` and origin/main work with no network.
-git remote add origin . && git fetch -q origin
+git remote add origin "$PWD" && git fetch -q origin

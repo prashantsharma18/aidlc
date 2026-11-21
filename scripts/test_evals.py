@@ -207,6 +207,14 @@ class ContainerTest(unittest.TestCase):
                 for path in self.CREDENTIAL_PATHS:
                     self.assertNotIn(path, volume + mount, command)
 
+    def test_the_run_command_grants_nothing_more(self):
+        for command in self.run_commands():
+            self.assertNotIn("docker.sock", command)
+            self.assertNotRegex(command, r"--cap-add\b")
+            self.assertNotRegex(command, r"--pid[ =]host\b")
+            self.assertNotRegex(command, r"--(?:network|net)[ =]host\b")
+            self.assertNotRegex(command, r"(?:-e|--env)[ =]?[\"'][A-Za-z_][A-Za-z0-9_]*=", "a quoted NAME=value")
+
     def test_nothing_runs_privileged(self):
         readme = (self.CONTAINER / "README.md").read_text(encoding="utf-8")
         for command in self.run_commands():

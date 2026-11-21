@@ -1,7 +1,7 @@
 ---
 type: tool_used
 tool: Write
-input_match: '"file_path"\s*:\s*"[^"]*plans/SHIP-44/[^"]*"[^}]*reviewer-tests\W+[Nn]o findings'
+input_match: '"file_path"\s*:\s*"[^"]*plans/SHIP-44/[^"]*".*"(?:content|new_string)"\s*:\s*"(?:[^"\\]|\\.)*reviewer-tests\W+[Nn]o findings'
 min: 0
 max: 0
 ---

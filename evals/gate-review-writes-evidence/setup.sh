@@ -133,4 +133,4 @@ Tier 1. Rollback: revert the merge commit.
 FIXTURE_EOF
 g add -A && g commit -q -m "docs(SHIP-47): evidence table and description draft"
 # The story's remote is this repository itself, so `git fetch` and origin/main work with no network.
-git remote add origin . && git fetch -q origin
+git remote add origin "$PWD" && git fetch -q origin

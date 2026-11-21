@@ -12,7 +12,9 @@ RUN npm install -g @anthropic-ai/claude-code@2.1.296 && npm cache clean --force
 
 # The base image's unprivileged user (uid 1000). The repository is mounted at /work.
 USER node
-RUN git config --global user.name eval && git config --global user.email eval@example.com
+# safe.directory: git inside still works when the mounted repository belongs to a uid other than 1000.
+RUN git config --global user.name eval && git config --global user.email eval@example.com \
+ && git config --global --add safe.directory /work
 # Keep the credential out of the environment of the commands the session runs, as the evals workflow does.
 ENV CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1
 WORKDIR /work
