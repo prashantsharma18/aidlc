@@ -34,7 +34,9 @@ The person confirms each pause by telling the AI, which writes the line with the
 The decision log (ADR 0027): one row per judgement call, written when the call is made, and one per Deviation and
 per Assumption below. A judgement call is a choice the spec, the plan and the bundle left open, settled inside
 MAY CHANGE; anything a stop names is a stop, never a row. `owner` is who owns the area and should see the row, never
-an approval: no row waits. Write `- none` when the slice has no row to write.
+an approval: no row waits. Write `- none` when the slice has no row to write. A criterion with no test because one is
+impractical (ADR 0029) is a row too: `no test for <criterion>`, why, and the other proof as its evidence; a test
+marked skip is never a row, but the Quality bar's stop.
 Write `- none` only when there is no judgement call, no Deviation and no Assumption.
 - {{commit}} · {{decision}} · {{why}} · {{evidence: file:line, a test or a command}} · owner {{who owns the area}}
 

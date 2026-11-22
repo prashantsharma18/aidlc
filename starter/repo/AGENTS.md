@@ -20,7 +20,10 @@
 - The stages, in order: `aidlc-intent`, `aidlc-specify`, `aidlc-discover` (when the tier or an unknown asks),
   `aidlc-design` (always), `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`; after an
   incident, `aidlc-operate` and `aidlc-feedback`.
-- Tests first: a failing test before any code; for a defect, a test that reproduces it.
+- Tests first: a failing test before any code; for a defect, a test that reproduces it. A criterion whose test
+  the AI judges impractical gets no test only with a decision-log row, `no test for <criterion>`, that says why
+  and what proved it instead (ADR 0029); a cheap local test is always written, and a test marked skip is still
+  the Quality bar's stop.
 - The AI may push its own feature branch: no. Change it to yes only when the AI's credential can push feature
   branches and the code host stops it from pushing the default branch (ADR 0028). Never a force-push, a tag, a
   merge or an approval; a person opens every pull request.

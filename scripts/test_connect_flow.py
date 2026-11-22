@@ -396,5 +396,86 @@ class PushTest(unittest.TestCase):
                           flat(read(rel)), rel)
 
 
+NO_TEST_ROW = ("`- <commit> · no test for <criterion> · <why a test is impractical> · <the other proof> · owner <the "
+               "code owner>`")
+
+
+class TestsFirstTest(unittest.TestCase):
+    """Task 5: tests first when a test is practical; a criterion with no test is a decision-log row with why and the
+    other proof (ADR 0029), and never a skipped test."""
+
+    def test_build_keeps_the_gate_and_names_the_one_exception(self):
+        build = skill_md("aidlc-build")
+        step6 = flat(build).split(" 6. Write the tests first.", 1)[1].split(" 7. Implement", 1)[0]
+        for phrase in ("The gate: one test per criterion or edge case, named with its ID, before any code.",
+                       "For a defect, the first test reproduces the reported failure, and no fix is written until it "
+                       "fails for that reason.",
+                       "ADR 0029's one exception: a criterion whose test you judge impractical (its test path is unclear, "
+                       "it is expensive to build, or there is nothing sensible to assert) gets no test; a cheap local test "
+                       "is always written. Before the code, write its decision-log row (step 7), " + NO_TEST_ROW + ", and "
+                       "show that proof (a command's output, a live check, a screenshot).",
+                       "An unclear criterion is a stop (Stop if), never a criterion with no test, and a test marked skip "
+                       "or disabled is still the Quality bar's stop.",
+                       "A defect's reproduction still fails first: as a command or a live check, when a test is "
+                       "impractical."):
+            self.assertIn(phrase, step6, phrase)
+        self.assertNotIn("skipped the test", flat(build))
+        self.assertIn("| \"The fix is one line; the test can come after.\" | The test comes first.",
+                      flat(section(build, "## Common excuses")))
+        self.assertIn("| \"This test is impractical, so I will not write it.\" | Only when its path is unclear, it is "
+                      "expensive to build, or there is nothing sensible to assert; a cheap local test is always written "
+                      "first, and an unclear criterion is a stop. The criterion gets a decision-log row, `no test for "
+                      "<criterion>`, with the other proof, and the tests reviewer lists it (ADR 0029). |",
+                      flat(section(build, "## Common excuses")))
+        self.assertIn("- A criterion has no test and no decision-log row, or a cheap local test is left unwritten (ADR "
+                      "0029).", flat(section(build, "## Red flags")))
+        self.assertIn("You are editing production code before a failing test exists.",
+                      flat(section(build, "## Red flags")))
+
+    def test_the_note_and_the_practice_say_how_the_row_reads(self):
+        note = flat(read("skills/aidlc-build/assets/progress-note.md"))
+        self.assertIn("A criterion with no test because one is impractical (ADR 0029) is a row too: `no test for "
+                      "<criterion>`, why, and the other proof as its evidence; a test marked skip is never a row, but the "
+                      "Quality bar's stop.", note)
+        practice = flat(skill_md("writing-tests"))
+        self.assertIn("- no new test, when none is practical (ADR 0029): its path is unclear, it is expensive to build, "
+                      "or there is nothing sensible to assert. Prefer no new test over a bad one (one that tests mocks or "
+                      "today's implementation): name the closest check that runs instead, a command, a live check or a "
+                      "screenshot. A cheap local test is always written, and a test marked skip is never this case.",
+                      practice)
+
+    def test_the_reviewers_and_verify_show_every_criterion_with_no_test(self):
+        tests = flat(read("agents/reviewer-tests.md"))
+        self.assertIn("- List every criterion with no test (ADR 0029): each decision-log row `no test for <criterion>` in "
+                      "the progress notes, with its reason and its other proof. A criterion with a cheap local test and no "
+                      "test is a high finding; a row with no other proof is a medium one. A test marked skip is the "
+                      "finding the first bullet names, never this case.", tests)
+        self.assertIn("Then a `Criteria with no test` list, one line per row (criterion, reason, other proof), or "
+                      "`Criteria with no test: none`.", tests)
+        compliance = flat(read("agents/reviewer-compliance.md"))
+        self.assertIn("Every criterion and edge case the slice covers has a test named with its ID. A criterion with no "
+                      "test needs a decision-log row, `no test for <criterion>`, with its other proof (ADR 0029); without "
+                      "one, it is a high finding.", compliance)
+        verify = flat(section(skill_md("aidlc-verify"), "## Steps"))
+        self.assertIn("A criterion with no test because one is impractical (ADR 0029) is listed here, with its "
+                      "decision-log row and its other proof; write `accepted at Merge by the code owner (ADR 0029)` in "
+                      "its who-accepted cell.", verify)
+        for text in (tests, compliance, verify, flat(read("skills/aidlc-build/assets/progress-note.md"))):
+            self.assertNotIn("skipped as impractical", text)
+
+    def test_the_rules_files_agents_md_and_the_readme_say_its_reach(self):
+        for rel in RULES_FILES:
+            self.assertIn("- Tests first: a failing test before any code; for a defect, a test that reproduces it. A "
+                          "criterion whose test the AI judges impractical gets no test only with a decision-log row, `no "
+                          "test for <criterion>`, that says why and what proved it instead (ADR 0029); a cheap local test "
+                          "is always written, and a test marked skip is still the Quality bar's stop.",
+                          flat(read(rel)), rel)
+        self.assertIn("without a design change. Tests first is ADR 0029's rule: a criterion whose test is impractical "
+                      "gets no test only with a decision-log row, `no test for <criterion>`, that says why and what proved "
+                      "it instead; a test marked skip is still a stop.", flat(read("AGENTS.md")))
+        self.assertIn("Tests come first (when a test is practical; a criterion with no test is a logged decision, ADR "
+                      "0029); an existing test assertion is never changed to make a test pass.", flat(read("README.md")))
+
+
 if __name__ == "__main__":
     unittest.main()

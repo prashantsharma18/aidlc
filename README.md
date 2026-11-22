@@ -37,8 +37,8 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
   The story stays one tracker item; its parts are rows of the coordination plan.
 - **Gates:** each skill drafts, and stops only where the tiers file's decisions table lists a decision for the tier
   (at Tier 1, Ready and Merge, and Release only when users see the change; ADR 0026); a plan with independent slices is still approved; people approve in the pull request and the tracker, or tell the AI, which
-  records each decision after checking it (ADR 0023). Tests come first; an
-  existing test assertion is never changed to make a test pass.
+  records each decision after checking it (ADR 0023). Tests come first (when a test is practical; a criterion with no test is a logged
+  decision, ADR 0029); an existing test assertion is never changed to make a test pass.
 - **Several at once:** the `parallel-lanes` workflow skill runs lanes, each in its own git worktree, from a
   `QUEUE.md` a person keeps. A lane releases at every person's decision, and the next ready row starts (ADR 0025).
 

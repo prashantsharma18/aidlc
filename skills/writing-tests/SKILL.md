@@ -24,7 +24,11 @@ Not for: finding why a test fails (`debugging-failures`), or browser tests of a 
 2. Pick the smallest kind of test that can prove it:
    - a unit test for a rule inside one module;
    - an integration test when the behaviour depends on a boundary: a database, a queue, HTTP, the file system;
-   - an end-to-end test only for a user journey nothing smaller can prove.
+   - an end-to-end test only for a user journey nothing smaller can prove;
+   - no new test, when none is practical (ADR 0029): its path is unclear, it is expensive to build, or there is
+     nothing sensible to assert. Prefer no new test over a bad one (one that tests mocks or today's implementation):
+     name the closest check that runs instead, a command, a live check or a screenshot. A cheap local test is always
+     written, and a test marked skip is never this case.
 
    Most tests are unit tests, some are integration tests, few are end-to-end.
 3. Write the test and run it. It must fail, and fail on its assertion, not on an import error or a typo. A test that passes before the code exists has not shown it can fail: break the code on purpose once and watch it go red. A characterisation test is the exception: it records what existing code does today, quirks included, and passes from the start; prove it can fail by changing a recorded value once.
