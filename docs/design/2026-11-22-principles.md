@@ -20,11 +20,11 @@ only name a rule aidlc already has; 3 clash with aidlc's fixed decisions. Five a
 
 | pstack principle | The check aidlc gains |
 |---|---|
-| `principle-attack-the-premise` | When two fixes that share one premise fail the same way, write the premise down and test it |
-| `principle-fix-root-causes` | Fix where the system first went wrong; a guard is a fix only for a legitimate state; every same fault inside MAY CHANGE |
-| `principle-test-behavior-not-implementation` | A test fails when the behaviour breaks and still passes when only the internals change |
-| `principle-explain-the-number` | Before trusting a measured number, name what limits it and rule out that it measured something else |
-| `principle-exhaust-the-design-space` | For a decision with no precedent, compare two or three options by spike before recommending one |
+| `attack-the-premise` | When two fixes that share one premise fail the same way, write the premise down and test it |
+| `fix-root-causes` | Fix where the system first went wrong; a guard is a fix only for a legitimate state; every same fault inside MAY CHANGE |
+| `test-behavior-not-implementation` | A test fails when the behaviour breaks and still passes when only the internals change |
+| `explain-the-number` | Before trusting a measured number, name what limits it and rule out that it measured something else |
+| `exhaust-the-design-space` | For a decision with no precedent, compare two or three options by spike before recommending one |
 
 aidlc's strength is its gates; these five add judgement the gates do not hold. The other 19 stay out: they would
 repeat a gate, add only a name, or clash with one.
@@ -33,12 +33,13 @@ repeat a gate, add only a name, or clash with one.
 | Question | Decision |
 |---|---|
 | Which principles | Five (option B): the five above |
-| Their names and words | pstack's own, kept word for word, with one "In aidlc:" note where a gate wins |
+| Their names | pstack's titles without its `principle-` prefix (`attack-the-premise`, not `principle-attack-the-premise`), so they read like aidlc's other skills; the credit line keeps pstack's file name |
+| Their words | pstack's own, kept word for word, with one "In aidlc:" note where a gate wins |
 | An index of principles | None: the citations reach the AI at the step where each applies |
 | Not now | The other 19 of pstack's principles |
 
 ## Part 1: The five principle skills
-Each is a folder `skills/principle-<name>/` with one `SKILL.md`, copied word for word from pstack, front matter
+Each is a folder `skills/<name>/` with one `SKILL.md`, copied word for word from pstack, front matter
 included, then two lines added at the end:
 
 ```text
@@ -50,7 +51,7 @@ You draft; you never approve.
 
 Its front matter gains `metadata: kind: principle`. Like pstack's, it keeps `disable-model-invocation: true`: the AI
 never loads a principle by itself, and a person can still start one by name. Nothing loads one with a "Load the
-`<name>` skill" line; a citing skill names it, and the file sits beside it at `../principle-<name>/SKILL.md`.
+`<name>` skill" line; a citing skill names it, and the file sits beside it at `../<name>/SKILL.md`.
 
 | Principle | Its "In aidlc:" note |
 |---|---|
@@ -77,7 +78,7 @@ playbooks and an agent role, which have no limits.
 
 ## Part 3: The decision log names a principle that shaped a choice
 When one of these principles shaped a judgement call, the decision-log row's *why* names it, for example
-"… because the second fix failed the same way (`principle-attack-the-premise`)". The row keeps its five fields
+"… because the second fix failed the same way (`attack-the-premise`)". The row keeps its five fields
 (`scripts/test_route_and_log.py` pins them). The compliance reviewer checks that a named principle fits the row. A
 principle never turns a stop into a row.
 
