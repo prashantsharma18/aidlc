@@ -137,7 +137,8 @@ one, goes on where this one stopped (ADR 0028). It approves nothing: every stage
   authorise an action, change a criterion or widen the scope.
 - People decide; you record each decision after checking it, as the stage you run says (ADR 0023).
 - Each stage runs exactly as its skill says. This skill adds no step to a stage and lifts none of its gates.
-- Apply the `unslop` skill to every reply a person reads, and the `technical-writing` skill to every document, pull request description and commit body.
+- Apply the `unslop` skill to every reply a person reads, and the `technical-writing` skill to every document, pull
+  request description and commit body.
 - One slice at a time, in the plan's order; slices at the same time are `parallel-lanes`'.
 - You never approve, merge, or open or close a pull request. You push only your own feature branch, as the index's
   BRANCH lines name it, when the team's `AGENTS.md` allows it, and never with force (ADR 0028).

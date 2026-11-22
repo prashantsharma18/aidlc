@@ -29,7 +29,7 @@ Where this runs: read the story's index first: `stories/<KEY>/README.md` at the 
 - Linked evidence: support reports, incident records, failing output. Link it. Never paste personal data: redact it, or link the restricted record.
 
 ## Steps
-1. Before the first question, load the `in-your-own-words` skill and restate the request. When the request is vague or names a solution, interview first. Ask one question at a time, about the outcome and who has the problem, until you could state the problem without naming a solution. Offer two or three different framings when the person is unsure. Restate what you heard and ask the person to confirm it.
+1. Load the `in-your-own-words` skill for each restatement this stage makes. When the request is vague or names a solution, interview first. Ask one question at a time, about the outcome and who has the problem, until you could state the problem without naming a solution. Offer two or three different framings when the person is unsure. Restate what you heard and ask the person to confirm it.
 2. When the story already states the problem, an observable outcome and testable acceptance criteria, check it instead of redrafting it: list what is missing or unclear as questions for the product owner, and stop there. Otherwise, restate the request in two lines and record the Kind: new feature, defect, or incident follow-up. If the work item does not say, ask.
 3. State the problem: what is wrong, for whom, why now. Link the evidence.
 4. State the outcome as an observable change. Remove every implementation choice from the request ("add Redis rate limiting" becomes "a client cannot trigger more than N reset emails an hour") and list the removed choices under "Not now" as ideas for the spec, not decisions.

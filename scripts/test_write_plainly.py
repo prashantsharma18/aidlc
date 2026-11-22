@@ -162,7 +162,7 @@ class WhyTest(PracticeShape, unittest.TestCase):
 STANDING = ("Apply the `unslop` skill to every reply a person reads, and the `technical-writing` skill to every "
             "document, pull request description and commit body.")
 STAGE_LOADS = {
-    "aidlc-intent": ("Before the first question, load the `in-your-own-words` skill and restate the request.",
+    "aidlc-intent": ("Load the `in-your-own-words` skill for each restatement this stage makes.",
                      "Load the `technical-writing` skill for its sentences."),
     "aidlc-specify": ("Load the `technical-writing` skill for the spec's sentences.",),
     "aidlc-design": ("Load the `technical-writing` skill for the ADR's and the design note's sentences.",),
@@ -189,8 +189,12 @@ class CallersTest(unittest.TestCase):
                       section(skill_md("writing-documentation"), "## Steps").split(" 2. ", 1)[0])
         self.assertIn("Load the `unslop` skill as the last pass on the body and on any pull request text you write.",
                       section(skill_md("committing-changes"), "## Steps"))
-        self.assertIn("Load the `unslop` skill as the last pass on the findings a person reads.",
-                      flat(skill_md("reviewing-code")).split("### Step 5: Categorize Findings", 1)[1].split("###", 1)[0])
+        step5 = flat(skill_md("reviewing-code")).split("### Step 5: Categorize Findings", 1)[1].split("## Dead Code", 1)[0]
+        self.assertTrue(step5.strip().endswith("the structural problem *is* the review. Load the `unslop` skill as the "
+                                               "last pass on the findings a person reads."))
+        self.assertNotIn("optional suggestions. Load", skill_md("reviewing-code"))
+        self.assertIn("1. Load the `in-your-own-words` skill for each restatement this stage makes. When the request is "
+                      "vague", section(skill_md("aidlc-intent"), "## Steps"))
         self.assertIn("1. Load the `in-your-own-words` skill and restate the goal the decision serves. Write the "
                       "decision in one paragraph", section(skill_md("stress-testing-decisions"), "## Steps"))
 

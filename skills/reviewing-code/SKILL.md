@@ -207,9 +207,9 @@ Label every comment with its severity so the author knows what blocks the merge 
 | **low** | A small improvement: naming, style, a minor simplification | Fix it or dismiss it with a reason; it does not block |
 | **question** | You need the author's answer; not a defect | Answer it |
 
-This stops authors from treating all feedback as mandatory and spending time on optional suggestions. Load the `unslop` skill as the last pass on the findings a person reads.
+This stops authors from treating all feedback as mandatory and spending time on optional suggestions.
 
-**Lead with what matters.** Order findings by leverage: correctness and security first, then structural regressions and missed simplifications, then everything else. Don't bury a real issue under cosmetic nits. A few high-conviction comments beat a long list. If you have one structural problem and ten nits, the structural problem *is* the review.
+**Lead with what matters.** Order findings by leverage: correctness and security first, then structural regressions and missed simplifications, then everything else. Don't bury a real issue under cosmetic nits. A few high-conviction comments beat a long list. If you have one structural problem and ten nits, the structural problem *is* the review. Load the `unslop` skill as the last pass on the findings a person reads.
 
 ## Dead Code Hygiene
 
