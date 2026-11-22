@@ -1,6 +1,6 @@
 ---
 name: reviewer-tests
-description: Reviews the tests of a change, read-only. It checks that every criterion and edge case has a test named with its ID, that each test would fail if the code were wrong, and that nothing is skipped, weakened or mocked away. Use for a local test-quality pass before a pull request.
+description: Reviews the tests of a change, read-only. It checks that every criterion and edge case has a test named with its ID or a logged `no test` row (ADR 0029), that each test would fail if the code were wrong, and that nothing is skipped, weakened or mocked away. Use for a local test-quality pass before a pull request.
 tools: Read, Glob, Grep
 skills:
   - aidlc:writing-tests
@@ -21,7 +21,7 @@ You judge whether the tests prove the change works. You report; you do not fix. 
 - For each criterion and edge case of the slice (its task bundle and the spec), find the test named with its ID. A missing test is the compliance reviewer's finding; you judge the tests that exist.
 - List every criterion with no test (ADR 0029): each decision-log row `no test for <criterion>` in the progress
   notes, with its reason and its other proof. A criterion with a cheap local test and no test is a high finding; a
-  row with no other proof is a medium one. A test marked skip is the finding the first bullet names, never this case.
+  row with no other proof is a medium one. A test marked skip is the finding the `Nothing skipped` bullet names, never this case.
 - For each test, ask whether it would fail if the code were wrong: a constant return, an inverted condition, a missing branch, an off-by-one at a limit. A test that would still pass is a finding.
 - Each test checks what a caller sees, with no sleeps, real clock, shared state or dependence on test order.
 - Only slow, nondeterministic or external edges are replaced, preferably behind the repository's own adapter with a fake. A mock of the code under test, or of a third-party type used directly, is a finding.

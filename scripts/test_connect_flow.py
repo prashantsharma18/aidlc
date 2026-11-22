@@ -449,7 +449,16 @@ class TestsFirstTest(unittest.TestCase):
         self.assertIn("- List every criterion with no test (ADR 0029): each decision-log row `no test for <criterion>` in "
                       "the progress notes, with its reason and its other proof. A criterion with a cheap local test and no "
                       "test is a high finding; a row with no other proof is a medium one. A test marked skip is the "
-                      "finding the first bullet names, never this case.", tests)
+                      "finding the `Nothing skipped` bullet names, never this case.", tests)
+        self.assertIn("has a test named with its ID or a logged `no test` row (ADR 0029)",
+                      flat(read("agents/reviewer-tests.md")))
+        self.assertIn("or the reproduction (D1) has its test, or its `no test for <criterion>` row (ADR 0029)",
+                      flat(read("agents/reviewer-compliance.md")))
+        none_rule = "A criterion with no test always has its row: never `- none`."
+        self.assertIn(none_rule, flat(read("skills/aidlc-build/assets/progress-note.md")))
+        self.assertIn(none_rule, flat(skill_md("aidlc-build")))
+        self.assertIn("On route D1 that reproduction is the criterion: a reproduction with no test gets its `no test for "
+                      "<criterion>` row.", flat(skill_md("aidlc-build")))
         self.assertIn("Then a `Criteria with no test` list, one line per row (criterion, reason, other proof), or "
                       "`Criteria with no test: none`.", tests)
         compliance = flat(read("agents/reviewer-compliance.md"))
