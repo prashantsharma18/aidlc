@@ -89,5 +89,40 @@ class AdrTest(unittest.TestCase):
         self.assertNotIn("`worker.md`", row32)
 
 
+class ThroughputTest(unittest.TestCase):
+    """Task 2: the plan writes pstack's throughput checkpoint, four lines, none dropped."""
+
+    LINES = ("BLOCKING   <the slices that finish before any other starts> | n/a: <reason>",
+             "APART      <the slices on separate files, services or layers, which can run at the same time> | n/a: <reason>",
+             "SHARED     <what two slices would both write: split it first; one after another only for a real invariant> | n/a: <reason>",
+             "SPLIT      <the split chosen, or why the slices stay on one branch>")
+
+    def test_the_template_has_the_four_lines_after_order(self):
+        block = read("skills/aidlc-plan/assets/plan.md").split("```text\n", 1)[1].split("```", 1)[0]
+        order = block.index("\nORDER ")
+        last = order
+        for line in self.LINES:
+            self.assertIn("\n" + line + "\n", block, line)
+            self.assertGreater(block.index(line), last, line)
+            last = block.index(line)
+        self.assertLess(last, block.index("\nRISKS "))
+
+    def test_the_fields_checklist_names_them(self):
+        self.assertIn("- the throughput checkpoint after ORDER (ADR 0030): BLOCKING, APART and SHARED each filled or "
+                      "`n/a: <reason>`, and SPLIT always filled, never `n/a`",
+                      read("skills/aidlc-plan/assets/plan.md"))
+
+    def test_step_5_asks_for_it(self):
+        steps = section(skill_md("aidlc-plan"), "## Steps")
+        sentence = ("Below ORDER, write the throughput checkpoint (ADR 0030): BLOCKING, the slices that finish before "
+                    "any other starts; APART, the slices on separate files, services or layers; SHARED, what two "
+                    "slices would both write, split first and run one after another only for a real invariant; and "
+                    "SPLIT, the split chosen, or why the slices stay on one branch. A line that does not apply reads "
+                    "`n/a: <reason>`; SPLIT never does.")
+        self.assertIn(sentence, steps)
+        self.assertLess(steps.index(sentence), steps.index("**Independent slices (ADR 0025).**"))
+        self.assertGreater(steps.index(sentence), steps.index("5. Slice the work"))
+
+
 if __name__ == "__main__":
     unittest.main()

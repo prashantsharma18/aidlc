@@ -14,6 +14,10 @@ FILES      <path>   <reason>          (a file with no reason is a warning sign)
 TESTS      AC1  <test name and level>
 FIRST      E1   <...>
 ORDER      <slices and dependencies; where to stop if something fails>
+BLOCKING   <the slices that finish before any other starts> | n/a: <reason>
+APART      <the slices on separate files, services or layers, which can run at the same time> | n/a: <reason>
+SHARED     <what two slices would both write: split it first; one after another only for a real invariant> | n/a: <reason>
+SPLIT      <the split chosen, or why the slices stay on one branch>
 RISKS      <risk> -> <mitigation | accepted by whom, and how it was confirmed>
 REJECTED   <option> -> <why>
 ROLLBACK   <flag, revert, expand and contract>
@@ -24,6 +28,7 @@ accepted; no architecture decision hidden; rollback concrete; slices safe in ord
 has a scope test and concrete stop conditions.
 Fields (check each against the files before asking for approval):
 - the plan's own fields (SPEC, APPROACH, FILES, TESTS, ORDER, RISKS, ROLLBACK, OPEN) are filled, or "none"
+- the throughput checkpoint after ORDER (ADR 0030): BLOCKING, APART and SHARED each filled or `n/a: <reason>`, and SPLIT always filled, never `n/a`
 - every bundle field filled, or "none" (except DEPENDS ON, below); no placeholder left
 - DEPENDS ON lines only when the plan marks its slices independent (ADR 0025): then on every bundle,
   each "none" or one existing earlier slice, so no cycle forms; each slice on its own branch has its index

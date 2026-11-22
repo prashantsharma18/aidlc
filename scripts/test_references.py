@@ -231,7 +231,7 @@ class PlanTest(Layout, unittest.TestCase):
 
     NAME = "aidlc-plan"
     REFS = ("brief-mode.md", "independent-slices.md", "revision.md", "route-g.md", "several-repositories.md")
-    LIMIT = 3450  # the design's target is 2,500; Plan 26 reached 3,185 (item W1); Plan 27 reaches 3,373 (item W3)
+    LIMIT = 3500  # the design's target is 2,500; Plan 26 reached 3,185 (item W1); Plan 27 reaches 3,373 (item W3); Plan 28 reaches 3,493 (item W1)
 
     def test_every_stop_of_a_brief_and_of_slice_0_is_in_stop_if(self):
         stops = flat(section(skill_md(self.NAME), "## Stop if"))
