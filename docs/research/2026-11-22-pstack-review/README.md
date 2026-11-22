@@ -10,6 +10,7 @@ credits pstack (owner's decision, 2026-11-22).
 | [1-structure.md](1-structure.md) | How each package connects its pieces; aidlc is well connected inside a stage and disconnected between stages |
 | [2-playbooks-and-principles.md](2-playbooks-and-principles.md) | The concepts inside pstack's 22 playbooks and 24 principles: adopt, strengthen, already covered, or skip; 12 proposed aidlc principles; what conflicts with aidlc's fixed decisions |
 | [3-tools-removals-and-flow.md](3-tools-removals-and-flow.md) | pstack's tool skills; what aidlc should remove or merge; the end-to-end flow (internal and external) and every broken or weak connection |
+| [4-writing-skills-usage.md](4-writing-skills-usage.md) | How pstack uses `bro`, `in-your-own-words`, `why`, `how`, `unslop`, `technical-writing`, `teach` and `ketchup`: who calls each (a person, or named steps of other skills), with every caller quoted; the input to Plan 29's choice of five separate practices |
 
 File paths in the reports point at the reviewers' scratch copy of pstack; the same files are in the public repository.
 
