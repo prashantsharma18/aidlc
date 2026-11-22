@@ -43,6 +43,7 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
   and stops at the next person's decision, with the wait written in the index and a hand-off (ADR 0028).
 - **Several at once:** the `parallel-lanes` workflow skill runs lanes, each in its own git worktree, from a
   `QUEUE.md` a person keeps. A lane releases at every person's decision, and the next ready row starts (ADR 0025).
+  A lane is `lane-run`: it claims one row's worktree and runs `story-run` there; the coordinator schedules a plan's independent slices from the plan, watches the lanes and their CI, and never merges (ADR 0030).
 
 ## Where the gates hold
 
@@ -91,6 +92,7 @@ them as below; in Copilot, Codex or Cursor, ask for the skill by name ("use aidl
 | `/aidlc:aidlc-operate INC-231` | When an alert fires | The incident record and a follow-up work item |
 | `/aidlc:aidlc-feedback INC-231` | After an incident, or when findings repeat | Where each lesson goes |
 | `/aidlc:story-run SHIP-12` | Once per person's decision: it runs the next stages until one is needed | What each stage it runs writes, and the wait in the index |
+| `/aidlc:lane-run SHIP-12` | To run one queue row by hand, in its own worktree, up to the next person's decision | The row's worktree, the stages' files, the wait in the row's index |
 | `/aidlc:parallel-lanes coordinator` | To work through `QUEUE.md` with several lanes at once; `lane` starts one lane by hand | Nothing but drafts (for reviewer passes it claims a row's worktree and writes nothing in it); each lane writes its own row's files |
 
 Which stages a piece of work needs depends on its route: the route table in the `using-aidlc` skill is the one

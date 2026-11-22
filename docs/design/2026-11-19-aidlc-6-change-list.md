@@ -302,3 +302,13 @@ research's report 3; the rest stand as they say.
 | Tests first | Changed, ADR 0029 | A criterion whose test the AI judges impractical gets no test only with a decision-log row, `no test for <criterion>`, naming why and the other proof; the tests reviewer lists every such criterion, and the code owner reads them at Merge; a test marked skip is still the Quality bar's stop |
 | Word limits | Raised | Section 10's limits are raised by Plan 27's items W1 to W5: `aidlc-start` 2800, `aidlc-specify` 2000, `aidlc-design` 2550, `aidlc-plan` 3450, `aidlc-build` 4350; the tests hold these as their limits now; raised again by Plan 27b's W1 and W2: `aidlc-design` 2600, `aidlc-build` 4400 |
 | Playbooks | Covered, as instructions (Plan 27b) | Eight playbooks adapted from pstack (with its notice in `skills/NOTICE`) in `skills/story-run/references/`, from `docs/plans/2026-11-22-plan-27b-playbooks.md`; the bundle's PLAYBOOK line names one; a playbook holds no gate, and every stop it points to is in that stage's Stop if; `aidlc-design` 2600 and `aidlc-build` 4400 words now |
+
+## 12. After Plan 28 (2026-11-22)
+Plan 28 (`docs/plans/2026-11-22-plan-28-parallel-like-pstack.md`, design
+`docs/design/2026-11-22-parallel-work-like-pstack.md`, ADR 0030) runs work at once as pstack does, in aidlc 8.1.0.
+The plan writes the throughput checkpoint after ORDER (BLOCKING, APART, SHARED, SPLIT). The coordinator schedules a
+plan's independent slices from the approved plan, drafts queue rows on its own branch when a person asks (the
+person's merge confirms them), and runs the watch pass: it judges lanes by git, replaces only a clean, stoppable lane
+it started, and reads CI; a red run goes back to build, two fixes for one check stop, and the AI never merges. A lane
+is `lane-run`, which runs `story-run` to the next person's decision; a hand-started lane is one message; every brief
+the coordinator or a lane writes opens with `worker.md`.

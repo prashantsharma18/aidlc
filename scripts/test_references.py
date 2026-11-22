@@ -362,7 +362,7 @@ class DocsTest(unittest.TestCase):
                       "`aidlc-plan` (3,185) and `aidlc-build` (3,880) stay above theirs (Plan 26, item W1); the tests "
                       "hold these counts as their limits.", table)
         self.assertNotIn("Needs the owner's decision", changes)
-        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.0.0")
+        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.1.0")
 
     def test_a_lane_reads_a_reference_from_the_skill_folder(self):
         lanes = flat(read("skills/lane-run/SKILL.md"))

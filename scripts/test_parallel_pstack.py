@@ -316,5 +316,29 @@ class CoordinatorTest(unittest.TestCase):
                       "that commit.", stop)
 
 
+class DocsTest(unittest.TestCase):
+    """Task 5: the docs name `lane-run`; the change list after Plan 28; aidlc 8.1.0."""
+
+    def test_the_docs_name_lane_run(self):
+        readme = read("README.md")
+        self.assertIn("`testing-in-browser`, `writing-documentation` | `lane-run`, `parallel-lanes`, `story-run` |",
+                      readme)
+        commands = readme.split("## Commands you type", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("| `/aidlc:lane-run SHIP-12` |", commands)
+        for rel in ("README.md", "AGENTS.md", "docs/codebase-map.md", "skills/using-aidlc/SKILL.md"):
+            self.assertIn("lane-run", read(rel), rel)
+        self.assertIn("`skills/lane-run/`", read("docs/codebase-map.md"))
+        self.assertIn("from a `QUEUE.md` the coordinator drafts and a person merges", flat(skill_md("using-aidlc")))
+        self.assertNotIn("from a `QUEUE.md` a person keeps", flat(skill_md("using-aidlc")))
+
+    def test_the_change_list_and_the_version(self):
+        changes = read("docs/design/2026-11-19-aidlc-6-change-list.md")
+        section12 = changes.split("## 12. After Plan 28 (2026-11-22)", 1)[1]
+        for phrase in ("`docs/plans/2026-11-22-plan-28-parallel-like-pstack.md`", "ADR 0030", "aidlc 8.1.0",
+                       "`lane-run`", "the throughput checkpoint", "the watch pass", "never merges"):
+            self.assertIn(phrase, flat(section12), phrase)
+        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.1.0")
+
+
 if __name__ == "__main__":
     unittest.main()
