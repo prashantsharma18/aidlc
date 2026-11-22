@@ -333,5 +333,16 @@ class DocsTest(unittest.TestCase):
         self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.2.0")
 
 
+class RecordTest(unittest.TestCase):
+    """Task 6: the verification record."""
+
+    def test_the_record(self):
+        record = read("docs/verification/2026-11-22-plan-29.md")
+        for heading in ("## What changed", "## Checks", "## Rulings", "## For the owner"):
+            self.assertIn(heading, record, heading)
+        for phrase in ("aidlc 8.2.0", "`unslop`", "`technical-writing`", "`in-your-own-words`", "`how`", "`why`"):
+            self.assertIn(phrase, record, phrase)
+
+
 if __name__ == "__main__":
     unittest.main()
