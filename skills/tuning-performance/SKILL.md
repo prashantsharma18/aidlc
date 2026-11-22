@@ -150,7 +150,7 @@ A fix is only a hypothesis until you re-measure. This step decides whether it st
 
 **Change one thing at a time.** Three optimizations landed together give you one number, and you cannot attribute it. If they must ship together, measure each one in isolation first.
 
-**Beat the noise, not just the mean.** Repeat the measurement and compare the delta with run-to-run variance. A 3% gain inside ±5% variance is not a gain. It is a different sample.
+**Beat the noise, not just the mean.** Repeat the measurement and compare the delta with run-to-run variance. A 3% gain inside ±5% variance is not a gain. It is a different sample. Then name what limits the number, and rule out that it measured something other than the work (`explain-the-number`).
 
 Then decide by the table, strictly:
 

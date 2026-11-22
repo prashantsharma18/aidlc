@@ -37,7 +37,7 @@ MAY CHANGE; anything a stop names is a stop, never a row. `owner` is who owns th
 an approval: no row waits. Write `- none` when the slice has no row to write. A criterion with no test because one is
 impractical (ADR 0029) is a row too: `no test for <criterion>`, why, and the other proof as its evidence; a test
 marked skip is never a row, but the Quality bar's stop.
-Write `- none` only when there is no judgement call, no Deviation and no Assumption. A criterion with no test always has its row: never `- none`.
+Write `- none` only when there is no judgement call, no Deviation and no Assumption. A criterion with no test always has its row: never `- none`. When one of the principle skills shaped a call (`attack-the-premise`, `fix-root-causes`, `test-behavior-not-implementation`, `explain-the-number`, `exhaust-the-design-space`), the row's why names it in brackets.
 - {{commit}} · {{decision}} · {{why}} · {{evidence: file:line, a test or a command}} · owner {{who owns the area}}
 
 ## Assumptions

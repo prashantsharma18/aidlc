@@ -15,7 +15,7 @@ measurement.
 2. Show that the measurement tells a slow case from a fast one. Then keep it as it is for the whole slice: a change to
    the measurement during the work is a change to the assertion, as `aidlc-build`'s Stop if says.
 3. Explain the number before you trust it: what limits it (the CPU, the network, a lock, the database), how much it
-   moves over repeated runs, and that it measured the work you think it did.
+   moves over repeated runs, and that it measured the work you think it did. The full rule is `explain-the-number`.
 4. Try the remedies in this order, cheapest first, and end with the first one that meets the target: remove the work;
    avoid doing it again; do less of it; do it later; do it off the user's path; do it in parallel; make it cheaper.
 5. One change, one measurement. Keep a change that moved the number past the run-to-run noise; back out the rest. A

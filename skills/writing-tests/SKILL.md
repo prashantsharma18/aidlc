@@ -38,7 +38,7 @@ Not for: finding why a test fails (`debugging-failures`), or browser tests of a 
 7. Go through the Checks for every test you wrote before you hand off.
 
 ## Checks
-- **Wrong code makes it fail.** Would the test still pass if the function returned a constant, skipped a branch or flipped a condition? Then the assertion is too weak.
+- **Wrong code makes it fail.** Would the test still pass if the function returned a constant, skipped a branch or flipped a condition? Then the assertion is too weak. And the second edit: would it still pass if only the internals changed, with the same behaviour? It should (`test-behavior-not-implementation`).
 - **It checks behaviour a caller sees:** outputs, stored state, calls that matter outside. Not private methods, call order or internal variables.
 - **One behaviour per test,** so a red test names one broken rule.
 - **Boundaries are covered:** the spec's edge cases first, by their IDs; then empty, one, many; zero and negative; the limit and one past it; missing and malformed input; time zones and clock changes where dates matter.

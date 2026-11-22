@@ -15,7 +15,8 @@ tests first.
    as the stage's Stop if says.
 4. Keep to the time-box the person sets; when it runs out, report what is known, as the stage's Stop if says.
 5. Build the smallest thing that answers the question: a script for a behaviour or a timing; for a new screen with no
-   example in the product, two or three variants behind one switch, each with a screenshot.
+   example in the product, two or three variants behind one switch, each with a screenshot. Comparing two or three
+   options side by side before you recommend one is `exhaust-the-design-space`.
 6. Observe the thing you are deciding: print the output, log the timing, take the screenshot. The observation is the
    evidence, never an opinion.
 7. Write the result in the design note or the evidence pack as a FACT, with the observation and the scratch folder's

@@ -23,7 +23,10 @@ fix brief too); `why`, for the history of the code the fix touches.
    with the fix, because every commit passes (`committing-changes`).
 5. Make the smallest fix the evidence supports, and fix every instance of the same pattern inside MAY CHANGE; one
    outside is a stop, as `aidlc-build`'s Stop if says. Before another attempt, back the last one out in full, so the diff
-   holds only what the evidence supports. The limit on attempts is `aidlc-build`'s, as its Stop if says.
+   holds only what the evidence supports. The limit on attempts is `aidlc-build`'s, as its Stop if says. Fix it where the
+   system first went wrong, and every same fault inside MAY CHANGE (`fix-root-causes`). When two attempts fail the same
+   way, write down the premise they share, and the observation that would test it, for the report the attempt limit
+   asks for (`attack-the-premise`).
 6. Run the reproduction again, on the same surface: it passes now. A unit test shows how a branch behaves, not that
    the bug is gone; an inconclusive result is not a pass.
 

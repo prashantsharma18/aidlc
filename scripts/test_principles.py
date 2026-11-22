@@ -71,5 +71,60 @@ class PrincipleSkillsTest(unittest.TestCase):
             self.assertIn(f"`{name}`", notice, name)
 
 
+CITATIONS = {
+    "skills/debugging-failures/SKILL.md": (
+        "When two fixes that share one premise fail the same way, write the premise down, and the observation that "
+        "tests it, in the stop's report (`attack-the-premise`).",
+        "Fix the underlying issue, not the symptom. Trace the symptom to the first place the system went wrong and "
+        "fix it there; a guard is a fix only when the state it handles is legitimate (`fix-root-causes`)."),
+    "skills/story-run/references/playbook-bug-fix.md": (
+        "Fix it where the system first went wrong, and every same fault inside MAY CHANGE (`fix-root-causes`). When "
+        "two attempts fail the same way, write down the premise they share, and the observation that would test it, "
+        "for the report the attempt limit asks for (`attack-the-premise`).",),
+    "skills/writing-tests/SKILL.md": (
+        "And the second edit: would it still pass if only the internals changed, with the same behaviour? It should "
+        "(`test-behavior-not-implementation`).",),
+    "agents/reviewer-tests.md": (
+        "A test that would fail when only the internals change, with the same behaviour, is a finding too "
+        "(`test-behavior-not-implementation`).",),
+    "skills/tuning-performance/SKILL.md": (
+        "Then name what limits the number, and rule out that it measured something other than the work "
+        "(`explain-the-number`).",),
+    "skills/story-run/references/playbook-performance.md": ("The full rule is `explain-the-number`.",),
+    "skills/story-run/references/playbook-spike.md": (
+        "Comparing two or three options side by side before you recommend one is `exhaust-the-design-space`.",),
+    "skills/aidlc-design/SKILL.md": (
+        "For a decision with no precedent, compare the options by spike before you recommend one "
+        "(`exhaust-the-design-space`).",),
+}
+
+
+class CitationsTest(unittest.TestCase):
+    """Task 2: each principle is cited at the steps where it applies; the decision log may name it."""
+
+    def test_each_citation(self):
+        for rel, lines in CITATIONS.items():
+            for line in lines:
+                self.assertIn(line, flat(read(rel)), (rel, line))
+        for name in NAMES:
+            places = [rel for rel, lines in CITATIONS.items() if any(f"`{name}`" in line for line in lines)]
+            self.assertGreaterEqual(len(places), 2, name)
+
+    def test_no_playbook_citation_says_stop(self):
+        for rel in ("skills/story-run/references/playbook-bug-fix.md",
+                    "skills/story-run/references/playbook-performance.md",
+                    "skills/story-run/references/playbook-spike.md"):
+            for line in CITATIONS[rel]:
+                self.assertNotIn("stop", line.lower(), rel)
+
+    def test_the_decision_log(self):
+        self.assertIn("When one of the principle skills shaped a call (`attack-the-premise`, `fix-root-causes`, "
+                      "`test-behavior-not-implementation`, `explain-the-number`, `exhaust-the-design-space`), the "
+                      "row's why names it in brackets.", flat(read("skills/aidlc-build/assets/progress-note.md")))
+        self.assertIn("- A row whose why names a principle skill (its file is `skills/<name>/SKILL.md`): its trigger "
+                      "happened in that call; one that did not is a low finding. A row with no principle is not a finding, and a principle never turns a stop "
+                      "into a row.", flat(read("agents/reviewer-compliance.md")))
+
+
 if __name__ == "__main__":
     unittest.main()

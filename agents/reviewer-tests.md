@@ -22,7 +22,7 @@ You judge whether the tests prove the change works. You report; you do not fix. 
 - List every criterion with no test (ADR 0029): each decision-log row `no test for <criterion>` in the progress
   notes, with its reason and its other proof. A criterion with a cheap local test and no test is a high finding; a
   row with no other proof is a medium one. A test marked skip is the finding the `Nothing skipped` bullet names, never this case.
-- For each test, ask whether it would fail if the code were wrong: a constant return, an inverted condition, a missing branch, an off-by-one at a limit. A test that would still pass is a finding.
+- For each test, ask whether it would fail if the code were wrong: a constant return, an inverted condition, a missing branch, an off-by-one at a limit. A test that would still pass is a finding. A test that would fail when only the internals change, with the same behaviour, is a finding too (`test-behavior-not-implementation`).
 - Each test checks what a caller sees, with no sleeps, real clock, shared state or dependence on test order.
 - Only slow, nondeterministic or external edges are replaced, preferably behind the repository's own adapter with a fake. A mock of the code under test, or of a third-party type used directly, is a finding.
 - Nothing skipped, disabled, deleted or commented out; no assertion weakened; no snapshot updated without anyone reading what changed.

@@ -40,7 +40,7 @@ When anything unexpected happens, do this:
 
 **Don't push past a failing test or broken build to start the next feature.** Errors compound. A bug left unfixed in Step 3 makes Steps 4-6 wrong.
 
-> **In this framework:** make one targeted fix per attempt, and name its cause. Three attempts at the same failing check is the limit. If the same failure comes back after a different fix, or a test that passed before now fails, stop and report. In production you propose only: `aidlc-operate` leads, and a person acts. Run `git bisect` only on a clean working tree, and return to your branch when it ends.
+> **In this framework:** make one targeted fix per attempt, and name its cause. Three attempts at the same failing check is the limit. If the same failure comes back after a different fix, or a test that passed before now fails, stop and report. In production you propose only: `aidlc-operate` leads, and a person acts. Run `git bisect` only on a clean working tree, and return to your branch when it ends. When two fixes that share one premise fail the same way, write the premise down, and the observation that tests it, in the stop's report (`attack-the-premise`).
 
 ## The Triage Checklist
 
@@ -145,7 +145,7 @@ This test stops the same bug from coming back. It must fail before the fix and p
 
 ### Step 5: Fix the Root Cause
 
-Fix the underlying issue, not the symptom.
+Fix the underlying issue, not the symptom. Trace the symptom to the first place the system went wrong and fix it there; a guard is a fix only when the state it handles is legitimate (`fix-root-causes`).
 
 ```
 Symptom: "The user list shows duplicate entries"
