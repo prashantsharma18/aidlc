@@ -839,5 +839,23 @@ class DocsTest(unittest.TestCase):
         self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.0.0")
 
 
+class RecordTest(unittest.TestCase):
+    """Task 10: the plan is recorded."""
+
+    RECORD = "docs/verification/2026-11-22-plan-27.md"
+
+    def test_the_verification_record_exists(self):
+        record = read(self.RECORD)
+        for heading in ("## What changed", "## How it was checked", "## Evidence", "## Not verified here",
+                        "## Rulings", "## For the owner"):
+            self.assertIn(heading, record, heading)
+        for phrase in ("aidlc 8.0.0", "ADR 0028", "ADR 0029", "story-run", "python3 scripts/validate.py",
+                       "claude plugin validate .", "aidlc-specify", "aidlc-start", "aidlc-plan", "aidlc-build"):
+            self.assertIn(phrase, record, phrase)
+
+    def test_the_record_has_no_open_slot(self):
+        self.assertNotIn("{{", read(self.RECORD))
+
+
 if __name__ == "__main__":
     unittest.main()
