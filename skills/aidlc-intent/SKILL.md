@@ -39,7 +39,7 @@ Where this runs: read the story's index first: `stories/<KEY>/README.md` at the 
 8. Fill `assets/intent.md`, replacing each `{{FIELD}}` and leaving every approval slot for the person who approves, and write it to `plans/<KEY>/intent.md` (or `stories/<KEY>/intent.md` for a story that spans several repositories). Never overwrite an existing intent: add a new version.
 9. Offer to post the statement as a comment on the work item. Posting asks the person first.
 10. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
-   workspace root) as done, or as stopped with the reason.
+   workspace root) as done, or as stopped with the reason. Then give the hand-off: what you did, the index's next row and where it runs, who it waits on, and the tracker move to suggest now (posting asks first).
 
 ## Produces
 The draft of `plans/<KEY>/intent.md` (or `stories/<KEY>/intent.md`), on the story branch. At Tier 1 the accepted intent lives in the work item; at Tier 2 and 3 it is recorded with Ready, in the spec's pull request.

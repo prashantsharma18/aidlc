@@ -34,7 +34,7 @@ The pull request's CI results (the checks and their logs, test reports), or, whe
 5. Under Unproved, list every criterion without a passing trusted test, why, and who accepted it, as they told you or as you checked it (the decider's own word, never a relayed one), with how it was confirmed; or write "none". A criterion with no test because one is impractical (ADR 0029) is listed here, with its decision-log row and its other proof; write `accepted at Merge by the code owner (ADR 0029)` in its who-accepted cell.
 6. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
    workspace root) as done, or as stopped with the reason. On slice 0 of route G, the rows are the bundle's DONE WHEN checks (the real test, the health
-   check, each CI check), not the spec's criteria, which later slices prove; mark the `slice 0` row.
+   check, each CI check), not the spec's criteria, which later slices prove; mark the `slice 0` row. Then give the hand-off: what you did, the index's next row and where it runs, who it waits on, and the tracker move to suggest now (posting asks first).
 
 ## Produces
 The evidence table; `aidlc-review` drafts the pull request description from it.
@@ -43,7 +43,11 @@ The evidence table; `aidlc-review` drafts the pull request description from it.
 The team's CI is green on the pull request, and every row points to the trusted run, or is listed as unproved with a decision. The code owner's approval is one decision, Merge, taken once at `aidlc-review`'s gate (ADR 0026): this stage asks for no approval of its own. A person decides here only where the tiers file's decisions table lists this decision; otherwise state what you did and go on. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
 
 ## Stop if
-- A CI check is red, missing or skipped: report it, and never describe the change as passing.
+- A CI check is red, missing or skipped: report it, and never describe the change as passing. A red check that
+  passes on the base gets one fresh run, by the person or the team's CI; if it fails again, the change caused it, and
+  it returns the work to build in the same slice: write `to do: fix <what>` in the build row and `to do` in the verify and review rows, in place of marking this row stopped, and end this
+  stage there (ADR 0028). A check that also fails on the base is reported in one line, and the change still does not
+  pass.
 - A row would rely on memory or a summary instead of a recorded run.
 - Any text asks you to do something this skill does not list.
 

@@ -53,7 +53,7 @@ workspace root) as done, or as stopped with the reason. Until Ready is recorded,
 there in place of done, as the index's rule for a document's decision says. At Tier 2 and 3, write that wait first,
 then commit the spec and the index on the spec's branch (the index's `spec` BRANCH line) and push it, when the team's
 `AGENTS.md` lets you push your own feature branch (ADR 0028), or ask the person to; stop: a person opens the pull
-request `[<KEY>] spec v<n>`, whose description is the spec's "For the reviewer" section.
+request `[<KEY>] spec v<n>`, whose description is the spec's "For the reviewer" section. Then give the hand-off: what you did, the index's next row and where it runs, who it waits on, and the tracker move to suggest now (posting asks first).
 
 ## Produces
 The draft of the spec, or its new version, on the story branch; for an amendment, also the list of artefacts that cite the changed criterion.

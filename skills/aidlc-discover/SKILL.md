@@ -42,7 +42,7 @@ The question or the intent, the provisional tier, `AGENTS.md` and the codebase m
 8. Draft the decision for the tech lead: proceed, escalate, or raise the tier. To proceed, state it and go on; to escalate or raise the tier, stop for the tech lead (the Gate says why).
 9. Keep what you learned: for each finding worth keeping, propose a codebase-map line, an ADR or a test, as a draft for its owner.
 10. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
-   workspace root) as done, or as stopped with the reason.
+   workspace root) as done, or as stopped with the reason. Then give the hand-off: what you did, the index's next row and where it runs, who it waits on, and the tracker move to suggest now (posting asks first).
 
 ## Produces
 The evidence pack, written to `plans/<KEY>/evidence-pack.md` (or `stories/<KEY>/evidence-pack.md`), and the explorer briefs you used.

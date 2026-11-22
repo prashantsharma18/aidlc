@@ -38,7 +38,7 @@ The merged pull request and its evidence, the feature flag (if any), the monitor
 7. Recommend ship, limit or hold, with the reason.
 8. During the release, watch the stop criteria with the person: if one trips, roll back first and investigate second; if unsure whether to continue, roll back. Then close the release record and hand over to `aidlc-operate`.
 9. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
-   workspace root) as done, or as stopped with the reason.
+   workspace root) as done, or as stopped with the reason. Then give the hand-off: what you did, the index's next row and where it runs, who it waits on, and the tracker move to suggest now (posting asks first).
 
 ## Produces
 In the story's folder (`plans/<KEY>/` in a repository, `stories/<KEY>/` at a workspace root), on a branch

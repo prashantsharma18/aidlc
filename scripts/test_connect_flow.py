@@ -477,5 +477,43 @@ class TestsFirstTest(unittest.TestCase):
                       "0029); an existing test assertion is never changed to make a test pass.", flat(read("README.md")))
 
 
+HANDOFF = ("Then give the hand-off: what you did, the index's next row and where it runs, who it waits on, and the "
+           "tracker move to suggest now (posting asks first).")
+FIX = "write `to do: fix <what>` in the build row and `to do` in the verify and review rows"
+
+
+class HandoffTest(unittest.TestCase):
+    """Task 6: a red run or an accepted finding returns to build in the same slice (G6); every stage that marks a row
+    ends with the hand-off (G10, G11)."""
+
+    def test_every_row_stage_ends_with_the_hand_off(self):
+        for name in ROW_STAGES:
+            steps = flat(section(skill_md(name), "## Steps"))
+            self.assertEqual(steps.count(HANDOFF), 1, name)
+            self.assertTrue(steps.endswith(HANDOFF), name)
+
+    def test_a_red_run_or_an_accepted_finding_goes_back_to_build(self):
+        verify = flat(section(skill_md("aidlc-verify"), "## Stop if"))
+        self.assertIn("- A CI check is red, missing or skipped: report it, and never describe the change as passing. A "
+                      "red check that passes on the base gets one fresh run, by the person or the team's CI; if it fails "
+                      "again, the change caused it, and it returns the work to build in the same slice: " + FIX + ", in "
+                      "place of marking this row stopped, and end this stage there (ADR 0028). A check that also fails on "
+                      "the base is reported in one line, and the change still does not pass.", verify)
+        review = flat(section(skill_md("aidlc-review"), "## Steps"))
+        self.assertIn("a low finding may be dismissed with a reason. A high or medium finding the engineer accepts returns "
+                      "the work to build in the same slice: " + FIX + "; the fix voids the reviewers' verdicts, so verify "
+                      "and review run again (ADR 0028). End this stage there: skip steps 5 to 8, leave this row `to do`, "
+                      "and give the hand-off.", review)
+        build = flat(section(skill_md("aidlc-build"), "## When to use"))
+        self.assertIn("**A fix.** When the build row reads `to do: fix <what>` (a red CI run the change caused, or a "
+                      "review finding the engineer accepted), build the fix as new steps of the same slice, from the same "
+                      "bundle and inside its MAY CHANGE, with step 8 for a failure; the reviewers' verdicts are void, so "
+                      "verify and review run again.", build)
+        for rel in ("skills/aidlc-start/assets/story-index.md", "skills/aidlc-plan/assets/story-index.md"):
+            self.assertIn("A red CI run the change caused, or a review finding the engineer accepts, writes "
+                          "`to do: fix <what>` in the build row and `to do` in the verify and review rows (ADR 0028).",
+                          flat(read(rel)), rel)
+
+
 if __name__ == "__main__":
     unittest.main()

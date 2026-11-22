@@ -19,6 +19,8 @@ person checks the facts at the first technical decision (ADR 0027). A re-route w
 `<new route>   (re-routed from <old route>, <YYYY-MM-DD>: <reason>)`.
 Every route has a `merged` row after `aidlc-review`; a story index at a workspace root has none, because each part's
 index holds it (ADR 0028). Each stage marks its own row when it ends: done, or `stopped: <reason>`. The build row reads doing while slices remain.
+A red CI run the change caused, or a review finding the engineer
+accepts, writes `to do: fix <what>` in the build row and `to do` in the verify and review rows (ADR 0028).
 A lane (`parallel-lanes`) that stops for a person's decision writes `waiting: <decision> by <who>` in the row of the
 next unfinished stage, never in a row already done; when the wait ends, that row reads `to do` again. That is every wait (a pause, a pull request to open, CI, Merge in
 the `merged` row, Release) except one (ADR 0028): a document's decision (Ready, Design + plan, a brief's

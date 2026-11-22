@@ -69,7 +69,7 @@ workspace root) as done, or as stopped with the reason. For a story across sever
 `waiting: Design + plan by <tech lead>` there in place of done, as the index's rule for a document's decision says;
 then commit the design's documents and the index on the plan's branch (the index's `plan` BRANCH line) and push it,
 when the team's `AGENTS.md` lets you push your own feature branch (ADR 0028), or ask the person to; stop: a person
-opens the home design pull request, whose description is the design note's "For the reviewer" section.
+opens the home design pull request, whose description is the design note's "For the reviewer" section. Then give the hand-off: what you did, the index's next row and where it runs, who it waits on, and the tracker move to suggest now (posting asks first).
 
 ## Produces
 In the story's folder (`plans/<KEY>/` in a repository, `stories/<KEY>/` at a workspace root): `design-note.md` with

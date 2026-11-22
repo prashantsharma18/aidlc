@@ -133,7 +133,7 @@ route, keeps every row already done, and names the next stage. After Ready, it a
      | The route would lose controls (for example F1 to F0, a normal route to S) | Not allowed after Ready: the work stays on its route. A lighter route is chosen only at the start; before Ready nothing is approved yet, so `aidlc-start` may still re-route to a lighter route |
      | None of the above: the same tier, repositories, criteria and controls (for example, the kind of work was mislabelled) | No new decision: state the change, and it is shown at the next decision the table lists |
 
-8. Tell the person the next stage, the exact folder to run it in, and the command.
+8. Tell the person the next stage, the exact folder to run it in, and the command. Then give the hand-off: what you did, the index's next row and where it runs, who it waits on, and the tracker move to suggest now (posting asks first).
 
 ## Produces
 The story's index, `plans/<KEY>/README.md` in a repository or `stories/<KEY>/README.md` at a workspace root, plus the questions for the product owner or the reporter. It is reviewed with the rest of the
