@@ -111,5 +111,51 @@ class TechnicalWritingTest(PracticeShape, unittest.TestCase):
                       "`in-your-own-words`, `how`, `why`).", flat(read("docs/codebase-map.md")))
 
 
+class InYourOwnWordsTest(PracticeShape, unittest.TestCase):
+    """Task 2: restate a request before work starts."""
+    NAME, SOURCE = "in-your-own-words", "in-your-own-words"
+
+    def test_its_steps(self):
+        steps = section(skill_md(self.NAME), "## Steps")
+        for phrase in ("Restate the goal in your own words: what the person wants to be true when this is done, and "
+                       "for whom.",
+                       "Restate the problem: what is wrong now, and why it matters now.",
+                       "Name each thing you assumed, as an assumption.",
+                       "Ask the person to correct it. Their correction, not your restatement, is what the work starts "
+                       "from."):
+            self.assertIn(phrase, steps, phrase)
+        self.assertIn("The stages' restatements of a story (`aidlc-plan` step 1, `aidlc-build` step 2) stay their "
+                      "own.", flat(skill_md(self.NAME)))
+
+
+class HowTest(PracticeShape, unittest.TestCase):
+    """Task 2: how code works now."""
+    NAME, SOURCE = "how", "how"
+
+    def test_its_steps(self):
+        steps = section(skill_md(self.NAME), "## Steps")
+        for phrase in ("State your reading of the question in one sentence; the person may redirect it.",
+                       "Brief the `explorer` agent with that one question, where your AI tool can start it; otherwise "
+                       "explore read-only yourself, the same way.",
+                       "present it as a mental model a senior engineer new to the area can work from",
+                       "Mark what the code alone does not show as UNKNOWN."):
+            self.assertIn(phrase, steps, phrase)
+        self.assertIn("Use `why`", front(self.NAME))
+
+
+class WhyTest(PracticeShape, unittest.TestCase):
+    """Task 2: why it is like this, from the record."""
+    NAME, SOURCE = "why", "why"
+
+    def test_its_steps(self):
+        steps = section(skill_md(self.NAME), "## Steps")
+        for phrase in ("`git log --follow`", "`git blame`", "`git log -S",
+                       "Answer from what the authors wrote, and cite each commit or pull request you use.",
+                       "Mark every inference as INFERENCE, and say what the record does not answer."):
+            self.assertIn(phrase, steps, phrase)
+        self.assertIn("Use `how`", front(self.NAME))
+        self.assertIn("a failing test or a broken build (`debugging-failures`)", flat(skill_md(self.NAME)))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -80,6 +80,9 @@ Choose by the kind of work. A slice can need several.
 | A README, API reference, code comments, or the files agents read | `writing-documentation` |
 | How the sentences of a document, a pull request description or a commit body read | `technical-writing` |
 | The last pass on any text a person reads: cut AI tells | `unslop` |
+| Restating a request before work starts | `in-your-own-words` |
+| How code works now, or where something should live | `how` |
+| Why code is the way it is, from its history | `why` |
 | A framework or library behaviour the change relies on | `checking-official-docs` |
 | A plan, design or risky change at Tier 2 or above | `stress-testing-decisions` |
 | A failing test, a broken build, an unexpected error | `debugging-failures` |
