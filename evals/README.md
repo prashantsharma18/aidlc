@@ -56,5 +56,6 @@ The two cases for the route inside Ready and the decision log (ADR 0027) are `ga
 `gate-compliance-decision-log`.
 The five cases for `story-run` and tests first (ADR 0028, ADR 0029) are `story-run-stops-at-ready`, `story-run-tier1-design-no-stop`, `story-run-pushes-own-branch`, `story-run-stops-at-merge`, `gate-no-test-logged`; all five need Bash.
 The four cases for ADR 0030 are `coordinator-schedules-slices`, `coordinator-drafts-queue`, `coordinator-stuck-lane-shown` and `lane-run-two-fixes-stop`, 51 in all; all four need Bash, and make git worktrees inside the scaffold.
+The two cases for Plan 29 are `routing-unslop` and `routing-why-history`, 53 in all; `routing-why-history` needs Bash.
 Results go to `results/`, which git ignores. Add `--case <name>` to run one case. A low score is a finding about the
 kit: record it; never weaken a grader to make it pass.

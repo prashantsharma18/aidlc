@@ -232,5 +232,41 @@ class FrontMatterTest(unittest.TestCase):
                     self.assertNotIn(" #", value, path)
 
 
+class EvalCasesTest(unittest.TestCase):
+    """Task 4: two cases for Plan 29, written and checked, not run."""
+
+    def grader(self, case: str, name: str) -> str:
+        return read(f"evals/{case}/graders/{name}")
+
+    def test_the_cases(self):
+        self.assertEqual(sorted(p.name for p in (ROOT / "evals/routing-unslop/graders").glob("*.md")),
+                         ["fired.md", "keeps-command.md", "keeps-path.md", "no-ai-words.md", "no-dash.md"])
+        self.assertEqual(sorted(p.name for p in (ROOT / "evals/routing-why-history/graders").glob("*.md")),
+                         ["cites-contract.md", "fired.md", "read-history.md", "reply.md"])
+        prompt = read("evals/routing-unslop/prompt.md")
+        self.assertIn("kubectl rollout undo deployment/eta-api --namespace shipments", prompt)
+        self.assertIn("\u2014", prompt)
+        self.assertIn("scaffold_script: setup.sh", read("evals/routing-why-history/case.yaml"))
+        self.assertIn("The two cases for Plan 29 are `routing-unslop` and `routing-why-history`, 53 in all",
+                      read("evals/README.md"))
+
+    def test_the_graders_match_right_and_not_wrong(self):
+        def pattern(case, name):
+            front_matter = self.grader(case, name).split("---", 2)[1]
+            line = next(l for l in front_matter.splitlines() if l.startswith(("pattern:", "input_match:")))
+            return re.compile(line.split(":", 1)[1].strip()[1:-1])
+        dash = pattern("routing-unslop", "no-dash.md")
+        self.assertRegex("a pivotal moment \u2014 for the team", dash)
+        self.assertNotRegex("a key moment, for the team", dash)
+        history = pattern("routing-why-history", "read-history.md")
+        self.assertRegex(json.dumps({"command": "git log --follow -p src/shipments/eta.py"}), history)
+        self.assertRegex(json.dumps({"command": "git -C . blame src/shipments/eta.py"}), history)
+        self.assertRegex(json.dumps({"command": "git --no-pager log -p src/shipments/eta.py"}), history)
+        self.assertNotRegex(json.dumps({"command": "cat src/shipments/eta.py"}), history)
+        fired = pattern("routing-why-history", "fired.md")
+        self.assertRegex(json.dumps({"skill": "aidlc:why"}), fired)
+        self.assertNotRegex(json.dumps({"skill": "aidlc:how"}), fired)
+
+
 if __name__ == "__main__":
     unittest.main()
