@@ -176,7 +176,9 @@ class LaneRunTest(unittest.TestCase):
     def test_lane_mode_left_parallel_lanes(self):
         lanes = skill("parallel-lanes")
         self.assertNotIn("Lane mode, step by step:", lanes)
-        self.assertNotIn("**A stacked slice after its parent merges.**", lanes)
+        self.assertIn("**A stacked slice after its parent merges.** A lane moves it as `lane-run` says under the same "
+                      "heading.", flat(lanes))
+        self.assertNotIn("1. Act only after the merge is checked in git", flat(lanes))
         self.assertNotIn("A row's state is read from its own files, never kept in the queue", lanes)
         self.assertIn("read `../lane-run/SKILL.md` from this skill's folder and follow it in full", lanes)
         self.assertIn("In this file, \"lane step <n>\" and \"lane mode\" mean `lane-run`'s.", lanes)
@@ -211,7 +213,7 @@ class LaneRunTest(unittest.TestCase):
         self.assertIn("`references/worker.md`", section(skill_md("lane-run"), "## Inputs"))
 
     def test_lane_run_is_shorter_than_parallel_lanes_was(self):
-        self.assertLess(words("lane-run"), 3800)  # 3,786 at Plan 28 Task 4 (lane-run and worker.md); parallel-lanes was 4,856
+        self.assertLess(words("lane-run"), 3850)  # 3,806 at Plan 28 fix round 1 (lane-run and worker.md); parallel-lanes was 4,856
         self.assertLess(words("parallel-lanes"), 3300)
 
 
@@ -219,7 +221,7 @@ SLICES = ("**A plan's slices (ADR 0030).** A queue row whose plan marks its slic
           "the plan gave its own branch. Read the plan's bundles on the default branch, where that plan merged first "
           "(`../aidlc-plan/references/independent-slices.md`). Slice 1 is the queue row itself, on its branch. Every "
           "other slice with its own branch is a row of its own, in the plan's order: branch `<the row's branch>-s<n>`, "
-          "worktree `.worktrees/<KEY>-s<n>`, index `plans/<KEY>/slice-<n>/README.md`, and Depends on the slice its "
+          "the worktree folder `lane-run` names for a slice, index `plans/<KEY>/slice-<n>/README.md`, and Depends on the slice its "
           "bundle's `DEPENDS ON` names, or the queue row's own Depends on for `DEPENDS ON none`. A slice that continues "
           "the slice before it on that branch is part of that slice's row. A slice the queue already lists is used as "
           "written, never twice.")
@@ -231,6 +233,13 @@ class CoordinatorTest(unittest.TestCase):
     def test_a_plans_slices_come_from_the_plan(self):
         lanes = skill("parallel-lanes")
         self.assertIn(SLICES, section(skill_md("parallel-lanes"), "## Inputs"))
+        self.assertIn("\n\n**A plan's slices (ADR 0030).**", skill_md("parallel-lanes"))
+        self.assertIn("never twice.\n\n- `git worktree list`", skill_md("parallel-lanes"))
+        self.assertIn("with `git show origin/<default branch>:QUEUE.md`.\n\n**A plan's slices", skill_md("parallel-lanes"))
+        self.assertIn("It counts only there, because lanes read the default branch on the remote: the coordinator "
+                      "drafts rows on its queue branch and a person's merge confirms them (step 6), or a person writes "
+                      "it from `assets/queue.md`, commits and pushes it (ADR 0030).",
+                      section(skill_md("parallel-lanes"), "## Inputs"))
         self.assertIn("- A queue slice row whose branch or Depends on disagrees with its bundle.",
                       section(skill_md("parallel-lanes"), "## Stop if"))
         self.assertNotIn("references/independent-slices.md`", lanes.replace(
@@ -286,10 +295,13 @@ class CoordinatorTest(unittest.TestCase):
                        "never stuck.",
                        "A stuck lane you started in this session, whose worktree is clean, when your tool can stop "
                        "it: stop it, remove its worktree (`git worktree remove .worktrees/<folder>`, never "
-                       "`--force`), and start a fresh lane on the row as step 3 says",
+                       "`--force`), and start a fresh lane on the row as coordinator step 3 says",
                        "Any other stuck lane (one a person or another session started, one your tool cannot stop, or "
                        "one whose worktree holds uncommitted files): show the person the lane and its files, and "
                        "never commit them for it.",
+                       "its state is in git, so the fresh lane resumes. If git will not remove the worktree, show the "
+                       "person, as for uncommitted files.",
+                       "End a pass that changed something with coordinator step 5's report",
                        "A pass that changed nothing says so in one line."):
             self.assertIn(phrase, watch, phrase)
         self.assertIn("then run the watch pass (below)", coordinator_steps().split(" 2. ", 1)[0])
@@ -299,8 +311,10 @@ class CoordinatorTest(unittest.TestCase):
             "**Reviewer passes from a sub-agent lane.**", 1)[0]
         self.assertIn("A row whose next stage is verify is ready only once its pull request's CI has finished (the "
                       "CI table below).", coordinator_steps())
+        self.assertIn("Take the first row of the table that matches, from the bottom up: an approved and green pull "
+                      "request is only reported.", ci)
         for row in ("| Still running | The row is not ready: start no lane for it; the next pass reads it again |",
-                    "| Finished, green or red | The row is ready: start its lane (step 3). Its `story-run` "
+                    "| Finished, green or red | A row whose next stage is verify is ready: start its lane (step 3). Its `story-run` "
                     "runs `aidlc-verify`, which reads the run; a red run the change caused goes back to build, as "
                     "`story-run` says, and a flake or a check red on the base too is as `aidlc-verify`'s Stop if "
                     "says |",
@@ -310,10 +324,11 @@ class CoordinatorTest(unittest.TestCase):
             self.assertIn(row, ci, row)
         self.assertNotRegex(ci, r"(?i)\byou merge\b|\bmerge it\b")
         stop = section(skill_md("lane-run"), "## Stop if")
-        self.assertIn("- A CI check is red again on a branch that already holds two commits `fix(ci): <check>` for it "
-                      "(`git log --oneline --grep \"fix(ci): <check>\"`): write `stopped: <check> red after two fixes` "
-                      "in the build row; a person decides. The last commit of each fix for a red check carries that message, and only "
-                      "that commit.", stop)
+        self.assertIn("- A CI check is red again on a branch that already holds two commits `fix(ci): <check>` for it, "
+                      "the check named as verify's `to do: fix <what>` names it and counted with `git log --oneline "
+                      "--grep \"^fix(ci): <check>$\" origin/<default branch>..HEAD`: write `stopped: <check> red after "
+                      "two fixes` in the build row, not the verify row; a person decides. The last commit of each fix "
+                      "for a red check carries that message, and only that commit.", stop)
 
 
 class DocsTest(unittest.TestCase):
@@ -329,6 +344,11 @@ class DocsTest(unittest.TestCase):
             self.assertIn("lane-run", read(rel), rel)
         self.assertIn("`skills/lane-run/`", read("docs/codebase-map.md"))
         self.assertIn("from a `QUEUE.md` the coordinator drafts and a person merges", flat(skill_md("using-aidlc")))
+        for rel in ("README.md", "docs/codebase-map.md"):
+            self.assertNotIn("a `QUEUE.md` a person keeps", flat(read(rel)), rel)
+        self.assertIn("from a `QUEUE.md` the coordinator drafts and a person merges", flat(read("README.md")))
+        self.assertIn("from a `QUEUE.md` the coordinator drafts and a person merges (ADR 0025, ADR 0030)",
+                      flat(read("docs/codebase-map.md")))
         self.assertNotIn("from a `QUEUE.md` a person keeps", flat(skill_md("using-aidlc")))
 
     def test_the_change_list_and_the_version(self):

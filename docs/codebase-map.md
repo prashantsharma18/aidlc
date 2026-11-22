@@ -10,7 +10,7 @@ Code; its `skills/` folders also load in Copilot, Codex or Cursor, untested ther
 of one route or case in `references/`, read on a named condition (Plan 26)
 `skills/<practice>/`   engineering-practice skills (`skills/NOTICE` covers parts of the eight earlier ones)
 `skills/using-aidlc/`   the map: stages in order and the practice for each kind of work
-`skills/parallel-lanes/`   the workflow skill: lanes in git worktrees, from a `QUEUE.md` a person keeps (ADR 0025)
+`skills/parallel-lanes/`   the workflow skill: lanes in git worktrees, from a `QUEUE.md` the coordinator drafts and a person merges (ADR 0025, ADR 0030)
 `skills/story-run/`   the workflow skill a person starts once per decision: one story's stages, one after another, in one session (ADR 0028)
 `skills/story-run/references/`   eight playbooks, one per kind of work, which build and verify read from the bundle's PLAYBOOK line; a playbook holds no gate
 `skills/lane-run/`   the workflow skill for one lane: it claims one queue row's worktree, runs `story-run` there to the next person's decision, and releases; `references/worker.md` opens every sub-agent brief (ADR 0030)

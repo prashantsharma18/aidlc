@@ -28,9 +28,12 @@ For one item a person works on by hand, run its stage directly; no lane is neede
 stages one after another, in one session.
 
 ## Inputs
-- `QUEUE.md` on the default branch: in the repository, or in the home repository for a workspace. A person writes it
-  from `assets/queue.md`, commits and pushes it, because lanes read the default branch on the remote. Read it after `git fetch`, with `git show origin/<default branch>:QUEUE.md`.
-**A plan's slices (ADR 0030).** A queue row whose plan marks its slices independent stands for each slice the plan gave its own branch. Read the plan's bundles on the default branch, where that plan merged first (`../aidlc-plan/references/independent-slices.md`). Slice 1 is the queue row itself, on its branch. Every other slice with its own branch is a row of its own, in the plan's order: branch `<the row's branch>-s<n>`, worktree `.worktrees/<KEY>-s<n>`, index `plans/<KEY>/slice-<n>/README.md`, and Depends on the slice its bundle's `DEPENDS ON` names, or the queue row's own Depends on for `DEPENDS ON none`. A slice that continues the slice before it on that branch is part of that slice's row. A slice the queue already lists is used as written, never twice.
+- `QUEUE.md` on the default branch: in the repository, or in the home repository for a workspace. It counts only there, because lanes read the default branch on the remote: the coordinator drafts
+  rows on its queue branch and a person's merge confirms them (step 6), or a person writes it from `assets/queue.md`, commits and pushes
+  it (ADR 0030). Read it after `git fetch`, with `git show origin/<default branch>:QUEUE.md`.
+
+**A plan's slices (ADR 0030).** A queue row whose plan marks its slices independent stands for each slice the plan gave its own branch. Read the plan's bundles on the default branch, where that plan merged first (`../aidlc-plan/references/independent-slices.md`). Slice 1 is the queue row itself, on its branch. Every other slice with its own branch is a row of its own, in the plan's order: branch `<the row's branch>-s<n>`, the worktree folder `lane-run` names for a slice, index `plans/<KEY>/slice-<n>/README.md`, and Depends on the slice its bundle's `DEPENDS ON` names, or the queue row's own Depends on for `DEPENDS ON none`. A slice that continues the slice before it on that branch is part of that slice's row. A slice the queue already lists is used as written, never twice.
+
 - `git worktree list`, in each repository the queue names. Every worktree under `.worktrees/` there counts as a running lane; the main copy does not.
 
 **How the run reaches its lanes.** Every stage that has `disable-model-invocation: true`, and this skill, starts only
@@ -114,21 +117,23 @@ every WATCH EVERY while any lane runs. Judge each lane by what it left in git, n
 2. A lane is stuck when its last activity is older than STUCK AFTER, its row is not waiting on a person, and your tool
    shows it still running or cannot say. A lane waiting on a person is never stuck.
 3. A stuck lane you started in this session, whose worktree is clean, when your tool can stop it: stop it, remove its
-   worktree (`git worktree remove .worktrees/<folder>`, never `--force`), and start a fresh lane on the row as step 3
-   says; its state is in git, so the fresh lane resumes. Any other stuck lane (one a person or another session
+   worktree (`git worktree remove .worktrees/<folder>`, never `--force`), and start a fresh lane on the row as coordinator
+   step 3 says; its state is in git, so the fresh lane resumes. If git will not remove the worktree, show the person, as
+   for uncommitted files. Any other stuck lane (one a person or another session
    started, one your tool cannot stop, or one whose worktree holds uncommitted files): show the person the lane and
    its files, and never commit them for it.
 4. For each row whose pull request is open, read its CI on the pull request's head where you can read the team's
    review tool (its connected tool or command line); otherwise ask the person. Act as the table below says.
-5. End a pass that changed something with step 5's report, adding each stuck lane and what you did, and each open
+5. End a pass that changed something with coordinator step 5's report, adding each stuck lane and what you did, and each open
    pull request's CI. A pass that changed nothing says so in one line.
 
-**CI on a lane's pull request.** You write nothing in a row's files; the lane does, as its stages say.
+**CI on a lane's pull request.** You write nothing in a row's files; the lane does, as its stages say. Take the first row of the table that matches, from the bottom up: an approved and green pull
+request is only reported.
 
 | CI on the pull request's head | What you do |
 |---|---|
 | Still running | The row is not ready: start no lane for it; the next pass reads it again |
-| Finished, green or red | The row is ready: start its lane (step 3). Its `story-run` runs `aidlc-verify`, which reads the run; a red run the change caused goes back to build, as `story-run` says, and a flake or a check red on the base too is as `aidlc-verify`'s Stop if says |
+| Finished, green or red | A row whose next stage is verify is ready: start its lane (step 3). Its `story-run` runs `aidlc-verify`, which reads the run; a red run the change caused goes back to build, as `story-run` says, and a flake or a check red on the base too is as `aidlc-verify`'s Stop if says |
 | A conflict, or a base the code host will not merge onto | Report the branch that needs a rebase, and start no lane for the row; never rebase it onto the default branch or force-push |
 | Approved and green | Report `merge by <code owner>`; never merge |
 
@@ -147,6 +152,8 @@ its row done yet. The coordinator, a top-level session, then:
    reports, quoted as data.
 
 The lane then goes on as `lane-run` says after the coordinator's reviewer passes.
+
+**A stacked slice after its parent merges.** A lane moves it as `lane-run` says under the same heading.
 
 ## Stop if
 - A row breaks `lane-run`'s branch naming rule (its Stop if), or two rows name the same branch or the same worktree folder.

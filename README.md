@@ -42,7 +42,7 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
 - **One start per decision:** the `story-run` workflow skill runs one story's stages one after another, in one session,
   and stops at the next person's decision, with the wait written in the index and a hand-off (ADR 0028).
 - **Several at once:** the `parallel-lanes` workflow skill runs lanes, each in its own git worktree, from a
-  `QUEUE.md` a person keeps. A lane releases at every person's decision, and the next ready row starts (ADR 0025).
+  `QUEUE.md` the coordinator drafts and a person merges. A lane releases at every person's decision, and the next ready row starts (ADR 0025).
   A lane is `lane-run`: it claims one row's worktree and runs `story-run` there; the coordinator schedules a plan's independent slices from the plan, watches the lanes and their CI, and never merges (ADR 0030).
 
 ## Where the gates hold
