@@ -5,6 +5,8 @@ Design: `docs/design/2026-11-21-parallel-lanes.md` · Plan: `docs/plans/2026-11-
 Amends: ADR 0015 (one branch and one pull request per repository part)
 Amended by ADR 0028 (proposed, 2026-11-22): a person's start of `story-run` is the go-ahead for the stages up to
 the next person's decision, as a lane's start is, and the AI may push its own feature branch; see ADR 0028.
+Amended by ADR 0030 (proposed, 2026-11-22): the coordinator schedules a plan's slices, drafts the queue on its own
+branch for a person to merge, and watches lanes and CI; lane mode is `lane-run`; see ADR 0030.
 
 ## Context
 One session works one item, and a person lines up the next one by hand. The owner wants several pieces of work to

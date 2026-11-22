@@ -26,7 +26,9 @@ SOFTWARE.
 
 Third-party licence for portions of `story-run` (its SKILL.md and its playbooks in `story-run/references/`) and of
 the tests-first wording (ADR 0029, `writing-tests`), adapted from pstack (`cursor/plugins`, folder `pstack`), as ADRs
-0028 and 0029 record.
+0028 and 0029 record. Also adapted from pstack: `lane-run`, its `skills/lane-run/references/worker.md` (from pstack's `worker.md`), the watch pass and the CI table in
+`parallel-lanes`, and the throughput checkpoint in `aidlc-plan` (from pstack's `feature`, `multi-phase-plan`,
+`autopilot-full`, `autopilot-stack` and `babysit` playbooks), as ADR 0030 records.
 
 MIT License
 
