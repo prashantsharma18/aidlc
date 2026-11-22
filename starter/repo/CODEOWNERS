@@ -1,0 +1,16 @@
+# Every change needs a review from its owners. Put this file where your review tool reads it (.github/CODEOWNERS on
+# GitHub, .gitlab/CODEOWNERS on GitLab) and replace the teams.
+*                 @your-org/your-team
+AGENTS.md         @your-org/your-team-leads
+CLAUDE.md         @your-org/your-team-leads
+docs/codebase-map.md @your-org/your-team-leads
+plans/            @your-org/your-team-leads
+# Vendored contracts and their SOURCE: a pin moves only with a lead's review.
+contracts/        @your-org/your-team-leads
+# Tests: owners must approve any change to an existing test.
+tests/            @your-org/your-team-leads
+# The team's own checks and settings: its scripts, CI and AI tool settings (aidlc ships none, ADR 0024).
+scripts/           @your-org/your-team-leads
+.claude/           @your-org/your-team-leads
+.mcp.json          @your-org/your-team-leads
+.github/           @your-org/your-team-leads

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Edit(/stories/**)",
+      "Edit(/incidents/**)",
+      "Edit(/feedback/**)",
+      "Read(~/.claude/plugins/cache/aidlc/**)",
+      "Read(~/.claude/plugins/marketplaces/aidlc/**)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(secrets/**)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Edit(/.claude/**)",
+      "Edit(/CODEOWNERS)",
+      "Edit(/.github/CODEOWNERS)",
+      "Bash(git push*)"
+    ],
+    "disableBypassPermissionsMode": "disable"
+  },
+  "sandbox": {
+    "enabled": true,
+    "filesystem": {
+      "denyRead": [
+        ".env",
+        ".env.*",
+        "~/.ssh",
+        "~/.aws"
+      ]
+    }
+  },
+  "enabledPlugins": {
+    "aidlc@aidlc": true
+  },
+  "extraKnownMarketplaces": {
+    "aidlc": {
+      "source": {
+        "source": "github",
+        "repo": "prashantsharma18/aidlc"
+      }
+    }
+  }
+}

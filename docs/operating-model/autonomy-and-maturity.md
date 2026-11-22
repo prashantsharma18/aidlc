@@ -21,7 +21,7 @@ Before an agent gets more responsibility in a repository, all four must hold; if
 1. Context is explicit (rules file, map, bundle).
 2. Tools are scoped (permissions, sandbox, no production credentials).
 3. Tests are runnable (one-command check, green on main, no unexpected skips).
-4. Review is required (branch protection, code owners).
+4. Review is required (code owners; the code host's merge rules where the team has them).
 
 ## Rollout stages
 

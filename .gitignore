@@ -4,3 +4,4 @@ __pycache__/
 .aidlc/ci-records/
 .superpowers/
 .test-scratch/
+evals/results/

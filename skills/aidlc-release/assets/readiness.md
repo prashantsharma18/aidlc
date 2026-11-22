@@ -1,0 +1,44 @@
+<!-- aidlc template: readiness -->
+# {{KEY}} · readiness
+
+The worst of the five decides.
+
+## For the reviewer
+- **Asked of:** The release approver, to decide ship, limit or hold; the owning team confirms monitoring and rollback
+- **Record it:** In change management; the owning team's confirmation in this record (the decider tells the AI, which writes the record after checking it and says how it was confirmed, ADR 0023)
+- **Tier and main risk:** {{tier}}: {{the main risk}}
+- **Changed since the last version:** {{what changed, or "first version"}}
+
+## 1. Scope known
+- [ ] Users: {{what people experience, including refusals}}
+- [ ] Services and blast radius: {{services}}
+- [ ] Success signal: {{signal}}
+
+## 2. Evidence passing
+- [ ] The team's CI green and code-owner approval on every pull request; specialist reviews recorded
+- [ ] Staging behaviour confirmed: {{what was seen}}
+
+## 3. Access limited
+- [ ] Who may change the flag or configuration in production: {{who}}; no agent or pipeline identity can
+
+## 4. Monitoring in place
+- [ ] Monitoring checked against the `adding-observability` pre-launch list: alerts with thresholds, routed to {{on-call}}, each pointing to a runbook
+- [ ] Dashboard: {{link}}
+
+## 5. Recovery defined
+- [ ] Rollback: {{fastest route}}, pre-approved for on-call, rehearsed in staging on {{YYYY-MM-DD}}
+- [ ] Runbook: {{path}}
+
+## Parts (a story across several repositories)
+One row per part, filled by the AI from git (`aidlc-release`, step 1) and confirmed by a person. Any "no" blocks the
+release. An unconfirmed row (a blank "Confirmed by") or a row that lists differing lines also blocks the release.
+Leave this section out for a story in one repository.
+
+| Repository | Part | Merged on its default branch | Pins the current spec at a home commit on the home default branch | Criteria copy matches the spec | Contract copy matches its SOURCE and tag | Confirmed by |
+|---|---|---|---|---|---|---|
+| {{repository}} | {{n of m}} | {{yes, at commit, or no}} | {{yes: spec version and home commit, or no}} | {{yes, or the lines that differ}} | {{yes, no, or no contract}} | {{who, YYYY-MM-DD, how it was confirmed}} |
+
+## Decision
+Owning team's confirmation of monitoring and rollback: {{who}}, {{YYYY-MM-DD}}, {{how it was confirmed: in the session, or where it was checked}}
+
+{{ship, limit or hold}}. Release approver: {{name}}, {{YYYY-MM-DD}}, {{how it was confirmed: checked in change management, or in the session}}

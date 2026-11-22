@@ -1,0 +1,58 @@
+# The plugin's behaviour evals (evals/README.md) in a clean container, where the build-stage cases that need Bash can
+# run. On demand, and before each release; never on pull requests, because they spend model calls. The key lives only
+# in the ai-gates environment, whose required reviewer approves each run.
+name: evals
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: "Runs per case (3 for a release baseline)"
+        default: "3"
+        required: true
+      max_cost_usd:
+        description: "Stop when the run has spent this much"
+        default: "60"
+        required: true
+permissions: {contents: read}
+jobs:
+  evals:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    environment: ai-gates
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: {persist-credentials: false}
+      - name: bubblewrap and socat, for the Bash sandbox
+        run: sudo apt-get update -q && sudo apt-get install -y -q bubblewrap socat
+      - name: Allow unprivileged user namespaces for bubblewrap (ephemeral runner)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+      - name: Claude Code, pinned
+        run: npm install -g @anthropic-ai/claude-code@2.1.296
+      - name: Run every case, with and without the plugin
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
+          RUNS: ${{ inputs.runs }}
+          MAX_COST: ${{ inputs.max_cost_usd }}
+        run: |
+          case "$RUNS" in ''|*[!0-9]*) echo "runs must be a number"; exit 1;; esac
+          case "$MAX_COST" in ''|*[!0-9]*) echo "max_cost_usd must be a whole number"; exit 1;; esac
+          git config --global user.name eval && git config --global user.email eval@example.com
+          claude plugin eval . --trust-plugin --scaffold --allow-tools Write Edit "Bash(python3 *)" "Bash(git *)" \
+            --no-publish --runs "$RUNS" --threshold 0.67 --max-cost-usd "$MAX_COST" --model claude-sonnet-5-5 \
+            --json evals/results/release.json
+      - name: Summary
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          path = pathlib.Path("evals/results/release.json")
+          lines = ["| Case | Pass rate |", "|---|---|"]
+          if path.is_file():
+              for case in json.loads(path.read_text())["cases"]:
+                  lines.append(f"| {case['name']} | {case.get('aggregates', {}).get('passRate')} |")
+          else:
+              lines.append("| (no results written) | |")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as out:
+              out.write("\n".join(lines) + "\n")
+          PY

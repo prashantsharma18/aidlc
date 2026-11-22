@@ -6,7 +6,7 @@
 | Date | 2026-10-18 |
 | Owner | Prashant Sharma |
 | Primary source | *From Intent to Verified Change*, 16 chapters (`~/demos/guide`) |
-| Scope | The framework (`~/demos/aidlc`) and the demo workspace (`~/demos/aidlc-workspace`) |
+| Scope | The framework (`~/demos/aidlc`) and the demo workspace (`~/work/shipment-tracking`, amended by Plan 6) |
 
 ## 1. Purpose
 
@@ -39,7 +39,7 @@ A demo workspace with two repositories shows one change moving through every sta
 |---|---|---|
 | D1 | Demo backend on ASP.NET Core (.NET 10). Frontend on React + TypeScript with Node 22 LTS via nvm. | The framework must be polyglot: checks are configured per repository, never assumed to be npm. |
 | D2 | Claude Code's OS sandbox, using bubblewrap and socat on WSL2, verified, with limits documented. | Sandbox verification is a Phase 0/3 exit criterion. The control is labelled "not enforced" until it is proved. |
-| D3 | Framework in `~/demos/aidlc`, demo in `~/demos/aidlc-workspace`. Trusted CI on GitHub (ADR 0002, 2026-10-20): public repositories under `github.com/prashantsharma18`. | GitHub Actions runs the gates; rulesets enforce branch protection. Local `aidlc ci` is a preview, never evidence. |
+| D3 | Framework in `~/demos/aidlc`, demo in `~/work/shipment-tracking` (Plan 6: named after the product area; local git first). Trusted CI on GitHub (ADR 0002, 2026-10-20): public repositories under `github.com/prashantsharma18`. | GitHub Actions runs the gates; rulesets enforce branch protection. Local `aidlc ci` is a preview, never evidence. |
 | D4 | Tracker is lab Jira, through the `lab-jira` MCP server (ContextForge gateway). | The work item is the system of record for intent, spec approval and the coordination plan (Chapter 1.3, arrangement 2). |
 | D5 | Evals and AI review run in two profiles: developer feedback (local, advisory) and mandatory gates (CI, small). | §8 |
 | D6 | OpenWiki uses Anthropic through an `ANTHROPIC_API_KEY` that the user provides. Repositories are small, to bound cost. | §6.4. The key is never pasted into a session. |
@@ -175,7 +175,7 @@ So guards stay fast (under 1 s, no network), and the sandbox and trusted CI rema
 
 ## 5. Lifecycle implementation
 
-> **Plan 5a (2026-10-22).** The first-path skills (context setup, intent, specify, plan, build-slice, verify) are built; see [the plugin guide](../skills/README.md) and [ADR 0005](../adr/0005-skills-plugin.md). The rest follow in Plan 5b.
+> **Plan 5a (2026-10-22).** The first-path skills (context setup, intent, specify, plan, build-slice, verify) are built; see [the plugin guide](../skills/README.md) and [ADR 0005](../adr/0005-skills-plugin.md). Plan 5b-B (2026-10-23) built discover, design, review, release, operate and feedback; the security procedures and cross-repository work follow in Plan 5b-C.
 
 One skill per procedure. Each skill names its inputs, produces its template artefact and stops at the human gate. A skill is advice. The gate is held by an approval record in the system of record, and the checks in §7 refuse work that lacks one.
 
@@ -371,7 +371,7 @@ The framework emits into that contract and adds a small `aidlc.*` namespace. It 
 ## 11. Demo workspace
 
 ```
-aidlc-workspace/                 a folder, not a repository
+shipment-tracking/               a folder, not a repository
   WORKSPACE.md                   entry point: repos, owners, access, coordination plan pointer
   shipments-api/                 git repo · .NET 10 minimal API · xUnit · api/openapi.yaml
   customer-portal/               git repo · React + TypeScript + Vite + Vitest · Node 22 (.nvmrc)

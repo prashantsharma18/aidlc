@@ -11,31 +11,39 @@ and gate the framework provides at each stage.
   brief → load context → plan → act → check → correct (retry limit 3) → evidence → hand off.
   Everything it proves is local evidence until trusted CI runs it again.
 
-## Eight stages
+## The stages
 
 | Stage | Decides | Artefact (template) | System of record | Gate | Skill |
 |---|---|---|---|---|---|
-| Intent | Product owner | `intent` | Jira issue | Owner, priority, provisional tier | `aidlc-intent` |
-| Specify | Spec owner (+ specialists) | `spec` | Jira (approved version) | Criteria testable; approval recorded | `aidlc-specify` |
-| Design | Tech lead / architect; consumers | `design-note`, `adr`, contract | Jira note; `docs/adr/`; contract file | Decisions approved, or "none needed" recorded | `aidlc-design` |
-| Plan | Engineer drafts, tech lead approves | `plan`, `task-bundle`, `coordination-plan` | `plans/<KEY>/` + approval on Jira | Approval line in `plans/approved-bundles.txt` | `aidlc-plan` |
-| Build | Engineer | commits, `progress-note` | Feature branch `<type>/<KEY>-<slug>` | Local check green; diff in scope | `aidlc-build-slice` |
-| Verify | Automated gates | `evidence-table` | CI record | Required checks green | `aidlc-verify` |
-| Review & release | Code owners, specialists, release approver | `review-record`, `readiness`, `change-record` | Git host; change management | Code-owner approval; release approval | `aidlc-review`, `aidlc-release` |
+| Intent | Product owner, inside Ready | `intent` | Jira issue | Owner, priority, provisional tier, decided with the spec | `aidlc-intent` |
+| Specify | Spec owner (+ specialists) | `spec` | Jira (approved version) | Criteria testable; Ready recorded (at Tier 2 and 3, the spec's pull request approval), with the route shown | `aidlc-specify` |
+| Design | Tech lead / architect; consumers | `design-note`, `adr`, contract | Jira note; `docs/adr/`; contract file | At Tier 2 and 3, approved with the plan in one pull request; at Tier 1 "none needed" stated | `aidlc-design` |
+| Plan | Engineer drafts; tech lead approves at Tier 2 and 3, with the design | `plan`, `task-bundle`, `coordination-plan` | `plans/<KEY>/` (or `stories/<KEY>/coordination-plan.md`) | At Tier 2 and 3, the pull request approval, written to the work item with the plan's version and commit; at Tier 1 the plan is stated, except a plan with independent slices, which the tech lead approves | `aidlc-plan` |
+| Build | Engineer | commits, `progress-note` | Feature branch `<type>/<KEY>-<slug>` (`feat/<KEY>-<part>` for a part) | Local check green; diff inside MAY CHANGE; each judgement call logged | `aidlc-build` |
+| Verify | Automated gates | `evidence-table` | CI record | The team's CI green | `aidlc-verify` |
+| Review & release | Code owners, specialists, release approver | `review-record`, `readiness`, `change-record` | Git host; change management | Code-owner approval (Merge); release approval when users see the change (always at Tier 3) | `aidlc-review`, `aidlc-release` |
 | Operate & learn | On-call, owning team | `runbook`, `incident` | Monitoring; Jira | Healthy or rolled back; lessons routed | `aidlc-operate` |
+
+Who decides at each tier, and where every other stage states what it did and goes on:
+[the decisions table](tiers-table.md#decisions-by-tier) (ADR 0026). Ready shows the route, which the tech lead owns,
+and the code owner reads the AI's decision log at Merge (ADR 0027).
 
 Discovery (`evidence-pack`, `explorer-brief`) runs before Design whenever the tier asks for it.
 
-The skills for Intent, Specify, Plan, Build and Verify, and `aidlc-context-setup`, are in the
-[aidlc plugin](../skills/README.md). The others follow in Plan 5b.
+Every stage has a skill in [skills/](../../skills/), and `aidlc-onboard` sets up a repository or a workspace.
+Start every piece of work with `aidlc-start`: it decides the kind of work and the repositories it changes, and
+says where each stage runs ([workspace-and-repositories.md](workspace-and-repositories.md)).
 
-**Three kinds of work** use the same stages: new work takes the full path by tier; a defect starts
-with a failing test that reproduces it; a change request amends the spec through its owner (spec
-v2), and the plan returns for approval.
+**Nine routes** use these stages: features by the fast path (F0), in one repository (F1) or several (F2), change requests (C), defects by the
+fast path (D1) or the full route (D2), incidents (I), new systems (G), and standard changes the team lists (S).
+`aidlc-start` chooses one of the other eight, and route I starts at `aidlc-operate` when an alert fires; the route table in the `using-aidlc` skill is the one source of which stages each route runs (ADR 0028), and
+[routes.md](routes.md) draws each route.
 
 ## Rules that hold at every stage
 
 - The agent takes part in every stage and owns none. It drafts, it never approves.
+- A person may start `story-run` once per decision: it runs the stages between two decisions and stops at the next
+  one (ADR 0028).
 - One system of record per artefact; link, don't copy. A stage ends only when its artefact is
   in its system of record.
 - Only trusted verification counts towards a merge.

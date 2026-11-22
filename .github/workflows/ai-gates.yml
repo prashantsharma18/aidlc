@@ -1,4 +1,4 @@
-# AI gates for the framework (ADR 0004; guide 10.8, 11.4). Both jobs run in the ai-gates
+# AI review for the framework (ADR 0004; guide 10.8, 11.4). The review runs in the ai-gates
 # environment: a person approves each run, and only there is the ANTHROPIC_API_KEY secret. Fork
 # pull requests get no secrets, so both jobs fail on them (fail closed). Only same-repository
 # branches are reviewed and evaluated.
@@ -8,9 +8,7 @@
 # push (contents: read) and cannot approve (repository setting). Nothing it says is approval; every
 # comment is answered "Fixed: <commit>" or "Dismissed: <reason>" and resolved before merge (ruleset).
 #
-# agent-config-evals: unless the change touches only docs/, the live attack suite from the BASE commit
-# runs against the change's harness. If it cannot tell what changed, it fails. Approving a run executes
-# the pull request's code with the API key set: read the diff before you approve.
+# (The agent-config-evals job ran the parked harness's live attack suite; it is under harness-v1.)
 #
 # The review steps scrub the key from every subprocess (CLAUDE_CODE_SUBPROCESS_ENV_SCRUB), and the
 # report is uploaded only when it does not contain the key.
@@ -34,8 +32,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with: {fetch-depth: 0, persist-credentials: false}
       # Claude Code's sandbox (CLAUDE_CODE_SUBPROCESS_ENV_SCRUB isolation) needs bubblewrap and socat,
-      # and bubblewrap needs unprivileged user namespaces. The only shell steps the policy allows in
-      # this job (workflows.rego, ADR 0004).
+      # and bubblewrap needs unprivileged user namespaces. Keep these the only shell steps in
+      # this job (ADR 0004).
       - name: bubblewrap and socat, for the sandbox that scrubs the key
         run: sudo apt-get update -q && sudo apt-get install -y -q bubblewrap socat
       - name: Allow unprivileged user namespaces for bubblewrap (ephemeral runner)
@@ -120,56 +118,3 @@ jobs:
               else:
                   sys.exit(f"{name.lower()} pass did not review the change: {report!r}"[:500])
           PY
-  agent-config-evals:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60   # 17 sessions x 180 s is about 51 minutes before any retry
-    environment: ai-gates
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with: {fetch-depth: 0, persist-credentials: false}
-      - id: scope
-        name: Does the change touch anything outside docs/? (fails closed)
-        env: {BASE: "${{ github.event.pull_request.base.sha }}", HEAD: "${{ github.event.pull_request.head.sha }}"}
-        run: |
-          set -euo pipefail
-          # git diff --quiet: 0 = no change outside docs/, 1 = changed; anything else (an unknown
-          # commit, a shallow clone) fails the job. --no-renames counts both sides of a rename.
-          status=0
-          git diff --quiet --no-renames "$BASE" "$HEAD" -- . ':(exclude)docs/' || status=$?
-          case "$status" in
-            0) echo "changed=false" >> "$GITHUB_OUTPUT"
-               echo "Only docs/ changed: the harness evals pass without running." ;;
-            1) echo "changed=true" >> "$GITHUB_OUTPUT" ;;
-            *) echo "cannot tell what changed (git diff exit $status)"; exit 1 ;;
-          esac
-      - name: The attack suite comes from the base commit, so a change cannot weaken its own exam
-        if: steps.scope.outputs.changed == 'true'
-        env: {BASE: "${{ github.event.pull_request.base.sha }}"}
-        run: git checkout --no-overlay "$BASE" -- tests/harness_live tests/helpers.py tests/__init__.py
-      - name: Framework dependencies and Claude Code's sandbox (bubblewrap, socat)
-        if: steps.scope.outputs.changed == 'true'
-        run: sudo apt-get update -q && sudo apt-get install -y -q python3-yaml python3-jsonschema bubblewrap socat
-      - name: Allow unprivileged user namespaces for the sandbox (ephemeral runner)
-        if: steps.scope.outputs.changed == 'true'
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
-      - name: Claude Code, exact version
-        if: steps.scope.outputs.changed == 'true'
-        run: npm install -g @anthropic-ai/claude-code@2.1.296
-      - name: Live attack suite (Haiku)
-        if: steps.scope.outputs.changed == 'true'
-        env: {ANTHROPIC_API_KEY: "${{ secrets.ANTHROPIC_API_KEY }}", DISABLE_AUTOUPDATER: "1"}
-        run: python3 -I tests/harness_live/run_attacks.py --out "$RUNNER_TEMP/harness-attacks.md"
-      - id: keycheck
-        name: The report never carries the API key (otherwise it is not uploaded)
-        if: always() && steps.scope.outputs.changed == 'true'
-        env: {KEY: "${{ secrets.ANTHROPIC_API_KEY }}"}
-        run: |
-          set -euo pipefail
-          report="$RUNNER_TEMP/harness-attacks.md"
-          [ -f "$report" ] || { echo "no report was written"; exit 1; }
-          if [ -n "$KEY" ] && grep -qF -- "$KEY" "$report"; then
-            echo "the report contains the API key: not uploaded; rotate the key"; exit 1
-          fi
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        if: always() && steps.scope.outputs.changed == 'true' && steps.keycheck.outcome == 'success'
-        with: {name: harness-attacks, path: "${{ runner.temp }}/harness-attacks.md", if-no-files-found: error}

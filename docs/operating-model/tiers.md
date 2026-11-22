@@ -1,7 +1,7 @@
 # Choosing a tier
 
-The eight stages always apply; the tier decides how much of each you do. The policy is
-`core/policy/tiers.yaml`; the table generated from it is [tiers-table.md](tiers-table.md).
+The eight stages always apply; the tier decides how much of each you do. The table is
+[tiers-table.md](tiers-table.md); the skills carry the same table in their `assets/tiers.md`.
 
 ## How to rate a change
 
@@ -22,5 +22,16 @@ The eight stages always apply; the tier decides how much of each you do. The pol
 | Limit password-reset requests | risk high (security) | 3 |
 
 A higher tier means more enforcement, checkpoints and approvers, never more stages.
+
+## Who decides at each tier
+
+A person stops only where [the decisions table](tiers-table.md#decisions-by-tier) says so (ADR 0026). At Tier 1 that
+is Ready and Merge, and Release only when users see the change; a plan with independent slices is still approved. Tier 2 adds Design + plan, approved once in the pull request that merges them, and Release when
+users see the change. Tier 3 adds the specialists, Release always, and the hands-on restatement per slice. Every other
+stage states what it did and goes on; a person who disagrees says so.
+
+Ready shows the route, which the tech lead owns, and a technical person checks it at the first technical decision; the
+code owner reads the AI's decision log at Merge, with the spec, the plan and the code
+([tiers-table.md](tiers-table.md#decisions-by-tier), ADR 0027).
 
 Guide: 1.10.

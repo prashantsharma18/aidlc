@@ -1,0 +1,4 @@
+/home/psharma/work/shipment-tracking/CLAUDE.md
+/home/psharma/work/shipment-tracking/WORKSPACE.md
+/home/psharma/work/shipment-tracking/shipments-api/CLAUDE.md
+/home/psharma/work/shipment-tracking/shipments-api/AGENTS.md
