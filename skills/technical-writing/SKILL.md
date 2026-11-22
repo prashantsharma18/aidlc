@@ -1,6 +1,6 @@
 ---
 name: technical-writing
-description: Builds the sentences of a document, a pull request description or a commit body so its reader understands them on the first read: the reader and the decision named, the plain word, one idea per sentence, the condition before the step, one name per thing, nothing open to two readings. Its last pass removes AI tells. Use when drafting or editing a spec, plan, ADR, runbook, incident note, pull request description or commit body a person reads and decides from, or when asked to make writing clearer for its reader.
+description: "Builds the sentences of a document, a pull request description or a commit body so its reader understands them on the first read: the reader and the decision named, the plain word, one idea per sentence, the condition before the step, one name per thing, nothing open to two readings. Its last pass removes AI tells. Use when drafting or editing a spec, plan, ADR, runbook, incident note, pull request description or commit body a person reads and decides from, or when asked to make writing clearer for its reader."
 metadata:
   kind: practice
   invocation: auto

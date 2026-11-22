@@ -124,6 +124,8 @@ class InYourOwnWordsTest(PracticeShape, unittest.TestCase):
                        "Ask the person to correct it. Their correction, not your restatement, is what the work starts "
                        "from."):
             self.assertIn(phrase, steps, phrase)
+        self.assertIn("When the calling step goes on without waiting (a restatement that is not a stop, or a sub-agent), "
+                      "state it and go on.", flat(steps))
         self.assertIn("The stages' restatements of a story (`aidlc-plan` step 1, `aidlc-build` step 2) stay their "
                       "own.", flat(skill_md(self.NAME)))
 
@@ -212,6 +214,22 @@ class CallersTest(unittest.TestCase):
     def test_the_map_says_who_loads_them(self):
         self.assertIn("`technical-writing` loads at each stage step that writes a document a person decides from, "
                       "and `unslop` is the last pass of every skill that writes prose", flat(skill_md("using-aidlc")))
+
+
+class FrontMatterTest(unittest.TestCase):
+    """Fix round 1: a plain YAML scalar must not hold ": " or " #"."""
+
+    def test_plain_descriptions_are_valid_yaml_scalars(self):
+        import glob
+        import os
+        for path in sorted(glob.glob(os.path.join(str(ROOT), "skills", "*", "SKILL.md"))):
+            for line in open(path, encoding="utf-8").read().split("---")[1].splitlines():
+                if line.startswith("description:"):
+                    value = line[len("description:"):].strip()
+                    if value.startswith(('"', "'")):
+                        continue
+                    self.assertNotIn(": ", value, path)
+                    self.assertNotIn(" #", value, path)
 
 
 if __name__ == "__main__":

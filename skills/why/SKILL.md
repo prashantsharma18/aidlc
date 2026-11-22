@@ -1,6 +1,6 @@
 ---
 name: why
-description: Explains why code is the way it is from its record: the commits and pull requests that introduced it and each later change, the ADRs and the review discussion. It cites what their authors wrote, marks your own inferences, and says what the record does not answer. Use when asked why something was built this way, why an option or a threshold was chosen, or for the history behind a decision or a postmortem. Use `how` for how it works now.
+description: "Explains why code is the way it is from its record: the commits and pull requests that introduced it and each later change, the ADRs and the review discussion. It cites what their authors wrote, marks your own inferences, and says what the record does not answer. Use when asked why something was built this way, why an option or a threshold was chosen, or for the history behind a decision or a postmortem. Use `how` for how it works now."
 metadata:
   kind: practice
   invocation: auto

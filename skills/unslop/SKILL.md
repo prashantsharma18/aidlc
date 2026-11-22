@@ -1,6 +1,6 @@
 ---
 name: unslop
-description: Removes AI tells from writing a person will read: filler, hedges, AI vocabulary, dashes used as connectors, bold labels that repeat their line, praise openers and generic closers. It works from a numbered catalog, keeps each sentence's meaning, and leaves code, commands and quoted text as they are. Use when cleaning up or tightening a reply, a document, a pull request description or a commit body before a person reads it, when asked to unslop a text or cut its AI-sounding phrasing, or as the last pass of another skill that writes prose.
+description: "Removes AI tells from writing a person will read: filler, hedges, AI vocabulary, dashes used as connectors, bold labels that repeat their line, praise openers and generic closers. It works from a numbered catalog, keeps each sentence's meaning, and leaves code, commands and quoted text as they are. Use when cleaning up or tightening a reply, a document, a pull request description or a commit body before a person reads it, when asked to unslop a text or cut its AI-sounding phrasing, or as the last pass of another skill that writes prose."
 metadata:
   kind: practice
   invocation: auto
