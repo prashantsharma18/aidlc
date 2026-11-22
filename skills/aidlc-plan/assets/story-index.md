@@ -9,6 +9,7 @@ LEVEL      <repository | workspace root | part <n> of <m> in <repository>>
 BRANCH     code <type>/<KEY>-<slug>        (every row not named below runs on it; once a document pull request merges, it starts from the default branch)
 BRANCH     spec docs/<KEY>-spec        (Tier 2 and 3: the intent and specify rows; it merges first, ADR 0020; delete the line at Tier 1)
 BRANCH     plan docs/<KEY>-plan        (Tier 2 and 3: the discover, design and plan rows; it starts from the default branch once the spec merges, and merges first; a Tier 1 plan with independent slices adds it; delete the line otherwise)
+BRANCH     release release/<KEY>        (the release row; it starts from the default branch once every merged row reads done there)
 CURRENT    spec v<n> · contract <provider> v<MAJOR.MINOR.PATCH>        (the story's approved versions; a part leaves this line out)
 PINS       spec v<n> @ <home commit> · plan v<n> · contract <provider> v<MAJOR.MINOR.PATCH>        (a part: what its latest bundle builds on, the spec at the home repository's commit; a contract's version is its published tag's, the tag in contracts/<provider>/SOURCE; a story leaves this line out)
 UNAFFECTED <repository> spec v<n>: <why>, <tech lead>, <YYYY-MM-DD>, <how it was confirmed>        (one line per part recorded as unaffected, written by the AI when the tech lead decides; delete when none)
@@ -24,7 +25,7 @@ accepts, writes `to do: fix <what>` in the build row and `to do` in the verify a
 A lane (`parallel-lanes`) that stops for a person's decision writes `waiting: <decision> by <who>` in the row of the
 next unfinished stage, never in a row already done; when the wait ends, that row reads `to do` again. That is every wait (a pause, a pull request to open, CI, Merge in
 the `merged` row, Release) except one (ADR 0028): a document's decision (Ready, Design + plan, a brief's
-confirmation) waits in that document's own row, in place of done, and ends with its record, never with `to do`: for
+confirmation) waits in that document's own row (on route S, whose brief has no row, the build row), in place of done, and ends with its record, never with `to do`: for
 a pull request's approval, the record below; for a brief's confirmation, `done: confirmed by <engineer>, <how it was confirmed>`; for Ready at Tier 1, `done: Ready by <spec owner>, <how it was confirmed>`.
 Once the code owner approves, the AI checks the approval in the review tool and the team's CI result, marks the merged row
 done in the pull request's final commit (its message says how it was confirmed) and tells the person it is ready

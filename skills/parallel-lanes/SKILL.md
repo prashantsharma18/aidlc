@@ -120,7 +120,7 @@ Lane mode, step by step:
    means another lane holds the row. If your row was named, end and report; with no row named, take the next ready row.
    Any other error ends the lane with `stopped: claim failed: <error>`, which it reports and writes nowhere, because
    with no worktree there is no row to write it on, and is never skipped silently. Never pass `--force` or `-f`, never use `-B`, and
-   never remove or work in a worktree you did not create.
+   never remove or work in a worktree you did not create. A lane runs each stage on the branch its index's BRANCH lines name (the queue row's branch is the code branch).
 4. In the worktree, read the row's state on its branch again. If it is done or stopped after all, remove the worktree
    (`git worktree remove .worktrees/<folder>`); with no row named, go back to step 2, otherwise end and report. If it
    is waiting, resume it only when its decision can be had: checked where its stage says (a plan or design merged on
@@ -261,7 +261,7 @@ in step 2. Ask before the push and void the earlier verdict as above.
 ## Stop if
 - `.worktrees/` is not ignored in this clone (`git check-ignore -q .worktrees/` fails).
 - A row's branch breaks the naming rule (`<type>/<KEY>-<slug>`, `feat/<KEY>-<part>` across repositories, `-s<n>` for a
-  slice; never an `aidlc/` prefix), or two rows name the same branch or the same worktree folder.
+  slice; never an `aidlc/` prefix; a document row also accepts `docs/<KEY>-spec`, `docs/<KEY>-plan` and `docs/<KEY>-<part>-plan` as the BRANCH lines name them), or two rows name the same branch or the same worktree folder.
 - The queue names a repository you cannot fetch.
 - You are about to work outside your worktree, in another repository, or in a worktree another lane created.
 - A rebase conflicts, or a stacked slice needs a force-push the team forbids.

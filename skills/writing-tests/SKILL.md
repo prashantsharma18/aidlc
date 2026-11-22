@@ -27,7 +27,7 @@ Not for: finding why a test fails (`debugging-failures`), or browser tests of a 
    - an end-to-end test only for a user journey nothing smaller can prove;
    - no new test, when none is practical (ADR 0029): its path is unclear, it is expensive to build, or there is
      nothing sensible to assert. Prefer no new test over a bad one (one that tests mocks or today's implementation):
-     name the closest check that runs instead, a command, a live check or a screenshot. A cheap local test is always
+     name the closest check that runs instead, a command, a live check or a screenshot, and log `no test for <criterion>` (`aidlc-build` step 6). A cheap local test is always
      written, and a test marked skip is never this case.
 
    Most tests are unit tests, some are integration tests, few are end-to-end.

@@ -24,7 +24,7 @@ The rows above are an example: replace them with your own.
 - **Row** is an item (`<KEY>`), a slice (`<KEY> slice <n>`) or a part (`<KEY> part <n>`).
 - **Repository** is `.` for this repository, or the repository's folder as `WORKSPACE.md` lists it.
 - **Branch** is the row's branch, named by the existing rule (`<type>/<KEY>-<slug>`; `feat/<KEY>-<part>` across
-  repositories), plus `-s<n>` for a slice; never an `aidlc/` prefix. Written here, it is fixed: every lane claims the
+  repositories), plus `-s<n>` for a slice; a document row may name `docs/<KEY>-spec`, `docs/<KEY>-plan` and `docs/<KEY>-<part>-plan` as the BRANCH lines name them; never an `aidlc/` prefix. Written here, it is fixed: every lane claims the
   same name.
 - **Depends on** is `none` or the rows that must be done first. For parts it copies the coordination plan's order;
   for slices it copies the bundles' `DEPENDS ON` lines. A slice stacked on another slice may start once its parent's

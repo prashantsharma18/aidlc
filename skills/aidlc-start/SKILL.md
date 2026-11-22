@@ -87,7 +87,7 @@ route, keeps every row already done, and names the next stage. After Ready, it a
    and one row per stage that the route table in `using-aidlc` lists for the route (the one source, ADR 0028), in its
    order, with where it runs and the status "to do"; where there is an `aidlc-review` row, a `merged` row follows it,
    on every route. The BRANCH lines name the code branch always, and at Tier 2 and 3 the spec's and the plan's
-   branches, which merge first (ADR 0020). Commit the index on the first row's branch, made from the default branch.
+   branches, which merge first (ADR 0020), and the release row's branch. Commit the index on the first row's branch, made from the default branch.
    A link to a story document that goes on the tracker is a
    permalink at a commit: the file's address on the code host with the full commit hash in it (on GitHub,
    `https://github.com/<org>/<repository>/blob/<commit>/stories/<KEY>/spec.md`), never a branch path, which moves.

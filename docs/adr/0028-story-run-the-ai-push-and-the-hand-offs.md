@@ -32,9 +32,7 @@ conflict (report 2, section 5).
   pull request's branch, as the index's BRANCH lines name them. It never force-pushes, never pushes the default branch
   or a tag, and never merges, approves, or opens or closes a pull request. It needs a credential the team gives it that
   can push feature branches and cannot push the default branch (the code host's own rules), and the team's `AGENTS.md`
-  says so. Without both, the person pushes, as before, and `story-run` stops at the push. It pushes only a branch whose
-  pull request is the next person's action (after build's last slice, or a document's pull request at G2) and
-  review's final commit, never to pause (pstack's `pause-safely`: "No PR and no push unless you already had one
+  says so. Without both, the person pushes, as before, and `story-run` stops at the push. It pushes only a branch whose pull request is the next person's action: (a) after build's last slice, a document's pull request at G2, and after review; and (b) review's final commit, never to pause (pstack's `pause-safely`: "No PR and no push unless you already had one
   out"). Moving a stacked slice with
   `git rebase --onto` needs a force-push, so it still asks the person (ADR 0025). The verdict rule is unchanged: a
   non-author verdict names its commit, and a later change outside `plans/<KEY>/` voids it. This amends ADR 0026's kept

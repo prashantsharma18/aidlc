@@ -42,7 +42,7 @@ The pull request, its evidence table, on route D1 the fix brief `plans/<KEY>/fix
 6. Prepare each required specialist's questions, with pointers to the hunks. At Tier 3, and whenever the change touches secrets, permissions, tool calls, dependencies or prompts, load the `securing-code` skill and draft the security review from `assets/security-review.md`.
 7. Draft the review record from `assets/review-record.md`, with no approval part for you. Write each reviewer agent's verdict under Reviewer verdicts, with the commit it judged.
 8. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
-   workspace root) as done, or as stopped with the reason. Once the code owner approves, check the approval in the
+   workspace root) as done, or as stopped with the reason. Push the branch, when the team's `AGENTS.md` lets you push your own feature branch (ADR 0028), so the code owner approves a head that holds the evidence table and the review record; otherwise the person pushes it. Once the code owner approves, check the approval in the
    review tool and the team's CI result; then this session marks the `merged` row done in its final commit. That
    commit's message says how it was confirmed, for example
    `approved by ana on pull request 12, checked in the review tool, 2026-11-20`. When you cannot read the review tool,

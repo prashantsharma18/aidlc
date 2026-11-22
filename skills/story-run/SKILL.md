@@ -19,14 +19,12 @@ one, goes on where this one stopped (ADR 0028). It approves nothing: every stage
   person's go-ahead for the stages up to that decision (ADR 0028), as a person's start of a lane is (ADR 0025).
 - Again after each decision: Ready, a document pull request's approval and merge, a pause, an open pull request, the
   code owner's approval, the merge.
-- Not for several stories or slices at the same time: that is `parallel-lanes`. Not for an incident: that is
-  `aidlc-operate`.
+- Not for several stories or slices at once (`parallel-lanes`), nor an incident (`aidlc-operate`).
 
 ## Inputs
 - The story's index: `plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a workspace root. Its
   ROUTE line (with the tier), its BRANCH lines and its rows.
-- The tiers file's decisions table: `tiers.md` in the `assets` folder of the stage skill you run (every copy is the
-  same).
+- The tiers file's decisions table: `tiers.md` in `aidlc-start`'s `assets` folder (every copy is the same).
 - The stage skills: the `aidlc-*` folders beside this skill's folder. Read a stage's `SKILL.md` there, by its path. A
   `references/<file>.md` path a stage names is in the folder of that `SKILL.md`: read it from there, never from the
   repository.
@@ -35,13 +33,13 @@ one, goes on where this one stopped (ADR 0028). It approves nothing: every stage
 
 ## Steps
 1. **Find the story.** Read its index where this session runs. No index: the next stage is `aidlc-start`, which
-   writes it. Inside a repository of a workspace with no part index yet, when `../stories/<KEY>/coordination-plan.md`
+   writes it. After `aidlc-start` writes the index, go on with step 2, unless it stopped. Inside a repository of a workspace with no part index yet, when `../stories/<KEY>/coordination-plan.md`
    names this repository, the next stage is `aidlc-plan` for the part. For a slice the plan gave its own branch, the
    person names it (`story-run SHIP-12 slice 2`), and its index is `plans/<KEY>/slice-<n>/README.md`. Check the
    tree is clean (`git status --porcelain` prints nothing) and that each row marked done has its commits on the
    branch: the trail in git is the state, never the chat.
 2. **Pick the next row.** Take the first row that is not done, even when a later row reads done (a fix sends build,
-   verify and review back to `to do`); a row that reads `done: …` is done. The `merged` row counts as done only once
+   verify and review back to `to do`); a row that reads `done: …` is done. When the engineer tells you they accept a high or medium finding, write the rows as `aidlc-review` step 4 says, and go on. The `merged` row counts as done only once
    it reads done on the default branch (`git fetch`, then `git show origin/<default branch>:<the index's path>`). A
    row that reads `waiting: <decision> by <who>` resumes only when its decision can be had: checked where its stage
    says (a pull request's approval in the review tool, a merge with git, the tracker through its tool), or given by
@@ -61,7 +59,7 @@ one, goes on where this one stopped (ADR 0028). It approves nothing: every stage
 4. **Run the stage.** Read the row's stage `SKILL.md` by its path, and every reference whose condition holds, and
    follow them in full, from the stage's first step, as if a person had started it. Its Inputs, its Gate, its Stop if
    and its Rules hold as written. For the build row, run `aidlc-build` for the first slice that is not done: one slice
-   at a time, in the plan's order.
+   at a time, in the plan's order. For the `merged` row, once the code owner's approval and the team's CI result can be had, do `aidlc-review` step 8 from 'Once the code owner approves' (its final commit and its push), then stop for the merge.
 5. **Go on, or stop.** Key on what the stage wrote in its row. When it marked the row done, commit the paths the stage
    wrote (never `git add -A`) and go on with step 2. When it wrote `doing` (the build row, slices remain), go on with
    the next slice, or stop for a fresh session as `aidlc-build`'s When to use says. When it wrote `to do: fix <what>`
@@ -72,7 +70,7 @@ one, goes on where this one stopped (ADR 0028). It approves nothing: every stage
    (a document's decision in its own row; any other wait in the row of the next unfinished stage), unless the stage
    wrote it already, marked the row `stopped: <reason>`, or the stop is for a fresh session (the row's `doing` or
    `to do` is the state). Then commit it with what the stage wrote. Push only where a
-   stage says to: build after a branch's last slice, a document's pull request (specify, plan, the home design), and
+   stage says to: build after a branch's last slice, a document's pull request (specify, plan, the home design), review's row, and
    review's final commit; the next person's action is then that pull request. Push also a branch whose last slice is
    done but not yet pushed (no upstream, or ahead of it), when opening its pull request is the next person's action.
    Without a push credential, the person pushes the final commit. Never push to pause: not at Ready, a checkpoint, a
@@ -80,8 +78,7 @@ one, goes on where this one stopped (ADR 0028). It approves nothing: every stage
    `merged` row ends the wait once it reads done on the default branch. Then give the hand-off.
 7. **The hand-off.** Open with one sentence that names what waits, and on whom, or says nothing does. Then, in a few
    short lines: what you did; the index's next row and where it runs; who it waits on, with what they need to decide
-   it from your reply alone; the tracker move to suggest now (for example In progress at Ready, In review once the
-   pull request is open, Done after the merge); and the next start, `story-run <KEY>`. Posting to the tracker or a
+   it from your reply alone; the tracker move to suggest now (for example In progress at Ready, Done after the merge); and the next start, `story-run <KEY>`. Posting to the tracker or a
    pull request asks first (ADR 0023).
 
 ## Stop if
@@ -108,7 +105,7 @@ one, goes on where this one stopped (ADR 0028). It approves nothing: every stage
   write `to do` there and go on.
 - A row reads `waiting:` and its decision cannot be had yet: say what it waits on, and stop.
 - A push fails: report it, and stop; the person pushes.
-- The index or a stage's `SKILL.md` cannot be read, or a row names a stage that is not a folder beside this one.
+- The index or a stage's `SKILL.md` cannot be read, or a row names a stage that is not a folder beside this one (other than `merged`).
 - A step needs a force-push, a push to the default branch or of a tag, a merge, an approval, or opening or closing a
   pull request: a person does it.
 - The session has grown long (compacted, repeated slips, or talk the documents do not record), as `aidlc-build`'s
@@ -119,11 +116,11 @@ one, goes on where this one stopped (ADR 0028). It approves nothing: every stage
 ## Common excuses
 | Excuse | Reality |
 |---|---|
-| "The person started the run, so that covers the merge too." | The start is the go-ahead up to the next person's decision. Merge is always a person's. |
-| "The tech lead will approve anyway, so I will start the build." | At Tier 2 and 3, Design + plan is a decision. Write the wait, give the hand-off and stop. |
-| "The checkpoint is a formality inside a run." | Every gate of the stage holds as written. A checkpoint stops the run. |
-| "I remember what the last session did." | The index, the progress notes and git are the state, never the chat. Read them. |
-| "This row is stuck, so I will skip to the next one." | Rows run in order. A stopped row stays stopped until a person clears it. |
+| "The start covers the merge too." | The start is the go-ahead up to the next person's decision. Merge is a person's. |
+| "The tech lead will approve anyway, so I will build." | At Tier 2 and 3, Design + plan is a decision. Write the wait and stop. |
+| "A checkpoint is a formality inside a run." | Every gate holds as written. A checkpoint stops the run. |
+| "I remember what the last session did." | The index, the notes and git are the state, never the chat. |
+| "This row is stuck, so I will skip it." | Rows run in order. A stopped row stays stopped until a person clears it. |
 | "Pushing to the default branch is quicker." | Never. You push only your own feature branch, and only when `AGENTS.md` allows it. |
 
 ## Red flags
