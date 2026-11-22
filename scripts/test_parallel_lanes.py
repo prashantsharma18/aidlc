@@ -231,31 +231,30 @@ class ParallelLanesTest(unittest.TestCase):
                        "only to build, verify and review, and only on a row whose plan a person approved (ADR 0023)",
                        "A person starts intent, specify, design and plan"):
             self.assertIn(phrase, section(text, "## Inputs"), phrase)
-        lane = text.split("Lane mode, step by step:", 1)[1].split("Coordinator mode, step by step:")[0]
-        self.assertIn("a sub-agent lane reads the stage skill's file at the absolute path its brief names and follows it "
-                      "in full", lane)
+        lane = skill("lane-run").split("Lane mode, step by step:", 1)[1].split("Coordinator mode, step by step:")[0]
+        self.assertIn("read `../story-run/SKILL.md` from this skill's folder and follow it in full", lane)
         coordinator = text.split("Coordinator mode, step by step:", 1)[1].split("**A stacked slice", 1)[0]
         for phrase in ("build, verify or review, on a row whose plan a person approved, and a build only when its "
                        "bundle's MODE is a delegate mode (delegate with checkpoints, or delegate): start a sub-agent lane",
-                       "Its brief opens with `Read <absolute path>/skills/parallel-lanes/SKILL.md before anything "
-                       "else.` and names the row and the stage skill's absolute path "
-                       "(`<plugin root>/skills/aidlc-build/SKILL.md`, `aidlc-verify` or `aidlc-review`)",
+                       "Its brief opens with `Read <absolute path>/skills/lane-run/references/worker.md before "
+                       "anything else.`, then `Read <absolute path>/skills/lane-run/SKILL.md and follow it in full.`, "
+                       "and names the row and the stages the lane may run",
                        "intent, specify, design or plan, a hands-on build, a wait that needs a person's word, or a tool "
-                       "with no such feature: give the person the exact words to start the lane by hand: lane mode of "
-                       "this skill, the row, and the row's next stage",
+                       "with no such feature: give the person the exact words to start the lane by hand, one message: "
+                       "`lane-run <row>`",
                        "A lane a person starts by hand counts toward MAX LANES."):
             self.assertIn(phrase, coordinator, phrase)
         self.assertIn("A sub-agent lane started for intent, specify, design or plan, or for a row whose plan no person "
                       "approved.", section(text, "## Red flags"))
 
     def test_lane_mode_follows_the_design(self):
-        lane = skill("parallel-lanes").split("Lane mode, step by step:", 1)[1].split("Coordinator mode, step by step:")[0]
+        lane = skill("lane-run").split("Lane mode, step by step:", 1)[1].split("Coordinator mode, step by step:")[0]
         order = [lane.index(p) for p in ("Fetch (`git fetch`), and read `QUEUE.md` on the default branch",
                                          "With no row named, take the first ready row, in queue order, that clashes with no running lane",
                                          "`git worktree add --no-track -b <branch> .worktrees/<folder> origin/<default branch>`",
                                          "`git worktree add .worktrees/<folder> <branch>`",
                                          "read the row's state on its branch again",
-                                         "run the row's next unfinished stage",
+                                         "Then run `story-run` for the row",
                                          "Release when any of these happens, then end")]
         self.assertEqual(order, sorted(order))
         for phrase in ("Its gates, the evidence file, the verdict from someone who did not write the change, and every "
@@ -291,7 +290,7 @@ class ParallelLanesTest(unittest.TestCase):
             self.assertIn(phrase, text, phrase)
 
     def test_a_rows_state_lives_in_its_own_files(self):
-        text = skill("parallel-lanes")
+        text = skill("lane-run")
         for phrase in ("| waiting: `<decision> by <who>` | a stage row's Status in the index (the row of the next "
                        "unfinished stage, lane step 6), or the progress note's STATUS (`paused: …` counts as waiting) |",
                        "| done | the index's merged row, on the default branch (`git show origin/<default "
@@ -305,7 +304,7 @@ class ParallelLanesTest(unittest.TestCase):
             self.assertIn(phrase, text, phrase)
 
     def test_the_lock_and_its_limit(self):
-        text = skill("parallel-lanes")
+        text = skill("lane-run")
         for phrase in ("`.worktrees/<KEY>` for an item or a part", "`.worktrees/<KEY>-s<n>` for a slice",
                        "`.worktrees/<KEY>-p<n>` for a second part in the same repository",
                        "Never pass `--force` or `-f`, never use `-B`",
@@ -316,7 +315,7 @@ class ParallelLanesTest(unittest.TestCase):
             self.assertIn(phrase, text, phrase)
 
     def test_git_lets_only_one_lane_claim_a_row(self):
-        text = skill("parallel-lanes")
+        text = skill("lane-run")
         first, later = command(text, "git worktree add --no-track -b "), command(text, "git worktree add .worktrees/")
         with tempfile.TemporaryDirectory() as folder:
             repo = Path(folder)
@@ -338,7 +337,7 @@ class ParallelLanesTest(unittest.TestCase):
             self.assertIn(".worktrees/SHIP-12", git(repo, "worktree", "list").stdout)
 
     def test_the_stacked_slice_update_follows_the_design(self):
-        stacked = skill("parallel-lanes").split("**A stacked slice after its parent merges.**", 1)[1].split(
+        stacked = skill("lane-run").split("**A stacked slice after its parent merges.**", 1)[1].split(
             "## Stop if", 1)[0]
         for phrase in ("`git show origin/<default branch>:plans/<KEY>/slice-2/README.md`",
                        "`git merge-base <slice 3's branch> origin/<slice 2's branch>`", "Never guess it.",
@@ -413,7 +412,7 @@ class ParallelLanesFixRoundTest(unittest.TestCase):
         return lane, person
 
     def test_a_persons_push_stops_the_stacked_update(self):
-        stacked = skill("parallel-lanes").split("**A stacked slice after its parent merges.**", 1)[1].split(
+        stacked = skill("lane-run").split("**A stacked slice after its parent merges.**", 1)[1].split(
             "## Stop if", 1)[0]
         ancestry = command(stacked, "git merge-base --is-ancestor").replace("<slice 3's branch>", "feat/s3")
         push = command(stacked, "git push --force-with-lease")
@@ -438,7 +437,7 @@ class ParallelLanesFixRoundTest(unittest.TestCase):
                              git(person, "rev-parse", "HEAD").stdout.strip())
 
     def test_a_later_claim_fast_forwards_to_the_remote_branch(self):
-        lanes = skill("parallel-lanes").split("Lane mode, step by step:", 1)[1].split(
+        lanes = skill("lane-run").split("Lane mode, step by step:", 1)[1].split(
             "Coordinator mode, step by step:")[0]
         later = command(lanes, "git worktree add .worktrees/")
         forward = command(lanes, "git merge --ff-only origin/")
@@ -458,7 +457,7 @@ class ParallelLanesFixRoundTest(unittest.TestCase):
             self.assertEqual(git(wt, "rev-parse", "HEAD").stdout, git(wt, "rev-parse", "origin/feat/SHIP-12-eta-limit").stdout)
 
     def test_only_a_taken_row_is_read_as_taken(self):
-        text = skill("parallel-lanes")
+        text = skill("lane-run")
         for phrase in ("`already exists`", "`is already checked out`", "`is already used by worktree`",
                        "`stopped: claim failed: <error>`", "never skipped silently",
                        "a stacked slice starts from its parent's local branch"):
@@ -475,11 +474,11 @@ class ParallelLanesFixRoundTest(unittest.TestCase):
             self.assertTrue(any(w in held.stderr for w in ("is already checked out", "is already used by worktree")))
 
     def test_a_lane_takes_the_row_it_is_given(self):
-        text = skill("parallel-lanes")
+        text = skill("lane-run")
         for phrase in ("Take the row your brief or the person names. With no row named, take the first ready row",
                        "ends without claiming, writes no state, and reports back"):
             self.assertIn(phrase, text, phrase)
-        self.assertNotIn("releases with `waiting: start <stage> by <who>`", text)
+        self.assertNotIn("releases with `waiting: start <stage> by <who>`", text + " " + skill("parallel-lanes"))
 
     def test_running_lanes_are_the_worktrees_under_worktrees(self):
         text = skill("parallel-lanes")
@@ -487,7 +486,7 @@ class ParallelLanesFixRoundTest(unittest.TestCase):
         self.assertIn("Show the person any worktree under `.worktrees/` with no running lane", text)
 
     def test_a_part_runs_its_claim_in_its_repository(self):
-        text = skill("parallel-lanes")
+        text = skill("lane-run")
         self.assertIn("For a part row, run steps 1 to 3 in the row's repository (`git -C <repository>`", text)
 
     def test_the_queue_is_committed_and_pushed(self):
@@ -495,7 +494,7 @@ class ParallelLanesFixRoundTest(unittest.TestCase):
         self.assertIn("commits and pushes it", flat(QUEUE))
 
     def test_the_stacked_fallbacks_and_release_scope(self):
-        text = skill("parallel-lanes")
+        text = skill("lane-run")
         for phrase in ("use slice 2's local branch, or `origin/<slice 2's branch>` while it survives, otherwise its head "
                        "commit as the review tool shows it, or ask the person",
                        "Ask before the push and void the earlier verdict as above.",
@@ -503,7 +502,7 @@ class ParallelLanesFixRoundTest(unittest.TestCase):
             self.assertIn(phrase, text, phrase)
 
     def test_release_refuses_a_dirty_worktree_and_a_later_claim_succeeds(self):
-        text = skill("parallel-lanes")
+        text = skill("lane-run")
         remove = command(text, "git worktree remove .worktrees/")
         self.assertNotIn("--force", remove)
         with tempfile.TemporaryDirectory() as folder:
@@ -536,14 +535,14 @@ class ParallelLanesRoundTwoTest(unittest.TestCase):
     names its branch."""
 
     def test_a_named_row_that_is_taken_ends_the_lane(self):
-        text = skill("parallel-lanes")
+        text = skill("lane-run")
         for phrase in ("means another lane holds the row. If your row was named, end and report; with no row named, take "
                        "the next ready row.",
                        "ends the lane with `stopped: claim failed: <error>`, which it reports and writes nowhere, "
                        "because with no worktree there is no row to write it on, and is never skipped silently",
                        "Take no other row: end and report that the row is taken."):
             self.assertIn(phrase, text, phrase)
-        self.assertNotIn("Take the next row and say so.", text)
+        self.assertNotIn("Take the next row and say so.", text + " " + skill("parallel-lanes"))
 
     def test_the_coordinator_hands_stage_starts_to_the_person(self):
         coordinator = skill("parallel-lanes").split("Coordinator mode, step by step:", 1)[1].split(
@@ -555,7 +554,7 @@ class ParallelLanesRoundTwoTest(unittest.TestCase):
             self.assertIn(phrase, coordinator, phrase)
 
     def test_the_push_names_its_branch_and_a_rebase_not_pushed_is_the_persons(self):
-        stacked = skill("parallel-lanes").split("**A stacked slice after its parent merges.**", 1)[1].split(
+        stacked = skill("lane-run").split("**A stacked slice after its parent merges.**", 1)[1].split(
             "## Stop if", 1)[0]
         self.assertIn("`git push --force-with-lease --force-if-includes origin <slice 3's branch>`", stacked)
         for phrase in ("A slice rebased but not pushed makes a later claim's `--ff-only` and the ancestry check fail",
@@ -570,7 +569,7 @@ class ParallelLanesRoundTwoTest(unittest.TestCase):
             self.assertIn(phrase, design, phrase)
 
     def test_the_refspec_push_succeeds_when_nobody_else_pushed(self):
-        stacked = skill("parallel-lanes").split("**A stacked slice after its parent merges.**", 1)[1]
+        stacked = skill("lane-run").split("**A stacked slice after its parent merges.**", 1)[1]
         push = command(stacked, "git push --force-with-lease").replace("<slice 3's branch>", "feat/s3")
         with tempfile.TemporaryDirectory() as folder:
             lane, _ = ParallelLanesFixRoundTest.remote_with(folder, "feat/other")
@@ -709,7 +708,7 @@ class SiblingSlicesTest(unittest.TestCase):
         self.assertIn("its own commits only, with `git rebase --onto`, never by merging the default branch into it",
                       step1)
         self.assertIn("Then run the repository's test and lint commands, named in `AGENTS.md`, before any change.", step1)
-        self.assertIn("**A stacked slice after its parent merges.**", read(LANES))
+        self.assertIn("**A stacked slice after its parent merges.**", read("skills/lane-run/SKILL.md"))
 
     def test_rows_in_one_table_conflict_and_own_indexes_do_not(self):
         def second_merge_conflicts(path_for: dict) -> bool:
@@ -738,7 +737,7 @@ class SiblingSlicesTest(unittest.TestCase):
                                                  3: "plans/SHIP-40/slice-3/README.md"}))
 
     def test_the_onto_rebase_replays_only_the_slices_own_commits(self):
-        stacked = skill("parallel-lanes").split("**A stacked slice after its parent merges.**", 1)[1]
+        stacked = skill("lane-run").split("**A stacked slice after its parent merges.**", 1)[1]
         onto, base = command(stacked, "git rebase --onto origin/"), command(stacked, "git merge-base ")
         with tempfile.TemporaryDirectory() as folder:
             repo = Path(folder)
@@ -1121,7 +1120,7 @@ class DocsTest(unittest.TestCase):
     def test_the_readme_lists_the_workflow_skill_and_its_command(self):
         readme = read("README.md")
         self.assertIn("| Stage skills | Practice skills | Workflow skills |", readme)
-        self.assertIn("`testing-in-browser`, `writing-documentation` | `parallel-lanes`, `story-run` |", readme)
+        self.assertIn("`testing-in-browser`, `writing-documentation` | `lane-run`, `parallel-lanes`, `story-run` |", readme)
         commands = readme.split("## Commands you type", 1)[1].split("\n## ", 1)[0]
         self.assertIn("| `/aidlc:parallel-lanes coordinator` |", commands)
         text = flat("README.md")
@@ -1137,7 +1136,7 @@ class DocsTest(unittest.TestCase):
             self.assertIn(kind, text, kind)
 
     def test_every_workflow_skill_is_named_where_a_team_reads(self):
-        self.assertEqual(workflow_skills(), ["parallel-lanes", "story-run"])
+        self.assertEqual(workflow_skills(), ["lane-run", "parallel-lanes", "story-run"])
         for name in workflow_skills():
             for rel in ("README.md", "skills/using-aidlc/SKILL.md", "AGENTS.md", "docs/codebase-map.md"):
                 self.assertIn(name, read(rel), f"{rel}: {name}")
@@ -1174,7 +1173,7 @@ class RecordTest(unittest.TestCase):
 
 
 def lane_steps() -> str:
-    return skill("parallel-lanes").split("Lane mode, step by step:", 1)[1].split("Coordinator mode, step by step:")[0]
+    return skill("lane-run").split("Lane mode, step by step:", 1)[1]
 
 
 def coordinator_steps() -> str:
@@ -1183,8 +1182,9 @@ def coordinator_steps() -> str:
 
 
 def reviewer_passes() -> str:
-    return skill("parallel-lanes").split("**Reviewer passes from a sub-agent lane.**", 1)[1].split(
-        "**A stacked slice after its parent merges.**", 1)[0]
+    return (skill("parallel-lanes").split("**Reviewer passes from a sub-agent lane.**", 1)[1].split("## Stop if", 1)[0]
+            + " " + skill("lane-run").split("**After the coordinator's reviewer passes.**", 1)[1].split(
+                "**A stacked slice after its parent merges.**", 1)[0])
 
 
 class FinalReviewTest(unittest.TestCase):
@@ -1207,7 +1207,7 @@ class FinalReviewTest(unittest.TestCase):
                        "A sub-agent lane resumes only a wait that build, verify or review asked for"):
             self.assertIn(phrase, lane, phrase)
         self.assertIn("A lane never records a decision it has not checked or heard from the decider in its own "
-                      "session.", skill("parallel-lanes"))
+                      "session.", skill("lane-run"))
         coordinator = coordinator_steps()
         self.assertIn("Never relay a decision to a sub-agent", coordinator)
         self.assertIn("List each waiting row with what it waits for and, when a person's word is needed, the exact "
@@ -1282,7 +1282,7 @@ class FinalReviewTest(unittest.TestCase):
                        "(`aidlc-build` step 9, `aidlc-review` step 3)",
                        "releases with `waiting: reviewer passes at <commit>`",
                        "The coordinator, a top-level session,",
-                       "whose brief carries the reviewers' reports, quoted as data",
+                       "and carries the reviewers' reports, quoted as data",
                        "records the verdicts as the stage says",
                        "A lane a person started runs the passes itself."):
             self.assertIn(phrase, passes, phrase)
@@ -1307,17 +1307,17 @@ class FinalReviewTest(unittest.TestCase):
             self.assertIn("only when the bundle's MODE is a delegate mode", flat(rel), rel)
 
     def test_i3_a_hand_started_lane_is_two_messages(self):
-        self.assertIn("A person starts a lane by hand with two messages in one session: first lane mode with the row, "
-                      "which claims it (steps 1 to 4), then the stage's own command, the person's words that start "
-                      "the stage (step 5).", lane_steps())
-        self.assertIn("as two messages in one session: first lane mode with the row, which claims it, then the "
-                      "stage's own command, the person's words that start the stage", coordinator_steps())
+        self.assertIn("A person starts a lane by hand with one message, `lane-run <row>` (for example "
+                      "`lane-run SHIP-12`, or `lane-run SHIP-12 slice 2` for a slice): that start is the go-ahead for "
+                      "the row's stages up to the next person's decision (ADR 0028).", lane_steps())
+        self.assertIn("give the person the exact words to start the lane by hand, one message: `lane-run <row>`",
+                      coordinator_steps())
         for rel in (self.ADR, DESIGN):
             self.assertIn("two messages in one session", flat(rel), rel)
 
     def test_i4_a_lane_finds_the_workspace_root(self):
         self.assertIn("the workspace root is the folder that holds `WORKSPACE.md`, three levels up",
-                      skill("parallel-lanes"))
+                      skill("lane-run"))
         for name in ("aidlc-build", "aidlc-plan", "aidlc-verify", "aidlc-review"):
             self.assertIn("`../stories/<KEY>/coordination-plan.md`, from the repository's root (read-only; from a "
                           "lane's worktree, the workspace root is the folder that holds `WORKSPACE.md`, as "
@@ -1382,7 +1382,7 @@ class FinalReviewTest(unittest.TestCase):
         self.assertNotIn("the rows that must be merged first", flat(DESIGN))
 
     def test_the_done_row_and_a_second_parts_slices(self):
-        text = skill("parallel-lanes")
+        text = skill("lane-run")
         for phrase in ("for a slice row, its own index `plans/<KEY>/slice-<n>/README.md`",
                        "`.worktrees/<KEY>-p<n>-s<m>` for a slice of that part on its own branch",
                        "`plans/<KEY>/part-<n>/slice-<m>/`"):
@@ -1408,7 +1408,7 @@ class FinalReviewTest(unittest.TestCase):
 
     def test_the_next_row_only_when_no_row_was_named(self):
         self.assertIn("Take the next row only when no row was named; the coordinator shows the worktree to the person.",
-                      section(skill("parallel-lanes"), "## Common excuses"))
+                      section(skill("lane-run"), "## Common excuses"))
         design = flat(DESIGN)
         for phrase in ("the other's command fails, and it takes the next row only when no row was named",
                        "the lane removes the worktree and takes the next row only when no row was named",
@@ -1479,14 +1479,14 @@ class ReReviewFixTest(unittest.TestCase):
                        "The lane that finds it so writes `to do` in that row in place of the wait"):
             self.assertIn(phrase, lane, phrase)
         self.assertIn("| waiting: push, then merge, by `<who>` | the merged row reads done on the row's branch but not "
-                      "on the default branch |", skill("parallel-lanes"))
+                      "on the default branch |", skill("lane-run"))
 
     def test_d1_no_step_writes_a_wait_into_a_named_or_done_row(self):
         named = re.compile(r"`waiting: [^`]*`[^.;]{0,40}? in (?:the row's stage row|the verify row|the stage's row|its "
                            r"stage row)")
-        for rel in (LANES, self.ADR, DESIGN, "skills/aidlc-plan/assets/story-index.md"):
+        for rel in (LANES, "skills/lane-run/SKILL.md", self.ADR, DESIGN, "skills/aidlc-plan/assets/story-index.md"):
             self.assertEqual(named.findall(flat(rel)), [], rel)
-        self.assertNotIn("Write it in the verify row", skill("parallel-lanes"))
+        self.assertNotIn("Write it in the verify row", skill("lane-run") + " " + skill("parallel-lanes"))
         self.assertNotIn("each stage marks its own row when it ends: done, `waiting:", flat(
             "skills/aidlc-plan/assets/story-index.md").lower())
         for text in (lane_steps(), flat(DESIGN)):
@@ -1500,7 +1500,7 @@ class ReReviewFixTest(unittest.TestCase):
                        "Only a sub-agent lane releases when it cannot check the decision"):
             self.assertIn(phrase, step4, phrase)
         self.assertNotIn("When the decision cannot be had, remove the worktree as for a stopped row.", step4)
-        self.assertIn("lane mode with the row, then the decision or the stage command, in the same session",
+        self.assertIn("the decider starts `lane-run <row>` and gives the decision in that session",
                       coordinator_steps())
 
     def test_the_reviewer_agents_get_the_worktree_path_and_a_fresh_coordinator_runs_the_passes(self):

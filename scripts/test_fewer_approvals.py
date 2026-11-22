@@ -654,7 +654,7 @@ class LanesTest(unittest.TestCase):
     """Task 9: the lanes release where the decisions table says, and a sub-agent still builds only an approved plan."""
 
     def lane(self) -> str:
-        return skill("parallel-lanes").split("Lane mode, step by step:", 1)[1].split("Coordinator mode, step by step:")[0]
+        return skill("lane-run").split("Lane mode, step by step:", 1)[1]
 
     def test_a_sub_agent_builds_only_a_plan_a_person_approved(self):
         inputs = section(skill("parallel-lanes"), "## Inputs")
@@ -681,9 +681,7 @@ class LanesTest(unittest.TestCase):
                       lane)
         self.assertIn("(for example intent and design at every tier, and plan at Tier 1 without independent slices)",
                       lane)
-        self.assertIn("the stage is done and no person's decision follows it (the tiers file's decisions table): "
-                      "write nothing more, because the row is ready for its next stage, which a lane starts as "
-                      "coordinator step 3 says", lane)
+        self.assertIn("release nothing yet, because `story-run` goes on to the row's next stage", lane)
         self.assertIn("A hands-on build's restatement at Tier 3 and a pause are recorded as lines in the progress note",
                       lane)
 

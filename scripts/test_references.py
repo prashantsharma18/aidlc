@@ -365,7 +365,7 @@ class DocsTest(unittest.TestCase):
         self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.0.0")
 
     def test_a_lane_reads_a_reference_from_the_skill_folder(self):
-        lanes = flat(read("skills/parallel-lanes/SKILL.md"))
+        lanes = flat(read("skills/lane-run/SKILL.md"))
         self.assertIn("A `references/<file>.md` path that the stage skill names is in the folder of that `SKILL.md`: "
                       "read it from there, never from the repository.", lanes)
 

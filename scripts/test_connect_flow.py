@@ -309,7 +309,7 @@ class PushTest(unittest.TestCase):
         self.assertIn("You never push, force-push or tag; a person does. The one exception is a plain push of your own "
                       "feature branch, when the team's `AGENTS.md` allows it and the stage says to push (ADR 0028; never "
                       "to pause).", commits)
-        lanes = flat(skill_md("parallel-lanes"))
+        lanes = flat(skill_md("lane-run"))
         self.assertIn("Ask the person first, unless the team's `AGENTS.md` lets a lane push its own branch. That leave "
                       "covers a plain push only: this lease push asks the person first, always (ADR 0028).", lanes)
         self.assertIn("- The team's `AGENTS.md`: whether a lane may push its own branch, and whether force-push is "
@@ -354,7 +354,7 @@ class PushTest(unittest.TestCase):
         self.assertNotIn("Then push that commit when the team's `AGENTS.md` lets you push your own feature branch "
                          "(ADR 0028). The session then", review)
         self.assertIn("unless the team's `AGENTS.md` lets a lane push its own branch: then push it and write "
-                      "`waiting: open the pull request by <who>`.", flat(skill_md("parallel-lanes")))
+                      "`waiting: open the pull request by <who>`.", flat(skill_md("lane-run")))
         self.assertIn("At Tier 1, commit the index with the wait on the code branch.",
                       flat(section(skill_md("aidlc-specify"), "## Steps")))
         for rel in ("skills/aidlc-start/assets/story-index.md", "skills/aidlc-plan/assets/story-index.md"):
@@ -374,7 +374,7 @@ class PushTest(unittest.TestCase):
                           "brief has no row, the build row), in place of done, and ends with its record, never with `to do`: for a pull request's approval, the record "
                           "below; for a brief's confirmation, `done: confirmed by <engineer>, <how it was confirmed>`; for Ready at Tier 1, "
                           "`done: Ready by <spec owner>, <how it was confirmed>`.", flat(read(rel)), rel)
-        lanes = flat(skill_md("parallel-lanes"))
+        lanes = flat(skill_md("lane-run"))
         for phrase in ("whichever row holds it (a plan's approval waits in the plan row, as the story index's rule for a "
                        "document's decision says, and is still the plan's);",
                        "So each cell has one writer at a time, and a stage's `done` is never overwritten. The exception is "
@@ -897,7 +897,7 @@ class FinalFixWaveTest(unittest.TestCase):
                       flat(section(text, "## Stop if")))
 
     def test_m4_lanes_follow_the_branch_lines(self):
-        lanes = flat(skill_md("parallel-lanes"))
+        lanes = flat(skill_md("lane-run"))
         self.assertIn("A lane runs each stage on the branch its index's BRANCH lines name (the queue row's branch is "
                       "the code branch).", lanes)
         self.assertIn("`docs/<KEY>-spec`, `docs/<KEY>-plan` and `docs/<KEY>-<part>-plan` as the BRANCH lines name them",
