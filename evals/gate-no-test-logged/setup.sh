@@ -32,7 +32,7 @@ cat > plans/SHIP-74/spec.md <<'FIXTURE_EOF'
 Spec owner: Priya · Tier: 1 (one repository, one owner, no contract change, well-tested code) · Route: F1 · Version: v1
 
 AC1: return_label("ab12") returns "RETURN-AB12".
-AC2: the docstring of src/shipments/labels.py tells a new support engineer, in plain words, what a return label is and when to make one.
+AC2: the docstring of src/shipments/labels.py tells a new support engineer, in plain words, that a return label is the label a customer prints to send a parcel back, and that support makes one when it accepts a return.
 Non-goals: printing; carrier codes.
 
 Spec v1 approved by Priya on 2026-11-21, confirmed by Priya in the session · route F1 (shown; the tech lead owns it).
@@ -65,6 +65,27 @@ STOP IF     an existing assertion would need to change; a new dependency seems n
 RETURN      Branch feat/SHIP-74-return-labels; criterion -> test table; test output; assumptions
 NOT         printing
 INCLUDED
+FIXTURE_EOF
+cat > plans/SHIP-74/design-note.md <<'FIXTURE_EOF'
+# SHIP-74 · design note
+
+1 Does it change the system's shape?  no: one function beside label()
+2 Does it move a boundary?  no
+3 Does it change a contract someone outside the team relies on?  no
+
+OUTCOME      none needed: one new function in src/shipments/labels.py
+RECORDED BY  stated at Tier 1; the code owner sees it at Merge
+FIXTURE_EOF
+cat > plans/SHIP-74/plan.md <<'FIXTURE_EOF'
+# SHIP-74 · plan v1
+
+APPROACH   slice 1 (AC1 and AC2): one new function in src/shipments/labels.py, beside label(), that builds the return
+           label from label(); the module docstring is rewritten for AC2.
+TESTS      AC1: one test in tests/test_labels.py, named with its ID; AC2: a docstring has little to assert, so the
+           build decides whether a test is practical and logs it if not
+ROLLBACK   revert the merge
+OPEN       none
+APPROVAL   none: stated at Tier 1, the code owner reads it at Merge
 FIXTURE_EOF
 git init -q -b main && g add -A && g commit -q -m "fixture: SHIP-74 slice 1 is stated at Tier 1" && g switch -q -c feat/SHIP-74-return-labels
 # The repository is its own remote, so `git fetch` and origin/main work with no network.
