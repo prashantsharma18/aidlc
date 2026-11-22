@@ -281,3 +281,23 @@ of section 6; the rest stand as sections 6 to 9 say.
 | Item | State after Plan 26 | How |
 |---|---|---|
 | D3 | Covered, as instructions | `aidlc-specify`, `aidlc-design`, `aidlc-start`, `aidlc-plan` and `aidlc-build` keep their main path and every gate in `SKILL.md`, and move the steps of one route or case into `references/<case>.md`, read on a named condition: amendments, route G, route S, several repositories, re-routing, the briefs, revisions, independent and stacked slices, and the recipe check. The text moved word for word; no decision and no stop changed. `scripts/validate.py` checks that a reference holds no gate section and that `SKILL.md` names it. `aidlc-specify` meets its word target (1,797 words). `aidlc-start` (2,675), `aidlc-design` (2,324), `aidlc-plan` (3,185) and `aidlc-build` (3,880) stay above theirs (Plan 26, item W1); the tests hold these counts as their limits. |
+
+## 11. After Plan 27 (2026-11-22)
+
+Plan 27 (`docs/plans/2026-11-22-plan-27-connect-the-flow.md`, design `docs/design/2026-11-22-connect-the-flow.md`,
+ADR 0028 and ADR 0029) connects the stages, in aidlc 8.0.0. It updates these items of sections 6 to 10 and of the
+research's report 3; the rest stand as they say.
+
+| Item | State after Plan 27 | How |
+|---|---|---|
+| D1 | Covered in part, as instructions | `story-run`, a workflow skill a person starts once per decision, runs the story's stages in one session from the index, one slice at a time, and stops at every person's decision with the wait written and a hand-off. The AI may push its own feature branch (ADR 0028). Parallel slices, the watch pass and CI watching are Plan 28 |
+| G1 | Covered, as instructions | The index's BRANCH lines name the code branch and, at Tier 2 and 3, the spec's and the plan's branches; every stage's placement line reads its row's branch |
+| G2 | Covered, as instructions | `aidlc-specify` at Tier 2 and 3, `aidlc-plan` when its plan merges first, and `aidlc-design` for the home design pull request write their wait, commit, then push their branch (or ask the person to), and stop for the person to open the pull request |
+| G3 | Covered, as instructions | A document that merges first is never edited for its record: once its pull request is approved and merged, the next start makes the next row's branch and writes the document's row there as `done: approved in pull request <n> by <who>, <how it was confirmed>`; one rule says which row holds a wait |
+| G4 | Covered, as instructions | `aidlc-start` writes a `merged` row after `aidlc-review` on every route |
+| G6 | Covered, as instructions | A red CI run the change caused (it fails again after one fresh run, and passes on the base), or an accepted high or medium finding, writes `to do: fix <what>` in the build row and `to do` in the verify and review rows, and the stage that found it ends there; build fixes it in the same slice, and verify and review run again |
+| G10, G11 | Covered, as instructions | The ten stages that mark a row end with one hand-off: what was done, the next row, who it waits on, the tracker move to suggest |
+| X3 | Covered, as instructions | The map's route table is the one source of which stages each route runs; `routes.md`, `lifecycle.md`, `aidlc-start` and the README point to it, and a test compares the two tables route by route |
+| R3, R5, R6, R9, R10 | Covered | One placement line in nine stages; the repeated Decision 2 lead-in out; `aidlc-review` owns the pull request description; the harness's YAML headers and the unused "Context gaps noticed" section out |
+| Tests first | Changed, ADR 0029 | A criterion whose test the AI judges impractical gets no test only with a decision-log row, `no test for <criterion>`, naming why and the other proof; the tests reviewer lists every such criterion, and the code owner reads them at Merge; a test marked skip is still the Quality bar's stop |
+| Word limits | Raised | Section 10's limits are raised by Plan 27's items W1 to W5: `aidlc-start` 2800, `aidlc-specify` 2000, `aidlc-design` 2550, `aidlc-plan` 3450, `aidlc-build` 4350; the tests hold these as their limits now |

@@ -94,7 +94,7 @@ class OnePluginTest(unittest.TestCase):
 
     def test_the_decision_is_recorded_and_released(self):
         self.assertTrue((ROOT / "docs/adr/0018-one-plugin-at-the-root.md").is_file())
-        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "7.2.0")
+        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.0.0")
 
 
 class ReviewFixesTest(unittest.TestCase):

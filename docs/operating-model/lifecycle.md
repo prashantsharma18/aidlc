@@ -42,6 +42,8 @@ fast path (D1) or the full route (D2), incidents (I), new systems (G), and stand
 ## Rules that hold at every stage
 
 - The agent takes part in every stage and owns none. It drafts, it never approves.
+- A person may start `story-run` once per decision: it runs the stages between two decisions and stops at the next
+  one (ADR 0028).
 - One system of record per artefact; link, don't copy. A stage ends only when its artefact is
   in its system of record.
 - Only trusted verification counts towards a merge.

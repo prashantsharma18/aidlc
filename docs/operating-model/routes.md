@@ -59,6 +59,8 @@ Three rules sit under the tree:
 | S · standard change | A class of work the team lists in `AGENTS.md`'s Standard changes, within every limit it names; Tier 1, one repository | start (it writes `standard.md`), the engineer confirms, build, verify, review, merge, release when users see the change | The engineer confirms the standard brief and its tier (Ready); a code owner approves brief and change in the pull request (Merge) |
 
 In every diagram below, a hexagon is a person's decision. The agent drafts every document; it never approves one.
+A person can start each stage by name, or start `story-run` once per decision: it runs the stages from one hexagon to
+the next, and stops there (ADR 0028).
 
 ### F0 · feature, fast path
 

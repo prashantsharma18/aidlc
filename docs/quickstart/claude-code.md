@@ -14,7 +14,8 @@
 3. **Onboard once:** open Claude Code at the repository root and run `/aidlc:aidlc-onboard`. Review the `AGENTS.md`
    and codebase map it writes, in a pull request.
 4. **Work:** start every piece of work with `/aidlc:aidlc-start <KEY>` (or describe a new requirement). It tells you the
-   next skill and where to run it.
+   next skill and where to run it. Or start `/aidlc:story-run <KEY>` once per decision: it runs the stages until the
+   next one a person takes (ADR 0028).
 
 **Let the agent read your tracker:** add your tracker's read-only tools to `permissions.allow` in `.claude/settings.json`
 (for example `mcp__<server>__getjiraissue` and its search tool), deny its transition tool, and name the site and project in

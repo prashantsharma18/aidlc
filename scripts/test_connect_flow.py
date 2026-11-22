@@ -669,5 +669,36 @@ class EvalCasesTest(unittest.TestCase):
                       ", ".join(f"`{n}`" for n in CASES) + "; all five need Bash.", readme)
 
 
+CHANGES = "docs/design/2026-11-19-aidlc-6-change-list.md"
+
+
+class DocsTest(unittest.TestCase):
+    """Task 9: the docs name `story-run`; the change list after Plan 27; aidlc 8.0.0."""
+
+    def test_the_docs_name_one_start_per_decision(self):
+        for rel, phrase in (("docs/operating-model/routes.md", "A person can start each stage by name, or start "
+                             "`story-run` once per decision: it runs the stages from one hexagon to the next, and stops "
+                             "there (ADR 0028)."),
+                            ("docs/operating-model/lifecycle.md", "- A person may start `story-run` once per decision: "
+                             "it runs the stages between two decisions and stops at the next one (ADR 0028)."),
+                            ("docs/quickstart/claude-code.md", "Or start `/aidlc:story-run <KEY>` once per decision: it "
+                             "runs the stages until the next one a person takes (ADR 0028)."),
+                            ("docs/operating-model/workspace-and-repositories.md", "its status (a person moves it, when "
+                             "a stage's hand-off suggests the move, ADR 0028);")):
+            self.assertIn(phrase, flat(read(rel)), rel)
+
+    def test_the_change_list_and_the_version(self):
+        changes = read(CHANGES)
+        table = changes.split("## 11. After Plan 27 (2026-11-22)", 1)[1]
+        self.assertRegex(table, r"(?m)^\| D1 \| Covered in part, as instructions \|")
+        for item in ("G1", "G2", "G3", "G4", "G6", "G10, G11", "X3", "R3, R5, R6, R9, R10", "Tests first",
+                     "Word limits"):
+            self.assertRegex(table, rf"(?m)^\| {re.escape(item)} \|", item)
+        for phrase in ("`docs/plans/2026-11-22-plan-27-connect-the-flow.md`", "aidlc 8.0.0", "ADR 0028", "ADR 0029"):
+            self.assertIn(phrase, table, phrase)
+        self.assertNotIn("Needs the owner's decision", changes)
+        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.0.0")
+
+
 if __name__ == "__main__":
     unittest.main()
