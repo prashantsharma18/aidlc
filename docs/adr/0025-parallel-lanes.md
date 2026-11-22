@@ -3,6 +3,8 @@
 Status: Proposed (2026-11-21). Accepted (2026-11-21; confirmed by the framework owner in the session). · Decider: Prashant Sharma (framework owner)
 Design: `docs/design/2026-11-21-parallel-lanes.md` · Plan: `docs/plans/2026-11-21-plan-23-parallel-lanes.md` ·
 Amends: ADR 0015 (one branch and one pull request per repository part)
+Amended by ADR 0028 (proposed, 2026-11-22): a person's start of `story-run` is the go-ahead for the stages up to
+the next person's decision, as a lane's start is, and the AI may push its own feature branch; see ADR 0028.
 
 ## Context
 One session works one item, and a person lines up the next one by hand. The owner wants several pieces of work to

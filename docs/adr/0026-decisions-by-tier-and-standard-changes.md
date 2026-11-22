@@ -6,6 +6,8 @@ Amends: ADR 0012 (the recipe pause for a listed recipe class), ADR 0015 (route S
 approval is the record)
 Amended by ADR 0027 (proposed, 2026-11-21): the Ready row also shows the route, which the tech lead owns, and the code
 owner reads the AI's decision log at Merge; see ADR 0027.
+Amended by ADR 0028 (proposed, 2026-11-22): the AI may push its own feature branch when the team gives it a
+credential that cannot push the default branch; see ADR 0028.
 
 ## Context
 People's decisions are the bottleneck. With parallel lanes (ADR 0025), more lanes make more waits on people. An
