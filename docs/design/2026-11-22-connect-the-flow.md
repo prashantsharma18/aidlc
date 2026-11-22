@@ -109,10 +109,10 @@ Red flags or Rules section, and every stop stays in the stage skills. The valida
 | | Rule |
 |---|---|
 | Default | Write the failing test first when the change has a cheap local test |
-| May skip | When the AI judges the test impractical: the test path is unclear, the test is expensive to build, or there is nothing sensible to assert |
-| When it skips | A decision-log row says why it skipped and what proof it used instead (a command's output, a live check, a screenshot) |
-| Who sees it | The tests reviewer lists every skipped test with its reason; the code owner reads them at Merge |
-| Unchanged | Never editing an existing assertion; no new dependency without asking; every Stop if |
+| May write no test | When the AI judges the test impractical: the test path is unclear, the test is expensive to build, or there is nothing sensible to assert |
+| When it writes none | A decision-log row, `no test for <criterion>`, says why and what proof it used instead (a command's output, a live check, a screenshot) |
+| Who sees it | The tests reviewer lists every criterion with no test, with its reason; the code owner reads them at Merge |
+| Unchanged | Never editing an existing assertion; a test marked skip is still the Quality bar's stop; no new dependency without asking; every Stop if |
 
 ## Part 6: The cuts that free the words
 Four stage skills are near their word limits (Plan 26, item W1). These cuts come first:
@@ -139,8 +139,8 @@ Four stage skills are near their word limits (Plan 26, item W1). These cuts come
   specify, plan and `story-run`; ADR 0029's rule in build and the tests reviewer.
 - **The validator:** a playbook holds no gate heading (as a stage skill's reference).
 - **Behaviour evals** (written, run when an API key or token is available): `story-run` stops at Ready; it runs a Tier 1
-  design without stopping; it pushes its own branch and never the default branch; it stops at Merge; a skipped test has
-  its decision-log row.
+  design without stopping; it pushes its own branch and never the default branch; it stops at Merge; a criterion with no
+  test has its decision-log row.
 - **Existing tests:** several pin "the person pushes", "tests first" wording, the placement paragraph and the loads
   table; some eval cases expect tests first strictly. The plan lists every one for the owner's approval, with any word
   limit it must raise.
