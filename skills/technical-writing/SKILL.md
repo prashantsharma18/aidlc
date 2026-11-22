@@ -20,14 +20,15 @@ Not for: which document to write, for whom and where it lives (`writing-document
 request holds (`committing-changes`); cutting AI tells alone (`unslop`).
 
 ## Steps
-1. Never change code, commands, file paths, identifiers, quoted text, test output or a template's fixed lines: leave
-   them byte for byte.
+1. Never change code, commands, file paths, identifiers, quoted text, test output, a template's fixed lines or a line
+   another skill reads by its exact words (an index row, a FIELD line, a status word, a commit trailer): leave them
+   byte for byte.
 2. Name the reader and what they must decide or do. Write for that reader first.
 3. Write each sentence by `references/sentences.md`.
 4. Write the real name of each symbol, file, flag or command, never a description of it. Make every count true at the
    commit that lands it.
 5. A pull request description or a commit body is a briefing a reviewer reads in under a minute: link logs, run
-   histories and long tables, never paste them.
+   histories and long tables, never paste them. A table the document's template asks for stays in it.
 6. Load the `unslop` skill as the last pass.
 
 ## Checks

@@ -22,7 +22,8 @@ Not for: why it was built this way (`why`); a failing test or a broken build (`d
    yourself, the same way. Ask for the entry points, the flow, the data, the owners and the surprises, each with
    `file:line`.
 3. Keep its citations and its FACT, INFERENCE and UNKNOWN labels, edit only for clarity, and present it as a mental
-   model a senior engineer new to the area can work from: the parts, how a request or an event flows through them, where things live, and what to watch out for.
+   model a senior engineer new to the area can work from: the parts, how a request or an event flows through them,
+   where things live, and what to watch out for.
 4. Mark what the code alone does not show as UNKNOWN.
 
 ## Checks

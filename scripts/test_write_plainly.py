@@ -7,8 +7,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PRACTICE_SECTIONS = ("## When to use", "## Steps", "## Checks", "## Stop if", "## Common excuses", "## Red flags",
                      "## Rules")
-NEVER = ("Never change code, commands, file paths, identifiers, quoted text, test output or a template's fixed "
-         "lines: leave them byte for byte.")
+NEVER = ("Never change code, commands, file paths, identifiers, quoted text, test output, a template's fixed lines "
+         "or a line another skill reads by its exact words (an index row, a FIELD line, a status word, a commit "
+         "trailer): leave them byte for byte.")
 
 
 def read(rel: str) -> str:
@@ -103,6 +104,7 @@ class TechnicalWritingTest(PracticeShape, unittest.TestCase):
                         "## Make statements load one at a time (STE rules)",
                         "## Leave no sentence open to two readings (Global English)"):
             self.assertIn(heading, sentences, heading)
+        self.assertIn("A table the document's template asks for stays in it.", steps)
         self.assertNotIn("Diátaxis", sentences)
         self.assertNotIn("Indent code snippets with tabs", sentences)
 
@@ -128,6 +130,14 @@ class InYourOwnWordsTest(PracticeShape, unittest.TestCase):
                       "state it and go on.", flat(steps))
         self.assertIn("The stages' restatements of a story (`aidlc-plan` step 1, `aidlc-build` step 2) stay their "
                       "own.", flat(skill_md(self.NAME)))
+
+    def test_it_applies_where_stress_testing_decisions_loads_it(self):
+        text = flat(skill_md(self.NAME))
+        self.assertIn("Not for: restating a story's outcome and criteria.", text)
+        self.assertNotIn("a story that already has its outcome and criteria", text)
+        self.assertIn("Another skill restates a goal with it: `aidlc-intent` for a request, "
+                      "`stress-testing-decisions` for the goal a decision serves.",
+                      section(skill_md(self.NAME), "## When to use"))
 
 
 class HowTest(PracticeShape, unittest.TestCase):
@@ -168,7 +178,7 @@ STAGE_LOADS = {
     "aidlc-design": ("Load the `technical-writing` skill for the ADR's and the design note's sentences.",),
     "aidlc-plan": ("Load the `technical-writing` skill.",),
     "aidlc-review": ("Load the `technical-writing` skill for the description's sentences.",),
-    "aidlc-release": ("Load the `technical-writing` skill for their sentences.",),
+    "aidlc-release": ("Load the `technical-writing` skill for the readiness checklist's and the change record's sentences.",),
     "aidlc-operate": ("Load the `technical-writing` skill for this record and for the work item in step 6.",),
     "aidlc-discover": ("To explain how a traced path works, load the `how` skill; to explain why it is like this, "
                        "load the `why` skill.",),
@@ -254,11 +264,26 @@ class EvalCasesTest(unittest.TestCase):
         self.assertIn("The two cases for Plan 29 are `routing-unslop` and `routing-why-history`, 53 in all",
                       read("evals/README.md"))
 
+    def test_the_readme_says_a_regex_without_target_reads_the_final_reply(self):
+        self.assertIn("a regex grader with no `target` reads the final reply (`last_message`)", flat(read("evals/README.md")))
+
     def test_the_graders_match_right_and_not_wrong(self):
         def pattern(case, name):
             front_matter = self.grader(case, name).split("---", 2)[1]
             line = next(l for l in front_matter.splitlines() if l.startswith(("pattern:", "input_match:")))
             return re.compile(line.split(":", 1)[1].strip()[1:-1])
+        ai = pattern("routing-unslop", "no-ai-words.md")
+        self.assertNotIn("flags", self.grader("routing-unslop", "no-ai-words.md").split("---", 2)[1])
+        self.assertRegex("Delved into it", ai)
+        self.assertRegex("a Pivotal step", ai)
+        self.assertNotRegex("We looked into it", ai)
+        self.assertNotRegex("an undelved pile", ai)
+        cmd = pattern("routing-unslop", "keeps-command.md")
+        self.assertRegex("Run kubectl rollout undo deployment/eta-api --namespace shipments now", cmd)
+        self.assertNotRegex("kubectl rollout undo deployment/eta-api -n shipments", cmd)
+        path = pattern("routing-unslop", "keeps-path.md")
+        self.assertRegex("`src/shipments/eta.py`", path)
+        self.assertNotRegex("src/shipments/eta_py", path)
         dash = pattern("routing-unslop", "no-dash.md")
         self.assertRegex("a pivotal moment \u2014 for the team", dash)
         self.assertNotRegex("a key moment, for the team", dash)
@@ -266,10 +291,35 @@ class EvalCasesTest(unittest.TestCase):
         self.assertRegex(json.dumps({"command": "git log --follow -p src/shipments/eta.py"}), history)
         self.assertRegex(json.dumps({"command": "git -C . blame src/shipments/eta.py"}), history)
         self.assertRegex(json.dumps({"command": "git --no-pager log -p src/shipments/eta.py"}), history)
+        self.assertRegex(json.dumps({"command": "git -P log -p src/shipments/eta.py"}), history)
         self.assertNotRegex(json.dumps({"command": "cat src/shipments/eta.py"}), history)
         fired = pattern("routing-why-history", "fired.md")
         self.assertRegex(json.dumps({"skill": "aidlc:why"}), fired)
         self.assertNotRegex(json.dumps({"skill": "aidlc:how"}), fired)
+
+
+class FinalReviewTest(unittest.TestCase):
+    """Final review fixes: the never-list, the credit and the line width."""
+
+    def test_the_design_carries_the_never_list(self):
+        self.assertIn("- Never change code, commands, file paths, identifiers, quoted text, test output, a template's "
+                      "fixed lines or a line another skill reads by its exact words (an index row, a FIELD line, a "
+                      "status word, a commit trailer).", read("docs/design/2026-11-22-write-plainly.md"))
+
+    def test_the_notice_credits_the_diataxis_step(self):
+        self.assertIn("and the Diátaxis step in `writing-documentation` (from pstack's `technical-writing`) (Plan 29).",
+                      flat(read("skills/NOTICE")))
+
+    def test_the_new_lines_wrap(self):
+        self.assertIn("flows through them,\n   where things live", skill_md("how"))
+        inv = read("skills/story-run/references/playbook-investigation.md")
+        self.assertIn("costs.\n   Write the finding through `unslop`", inv)
+        for rel, marker in (("skills/how/SKILL.md", "3. Keep its citations"),
+                            ("skills/story-run/references/playbook-investigation.md", "3. Write the finding")):
+            lines = read(rel).splitlines()
+            start = next(i for i, l in enumerate(lines) if l.startswith(marker))
+            for n in range(start, start + 4):
+                self.assertLessEqual(len(lines[n]), 125, f"{rel}:{n + 1}")
 
 
 class DocsTest(unittest.TestCase):

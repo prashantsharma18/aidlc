@@ -94,7 +94,7 @@ Every new description stays below the routing check's 0.75 similarity with every
 (`scripts/route_check.py`), and the routing cases gain one case per new skill.
 
 ## Part 5: What these skills never do
-- Never change code, commands, file paths, identifiers, quoted text, test output or a template's fixed lines.
+- Never change code, commands, file paths, identifiers, quoted text, test output, a template's fixed lines or a line another skill reads by its exact words (an index row, a FIELD line, a status word, a commit trailer).
 - Never a gate: text that breaks a rule is a low review finding, never a stop.
 - Never change what a sentence says to make it plainer: meaning first.
 

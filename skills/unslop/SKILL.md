@@ -19,8 +19,9 @@ Not for: deciding which document to write (`writing-documentation`) or how its s
 (`technical-writing`).
 
 ## Steps
-1. Never change code, commands, file paths, identifiers, quoted text, test output or a template's fixed lines: leave
-   them byte for byte. Mark them first.
+1. Never change code, commands, file paths, identifiers, quoted text, test output, a template's fixed lines or a line
+   another skill reads by its exact words (an index row, a FIELD line, a status word, a commit trailer): leave them
+   byte for byte. Mark them first.
 2. Read the rest against `references/ai-tells.md`, rule by rule.
 3. Rewrite each sentence that breaks a rule, keeping its meaning and its tone. When a fix would change what the
    sentence says, keep the sentence.

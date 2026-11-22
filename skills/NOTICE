@@ -29,7 +29,7 @@ the tests-first wording (ADR 0029, `writing-tests`), adapted from pstack (`curso
 0028 and 0029 record. Also adapted from pstack: `lane-run`, its `skills/lane-run/references/worker.md` (from pstack's `worker.md`), the watch pass and the CI table in
 `parallel-lanes`, and the throughput checkpoint in `aidlc-plan` (from pstack's `feature`, `multi-phase-plan`,
 `autopilot-full`, `autopilot-stack` and `babysit` playbooks), as ADR 0030 records.
-Also adapted from pstack: the practices `unslop`, `technical-writing`, `in-your-own-words`, `how` and `why`, keeping pstack's names (Plan 29).
+Also adapted from pstack: the practices `unslop`, `technical-writing`, `in-your-own-words`, `how` and `why`, keeping pstack's names, and the Diátaxis step in `writing-documentation` (from pstack's `technical-writing`) (Plan 29).
 
 MIT License
 

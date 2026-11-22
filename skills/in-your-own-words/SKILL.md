@@ -14,8 +14,9 @@ Adapted from pstack's `in-your-own-words` (`cursor/plugins`, folder `pstack`, MI
 - A request arrives and its goal is not written down yet.
 - You are not sure what the person is after.
 - A person asks you to say back what they want.
+- Another skill restates a goal with it: `aidlc-intent` for a request, `stress-testing-decisions` for the goal a decision serves.
 
-Not for: a story that already has its outcome and criteria. The stages' restatements of a story (`aidlc-plan` step 1,
+Not for: restating a story's outcome and criteria. The stages' restatements of a story (`aidlc-plan` step 1,
 `aidlc-build` step 2) stay their own.
 
 ## Steps
