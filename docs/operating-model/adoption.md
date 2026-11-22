@@ -97,7 +97,7 @@ Exit when stories run end to end with their approvals on the tracker.
 - When a repository passes the [autonomy check](autonomy-and-maturity.md), let the tech lead approve delegate modes in
   bundles, within the tier: delegate with checkpoints at Tiers 1 and 2, delegate at Tier 1. Run approved delegate
   slices one fresh session per slice, each started by a person, stopping at the first that does not finish. You
-  review the diffs at the end and push.
+  review the diffs at the end and push (with ADR 0028's leave, the AI has pushed its own branch).
 - When a mistake repeats, `aidlc-feedback` turns it into a check in the team's own project (a type, a lint rule, a
   test or a CI step), proven on the real past mistake and listed in `AGENTS.md`'s rules table.
 

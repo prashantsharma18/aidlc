@@ -25,7 +25,7 @@ A lane (`parallel-lanes`) that stops for a person's decision writes `waiting: <d
 next unfinished stage, never in a row already done; when the wait ends, that row reads `to do` again. That is every wait (a pause, a pull request to open, CI, Merge in
 the `merged` row, Release) except one (ADR 0028): a document's decision (Ready, Design + plan, a brief's
 confirmation) waits in that document's own row, in place of done, and ends with its record, never with `to do`: for
-a pull request's approval, the record below; for a brief's confirmation, `done: confirmed by <engineer>, <how it was confirmed>`.
+a pull request's approval, the record below; for a brief's confirmation, `done: confirmed by <engineer>, <how it was confirmed>`; for Ready at Tier 1, `done: Ready by <spec owner>, <how it was confirmed>`.
 Once the code owner approves, the AI checks the approval in the review tool and the team's CI result, marks the merged row
 done in the pull request's final commit (its message says how it was confirmed) and tells the person it is ready
 to merge (ADR 0023), so it reaches

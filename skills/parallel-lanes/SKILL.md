@@ -160,7 +160,7 @@ Lane mode, step by step:
      passes from a sub-agent lane" says;
    - the stage asks to push or to open the pull request: write `waiting: push and open the pull request by <who>`
      (`waiting: push by <who>` once the pull request exists), unless the team's `AGENTS.md` lets a lane push its own
-     branch. By the rule above, after build's last slice it sits in the verify row, and after verify in the review
+     branch: then push it and write `waiting: open the pull request by <who>`. By the rule above, after build's last slice it sits in the verify row, and after verify in the review
      row. After a slice that is not the last, build's row reads doing and nothing is written: the next lane builds the
      next slice.
    - the review stage has made its final commit, the one that marks the merged row (`aidlc-review` step 8).
