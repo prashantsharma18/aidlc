@@ -211,8 +211,109 @@ class LaneRunTest(unittest.TestCase):
         self.assertIn("`references/worker.md`", section(skill_md("lane-run"), "## Inputs"))
 
     def test_lane_run_is_shorter_than_parallel_lanes_was(self):
-        self.assertLess(words("lane-run"), 3750)  # 3,692 at Plan 28 (lane-run and worker.md); parallel-lanes was 4,856
+        self.assertLess(words("lane-run"), 3800)  # 3,786 at Plan 28 Task 4 (lane-run and worker.md); parallel-lanes was 4,856
         self.assertLess(words("parallel-lanes"), 3300)
+
+
+SLICES = ("**A plan's slices (ADR 0030).** A queue row whose plan marks its slices independent stands for each slice "
+          "the plan gave its own branch. Read the plan's bundles on the default branch, where that plan merged first "
+          "(`../aidlc-plan/references/independent-slices.md`). Slice 1 is the queue row itself, on its branch. Every "
+          "other slice with its own branch is a row of its own, in the plan's order: branch `<the row's branch>-s<n>`, "
+          "worktree `.worktrees/<KEY>-s<n>`, index `plans/<KEY>/slice-<n>/README.md`, and Depends on the slice its "
+          "bundle's `DEPENDS ON` names, or the queue row's own Depends on for `DEPENDS ON none`. A slice that continues "
+          "the slice before it on that branch is part of that slice's row. A slice the queue already lists is used as "
+          "written, never twice.")
+
+
+class CoordinatorTest(unittest.TestCase):
+    """Task 4: scheduling from the plan, the queue branch, the watch pass and the CI table."""
+
+    def test_a_plans_slices_come_from_the_plan(self):
+        lanes = skill("parallel-lanes")
+        self.assertIn(SLICES, section(skill_md("parallel-lanes"), "## Inputs"))
+        self.assertIn("- A queue slice row whose branch or Depends on disagrees with its bundle.",
+                      section(skill_md("parallel-lanes"), "## Stop if"))
+        self.assertNotIn("references/independent-slices.md`", lanes.replace(
+            "`../aidlc-plan/references/independent-slices.md`", ""))
+
+    def test_the_queue_branch(self):
+        steps = coordinator_steps()
+        step6 = steps[steps.index("6. When the person asks you to draft the queue"):]
+        for phrase in ("When the person asks you to draft the queue, write the new rows (from approved plans, or from "
+                       "the tracker, which you only read) into `QUEUE.md` on your own branch:",
+                       "`git worktree add --no-track -b docs/queue-<YYYY-MM-DD> .worktrees/queue-<YYYY-MM-DD> "
+                       "origin/<default branch>`",
+                       "Push it when the team's `AGENTS.md` lets the AI push its own feature branch (ADR 0028); "
+                       "otherwise the person pushes it.",
+                       "remove the worktree (`git worktree remove .worktrees/queue-<YYYY-MM-DD>`, never `--force`)",
+                       "stop: \"open the pull request for the queue\"; the person's merge confirms the rows (ADR 0030).",
+                       "Without that ask, list in your report each approved plan that has no queue row.",
+                       "Never write `QUEUE.md` on the default branch, never approve, never merge."):
+            self.assertIn(phrase, step6, phrase)
+        rules = section(skill_md("parallel-lanes"), "## Rules")
+        self.assertIn("Lanes never write `QUEUE.md`; the coordinator drafts rows on its own queue branch, and a "
+                      "person's merge confirms them (ADR 0030).", rules)
+        self.assertIn("A workflow skill never approves, never merges and writes no document a person approves, except "
+                      "the queue the coordinator drafts on its own branch (ADR 0030).", rules)
+
+    def test_the_queue_template(self):
+        queue = read("skills/parallel-lanes/assets/queue.md")
+        self.assertIn("```text\nMAX LANES   3\n```", queue)
+        self.assertIn("```text\nSTUCK AFTER   60m\nWATCH EVERY   30m\n```", queue)
+        text = flat(queue)
+        for phrase in ("It counts only on the default branch", "lanes never write it",
+                       "The coordinator drafts new rows on its own branch when a person asks, and the person's merge "
+                       "of that pull request confirms them (ADR 0030)",
+                       "for slices it copies the bundles' `DEPENDS ON` lines",
+                       "A plan's independent slices need no rows: the coordinator reads them from the plan (ADR 0030).",
+                       "**STUCK AFTER** is how long a lane may go with no new commit before the watch pass counts it "
+                       "stuck. The default is 60 minutes; raise it when a step can run longer without a commit.",
+                       "**WATCH EVERY** is how often the coordinator runs its watch pass, where your AI tool can wake "
+                       "it on a timer. The default is 30 minutes."):
+            self.assertIn(phrase, text, phrase)
+
+    def test_the_watch_pass(self):
+        watch = flat(skill_md("parallel-lanes")).split("**The watch pass.**", 1)[1].split("**CI on a lane's pull "
+                                                                                          "request.**", 1)[0]
+        for phrase in ("Run it first at every start (step 1), and, where your AI tool can wake this session on a "
+                       "timer, every WATCH EVERY while any lane runs.",
+                       "Judge each lane by what it left in git, never by its own report",
+                       "the later of its worktree's last commit (`git -C <worktree> log -1 --format=%ct`) and the "
+                       "lane's start",
+                       "`git -C <worktree> status --porcelain`",
+                       "A lane is stuck when its last activity is older than STUCK AFTER, its row is not waiting on a "
+                       "person, and your tool shows it still running or cannot say. A lane waiting on a person is "
+                       "never stuck.",
+                       "A stuck lane you started in this session, whose worktree is clean, when your tool can stop "
+                       "it: stop it, remove its worktree (`git worktree remove .worktrees/<folder>`, never "
+                       "`--force`), and start a fresh lane on the row as step 3 says",
+                       "Any other stuck lane (one a person or another session started, one your tool cannot stop, or "
+                       "one whose worktree holds uncommitted files): show the person the lane and its files, and "
+                       "never commit them for it.",
+                       "A pass that changed nothing says so in one line."):
+            self.assertIn(phrase, watch, phrase)
+        self.assertIn("then run the watch pass (below)", coordinator_steps().split(" 2. ", 1)[0])
+
+    def test_the_ci_table(self):
+        ci = flat(skill_md("parallel-lanes")).split("**CI on a lane's pull request.**", 1)[1].split(
+            "**Reviewer passes from a sub-agent lane.**", 1)[0]
+        self.assertIn("A row whose next stage is verify is ready only once its pull request's CI has finished (the "
+                      "CI table below).", coordinator_steps())
+        for row in ("| Still running | The row is not ready: start no lane for it; the next pass reads it again |",
+                    "| Finished, green or red | The row is ready: start its lane (step 3). Its `story-run` "
+                    "runs `aidlc-verify`, which reads the run; a red run the change caused goes back to build, as "
+                    "`story-run` says, and a flake or a check red on the base too is as `aidlc-verify`'s Stop if "
+                    "says |",
+                    "| A conflict, or a base the code host will not merge onto | Report the branch that needs a rebase, "
+                    "and start no lane for the row; never rebase it onto the default branch or force-push |",
+                    "| Approved and green | Report `merge by <code owner>`; never merge |"):
+            self.assertIn(row, ci, row)
+        self.assertNotRegex(ci, r"(?i)\byou merge\b|\bmerge it\b")
+        stop = section(skill_md("lane-run"), "## Stop if")
+        self.assertIn("- A CI check is red again on a branch that already holds two commits `fix(ci): <check>` for it "
+                      "(`git log --oneline --grep \"fix(ci): <check>\"`): write `stopped: <check> red after two fixes` "
+                      "in the build row; a person decides. The last commit of each fix for a red check carries that message, and only "
+                      "that commit.", stop)
 
 
 if __name__ == "__main__":

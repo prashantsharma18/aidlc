@@ -276,7 +276,7 @@ class ParallelLanesTest(unittest.TestCase):
                        "give the person the exact words to start the lane by hand",
                        "When a lane reports back, read its row's state and start the next ready row",
                        "Report one table to the person: running, waiting on whom, stopped and why, next in line",
-                       "Draft new queue rows", "Never write `QUEUE.md`, never approve, never merge."):
+                       "When the person asks you to draft the queue", "Never write `QUEUE.md` on the default branch, never approve, never merge."):
             self.assertIn(phrase, coordinator, phrase)
 
     def test_the_clash_rules(self):
@@ -371,7 +371,7 @@ class ParallelLanesTest(unittest.TestCase):
             self.assertEqual(opening, "text")
         self.assertEqual(re.findall(r"<(?!!--)[^<>\n]+>", outside_code(queue)), [])
         text = flat(QUEUE)
-        for phrase in ("A person writes this file and commits and pushes it on the default branch", "lanes never write it",
+        for phrase in ("It counts only on the default branch", "lanes never write it",
                        "never an `aidlc/` prefix", "The default is 3, because people's review time is the real limit",
                        "For parts it copies the coordination plan's order; for slices it copies the bundles' `DEPENDS "
                        "ON` lines"):
@@ -491,7 +491,7 @@ class ParallelLanesFixRoundTest(unittest.TestCase):
 
     def test_the_queue_is_committed_and_pushed(self):
         self.assertIn("commits and pushes", skill("parallel-lanes"))
-        self.assertIn("commits and pushes it", flat(QUEUE))
+        self.assertIn("the person's merge of that pull request confirms them", flat(QUEUE))
 
     def test_the_stacked_fallbacks_and_release_scope(self):
         text = skill("lane-run")
