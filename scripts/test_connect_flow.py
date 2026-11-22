@@ -978,14 +978,16 @@ MAY_CHANGE = "- A change needs a file outside MAY CHANGE (a caller of a shared h
 # must be in each of those stages' Stop if).
 POINTERS = {
     "feature": (("A caller outside MAY CHANGE is a stop", BUILD, MAY_CHANGE),),
-    "bug-fix": (("The limit on attempts", BUILD, "The same failure has had three attempts"),),
+    "bug-fix": (("The limit on attempts", BUILD, "The same failure has had three attempts"),
+                ("one outside is a stop", BUILD, MAY_CHANGE)),
     "performance": (("a change to the measurement during the work", BUILD,
-                     "and the harness that compares or measures it, is an assertion too"),),
+                     "and the harness that compares or measures it, are an assertion too"),),
     "refactoring": (("A caller outside MAY CHANGE is a stop", BUILD, MAY_CHANGE),
+                    ("When nothing did", BUILD, "The plan looks wrong"),
                     ("Stop if says for a contract change", BUILD, "the fix needs a contract change"),
                     ("no assertion changed", BUILD, "A test can only pass by changing an existing assertion")),
     "visual-change": (("the harness that compares it, are an assertion", BUILD,
-                       "and the harness that compares or measures it, is an assertion too"),
+                       "and the harness that compares or measures it, are an assertion too"),
                       ("that passes a check by lowering the bar", BUILD,
                        "A check can pass only by lowering the Quality bar"),
                       ("proposing one is a new dependency", BUILD, "A new dependency seems necessary.")),
@@ -993,7 +995,9 @@ POINTERS = {
                          "a package added to any lock file counts as a new dependency"),
                         ("A major version passes the class's limits", BUILD, "pass one of its LIMITS (a major version"),
                         ("A major version passes the class's limits", BUILD, MAY_CHANGE)),
-    "spike": (("never commit it to the story's branch", SPIKE_READERS,
+    "spike": (("Keep to the time-box", SPIKE_READERS,
+               "outlasts its time-box: report what is known and what is not."),
+              ("never commit it to the story's branch", SPIKE_READERS,
                "- A spike's code would be committed to the story's branch or moved into the build: a spike is thrown "
                "away."),
               ("A package you would have to fetch", SPIKE_READERS,
@@ -1005,7 +1009,7 @@ POINTERS = {
 
 
 class PlaybookTest(unittest.TestCase):
-    """Task 8: eight playbooks hold steps and proof only; the bundle names one; build and verify read it."""
+    """Plan 27b Task 1: eight playbooks hold steps and proof only; the bundle names one; build and verify read it."""
 
     def test_the_eight_playbooks_exist_and_open_with_who_reads_them(self):
         names = sorted(p.name for p in (ROOT / "skills/story-run/references").glob("*.md"))
@@ -1077,10 +1081,25 @@ class PlaybookTest(unittest.TestCase):
                       "says the steps and the proof that kind needs, and which practices USE SKILLS takes (ADR 0028).",
                       flat(skill_md("using-aidlc")))
 
+    def test_the_review_fixes_hold(self):
+        bug = playbook("bug-fix")
+        self.assertNotIn("comes before the fix's in git history", flat(bug))
+        self.assertIn("the test commits with the fix, because every commit passes (`committing-changes`)", flat(bug))
+        self.assertIn("as `aidlc-design` step 2 says for a wireframe", flat(playbook("spike")))
+        self.assertIn("A spike outlasts its time-box", flat(section(skill_md("aidlc-design"), "## Stop if")))
+        inputs = flat(section(skill_md("story-run"), "## Inputs"))
+        self.assertIn("(ADR 0028). Without a push credential, the person pushes. - The playbooks", inputs)
+        self.assertNotIn("person pushes", inputs.rsplit("The playbooks", 1)[1])
+        plan = flat(section(skill_md("aidlc-plan"), "## Steps"))
+        self.assertLess(plan.index("- fill PLAYBOOK"), plan.index("- fill USE SKILLS"))
+        self.assertIn("the criterion's owner's to decide", flat(playbook("visual-change")))
+        self.assertIn("When nothing did, stop and report", flat(playbook("refactoring")))
+        self.assertIn("A change inside the noise is inconclusive", flat(playbook("performance")))
+
     def test_the_limits_a_playbook_names_are_in_the_stages_stop_if(self):
         build = flat(section(skill_md("aidlc-build"), "## Stop if"))
         self.assertIn("Never change it: the criterion's owner decides. A baseline a test compares against (a screenshot, "
-                      "a recorded output), and the harness that compares or measures it, is an assertion too.", build)
+                      "a recorded output), and the harness that compares or measures it, are an assertion too.", build)
         self.assertIn(MAY_CHANGE, build)
         for name in SPIKE_READERS:
             stops = flat(section(skill_md(name), "## Stop if"))

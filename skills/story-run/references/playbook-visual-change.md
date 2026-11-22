@@ -16,14 +16,14 @@ must not change it.
 2. A baseline image, and the harness that compares it, are an assertion, as `aidlc-build`'s Stop if says: never
    update one to make a difference pass, and never change the harness. Never restructure a component to hide a
    difference either: that passes a check by lowering the bar, as `aidlc-build`'s Stop if says. A baseline that looks
-   wrong is its owner's to decide.
+   wrong is the criterion's owner's to decide.
 3. Change one component at a time; shared parts first.
-4. Compare by image difference, not by eye. A difference fails until someone explains it. For a change meant to show,
-   the new screenshot is reviewed with the change, against the design note's UI REFERENCE.
+4. Compare by image difference, not by eye. On a screen the slice must not change, any difference fails. For a change
+   meant to show, the new screenshot is reviewed with the change, against the design note's UI REFERENCE.
 5. With no comparison tool in the repository, proposing one is a new dependency, which a person approves, as
    `aidlc-build`'s Stop if says.
 
-**Its proof.** The baseline screenshots, the screenshots after, and the image difference for each, zero or explained;
-for a change meant to show, the reference it matches.
+**Its proof.** The baseline screenshots, the screenshots after, and the image difference for each, zero, or for a change
+meant to show, matched to its reference.
 
 **Hand back.** The screens changed, the difference for each, and where the baseline is kept.

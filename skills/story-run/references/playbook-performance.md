@@ -19,7 +19,7 @@ measurement.
 4. Try the remedies in this order, cheapest first, and end with the first one that meets the target: remove the work;
    avoid doing it again; do less of it; do it later; do it off the user's path; do it in parallel; make it cheaper.
 5. One change, one measurement. Keep a change that moved the number past the run-to-run noise; back out the rest. A
-   neutral change is backed out.
+   neutral change is backed out. A change inside the noise is inconclusive, and inconclusive is not a pass: say so.
 6. Correctness first: the suite stays green, and a simpler change that holds the number is the one you keep.
 
 **Its proof.** The baseline on the default branch and the number after, each with how it was measured, its repeated

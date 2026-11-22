@@ -85,6 +85,7 @@ The tech lead or architect approves the design with the plan, and the consumers 
 
 ## Stop if
 - The evidence cannot support a choice: return to discovery, or to the spec owner.
+- A spike outlasts its time-box: report what is known and what is not.
 - A spike's code would be committed to the story's branch or moved into the build: a spike is thrown away.
 - A spike or a check needs a package that is not installed: that is a new dependency; ask first.
 - A consumer or an owner is unknown.

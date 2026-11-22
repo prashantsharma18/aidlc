@@ -21,7 +21,7 @@ Read from `aidlc-build` and `aidlc-verify` when the bundle's `PLAYBOOK` line nam
    is a contract: changing it is a stop too, as `aidlc-build`'s Stop if says for a contract change, and it follows
    `migrating-safely`'s steps in its own plan.
 5. Show that the new code is equivalent: the pin green, and, for a large reshape, the comparison script's output.
-6. Name what got simpler: fewer layers to trace, or less state to hold. When nothing did, back the change out.
+6. Name what got simpler: fewer layers to trace, or less state to hold. When nothing did, stop and report, as `aidlc-build`'s Stop if says for a plan that looks wrong.
 7. A bug found on the way is its own work item, which the person raises at `aidlc-start`; the structural change ships
    first, against the pin.
 

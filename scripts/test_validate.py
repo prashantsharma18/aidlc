@@ -313,7 +313,7 @@ class StageReferencesTest(unittest.TestCase):
 
 
 class PlaybooksTest(unittest.TestCase):
-    """Plan 27: a playbook in a skill's references/ holds steps only; like a stage's reference, never a gate."""
+    """Plan 27b: a playbook in a skill's references/ holds steps only; like a stage's reference, never a gate."""
 
     WORKFLOW = PRACTICE_BODY.replace("## Checks\nx\n", "").replace("## Steps", "## Inputs\nx\n## Steps")
     PLAY = ("# Playbook: feature\n\nRead from `aidlc-build` when the bundle names `feature`; the stage's Gate, Stop if "

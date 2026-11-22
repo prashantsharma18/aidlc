@@ -13,14 +13,14 @@ tests first.
    stage's Stop if says.
 3. Use only tools already installed. A package you would have to fetch is a new dependency, which a person approves,
    as the stage's Stop if says.
-4. Keep to a time-box, as discovery does (`aidlc-discover` step 1); when it runs out, report what is known.
+4. Keep to the time-box the person sets; when it runs out, report what is known, as the stage's Stop if says.
 5. Build the smallest thing that answers the question: a script for a behaviour or a timing; for a new screen with no
    example in the product, two or three variants behind one switch, each with a screenshot.
 6. Observe the thing you are deciding: print the output, log the timing, take the screenshot. The observation is the
    evidence, never an opinion.
 7. Write the result in the design note or the evidence pack as a FACT, with the observation and the scratch folder's
    path. A spike's code never moves into the build, as the stage's Stop if says. A choice between screen variants is
-   the product owner's, as the stage's Gate says for a wireframe.
+   the product owner's, as `aidlc-design` step 2 says for a wireframe.
 
 **Its proof.** The question, the observation, and the UNKNOWN it turned into a FACT; nothing merged.
 

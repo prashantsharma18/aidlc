@@ -14,8 +14,8 @@ nothing.
 3. Write the finding: what it is, how it works, where things live, and the gotchas; for a choice between options, a
    recommendation with a table of what each option gets and costs.
 4. When the question's premise is wrong, say so, with the evidence.
-5. When the answer turns into a code change, hand it back: that is a new work item, which the person raises at
-   `aidlc-start`.
+5. When the answer calls for a code change, say so in the finding: inside a story its next stages make it, after this
+   stage's Gate; outside one, the person raises a work item at `aidlc-start`.
 
 **Its proof.** The written finding, each claim with its evidence; nothing merged.
 

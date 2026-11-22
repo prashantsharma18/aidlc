@@ -7,8 +7,8 @@ help" is a guess, and it does not ship: the smallest change the evidence support
 
 **Typical route.** D1, D2, and an incident's follow-up (it enters at `aidlc-start`).
 
-**USE SKILLS** (`aidlc-plan` names them in the bundle): none beyond what `aidlc-build` loads; its step 8 loads
-`debugging-failures` for a failing check.
+**USE SKILLS** (`aidlc-plan` names them in the bundle): `debugging-failures`, for steps 1 to 3 (brief mode names it for a
+fix brief too).
 
 **Steps.**
 1. Reproduce it yourself, on the surface where it fails, locally or in a test environment: a person acts on
@@ -19,8 +19,10 @@ help" is a guess, and it does not ship: the smallest change the evidence support
    out the most causes, write what it showed, and cross out the causes it ruled out. Never guess.
 3. Confirm the mechanism with a run before you write the fix, and name that run.
 4. The reproduction comes first: the failing test, or, when a test is impractical, the command or live check that
-   shows the failure (ADR 0029). Its commit comes before the fix's in git history.
-5. Make the smallest fix the evidence supports. Before another attempt, back the last one out in full, so the diff
+   shows the failure (ADR 0029). Record its failing run in the progress note before you write the fix; the test commits
+   with the fix, because every commit passes (`committing-changes`).
+5. Make the smallest fix the evidence supports, and fix every instance of the same pattern inside MAY CHANGE; one
+   outside is a stop, as `aidlc-build`'s Stop if says. Before another attempt, back the last one out in full, so the diff
    holds only what the evidence supports. The limit on attempts is `aidlc-build`'s, as its Stop if says.
 6. Run the reproduction again, on the same surface: it passes now. A unit test shows how a branch behaves, not that
    the bug is gone; an inconclusive result is not a pass.

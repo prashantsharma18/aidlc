@@ -180,7 +180,7 @@ class DesignTest(Layout, unittest.TestCase):
     references; every approval stays in SKILL.md."""
 
     NAME, REFS = "aidlc-design", ("amendment.md", "route-g.md", "several-repositories.md")
-    LIMIT = 2600  # the design's target is 2,000; Plan 26 reached 2,324; Plan 27 2,480; Plan 27b reaches 2,541 (27b item W1)
+    LIMIT = 2600  # the design's target is 2,000; Plan 26 reached 2,324; Plan 27 2,480; Plan 27b reaches 2,555 (27b item W1)
 
     def test_the_approvals_and_the_load_stay_in_skill_md(self):
         raw = skill_md(self.NAME)
@@ -292,7 +292,7 @@ class BuildTest(Layout, unittest.TestCase):
     pause, route S's exception and every stop stay in SKILL.md."""
 
     NAME, REFS = "aidlc-build", ("recipe-commit.md", "route-g.md", "stacked-slices.md")
-    LIMIT = 4400  # the design's target is 2,500; Plan 26 reached 3,880; Plan 27 4,271; Plan 27b reaches 4,346 (27b item W2)
+    LIMIT = 4400  # the design's target is 2,500; Plan 26 reached 3,880; Plan 27 4,271; Plan 27b reaches 4,382 (27b item W2)
 
     def test_the_recipe_pause_and_its_exception_stay_in_step_5(self):
         step5 = flat(skill_md(self.NAME)).split("5. **When the bundle has a RECIPE", 1)[1].split(" 6. ", 1)[0]
