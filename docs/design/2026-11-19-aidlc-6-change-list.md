@@ -321,3 +321,10 @@ is `unslop`), `in-your-own-words`, `how` and `why`. The other skills reach `unsl
 in `story-run` and `worker.md`, a last-pass line in the skills that write prose, and a load of `technical-writing` at
 each stage step that writes a document a person decides from. No gate changes. `bro`, `teach` and `ketchup`, and
 pstack's tool and principle skills, wait for a later review.
+
+## 14. After Plan 30 (2026-11-22)
+Plan 30 (`docs/plans/2026-11-22-plan-30-principles.md`, design `docs/design/2026-11-22-principles.md`) adds five of
+pstack's 24 principles, in aidlc 8.3.0: `attack-the-premise`, `fix-root-causes`, `test-behavior-not-implementation`,
+`explain-the-number` and `exhaust-the-design-space`, word for word with an "In aidlc:" note where a gate wins. Each is
+cited at the two steps where it applies, and a decision-log row may name the principle behind a call. The other 19
+repeat a gate, only name a rule aidlc has, or clash with one (`docs/research/2026-11-22-pstack-review/5-principles-mapping.md`).

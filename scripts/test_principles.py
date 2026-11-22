@@ -1,4 +1,5 @@
 """Plan 30: five of pstack's principle skills, cited where they apply."""
+import json
 import unittest
 from pathlib import Path
 
@@ -124,6 +125,21 @@ class CitationsTest(unittest.TestCase):
         self.assertIn("- A row whose why names a principle skill (its file is `skills/<name>/SKILL.md`): its trigger "
                       "happened in that call; one that did not is a low finding. A row with no principle is not a finding, and a principle never turns a stop "
                       "into a row.", flat(read("agents/reviewer-compliance.md")))
+
+
+class DocsTest(unittest.TestCase):
+    """Task 3: the change list after Plan 30; the research order; aidlc 8.3.0."""
+
+    def test_the_change_list_the_order_and_the_version(self):
+        changes = flat(read("docs/design/2026-11-19-aidlc-6-change-list.md").split(
+            "## 14. After Plan 30 (2026-11-22)", 1)[1])
+        for phrase in ("`docs/plans/2026-11-22-plan-30-principles.md`", "aidlc 8.3.0", "`attack-the-premise`",
+                       "`exhaust-the-design-space`", "five of pstack's 24 principles"):
+            self.assertIn(phrase, changes, phrase)
+        order = read("docs/research/2026-11-22-pstack-review/README.md").split("## The order", 1)[1]
+        self.assertIn("| 30 | Principles |", order)
+        self.assertIn("| 31 | Diagnose and merge safely |", order)
+        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.3.0")
 
 
 if __name__ == "__main__":

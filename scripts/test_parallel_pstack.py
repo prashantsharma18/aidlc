@@ -361,7 +361,7 @@ class DocsTest(unittest.TestCase):
         for phrase in ("`docs/plans/2026-11-22-plan-28-parallel-like-pstack.md`", "ADR 0030", "aidlc 8.1.0",
                        "`lane-run`", "the throughput checkpoint", "the watch pass", "never merges"):
             self.assertIn(phrase, flat(section12), phrase)
-        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.2.0")
+        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.3.0")
 
 
 CASES = {

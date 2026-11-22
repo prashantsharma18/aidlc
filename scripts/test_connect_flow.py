@@ -838,7 +838,7 @@ class DocsTest(unittest.TestCase):
         for phrase in ("`docs/plans/2026-11-22-plan-27-connect-the-flow.md`", "aidlc 8.0.0", "ADR 0028", "ADR 0029"):
             self.assertIn(phrase, table, phrase)
         self.assertNotIn("Needs the owner's decision", changes)
-        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.2.0")
+        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.3.0")
 
 
 class FinalFixWaveTest(unittest.TestCase):

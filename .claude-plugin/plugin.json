@@ -1,6 +1,6 @@
 {
   "name": "aidlc",
-  "version": "8.2.0",
+  "version": "8.3.0",
   "description": "Stage skills, engineering-practice skills and agent roles for AI-assisted software delivery. Instructions only: no scripts and no CI workflows; needs git and a pull request, and no other code-host feature. Written and tested for Claude Code; the skills use the open Agent Skills format.",
   "author": {"name": "Prashant Sharma"},
   "license": "MIT"

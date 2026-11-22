@@ -330,7 +330,7 @@ class DocsTest(unittest.TestCase):
         for phrase in ("`docs/plans/2026-11-22-plan-29-write-plainly.md`", "aidlc 8.2.0", "`unslop`",
                        "`technical-writing`", "`in-your-own-words`", "`how`", "`why`", "keeping pstack's names"):
             self.assertIn(phrase, changes, phrase)
-        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.2.0")
+        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.3.0")
 
 
 class RecordTest(unittest.TestCase):
