@@ -1,6 +1,6 @@
 # 0030 · The agent drafts the queue, and a lane runs to the next decision
 
-Status: Proposed (2026-11-22). · Decider: Prashant Sharma (framework owner)
+Status: Proposed (2026-11-22). Accepted (2026-11-22; confirmed by the framework owner in the session). · Decider: Prashant Sharma (framework owner)
 Design: `docs/design/2026-11-22-parallel-work-like-pstack.md` · Plan: `docs/plans/2026-11-22-plan-28-parallel-like-pstack.md` ·
 Amends: ADR 0025 (a person writes `QUEUE.md`; a workflow skill writes no document a person approves; lane mode), ADR 0028 (the AI's push leave also covers the coordinator's queue branch)
 
@@ -46,6 +46,9 @@ carries it to merge-ready, and runs a root layer that judges every agent by its 
   pstack's `worker.md`. A stage run outside a lane is unchanged: the agent role files already hold the rules a
   reviewer needs.
 
+- A build of a fix row may start red only in the check the row names (the owner's decision on the final review,
+  2026-11-22). `aidlc-build` step 1 still stops on any other red and on skipped tests, so the red-run loop of ADR 0028
+  reaches the fix instead of stopping before it.
 ## Consequences
 - A person writes no slice rows, and starts no stage between two decisions inside a lane; a hand-started lane is one
   message.

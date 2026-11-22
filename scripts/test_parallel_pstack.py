@@ -597,5 +597,25 @@ class RecordTest(unittest.TestCase):
             self.assertIn(phrase, text)
 
 
+class OwnerDecisionTest(unittest.TestCase):
+    """The owner's decisions on the record (2026-11-22): I3 taken; ADR 0030 accepted."""
+
+    FIX = "Step 1 may be red only in the check the row names."
+
+    def test_a_fix_row_may_start_red_in_its_own_check(self):
+        steps = flat(skill_md("aidlc-build"))
+        paragraph = steps.split("**A fix.**", 1)[1].split("Where this runs:", 1)[0]
+        self.assertIn("so verify and review run again. " + self.FIX, paragraph)
+        self.assertIn("If it is red or skips tests, stop: the environment is fixed first.", steps)
+        self.assertIn("A build of a fix row may start red only in the check the row names (the owner's decision on "
+                      "the final review, 2026-11-22).", flat(read(ADR)))
+
+    def test_adr_0030_is_accepted(self):
+        self.assertIn("Status: Proposed (2026-11-22). Accepted (2026-11-22; confirmed by the framework owner in the "
+                      "session).", read(ADR))
+        record = flat(read("docs/verification/2026-11-22-plan-28.md"))
+        self.assertIn("The owner took I3 and accepted ADR 0030 in the session (2026-11-22).", record)
+
+
 if __name__ == "__main__":
     unittest.main()

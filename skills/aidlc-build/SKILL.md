@@ -28,7 +28,8 @@ One slice at a time, on the story's branch, after the slice's task bundle is app
 
 **A fix.** When the build row reads `to do: fix <what>` (a red CI run the change caused, or a review finding the
 engineer accepted), build the fix as new steps of the same slice, from the same bundle and inside its MAY CHANGE, with
-step 8 for a failure; the reviewers' verdicts are void, so verify and review run again.
+step 8 for a failure; the reviewers' verdicts are void, so verify and review run again. Step 1 may be red only in
+the check the row names.
 
 ## Inputs
 Where this runs: inside the repository, as the "Runs in" cell of this stage's row in its index `plans/<KEY>/README.md` says, on the branch the index's BRANCH lines name for that row. For a part of a story across several repositories, also read your part's row in `../stories/<KEY>/coordination-plan.md`, from the repository's root (read-only; from a lane's worktree, the workspace root is the folder that holds `WORKSPACE.md`, as `parallel-lanes` says); its pull request title is `[<KEY>] part <n> of <m>: <what>`. Started elsewhere: name the right folder, and stop.
