@@ -21,14 +21,15 @@ File paths in the reports point at the reviewers' scratch copy of pstack; the sa
 | Existing tests and word caps | Each plan lists every existing test it must change and every word cap it must raise, for the owner's approval |
 | These reports | Kept here, so the plans can cite them |
 
-## The proposed order
+## The order (updated 2026-11-22, with the owner's design decisions for Plan 27)
 | Plan | Theme | Content |
 |---|---|---|
-| 27 | Connect the flow | `story-run` (D1): one start after each decision; one route table; the story branch, the push of each document pull request, where an approval is recorded, the `merged` row, the way back to build after a red run or a finding, and a hand-off message at the end of every stage; the cuts that free the words (the placement paragraph, duplicate sentences, verify's PR description, the harness headers, the unused progress-note section) |
-| 28 | Write plainly | `writing-plainly` (from `bro`, `technical-writing`, `unslop`, `ketchup`, `in-your-own-words`) at every moment a person reads or decides; `explaining-code` (from `how`, `why`, `teach`) |
-| 29 | Diagnose and merge safely | The drift check before Merge; competing causes; back out a failed attempt; the shared premise after two failed fixes; block only for a problem you can show; fix every instance; dismissals cite their disproof; blast radius; review sends repeated findings to feedback |
-| 30 | Decide by evidence | `driving-the-app` (item B3); spikes; DONE WHEN as commands with a live and a performance check; explain the number |
-| 31 | The external flow and clean-up | `status.md`'s writer; "users see the change" recorded at Ready; release outputs reach operate; no extra Tier 1 approval for the readiness record; one "who decides" table; the remaining removals; the 12 principles; `worker.md` and a shorter `parallel-lanes` lane |
+| 27 | Connect the flow | `story-run` (D1), the AI's push of its own branch (ADR 0028), eight playbooks, tests first pstack's way (ADR 0029), every stage hand-off defined, one route table, and the cuts that free the words. Design: `docs/design/2026-11-22-connect-the-flow.md` |
+| 28 | Parallel work like pstack | The agent schedules from the plan's dependency graph and the throughput checkpoint; coupled slices go to one lane; a watch pass finds stuck lanes; lanes watch CI and fix a red run; lanes run `story-run`; the agent drafts the queue and a person confirms it |
+| 29 | Write plainly | `writing-plainly` (from `bro`, `technical-writing`, `unslop`, `ketchup`, `in-your-own-words`); `explaining-code` (from `how`, `why`, `teach`) |
+| 30 | Diagnose and merge safely | The drift check before Merge; block only for a problem you can show; dismissals cite their disproof; blast radius; review sends repeated findings to feedback |
+| 31 | Decide by evidence | `driving-the-app` (item B3); DONE WHEN as commands with a live and a performance check |
+| 32 | The external flow and clean-up | `status.md`'s writer; "users see the change" recorded at Ready; release outputs reach operate; no extra Tier 1 approval for the readiness record; one "who decides" table; the remaining removals; the 12 principles; `worker.md` |
 
 Every plan keeps aidlc's fixed decisions: people decide where the tiers file's decisions table says, the AI never
 approves or merges, the product owner owns intent and Ready, aidlc ships instructions only and stays host-neutral.
