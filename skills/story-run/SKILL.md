@@ -28,7 +28,9 @@ one, goes on where this one stopped (ADR 0028). It approves nothing: every stage
 - The stage skills: the `aidlc-*` folders beside this skill's folder. Read a stage's `SKILL.md` there, by its path. A
   `references/<file>.md` path a stage names is in the folder of that `SKILL.md`: read it from there, never from the
   repository.
-- The team's `AGENTS.md`: whether the AI may push its own feature branch (ADR 0028). Without a push credential, the
+- The team's `AGENTS.md`: whether the AI may push its own feature branch (ADR 0028).
+- The playbooks, in this skill's `references/` folder, one per kind of work (`playbook-<kind>.md`): the stages you run
+  read the one the bundle's PLAYBOOK line names, as their steps say. Without a push credential, the
   person pushes.
 
 ## Steps

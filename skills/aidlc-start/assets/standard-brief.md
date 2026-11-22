@@ -22,6 +22,7 @@ TIER        1 (<why: one repository; every limit of the class holds>)   (a highe
 RECIPE      <tool@version — the exact command — the files it may change> | none   (a recipe class only; on route S the code owner reads the recipe check at Merge, with no separate pause)
 MODE        <hands-on | delegate with checkpoints | delegate>   (Tier 1 allows every mode; the engineer chooses when confirming; a brief has no CHECKPOINT, so delegate with checkpoints runs as delegate)
 USE SKILLS  <plugin:skill, …> | none
+PLAYBOOK    <dependency-bump | refactoring>   (from the class: a dependency bump, or a recipe commit; another class names its own; its steps and its proof are in story-run's references/playbook-<kind>.md)
 MAY CHANGE  <glob>, <glob>   (paths and globs only: what the class allows, for example the dependency manifest and its lock file)
 MUST NOT    <paths and things that must not change, incl. existing assertions>
 DONE WHEN   the evidence the class needs is in the evidence file, and its STANDARD line shows each limit held; the full suite is green; the diff touches only MAY CHANGE paths (`plans/<KEY>/**` is exempt from this check)

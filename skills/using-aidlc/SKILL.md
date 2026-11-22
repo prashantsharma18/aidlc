@@ -94,7 +94,7 @@ Some practices load every time at a given stage step, without being chosen:
 
 ## How a slice gets its practices
 
-1. `aidlc-plan` chooses the practices each slice needs from the practice map and writes them into the bundle's USE SKILLS. The tech lead approves them with the plan.
+1. `aidlc-plan` chooses the practices each slice needs from the practice map and writes them into the bundle's USE SKILLS. The tech lead approves them with the plan. The bundle's PLAYBOOK line names the kind of work: its playbook, in `story-run`'s `references/`, says the steps and the proof that kind needs, and which practices USE SKILLS takes (ADR 0028).
 2. `aidlc-build` loads every USE SKILL before any edit, and each practice its steps command. A skill that cannot be loaded is a stop.
 3. If the build finds the slice needs a practice the bundle does not name, it loads it and records that as a deviation in the progress note, with a row in its decision log (ADR 0027).
 4. The compliance reviewer checks the progress note against the bundle and the build's commanded loads.

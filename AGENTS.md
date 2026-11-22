@@ -6,7 +6,7 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
 ## Map
 - `skills/` the `aidlc-*` stage skills, the engineering-practice skills, the workflow skills `parallel-lanes` and `story-run`, and the
   map `using-aidlc` (`skills/NOTICE` holds the third-party
-  licence for parts of the eight earlier practices); `agents/` the agent roles; `evals/` the behaviour evals.
+  licences for parts of the eight earlier practices and for the playbooks `story-run` adapts from pstack); `agents/` the agent roles; `evals/` the behaviour evals.
   The repository root is the plugin.
 - `starter/` files a team copies once into a repository or a workspace: a rules file, an ownership list and optional
   example settings; no scripts and no workflows (ADR 0024). `docs/archive/checks-v1.md` says where the removed
@@ -36,6 +36,10 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
   there. A rule is written once: a rule another file owns is a pointer to that file. A "Load the `<name>` skill"
   phrase stays in `SKILL.md`. `scripts/validate.py` checks that a reference holds no gate section and that `SKILL.md`
   names it.
+- A playbook (`skills/story-run/references/playbook-<kind>.md`, ADR 0028) says how one kind of work is done and
+  proved. It holds steps only, as a stage's reference does: no Gate, Stop if, Common excuses, Red flags or Rules
+  section, no decision, and no "Load the `<name>` skill" phrase; a stop it names points to the stage's Stop if.
+  `scripts/validate.py` checks that it holds no gate section.
 - Templates (`skills/aidlc-*/assets/`) are read rendered by the people who approve them: a placeholder outside a
   code block is written `{{…}}`, because GitHub drops `<word>` as an HTML tag; a block of FIELD lines
   sits in a ```text fence; and every document a person approves opens with a `## For the reviewer` section naming who

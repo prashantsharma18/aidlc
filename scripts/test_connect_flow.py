@@ -546,7 +546,7 @@ class HandoffTest(unittest.TestCase):
                           flat(read(rel)), rel)
 
 
-RUN_LIMIT = 2250  # a new limit for a new skill: 2,048 words at Task 7, 2,206 after the review fixes; Plan 27b adds about 30
+RUN_LIMIT = 2300  # a new limit for a new skill: 2,048 words at Task 7, 2,206 after the review fixes; Plan 27b reaches 2,274 (its Inputs line for the playbooks)
 LOAD = re.compile(r"\b[Ll]oad the `([a-z0-9-]+)` skill")
 
 
@@ -938,6 +938,172 @@ class RecordTest(unittest.TestCase):
 
     def test_the_record_has_no_open_slot(self):
         self.assertNotIn("{{", read(self.RECORD))
+
+
+KINDS = ("feature", "bug-fix", "performance", "refactoring", "visual-change", "dependency-bump", "investigation",
+         "spike")
+BUNDLE_KINDS = KINDS[:6]
+PLAYBOOK_OPENING = re.compile(r"Read from `aidlc-[a-z]+`[^\n;]* when [^\n;]+; the stage's Gate, Stop if and Rules still "
+                              r"apply, and this playbook lifts none of them\.")
+STOP_WORD = re.compile(r"\b[Ss]tops?\b")
+
+
+def playbook(kind: str) -> str:
+    return read(f"skills/story-run/references/playbook-{kind}.md")
+
+
+def outside_code(text: str) -> str:
+    """The text a renderer treats as Markdown: fenced blocks, HTML comments and code spans removed."""
+    text = re.sub(r"(?ms)^```[a-z]*\n.*?^```$", "", text)
+    text = re.sub(r"(?s)<!--.*?-->", "", text)
+    return re.sub(r"`[^`\n]*`", "", text)
+
+
+def stop_sentences(text: str) -> list:
+    """The sentences outside code that tell the AI to stop (as `scripts/test_references.py` finds them)."""
+    parts = re.split(r"(?<=[.!?])\s+|\n\s*\n|\n(?=\s*(?:[-*]|\d+\.|\|)\s)", outside_code(text))
+    return [re.sub(r"^(?:[-*]|\d+\.|\|)\s+", "", flat(p)) for p in parts if STOP_WORD.search(p)]
+
+
+def sentences(text: str) -> list:
+    """Every sentence of a text outside code, whitespace-collapsed."""
+    parts = re.split(r"(?<=[.!?])\s+|\n\s*\n|\n(?=\s*(?:[-*]|\d+\.|\|)\s)", outside_code(text))
+    return [re.sub(r"^(?:[-*]|\d+\.|\|)\s+", "", flat(p)) for p in parts if p.strip()]
+
+
+BUILD = ("aidlc-build",)
+SPIKE_READERS = ("aidlc-design", "aidlc-discover")
+MAY_CHANGE = "- A change needs a file outside MAY CHANGE (a caller of a shared helper, a use of a renamed name): stop and report."
+# Each sentence of a playbook that points to a Stop if: (a phrase of the sentence, the stages it names, the stop that
+# must be in each of those stages' Stop if).
+POINTERS = {
+    "feature": (("A caller outside MAY CHANGE is a stop", BUILD, MAY_CHANGE),),
+    "bug-fix": (("The limit on attempts", BUILD, "The same failure has had three attempts"),),
+    "performance": (("a change to the measurement during the work", BUILD,
+                     "and the harness that compares or measures it, is an assertion too"),),
+    "refactoring": (("A caller outside MAY CHANGE is a stop", BUILD, MAY_CHANGE),
+                    ("Stop if says for a contract change", BUILD, "the fix needs a contract change"),
+                    ("no assertion changed", BUILD, "A test can only pass by changing an existing assertion")),
+    "visual-change": (("the harness that compares it, are an assertion", BUILD,
+                       "and the harness that compares or measures it, is an assertion too"),
+                      ("that passes a check by lowering the bar", BUILD,
+                       "A check can pass only by lowering the Quality bar"),
+                      ("proposing one is a new dependency", BUILD, "A new dependency seems necessary.")),
+    "dependency-bump": (("A package it adds is a new dependency", BUILD,
+                         "a package added to any lock file counts as a new dependency"),
+                        ("A major version passes the class's limits", BUILD, "pass one of its LIMITS (a major version"),
+                        ("A major version passes the class's limits", BUILD, MAY_CHANGE)),
+    "spike": (("never commit it to the story's branch", SPIKE_READERS,
+               "- A spike's code would be committed to the story's branch or moved into the build: a spike is thrown "
+               "away."),
+              ("A package you would have to fetch", SPIKE_READERS,
+               "- A spike or a check needs a package that is not installed: that is a new dependency; ask first."),
+              ("A spike's code never moves into the build", SPIKE_READERS,
+               "- A spike's code would be committed to the story's branch or moved into the build: a spike is thrown "
+               "away.")),
+}
+
+
+class PlaybookTest(unittest.TestCase):
+    """Task 8: eight playbooks hold steps and proof only; the bundle names one; build and verify read it."""
+
+    def test_the_eight_playbooks_exist_and_open_with_who_reads_them(self):
+        names = sorted(p.name for p in (ROOT / "skills/story-run/references").glob("*.md"))
+        self.assertEqual(names, sorted(f"playbook-{kind}.md" for kind in KINDS))
+        for kind in KINDS:
+            lines = playbook(kind).split("\n")
+            self.assertEqual(lines[0], "# Playbook: " + kind.replace("-", " "), kind)
+            self.assertEqual(lines[1], "", kind)
+            self.assertIsNotNone(PLAYBOOK_OPENING.fullmatch(lines[2]), (kind, lines[2]))
+            for label in ("**What you own.**", "**Typical route.**", "**Steps.**", "**Its proof.**", "**Hand back.**"):
+                self.assertIn(label, playbook(kind), (kind, label))
+
+    def test_a_playbook_holds_no_gate_and_points_every_stop_to_stop_if(self):
+        for kind in KINDS:
+            text = playbook(kind)
+            self.assertNotRegex(text, r"(?m)^## ", kind)
+            for line in (DECIDE, APPROVE, "In a lane, release at your gate"):
+                self.assertNotIn(line, flat(text), (kind, line))
+            self.assertEqual(LOAD.findall(flat(text)), [], kind)
+            for sentence in stop_sentences(text):
+                self.assertIn("Stop if", sentence, (kind, sentence))
+
+    def test_every_stop_a_playbook_points_to_is_in_that_stages_stop_if(self):
+        for kind in KINDS:
+            pointers = [s for s in sentences(playbook(kind)) if "Stop if" in s and not s.startswith("Read from")]
+            for sentence in pointers:
+                found = [entry for entry in POINTERS.get(kind, ()) if entry[0] in sentence]
+                self.assertTrue(found, (kind, "a pointer POINTERS does not list", sentence))
+                for _, stages, stop in found:
+                    for name in stages:
+                        self.assertIn(stop, flat(section(skill_md(name), "## Stop if")), (kind, name, stop))
+            self.assertEqual(len(pointers), len({entry[0] for entry in POINTERS.get(kind, ())}), kind)
+
+    def test_the_bundle_and_the_briefs_name_a_playbook(self):
+        bundle = read("skills/aidlc-plan/assets/task-bundle.md").split("```text\n", 1)[1].split("```", 1)[0]
+        self.assertIn("PLAYBOOK    <" + " | ".join(BUNDLE_KINDS) + "> | none   (the kind of work; its steps and its proof "
+                      "are in story-run's references/playbook-<kind>.md; none on slice 0 of route G)\n", bundle)
+        self.assertLess(bundle.index("USE SKILLS"), bundle.index("PLAYBOOK"))
+        for rel, line in (("skills/aidlc-plan/assets/fix-brief.md", "PLAYBOOK    bug-fix   "),
+                          ("skills/aidlc-plan/assets/feature-brief.md", "PLAYBOOK    <feature | visual-change>   "),
+                          ("skills/aidlc-start/assets/standard-brief.md", "PLAYBOOK    <dependency-bump | refactoring>   ")):
+            self.assertIn("\n" + line, read(rel).split("```text\n", 1)[1].split("```", 1)[0], rel)
+        steps = flat(section(skill_md("aidlc-plan"), "## Steps"))
+        self.assertIn("- fill PLAYBOOK with the slice's kind of work, chosen from the route and the work item: `feature`, "
+                      "`bug-fix`, `performance`, `refactoring`, `visual-change` or `dependency-bump` (`none` on slice 0 "
+                      "of route G). Its playbook, "
+                      "`../story-run/references/playbook-<kind>.md` from this skill's folder, names the practices USE "
+                      "SKILLS takes;", steps)
+        self.assertIn("and its PLAYBOOK, from the class", flat(read("skills/aidlc-start/references/route-s.md")))
+
+    def test_build_verify_discover_and_design_read_it(self):
+        build = flat(section(skill_md("aidlc-build"), "## Steps"))
+        self.assertIn("4. Read the playbook the bundle's PLAYBOOK line names, `../story-run/references/playbook-<kind>.md` "
+                      "from this skill's folder, and follow its steps inside this skill's; a bundle with no PLAYBOOK line "
+                      "has none. Propose numbered steps, tests first,", build)
+        verify = flat(section(skill_md("aidlc-verify"), "## Steps"))
+        self.assertIn("Add a row for each item of the proof the bundle's playbook names "
+                      "(`../story-run/references/playbook-<kind>.md` from this skill's folder).", verify)
+        discover = flat(section(skill_md("aidlc-discover"), "## Steps"))
+        self.assertIn("3. Trace as `../story-run/references/playbook-investigation.md` (from this skill's folder) says; "
+                      "an UNKNOWN that a short run can settle follows `../story-run/references/playbook-spike.md` "
+                      "there. Trace outward in five directions", discover)
+        design = flat(section(skill_md("aidlc-design"), "## Steps"))
+        self.assertIn("An UNKNOWN that a short run can settle follows `../story-run/references/playbook-spike.md` from "
+                      "this skill's folder; cite what it showed as FACT.", design)
+        self.assertIn("- The playbooks, in this skill's `references/` folder, one per kind of work", flat(section(
+            skill_md("story-run"), "## Inputs")))
+        self.assertIn("The bundle's PLAYBOOK line names the kind of work: its playbook, in `story-run`'s `references/`, "
+                      "says the steps and the proof that kind needs, and which practices USE SKILLS takes (ADR 0028).",
+                      flat(skill_md("using-aidlc")))
+
+    def test_the_limits_a_playbook_names_are_in_the_stages_stop_if(self):
+        build = flat(section(skill_md("aidlc-build"), "## Stop if"))
+        self.assertIn("Never change it: the criterion's owner decides. A baseline a test compares against (a screenshot, "
+                      "a recorded output), and the harness that compares or measures it, is an assertion too.", build)
+        self.assertIn(MAY_CHANGE, build)
+        for name in SPIKE_READERS:
+            stops = flat(section(skill_md(name), "## Stop if"))
+            self.assertIn("- A spike's code would be committed to the story's branch or moved into the build: a spike is "
+                          "thrown away.", stops, name)
+            self.assertIn("- A spike or a check needs a package that is not installed: that is a new dependency; ask "
+                          "first.", stops, name)
+
+    def test_the_change_list_names_the_playbooks(self):
+        table = read("docs/design/2026-11-19-aidlc-6-change-list.md").split("## 11. After Plan 27 (2026-11-22)", 1)[1]
+        self.assertRegex(table, r"(?m)^\| Playbooks \| Covered, as instructions \(Plan 27b\) \|")
+        self.assertIn("raised again by Plan 27b's W1 and W2: `aidlc-design` 2600, `aidlc-build` 4400 |", table)
+
+    def test_agents_md_states_the_playbook_rule(self):
+        agents = flat(read("AGENTS.md"))
+        self.assertIn("- A playbook (`skills/story-run/references/playbook-<kind>.md`, ADR 0028) says how one kind of "
+                      "work is done and proved. It holds steps only, as a stage's reference does: no Gate, Stop if, "
+                      "Common excuses, Red flags or Rules section, no decision, and no \"Load the `<name>` skill\" "
+                      "phrase; a stop it names points to the stage's Stop if. `scripts/validate.py` checks that it holds "
+                      "no gate section.", agents)
+        self.assertIn("licences for parts of the eight earlier practices and for the playbooks `story-run` adapts from "
+                      "pstack", agents)
+        self.assertIn("`skills/story-run/references/`   eight playbooks, one per kind of work", read("docs/codebase-map.md"))
 
 
 if __name__ == "__main__":

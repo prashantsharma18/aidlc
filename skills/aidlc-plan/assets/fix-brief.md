@@ -20,6 +20,7 @@ DESIGN      none needed: no change of shape, boundary or contract   (any yes: st
 LIKELY AREA <file:line, labelled FACT or INFERENCE>
 MODE        <hands-on | delegate with checkpoints | delegate>   (Tier 1 allows every mode; the engineer chooses when confirming; a brief has no CHECKPOINT, so delegate with checkpoints runs as delegate)
 USE SKILLS  <plugin:skill, …> | none
+PLAYBOOK    bug-fix   (its steps and its proof are in story-run's references/playbook-bug-fix.md)
 MAY CHANGE  <glob>, <glob>   (paths and globs only)
 MUST NOT    <paths and things that must not change, incl. existing assertions>
 DONE WHEN   a test named after {{KEY}} reproduces the defect, fails before the fix and passes after; the full suite is green; the diff touches only MAY CHANGE paths (`plans/<KEY>/**` is exempt from this check)

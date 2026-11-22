@@ -21,6 +21,7 @@ DATA        no change to stored data or a schema   (a change: stop, it is route 
 LIKELY AREA <file:line, labelled FACT or INFERENCE>
 MODE        <hands-on | delegate with checkpoints | delegate>   (Tier 1 allows every mode; the engineer chooses when confirming; a brief has no CHECKPOINT, so delegate with checkpoints runs as delegate)
 USE SKILLS  <plugin:skill, …> | none
+PLAYBOOK    <feature | visual-change>   (its steps and its proof are in story-run's references/playbook-<kind>.md)
 MAY CHANGE  <glob>, <glob>   (paths and globs only)
 MUST NOT    <paths and things that must not change, incl. existing assertions>
 DONE WHEN   one test per criterion, named with its ID, fails before the change and passes after; the full suite is green; the diff touches only MAY CHANGE paths (`plans/<KEY>/**` is exempt from this check)

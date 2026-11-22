@@ -312,5 +312,34 @@ class StageReferencesTest(unittest.TestCase):
                          [])
 
 
+class PlaybooksTest(unittest.TestCase):
+    """Plan 27: a playbook in a skill's references/ holds steps only; like a stage's reference, never a gate."""
+
+    WORKFLOW = PRACTICE_BODY.replace("## Checks\nx\n", "").replace("## Steps", "## Inputs\nx\n## Steps")
+    PLAY = ("# Playbook: feature\n\nRead from `aidlc-build` when the bundle names `feature`; the stage's Gate, Stop if "
+            "and Rules still apply, and this playbook lifts none of them.\n\n**Steps.**\n1. x\n")
+
+    def check(self, refs):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package(root, {"story-run": practice("story-run", body=self.WORKFLOW, kind="workflow")})
+            folder = root / "skills" / "story-run" / "references"
+            folder.mkdir()
+            for file_name, text in refs.items():
+                (folder / file_name).write_text(text, encoding="utf-8")
+            return validate.validate(root)
+
+    def test_a_playbook_with_steps_only_has_no_problems(self):
+        self.assertEqual(self.check({"playbook-feature.md": self.PLAY}), [])
+
+    def test_a_playbook_never_holds_a_gate_section(self):
+        for heading in ("## Gate", "## Stop if", "## Common excuses", "## Red flags", "## Rules"):
+            problems = self.check({"playbook-feature.md": self.PLAY + f"\n{heading}\nx\n"})
+            self.assertTrue(any("playbook-feature.md" in p and heading in p for p in problems), (heading, problems))
+
+    def test_a_file_that_is_not_a_playbook_is_not_checked_as_one(self):
+        self.assertEqual(self.check({"notes.md": self.PLAY + "\n## Rules\nx\n"}), [])
+
+
 if __name__ == "__main__":
     unittest.main()

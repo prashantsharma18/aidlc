@@ -56,6 +56,8 @@ TEXT_SUFFIXES = {".md", ".py", ".sh", ".txt", ".json", ".yml", ".yaml"}
 # A stage skill keeps every gate in SKILL.md; its references/ hold only the steps of one case, and SKILL.md names each
 # one with the condition to read it (docs/design/2026-11-21-shorter-stage-skills.md).
 GATE_SECTIONS = ("## Gate", "## Stop if", "## Common excuses", "## Red flags", "## Rules")
+# A playbook says how one kind of work is done and proved (ADR 0028). Like a stage's reference, it never holds a gate.
+PLAYBOOK_FILES = "playbook-*.md"
 
 
 def front_matter(text: str) -> dict[str, str] | None:
@@ -107,6 +109,16 @@ def check_references(folder: Path, folder_rel: str, text: str) -> list[str]:
     return problems
 
 
+def check_playbooks(folder: Path, folder_rel: str) -> list[str]:
+    """A skill's playbooks (`references/playbook-*.md`) hold no gate section."""
+    problems = []
+    for ref in sorted((folder / "references").glob(PLAYBOOK_FILES)):
+        body = ref.read_text(encoding="utf-8")
+        problems += [f"{folder_rel}/references/{ref.name}: holds '{h}'; a playbook never holds a gate, which stays in "
+                     f"the stage's SKILL.md" for h in GATE_SECTIONS if re.search(rf"(?m)^{re.escape(h)}[ \t]*$", body)]
+    return problems
+
+
 def check_skill(path: Path, root: Path) -> list[str]:
     rel = path.relative_to(root).as_posix()
     folder_rel = path.parent.relative_to(root).as_posix()
@@ -138,6 +150,7 @@ def check_skill(path: Path, root: Path) -> list[str]:
     elif KIND_PRACTICE.search(head) and folder not in EARLIER_PRACTICES:
         problems += check_sections(rel, text, PRACTICE_SECTIONS, "the Rules")
     problems += portability(rel, text)
+    problems += check_playbooks(path.parent, folder_rel)
     for sub in SKILL_DIRS:
         for extra in sorted((path.parent / sub).glob("*")):
             if extra.is_file() and extra.suffix in TEXT_SUFFIXES:
