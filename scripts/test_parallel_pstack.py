@@ -586,5 +586,16 @@ class FinalReviewTest(unittest.TestCase):
                       "table);", step6)
 
 
+class RecordTest(unittest.TestCase):
+    RECORD = "docs/verification/2026-11-22-plan-28.md"
+
+    def test_the_record_has_its_headings_and_names_what_it_records(self):
+        text = read(self.RECORD)
+        for heading in ("## What changed", "## Checks", "## Rulings", "## For the owner"):
+            self.assertIn(heading, text)
+        for phrase in ("ADR 0030", "aidlc 8.1.0", "`lane-run`"):
+            self.assertIn(phrase, text)
+
+
 if __name__ == "__main__":
     unittest.main()
