@@ -10,7 +10,7 @@ metadata:
 
 It also applies to product design decisions where user experience depends on feel, not logic.
 
-**In aidlc:** Each prototype is a spike (`playbook-spike.md`): outside the source, time-boxed, never committed. You recommend; the decider chooses.
+**In aidlc:** Each prototype is a spike (`../story-run/references/playbook-spike.md` from this skill's folder): outside the source, time-boxed, never committed. You recommend; the decider chooses.
 
 Adapted from pstack's `principle-exhaust-the-design-space` (`cursor/plugins`, folder `pstack`, MIT, Lauren Tan); its notice is in `skills/NOTICE`.
 

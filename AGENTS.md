@@ -7,7 +7,7 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
 - `skills/` the `aidlc-*` stage skills, the engineering-practice skills, the workflow skills `parallel-lanes`, `story-run` and `lane-run`, the five principle skills adapted from pstack (`attack-the-premise`,
   `fix-root-causes`, `test-behavior-not-implementation`, `explain-the-number`, `exhaust-the-design-space`), and the
   map `using-aidlc` (`skills/NOTICE` holds the third-party
-  licences for parts of the eight earlier practices and for the playbooks `story-run` adapts from pstack); `agents/` the agent roles; `evals/` the behaviour evals.
+  licences for parts of the eight earlier practices and for the playbooks `story-run` adapts from pstack, and for its five practices and five principles); `agents/` the agent roles; `evals/` the behaviour evals.
   The repository root is the plugin.
 - `starter/` files a team copies once into a repository or a workspace: a rules file, an ownership list and optional
   example settings; no scripts and no workflows (ADR 0024). `docs/archive/checks-v1.md` says where the removed

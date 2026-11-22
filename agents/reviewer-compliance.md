@@ -42,8 +42,12 @@ You check that the change does what was approved, and only that.
   how something should behave, a plan that looks wrong, a check that passes only by lowering the Quality bar, and a
   failure about architecture, scope or security. `owner` is a pointer, never an
   approval: a row with no approval is not a finding.
-- A row whose why names a principle skill (its file is `skills/<name>/SKILL.md`): its trigger happened in that call; one
-  that did not is a low finding. A row with no principle is not a finding, and a principle never turns a stop into a row.
+- A row whose why names a principle skill: its trigger happened in that call (`fix-root-causes`: a fault traced to
+  where it began; `test-behavior-not-implementation`: a test written, changed or kept; `explain-the-number`: a
+  measured number trusted, reported or acted on; `exhaust-the-design-space`: a decision with no precedent); one that
+  did not is a low finding. A row that names `attack-the-premise` records two fixes that failed the same way, which is
+  a stop: it is the high finding of a row that should have been a stop. A row with no principle is not a finding, and
+  a principle never turns a stop into a row.
 - For a part of a story across several repositories, the spec pin names a home commit (`spec v<n> @ <commit>`),
   `plans/<KEY>/criteria.md` names the same commit on its SOURCE line, and the criteria you check come from that
   copy. A copy under `contracts/<provider>/` changes only in a slice whose MAY CHANGE names it, together with its

@@ -143,6 +143,8 @@ def check_skill(path: Path, root: Path) -> list[str]:
             problems.append(f"{rel}: a principle's description must say when it applies ('Apply when ...')")
         if not re.search(r"(?m)^disable-model-invocation:[ \t]*true[ \t]*$", head):
             problems.append(f"{rel}: a principle is never auto-loaded: it needs 'disable-model-invocation: true'")
+        problems += [f"{rel}: holds '{h}'; a principle holds no gate section" for h in GATE_SECTIONS
+                     if re.search(rf"(?m)^{re.escape(h)}[ \t]*$", text)]
     elif "Use when" not in description:
         problems.append(f"{rel}: description must say when to use the skill ('Use when ...')")
     if KIND_WORKFLOW.search(head):

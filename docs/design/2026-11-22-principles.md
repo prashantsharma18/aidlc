@@ -40,7 +40,7 @@ repeat a gate, add only a name, or clash with one.
 
 ## Part 1: The five principle skills
 Each is a folder `skills/<name>/` with one `SKILL.md`, copied word for word from pstack, front matter
-included, then two lines added at the end:
+included, then three lines added at the end:
 
 ```text
 **In aidlc:** <the gate that wins, in one sentence>
@@ -59,7 +59,7 @@ never loads a principle by itself, and a person can still start one by name. Not
 | fix-root-causes | Every place inside MAY CHANGE; one outside it is a stop. The always-on signal is a proposal for its owner (`aidlc-feedback`). In production you propose only (`debugging-failures`). |
 | test-behavior-not-implementation | It shapes the tests you write. An existing test that fails the two edits is a finding for its owner, never rewritten or deleted (`writing-tests`). |
 | explain-the-number | aidlc has no `benchmark-checklist`: follow `tuning-performance`. A profiler that is not installed is a new dependency, which asks first. A measurement that turns out to measure something else is an assertion: changing it is `aidlc-build`'s Stop if. |
-| exhaust-the-design-space | Each prototype is a spike (`playbook-spike.md`): outside the source, time-boxed, never committed. You recommend; the decider chooses. |
+| exhaust-the-design-space | Each prototype is a spike (`../story-run/references/playbook-spike.md` from this skill's folder): outside the source, time-boxed, never committed. You recommend; the decider chooses. |
 
 ## Part 2: Where each is cited
 Each citation is one sentence appended to an existing step. It carries the check in its own words and names the
@@ -78,7 +78,7 @@ playbooks and an agent role, which have no limits.
 
 ## Part 3: The decision log names a principle that shaped a choice
 When one of these principles shaped a judgement call, the decision-log row's *why* names it, for example
-"… because the second fix failed the same way (`attack-the-premise`)". The row keeps its five fields
+"… because the duplicate comes from the query, not the list (`fix-root-causes`)". The row keeps its five fields
 (`scripts/test_route_and_log.py` pins them). The compliance reviewer checks that a named principle fits the row. A
 principle never turns a stop into a row.
 

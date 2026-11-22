@@ -342,7 +342,7 @@ class PlaybooksTest(unittest.TestCase):
 
 
 class PrincipleKindTest(unittest.TestCase):
-    """Plan 30: a principle skill says when it applies, is never auto-loaded, and keeps no sections."""
+    """Plan 30: a principle skill says when it applies, is never auto-loaded, and holds no gate section."""
 
     def check(self, description, flag=True):
         text = (f"---\nname: attack-the-premise\ndescription: \"{description}\"\n"
@@ -365,6 +365,17 @@ class PrincipleKindTest(unittest.TestCase):
     def test_it_is_never_auto_loaded(self):
         self.assertTrue(any("disable-model-invocation" in p for p in self.check("Apply when two fixes fail.",
                                                                                 flag=False)))
+
+    def test_it_holds_no_gate_section(self):
+        for heading in ("## Gate", "## Stop if", "## Common excuses", "## Red flags", "## Rules"):
+            text = (f"---\nname: attack-the-premise\ndescription: \"Apply when two fixes fail.\"\n"
+                    "disable-model-invocation: true\nmetadata:\n  kind: principle\n---\n\n# A\n\nA rule.\n\n"
+                    f"{heading}\nx\n\nYou draft; you never approve.\n")
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                package(root, {"attack-the-premise": text})
+                problems = [p for p in validate.validate(root) if "attack-the-premise" in p]
+            self.assertTrue(any(heading in p and "no gate section" in p for p in problems), (heading, problems))
 
 
 if __name__ == "__main__":

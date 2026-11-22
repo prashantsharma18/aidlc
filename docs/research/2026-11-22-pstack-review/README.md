@@ -23,7 +23,7 @@ File paths in the reports point at the reviewers' scratch copy of pstack; the sa
 | Existing tests and word caps | Each plan lists every existing test it must change and every word cap it must raise, for the owner's approval |
 | These reports | Kept here, so the plans can cite them |
 
-## The order (updated 2026-11-22, with the owner's design decisions for Plan 27)
+## The order (updated 2026-11-22: the owner's design decisions for Plan 27; Plan 30 added as row 30)
 | Plan | Theme | Content |
 |---|---|---|
 | 27 | Connect the flow | `story-run` (D1), the AI's push of its own branch (ADR 0028), eight playbooks, tests first pstack's way (ADR 0029), every stage hand-off defined, one route table, and the cuts that free the words. Design: `docs/design/2026-11-22-connect-the-flow.md` |

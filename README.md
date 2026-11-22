@@ -106,6 +106,8 @@ The skills (`skills/`):
 |---|---|---|
 | `aidlc-start`, `aidlc-onboard`, `aidlc-intent`, `aidlc-specify`, `aidlc-discover`, `aidlc-design`, `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`, `aidlc-operate`, `aidlc-feedback` | `designing-apis`, `reviewing-code`, `debugging-failures`, `migrating-safely`, `building-user-interfaces`, `adding-observability`, `tuning-performance`, `securing-code`, `writing-tests`, `committing-changes`, `building-ci-pipelines`, `simplifying-code`, `unslop`, `technical-writing`, `in-your-own-words`, `how`, `why`, `stress-testing-decisions`, `checking-official-docs`, `testing-in-browser`, `writing-documentation` | `lane-run`, `parallel-lanes`, `story-run` |
 
+Five principle skills from pstack, cited by name at the steps where they apply and never loaded: `attack-the-premise`, `fix-root-causes`, `test-behavior-not-implementation`, `explain-the-number`, `exhaust-the-design-space`.
+
 The map of the four kinds of skill (stage, practice, workflow and map), and the first skill to read: `using-aidlc`.
 
 Agents the skills call: `explorer`, `reviewer-bug`, `reviewer-security`, `reviewer-compliance`, `reviewer-tests`,

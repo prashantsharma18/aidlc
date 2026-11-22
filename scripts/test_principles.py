@@ -1,5 +1,6 @@
 """Plan 30: five of pstack's principle skills, cited where they apply."""
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -19,7 +20,7 @@ NOTES = {
     "explain-the-number": "**In aidlc:** aidlc has no `benchmark-checklist`: follow `tuning-performance`. A profiler "
                           "that is not installed is a new dependency, which asks first. A measurement that turns out "
                           "to measure something else is an assertion: changing it is `aidlc-build`'s Stop if.",
-    "exhaust-the-design-space": "**In aidlc:** Each prototype is a spike (`playbook-spike.md`): outside the source, "
+    "exhaust-the-design-space": "**In aidlc:** Each prototype is a spike (`../story-run/references/playbook-spike.md` from this skill's folder): outside the source, "
                                 "time-boxed, never committed. You recommend; the decider chooses.",
 }
 
@@ -79,11 +80,11 @@ CITATIONS = {
         "Fix the underlying issue, not the symptom. Trace the symptom to the first place the system went wrong and "
         "fix it there; a guard is a fix only when the state it handles is legitimate (`fix-root-causes`)."),
     "skills/story-run/references/playbook-bug-fix.md": (
-        "Fix it where the system first went wrong, and every same fault inside MAY CHANGE (`fix-root-causes`). When "
+        "Fix where the system first went wrong (`fix-root-causes`). When "
         "two attempts fail the same way, write down the premise they share, and the observation that would test it, "
         "for the report the attempt limit asks for (`attack-the-premise`).",),
     "skills/writing-tests/SKILL.md": (
-        "And the second edit: would it still pass if only the internals changed, with the same behaviour? It should "
+        "And a second edit: would it still pass if only the internals changed, with the same behaviour? It should "
         "(`test-behavior-not-implementation`).",),
     "agents/reviewer-tests.md": (
         "A test that would fail when only the internals change, with the same behaviour, is a finding too "
@@ -95,7 +96,8 @@ CITATIONS = {
     "skills/story-run/references/playbook-spike.md": (
         "Comparing two or three options side by side before you recommend one is `exhaust-the-design-space`.",),
     "skills/aidlc-design/SKILL.md": (
-        "For a decision with no precedent, compare the options by spike before you recommend one "
+        "For a decision with no precedent, compare the options by spike "
+        "(`../story-run/references/playbook-spike.md` from this skill's folder) before you recommend one "
         "(`exhaust-the-design-space`).",),
 }
 
@@ -115,16 +117,24 @@ class CitationsTest(unittest.TestCase):
         for rel in ("skills/story-run/references/playbook-bug-fix.md",
                     "skills/story-run/references/playbook-performance.md",
                     "skills/story-run/references/playbook-spike.md"):
-            for line in CITATIONS[rel]:
-                self.assertNotIn("stop", line.lower(), rel)
+            sentences = re.split(r"(?<=[.!?])\s+", flat(read(rel)))
+            naming = [s for s in sentences if any(f"`{n}`" in s for n in NAMES)]
+            self.assertTrue(naming, rel)
+            for sentence in naming:
+                self.assertNotIn("stop", sentence.lower(), (rel, sentence))
 
     def test_the_decision_log(self):
-        self.assertIn("When one of the principle skills shaped a call (`attack-the-premise`, `fix-root-causes`, "
+        self.assertIn("When one of the principle skills shaped a call (`fix-root-causes`, "
                       "`test-behavior-not-implementation`, `explain-the-number`, `exhaust-the-design-space`), the "
-                      "row's why names it in brackets.", flat(read("skills/aidlc-build/assets/progress-note.md")))
-        self.assertIn("- A row whose why names a principle skill (its file is `skills/<name>/SKILL.md`): its trigger "
-                      "happened in that call; one that did not is a low finding. A row with no principle is not a finding, and a principle never turns a stop "
-                      "into a row.", flat(read("agents/reviewer-compliance.md")))
+                      "row's why names it in brackets. `attack-the-premise` belongs in a stop's report, never a row.", flat(read("skills/aidlc-build/assets/progress-note.md")))
+        self.assertIn("- A row whose why names a principle skill: its trigger happened in that call "
+                      "(`fix-root-causes`: a fault traced to where it began; `test-behavior-not-implementation`: a "
+                      "test written, changed or kept; `explain-the-number`: a measured number trusted, reported or "
+                      "acted on; `exhaust-the-design-space`: a decision with no precedent); one that did not is a low "
+                      "finding. A row that names `attack-the-premise` records two fixes that failed the same way, "
+                      "which is a stop: it is the high finding of a row that should have been a stop. A row with no "
+                      "principle is not a finding, and a principle never turns a stop into a row.",
+                      flat(read("agents/reviewer-compliance.md")))
 
 
 class DocsTest(unittest.TestCase):
@@ -138,6 +148,17 @@ class DocsTest(unittest.TestCase):
             self.assertIn(phrase, changes, phrase)
         order = read("docs/research/2026-11-22-pstack-review/README.md").split("## The order", 1)[1]
         self.assertIn("| 30 | Principles |", order)
+        self.assertIn("(updated 2026-11-22: the owner's design decisions for Plan 27; Plan 30 added as row 30)",
+                      read("docs/research/2026-11-22-pstack-review/README.md"))
+        self.assertIn("Five principle skills from pstack, cited by name at the steps where they apply and never "
+                      "loaded: `attack-the-premise`, `fix-root-causes`, `test-behavior-not-implementation`, "
+                      "`explain-the-number`, `exhaust-the-design-space`.", flat(read("README.md")))
+        self.assertIn("for the playbooks `story-run` adapts from pstack, and for its five practices and five principles)",
+                      flat(read("AGENTS.md")))
+        design = flat(read("docs/design/2026-11-22-principles.md"))
+        self.assertIn("then three lines added at the end", design)
+        self.assertIn("(`fix-root-causes`)", design)
+        self.assertNotIn("(`attack-the-premise`)\"", design)
         self.assertIn("| 31 | Diagnose and merge safely |", order)
         self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.3.0")
 
