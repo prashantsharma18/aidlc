@@ -79,6 +79,8 @@ pstack (`cursor/plugins`, folder `pstack`, MIT, Lauren Tan), read again for this
 
 ## Needs the owner's decision
 
+**Approved by the owner in the session, 2026-11-22:** every item below and the plan's rulings (O1); execution subagent-driven.
+
 **Approving this plan approves exactly the items below, and no other change to an existing test.** The list was built
 by applying Plan 27 and then this plan, task by task, to a fresh clone of the branch (see "Self-review notes").
 

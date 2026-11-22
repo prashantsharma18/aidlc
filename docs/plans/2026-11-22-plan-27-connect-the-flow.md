@@ -151,6 +151,8 @@ for the review's fixes. The playbooks' sources are in Plan 27b.
 
 ## Needs the owner's decision
 
+**Approved by the owner in the session, 2026-11-22:** every item below and the plan's rulings (O1); execution subagent-driven.
+
 AGENTS.md says: never change an existing test assertion to make a test pass; stop and report. **Approving this plan
 approves exactly the items below, and no other change to an existing test.** If an executor finds that any other
 existing assertion fails, it stops and reports. The list was built by running the suite (661 tests, OK) and then
