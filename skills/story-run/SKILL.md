@@ -30,7 +30,8 @@ one, goes on where this one stopped (ADR 0028). It approves nothing: every stage
 - The stage skills: the `aidlc-*` folders beside this skill's folder. Read a stage's `SKILL.md` there, by its path. A
   `references/<file>.md` path a stage names is in the folder of that `SKILL.md`: read it from there, never from the
   repository.
-- The team's `AGENTS.md`: whether the AI may push its own feature branch (ADR 0028).
+- The team's `AGENTS.md`: whether the AI may push its own feature branch (ADR 0028). Without a push credential, the
+  person pushes.
 
 ## Steps
 1. **Find the story.** Read its index where this session runs. No index: the next stage is `aidlc-start`, which
@@ -44,13 +45,15 @@ one, goes on where this one stopped (ADR 0028). It approves nothing: every stage
    it reads done on the default branch (`git fetch`, then `git show origin/<default branch>:<the index's path>`). A
    row that reads `waiting: <decision> by <who>` resumes only when its decision can be had: checked where its stage
    says (a pull request's approval in the review tool, a merge with git, the tracker through its tool), or given by
-   the decider in this session (ADR 0023). Record it as the stage says, then go on with that stage's next step. For a
+   the decider in this session (ADR 0023). Record it as the stage says (a wait in the next unfinished row reads `to do`
+   again, as the index's rule says), then go on with that stage's next step, or its first if it had not started. For a
    document that merges first, the wait ends only when its pull request is approved and merged: first make the next
    row's branch (step 3), then write the document's row there as
    `done: approved in pull request <n> by <who>, <how it was confirmed>`. At a workspace root, once the design row is
    done, the next work is each part: read each part's row in `coordination-plan.md` and its index on its
    repository's default branch (`git -C <repository> fetch`, then
-   `git -C <repository> show origin/<default branch>:plans/<KEY>/README.md`), name each part's repository and its next
+   `git -C <repository> show origin/<default branch>:plans/<KEY>/README.md` (no index there yet: its next stage is
+   `aidlc-plan`; the default branch shows only what has merged), name each part's repository and its next
    stage, and stop; the release row waits until every part's `merged` row reads done there.
 3. **Get on the row's branch.** The index's BRANCH lines name it. A branch that does not exist yet starts from the
    default branch (`git fetch`, then `git switch -c <branch> origin/<default branch>`), once every document pull
@@ -61,17 +64,20 @@ one, goes on where this one stopped (ADR 0028). It approves nothing: every stage
    at a time, in the plan's order.
 5. **Go on, or stop.** Key on what the stage wrote in its row. When it marked the row done, commit the paths the stage
    wrote (never `git add -A`) and go on with step 2. When it wrote `doing` (the build row, slices remain), go on with
-   the next slice, or stop for a fresh session as `aidlc-build`'s When to use says. When it wrote `waiting:` (a
+   the next slice, or stop for a fresh session as `aidlc-build`'s When to use says. When it wrote `to do: fix <what>`
+   in the build row (ADR 0028), go on with step 2. When it wrote `waiting:` (a
    person's decision, as the tiers file's decisions table and the index's rule for a wait say) or `stopped:`, or a
    Stop if below holds, stop.
 6. **Before every stop.** First write the wait, `waiting: <decision> by <who>`, into the row the index's rule names
    (a document's decision in its own row; any other wait in the row of the next unfinished stage), unless the stage
-   wrote it already or marked the row `stopped: <reason>`. Then commit it with what the stage wrote. Push only where a
+   wrote it already, marked the row `stopped: <reason>`, or the stop is for a fresh session (the row's `doing` or
+   `to do` is the state). Then commit it with what the stage wrote. Push only where a
    stage says to: build after a branch's last slice, a document's pull request (specify, plan, the home design), and
    review's final commit; the next person's action is then that pull request. Push also a branch whose last slice is
    done but not yet pushed (no upstream, or ahead of it), when opening its pull request is the next person's action.
-   Never push to pause: not at Ready, a checkpoint, a question, or a long session (pstack's `pause-safely`). Then give
-   the hand-off.
+   Without a push credential, the person pushes the final commit. Never push to pause: not at Ready, a checkpoint, a
+   question, or a long session (pstack's `pause-safely`). After review's final commit, write and commit nothing: the
+   `merged` row ends the wait once it reads done on the default branch. Then give the hand-off.
 7. **The hand-off.** Open with one sentence that names what waits, and on whom, or says nothing does. Then, in a few
    short lines: what you did; the index's next row and where it runs; who it waits on, with what they need to decide
    it from your reply alone; the tracker move to suggest now (for example In progress at Ready, In review once the
@@ -98,7 +104,10 @@ one, goes on where this one stopped (ADR 0028). It approves nothing: every stage
 - The pull request has a merge conflict, or the default branch moved under it in a way that needs a rebase: name the
   branch that needs it, and stop; rebasing a pushed branch needs a force-push, which is a person's (pstack's
   `babysit`).
-- A row reads `stopped: <reason>`: it stays stopped until a person clears it.
+- A row reads `stopped: <reason>`: it stays stopped until a person clears it by telling you in this session; then
+  write `to do` there and go on.
+- A row reads `waiting:` and its decision cannot be had yet: say what it waits on, and stop.
+- A push fails: report it, and stop; the person pushes.
 - The index or a stage's `SKILL.md` cannot be read, or a row names a stage that is not a folder beside this one.
 - A step needs a force-push, a push to the default branch or of a tag, a merge, an approval, or opening or closing a
   pull request: a person does it.
