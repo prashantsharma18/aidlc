@@ -852,6 +852,14 @@ class FinalFixWaveTest(unittest.TestCase):
         for rel in (ADR_RUN, ADR_TESTS):
             self.assertIn("Status: Proposed (2026-11-22)", read(rel), rel)
 
+    def test_adrs_are_accepted_by_the_owner(self):
+        for rel in (ADR_RUN, ADR_TESTS):
+            self.assertIn("Status: Proposed (2026-11-22). Accepted (2026-11-22; confirmed by the framework owner in "
+                          "the session).", read(rel), rel)
+        for rel in ("docs/verification/2026-11-22-plan-27.md", "docs/verification/2026-11-22-plan-27b.md"):
+            self.assertIn("ADR 0028 and ADR 0029 were accepted by the framework owner in the session (2026-11-22).",
+                          flat(read(rel)), rel)
+
     def test_m1_release_runs_on_its_own_branch(self):
         for rel in ("skills/aidlc-start/assets/story-index.md", "skills/aidlc-plan/assets/story-index.md"):
             block = read(rel).split("```text\n", 1)[1].split("```", 1)[0]

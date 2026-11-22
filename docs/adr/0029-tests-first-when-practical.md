@@ -1,6 +1,6 @@
 # 0029 · Tests first, when a test is practical
 
-Status: Proposed (2026-11-22). · Decider: Prashant Sharma (framework owner)
+Status: Proposed (2026-11-22). Accepted (2026-11-22; confirmed by the framework owner in the session). · Decider: Prashant Sharma (framework owner)
 Design: `docs/design/2026-11-22-connect-the-flow.md` (Part 5) · Plan:
 `docs/plans/2026-11-22-plan-27-connect-the-flow.md` · Amends: the tests-first gate in `aidlc-build` and the rules
 files (AGENTS.md's "Never weaken a gate in a skill (tests first, …) without a design change": this is that change)

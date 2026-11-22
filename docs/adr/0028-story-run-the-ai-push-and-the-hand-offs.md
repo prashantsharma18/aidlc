@@ -1,6 +1,6 @@
 # 0028 · story-run, the AI's push, and every hand-off defined
 
-Status: Proposed (2026-11-22). · Decider: Prashant Sharma (framework owner)
+Status: Proposed (2026-11-22). Accepted (2026-11-22; confirmed by the framework owner in the session). · Decider: Prashant Sharma (framework owner)
 Design: `docs/design/2026-11-22-connect-the-flow.md` · Plan: `docs/plans/2026-11-22-plan-27-connect-the-flow.md` ·
 Research: `docs/research/2026-11-22-pstack-review/` · Amends: ADR 0026 (the kept rule "the person pushes"), ADR 0025
 (a lane's push, and a person's start as the go-ahead)
