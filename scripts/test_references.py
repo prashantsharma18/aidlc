@@ -202,7 +202,8 @@ class StartTest(Layout, unittest.TestCase):
     """Task 4: `aidlc-start` keeps route S's check and limits, the route decision and the route-change table in
     SKILL.md; the standard brief's steps, route G's, the workspace's and re-routing's go to references."""
 
-    NAME, REFS, LIMIT = "aidlc-start", ("re-routing.md", "route-g.md", "route-s.md", "several-repositories.md"), 2700
+    NAME, REFS, LIMIT = "aidlc-start", ("re-routing.md", "route-g.md", "route-s.md", "several-repositories.md"), 2800
+    # Plan 26 reached 2,675; Plan 27 reaches 2,756 (item W1)
 
     def test_the_decisions_the_limits_and_the_table_stay_in_skill_md(self):
         raw = skill_md(self.NAME)

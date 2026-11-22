@@ -36,7 +36,8 @@ says where each stage runs ([workspace-and-repositories.md](workspace-and-reposi
 
 **Nine routes** use these stages: features by the fast path (F0), in one repository (F1) or several (F2), change requests (C), defects by the
 fast path (D1) or the full route (D2), incidents (I), new systems (G), and standard changes the team lists (S).
-`aidlc-start` chooses one of the other eight, and route I starts at `aidlc-operate` when an alert fires; the route table is in the `using-aidlc` skill, and [routes.md](routes.md) draws each route.
+`aidlc-start` chooses one of the other eight, and route I starts at `aidlc-operate` when an alert fires; the route table in the `using-aidlc` skill is the one source of which stages each route runs (ADR 0028), and
+[routes.md](routes.md) draws each route.
 
 ## Rules that hold at every stage
 

@@ -14,4 +14,6 @@ same file. The plan, its bundles and these indexes merge on the default branch f
 
 **Step 8.** For a plan with independent slices, also write each such slice's index `plans/<KEY>/slice-<n>/README.md`
 from `assets/story-index.md`: LEVEL as the part's, and the rows `aidlc-build`, `aidlc-verify`, `aidlc-review` and
-`merged`. Each slice's stages mark only those rows.
+`merged`. Each slice's stages mark only those rows. At Tier 1, where the index has no `plan` BRANCH line, add
+`BRANCH plan docs/<KEY>-plan` and rename the branch you are on to it (`git branch -m docs/<KEY>-plan`): this plan
+merges first, and every slice's branch starts from the default branch after it.

@@ -83,15 +83,17 @@ route, keeps every row already done, and names the next stage. After Ready, it a
    decision the tiers file's decisions table lists for the route (ADR 0027). Every later stage reads them; a stage
    that finds one does not hold stops, and the work comes back here to be re-routed.
 7. **Write the story's index** where this session runs, from `assets/story-index.md`: `plans/<KEY>/README.md` inside a
-   repository, `stories/<KEY>/README.md` at a workspace root. Fill SOURCE, KIND, ROUTE and LEVEL, and one row per stage
-   of the route with where it runs and the status "to do". A link to a story document that goes on the tracker is a
+   repository, `stories/<KEY>/README.md` at a workspace root. Fill SOURCE, KIND, ROUTE, LEVEL and the BRANCH lines,
+   and one row per stage that the route table in `using-aidlc` lists for the route (the one source, ADR 0028), in its
+   order, with where it runs and the status "to do"; where there is an `aidlc-review` row, a `merged` row follows it,
+   on every route. The BRANCH lines name the code branch always, and at Tier 2 and 3 the spec's and the plan's
+   branches, which merge first (ADR 0020). Commit the index on the first row's branch, made from the default branch.
+   A link to a story document that goes on the tracker is a
    permalink at a commit: the file's address on the code host with the full commit hash in it (on GitHub,
    `https://github.com/<org>/<repository>/blob/<commit>/stories/<KEY>/spec.md`), never a branch path, which moves.
 
-   **One repository:** every stage runs inside that repository: `aidlc-intent` (only if the story needs it),
-   `aidlc-specify`, `aidlc-discover` (only when the tier or an unknown asks), `aidlc-design` (always; at Tier 1 usually
-   a recorded "none needed"), `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`; on events,
-   `aidlc-operate`, `aidlc-feedback`.
+   **One repository:** every stage runs inside that repository; `aidlc-design` (always; at Tier 1 usually a recorded
+   "none needed") has a row on routes F1 and D2.
 
    **Several repositories:** read `references/several-repositories.md` now and follow it.
 

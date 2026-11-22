@@ -29,8 +29,8 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
 ```
 
 - **Start every piece of work with `aidlc-start`**: a new requirement, a story, a defect, a change request or an
-  incident follow-up. It decides the kind of work and which repositories change, chooses the route (the `using-aidlc`
-  skill lists them), and says where the next stage runs. A new system starts the same way, in an empty repository or a new workspace (route G). A standard change the team lists in its `AGENTS.md` takes route S: a brief the engineer confirms, then build, verify and review.
+  incident follow-up. It decides the kind of work and which repositories change, chooses the route (the route table in
+  the `using-aidlc` skill is the one source of which stages each route runs), and says where the next stage runs. A new system starts the same way, in an empty repository or a new workspace (route G). A standard change the team lists in its `AGENTS.md` takes route S: a brief the engineer confirms, then build, verify and review.
 - **One repository:** every stage runs there; documents in `plans/<KEY>/`.
 - **Several repositories:** story-level stages run at the workspace root and keep their documents in `stories/<KEY>/`;
   each repository's part (plan, build, verify, review) runs inside that repository, on branch `feat/<KEY>-<part>`.
@@ -90,7 +90,8 @@ them as below; in Copilot, Codex or Cursor, ask for the skill by name ("use aidl
 | `/aidlc:aidlc-feedback INC-231` | After an incident, or when findings repeat | Where each lesson goes |
 | `/aidlc:parallel-lanes coordinator` | To work through `QUEUE.md` with several lanes at once; `lane` starts one lane by hand | Nothing but drafts (for reviewer passes it claims a row's worktree and writes nothing in it); each lane writes its own row's files |
 
-Which stages a piece of work needs depends on its route: see [routes.md](docs/operating-model/routes.md).
+Which stages a piece of work needs depends on its route: the route table in the `using-aidlc` skill is the one
+source of which stages each route runs, and [routes.md](docs/operating-model/routes.md) draws each route.
 
 ## Skills
 

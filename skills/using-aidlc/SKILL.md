@@ -44,17 +44,21 @@ A plan with independent slices is still approved by the tech lead at Tier 1, as 
 repositories: the workspace root holds the story and tracks every part. One
 repository: everything happens in that repository.
 
+This table is the one source of which stages each route runs (ADR 0028): `aidlc-start` writes a row for each stage it
+lists, in this order, and a `merged` row after `aidlc-review` on every route. `docs/operating-model/routes.md` draws
+each route.
+
 | Route | When | Stages |
 |---|---|---|
 | F0 · feature, fast path | Tier 1, one repository, criteria written on the work item by its owner, no design change, no new dependency, no data change, one slice | `aidlc-plan` (brief mode), the engineer confirms, `aidlc-build`, `aidlc-verify`, `aidlc-review` |
 | F1 · feature, one repository | A new capability or changed behaviour in one repository | `aidlc-intent` (when the story needs it), `aidlc-specify`, `aidlc-discover` (when needed), `aidlc-design`, `aidlc-plan`, `aidlc-build` per slice, `aidlc-verify`, `aidlc-review`, `aidlc-release` |
 | F2 · feature, several repositories | Two or more repositories, or unsure | At the root: intent, specify, discover, design (with the contract and the coordination plan). In each repository: plan, build, verify, review. At the root: release |
 | C · change request, story in progress | An approved criterion must change before release | `aidlc-specify` (amendment mode); each part by its state; a merged part gets a revision pull request |
-| D1 · defect, fast path | Tier 1, one repository, a reproduction, expected behaviour written | `aidlc-plan` (brief mode), the engineer confirms, `aidlc-build`, `aidlc-verify`, `aidlc-review` |
+| D1 · defect, fast path | Tier 1, one repository, a reproduction, expected behaviour written | `aidlc-plan` (brief mode), the engineer confirms, `aidlc-build`, `aidlc-verify`, `aidlc-review`; `aidlc-release` only when the fix changes data or a schema |
 | D2 · defect, full route | Any other defect | As F1 or F2; the reproduction is the spec's first criterion |
 | I · incident | An alert fires or an incident is open | `aidlc-operate` (no story), then `aidlc-feedback`; the follow-up enters at `aidlc-start` |
 | G · new system | No code yet: a new product, service or application | `aidlc-intent` (when needed), `aidlc-specify`, `aidlc-design` (the new system's decisions); in each new repository `aidlc-onboard` (new mode, prepare), `aidlc-plan` (slice 0), `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-onboard` (new mode, confirm); then the story's criteria as in F1 or F2, and `aidlc-release` |
-| S · standard change | A class of work the team lists in the Standard changes section of `AGENTS.md`, within every limit the class names; Tier 1, one repository | `aidlc-start` writes the standard brief, the engineer confirms it with its tier, `aidlc-build`, `aidlc-verify`, `aidlc-review` |
+| S · standard change | A class of work the team lists in the Standard changes section of `AGENTS.md`, within every limit the class names; Tier 1, one repository | `aidlc-start` writes the standard brief, the engineer confirms it with its tier, `aidlc-build`, `aidlc-verify`, `aidlc-review`; `aidlc-release` only when users see the change |
 
 ## The practice map
 

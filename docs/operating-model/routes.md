@@ -6,7 +6,8 @@ of work is this, and how many repositories does it change? The answer fixes whic
 live, and who approves. The ninth, I, does not start there: when an alert fires, the person runs `aidlc-operate`, and the
 follow-up comes back through `aidlc-start` as a defect.
 
-The `using-aidlc` skill holds the same routes as a table. This page draws them.
+The route table in the `using-aidlc` skill is the one source of which stages each route runs (ADR 0028). This page
+draws them, and its table below lists the same stages.
 
 ## Choosing a route
 
@@ -51,10 +52,10 @@ Three rules sit under the tree:
 | F1 · feature, one repository | A new capability or changed behaviour in one repository | start, intent (if needed), specify, discover (when needed), design, plan, build per slice, verify, review, release | Ready: the product owner and the spec owner, with the tier; at Tier 2 and 3, design and plan in one pull request (tech lead or architect); a code owner at Merge; the release approver when users see the change (always at Tier 3) |
 | F2 · feature, several repositories | Two or more repositories, or unsure | Root: start, intent, specify, discover, design with the contract and the coordination plan. Each repository: plan, build, verify, review. Root: release | As F1; consumers approve contract changes; each repository's own code owner |
 | C · change request | An approved criterion must change before release | specify (amendment), the criterion's owner decides, the tech lead classifies each part, then each part by its state | Criterion owner; tech lead; re-planned parts approved again |
-| D1 · defect, fast path | Tier 1, one repository, reproduced, expected behaviour written | start, plan (brief mode: `fix.md`), the engineer confirms, build (reproducing test first), verify, review, merge | The engineer confirms the brief and its tier (Ready); a code owner approves brief and fix in the pull request (Merge) |
+| D1 · defect, fast path | Tier 1, one repository, reproduced, expected behaviour written | start, plan (brief mode: `fix.md`), the engineer confirms, build (reproducing test first), verify, review, merge, release only when the fix changes data or a schema | The engineer confirms the brief and its tier (Ready); a code owner approves brief and fix in the pull request (Merge) |
 | D2 · defect, full route | Any defect that fails the fast-path test | As F1 or F2; the reproduction is the spec's first criterion | As F1; the product owner decides behaviour nobody wrote down |
 | I · incident | An alert fires or an incident is open | operate (no story), people contain, the incident record and a follow-up item, feedback | On-call; a person runs every runbook step; the product owner accepts the follow-up |
-| G · new system | No code yet | start, intent, specify, design (`new-system.md`), then per repository onboard (prepare), slice 0, onboard (confirm); then F1 or F2 and release | Architect or tech lead; consumers; the product owner for a wireframe |
+| G · new system | No code yet | start, intent, specify, design (`new-system.md`), then per repository onboard (prepare), slice 0 (plan, build, verify, review), onboard (confirm); then F1 or F2 and release | Architect or tech lead; consumers; the product owner for a wireframe |
 | S · standard change | A class of work the team lists in `AGENTS.md`'s Standard changes, within every limit it names; Tier 1, one repository | start (it writes `standard.md`), the engineer confirms, build, verify, review, merge, release when users see the change | The engineer confirms the standard brief and its tier (Ready); a code owner approves brief and change in the pull request (Merge) |
 
 In every diagram below, a hexagon is a person's decision. The agent drafts every document; it never approves one.

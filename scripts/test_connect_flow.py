@@ -121,5 +121,87 @@ class AdrTest(unittest.TestCase):
         self.assertEqual(notice.count("Permission is hereby granted, free of charge"), 2)
 
 
+STAGE_WORD = re.compile(r"\b(?:aidlc-)?(intent|specify|discover|design|plan|build|verify|review|release|onboard|"
+                        r"operate|feedback)\b")
+ONE_SOURCE = "the one source of which stages each route runs"
+
+
+def route_rows(text: str, heading: str) -> dict:
+    """The route table after a heading: each route's code, and the stages its third cell (Stages) names."""
+    rows = {}
+    for line in text.split(heading, 1)[1].splitlines():
+        found = re.match(r"\| ([A-Z]\d?) · [^|]+\|[^|]+\| ([^|]+) \|", line)
+        if found:
+            rows[found.group(1)] = set(STAGE_WORD.findall(found.group(2)))
+        elif rows and not line.startswith("|"):
+            break
+    return rows
+
+
+class RouteTableTest(unittest.TestCase):
+    """Task 2: the map's route table is the one source; every listing agrees; the index names its branches and has a
+    `merged` row on every route (G1, G4)."""
+
+    def test_the_two_route_tables_agree_route_by_route(self):
+        source = route_rows(skill_md("using-aidlc"), "## The routes")
+        drawn = route_rows(read("docs/operating-model/routes.md"), "## The routes at a glance")
+        self.assertEqual(sorted(source), ["C", "D1", "D2", "F0", "F1", "F2", "G", "I", "S"])
+        self.assertEqual(sorted(drawn), sorted(source))
+        for code, stages in source.items():
+            self.assertEqual(drawn[code], stages, code)
+        self.assertIn("release", source["S"])
+        self.assertIn("release", source["D1"])
+        self.assertNotIn("release", source["F0"])
+        self.assertEqual(source["G"], {"intent", "specify", "design", "onboard", "plan", "build", "verify", "review",
+                                       "release"})
+
+    def test_every_listing_points_to_the_map(self):
+        routes = flat(section(skill_md("using-aidlc"), "## The routes"))
+        self.assertIn("This table is " + ONE_SOURCE + " (ADR 0028): `aidlc-start` writes a row for each stage it "
+                      "lists, in this order, and a `merged` row after `aidlc-review` on every route.", routes)
+        for rel in ("docs/operating-model/routes.md", "docs/operating-model/lifecycle.md", "README.md"):
+            text = flat(read(rel))
+            self.assertIn("the `using-aidlc` skill is " + ONE_SOURCE, text, rel)
+        step7 = flat(section(skill_md("aidlc-start"), "## Steps")).split(" 7. ", 1)[1].split(" 8. ", 1)[0]
+        self.assertIn("Fill SOURCE, KIND, ROUTE, LEVEL and the BRANCH lines, and one row per stage that the route "
+                      "table in `using-aidlc` lists for the route (the one source, ADR 0028), in its order, with where it "
+                      "runs and the status \"to do\"; where there is an `aidlc-review` row, a `merged` row follows it, on "
+                      "every route.", step7)
+        self.assertIn("**One repository:** every stage runs inside that repository; `aidlc-design` (always; at Tier 1 "
+                      "usually a recorded \"none needed\") has a row on routes F1 and D2.", step7)
+        self.assertNotIn("on events, `aidlc-operate`, `aidlc-feedback`", step7)
+
+    def test_the_index_names_its_branches(self):
+        template = read("skills/aidlc-start/assets/story-index.md")
+        self.assertEqual(template, read("skills/aidlc-plan/assets/story-index.md"))
+        block = template.split("```text\n", 1)[1].split("```", 1)[0]
+        for line in ("BRANCH     code <type>/<KEY>-<slug>        (every row not named below runs on it; once a "
+                     "document pull request merges, it starts from the default branch)",
+                     "BRANCH     spec docs/<KEY>-spec        (Tier 2 and 3: the intent and specify rows; it merges "
+                     "first, ADR 0020; delete the line at Tier 1)",
+                     "BRANCH     plan docs/<KEY>-plan        (Tier 2 and 3: the discover, design and plan rows; it "
+                     "starts from the default branch once the spec merges, and merges first; a Tier 1 plan with "
+                     "independent slices adds it; delete the line otherwise)"):
+            self.assertIn(line + "\n", block, line)
+        self.assertLess(block.index("LEVEL"), block.index("BRANCH"))
+        self.assertIn("Every route has a `merged` row after `aidlc-review`; a story index at a workspace root has none, "
+                      "because each part's index holds it (ADR 0028).", flat(template))
+        step7 = flat(section(skill_md("aidlc-start"), "## Steps")).split(" 7. ", 1)[1].split(" 8. ", 1)[0]
+        self.assertIn("The BRANCH lines name the code branch always, and at Tier 2 and 3 the spec's and the plan's "
+                      "branches, which merge first (ADR 0020). Commit the index on the first row's branch, made from the "
+                      "default branch.", step7)
+
+    def test_a_plan_adds_the_branch_lines_it_needs(self):
+        slices = flat(read("skills/aidlc-plan/references/independent-slices.md"))
+        self.assertIn("At Tier 1, where the index has no `plan` BRANCH line, add `BRANCH plan docs/<KEY>-plan` and "
+                      "rename the branch you are on to it (`git branch -m docs/<KEY>-plan`): this plan merges first, "
+                      "and every slice's branch starts from the default branch after it.", slices)
+        parts = flat(read("skills/aidlc-plan/references/several-repositories.md"))
+        self.assertIn("the BRANCH lines `code feat/<KEY>-<part>` and `plan docs/<KEY>-<part>-plan` (this plan's own "
+                      "pull request, which merges first)", parts)
+        self.assertIn("`aidlc-release` when users see the change, and `merged`", flat(read(
+            "skills/aidlc-start/references/route-s.md")))
+
+
 if __name__ == "__main__":
     unittest.main()
