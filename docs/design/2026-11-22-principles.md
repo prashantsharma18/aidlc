@@ -56,9 +56,9 @@ never loads a principle by itself, and a person can still start one by name. Not
 | Principle | Its "In aidlc:" note |
 |---|---|
 | attack-the-premise | A second fix that fails the same way is a stop (`aidlc-build`'s Stop if): write the shared premise and the observation that tests it in the stop's report; testing the premise is diagnosis, not another attempt. |
-| fix-root-causes | Every place inside MAY CHANGE; one outside it is a stop. The always-on signal is a proposal for its owner (`aidlc-feedback`). |
+| fix-root-causes | Every place inside MAY CHANGE; one outside it is a stop. The always-on signal is a proposal for its owner (`aidlc-feedback`). In production you propose only (`debugging-failures`). |
 | test-behavior-not-implementation | It shapes the tests you write. An existing test that fails the two edits is a finding for its owner, never rewritten or deleted (`writing-tests`). |
-| explain-the-number | aidlc has no `benchmark-checklist`: follow `tuning-performance`. A profiler that is not installed is a new dependency, which asks first. |
+| explain-the-number | aidlc has no `benchmark-checklist`: follow `tuning-performance`. A profiler that is not installed is a new dependency, which asks first. A measurement that turns out to measure something else is an assertion: changing it is `aidlc-build`'s Stop if. |
 | exhaust-the-design-space | Each prototype is a spike (`playbook-spike.md`): outside the source, time-boxed, never committed. You recommend; the decider chooses. |
 
 ## Part 2: Where each is cited
