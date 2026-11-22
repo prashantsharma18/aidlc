@@ -1125,5 +1125,23 @@ class PlaybookTest(unittest.TestCase):
         self.assertIn("`skills/story-run/references/`   eight playbooks, one per kind of work", read("docs/codebase-map.md"))
 
 
+class PlaybooksRecordTest(unittest.TestCase):
+    """Plan 27b, Task 2: the plan is recorded."""
+
+    RECORD = "docs/verification/2026-11-22-plan-27b.md"
+
+    def test_the_verification_record_exists(self):
+        record = read(self.RECORD)
+        for heading in ("## What changed", "## How it was checked", "## Evidence", "## Not verified here",
+                        "## Rulings", "## For the owner"):
+            self.assertIn(heading, record, heading)
+        for phrase in ("Plan 27b", "playbook", "ADR 0028", "python3 scripts/validate.py", "claude plugin validate .",
+                       "aidlc-design", "aidlc-plan", "aidlc-build"):
+            self.assertIn(phrase, record, phrase)
+
+    def test_the_record_has_no_open_slot(self):
+        self.assertNotIn("{{", read(self.RECORD))
+
+
 if __name__ == "__main__":
     unittest.main()
