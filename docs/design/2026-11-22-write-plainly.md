@@ -11,8 +11,8 @@ folder `pstack`, MIT, Lauren Tan).
   are two skills whose descriptions read alike, so the AI loads the wrong one, and a writing pass that rewrites code,
   commands or quoted text.
 - What changed: five new practice skills, adapted from pstack, each its own folder with pstack's name. Other skills
-  call the base one, `unslop`, as pstack does: a standing rule in the entry workflows, a last-pass
-  line in every skill that writes prose, and a load at the moments a person decides. No stage's text is rewritten.
+  call the base one, `unslop`, as pstack does: a standing rule in the entry workflows, a last-pass line in every skill
+  that writes prose, and a load at the moments a person decides. No stage's text is rewritten.
 
 ## Why
 Every stage writes for a person: a spec the product owner approves, a pull request description the code owner reads,
@@ -26,18 +26,17 @@ person asks most often about code they did not write: how does this work, and wh
 | Question | Decision |
 |---|---|
 | One skill or several | Separate skills, as pstack has them |
-| Which ones | `unslop`, `technical-writing`, `in-your-own-words`, `how`, `why` |
-| Their names | pstack's own: `unslop`, `technical-writing`, `in-your-own-words`, `how`, `why` |
+| Which ones, and their names | Five, keeping pstack's names: `unslop`, `technical-writing`, `in-your-own-words`, `how`, `why` |
 | Not now | `bro`, `teach`, `ketchup` |
 | How `unslop` is reached | As pstack does: a standing rule, a last-pass line in the skills that write prose, and loads at the moments a person decides |
-| `aidlc-onboard` | Nothing depends on it: the owner may drop it later |
+| `aidlc-onboard` | Nothing new depends on it: the owner is not sure it stays, which is a separate discussion |
 | pstack's tool and principle skills | A separate, later review against the aidlc skills they overlap |
 
 ## Part 1: The five practices
-Each keeps its pstack name (owner, 2026-11-22), so its source and its credit are plain from the name; aidlc's
-other practices keep their doing-word names, and `docs/codebase-map.md` gains the rule "a practice adapted from pstack
-keeps pstack's name". Each is a practice skill (`metadata.kind: practice`) with the practice sections (When to use, Steps, Checks, Stop if,
-Common excuses, Red flags, Rules). None has `disable-model-invocation`, because a stage loads them
+Each keeps its pstack name (owner, 2026-11-22), so its source and its credit are plain from the name. aidlc's other
+practices keep their doing-word names, and `docs/codebase-map.md` gains the rule "a practice adapted from pstack keeps
+pstack's name". Each is a practice skill (`metadata.kind: practice`) with the practice sections (When to use, Steps,
+Checks, Stop if, Common excuses, Red flags, Rules). None has `disable-model-invocation`, because a stage loads them
 (`scripts/test_loads.py` requires a loaded skill to be loadable by the model); a person can also start each one by
 name. Each credits pstack, and `skills/NOTICE` lists them.
 
@@ -58,7 +57,7 @@ pstack reaches `unslop` three ways (report 4). aidlc does the same:
 
 | Pattern | pstack | aidlc |
 |---|---|---|
-| A standing rule in what every session runs | `poteto-mode`: "Prose, your reply included → **unslop**" | One rule in `story-run` and in `lane-run`'s `references/worker.md`: every reply, document, commit body and pull request description a person reads goes through `technical-writing` and `unslop`. `starter/repo/AGENTS.md` may carry the same line for a team that copies it |
+| A standing rule in what every session runs | `poteto-mode`: "Prose, your reply included → **unslop**" | One rule in `story-run` and in `lane-run`'s `references/worker.md`, split as pstack splits it: every reply a person reads goes through `unslop`; every document, pull request description and commit body goes through `technical-writing`, which applies `unslop` as its last pass. `starter/repo/AGENTS.md` may carry the same line for a team that copies it |
 | A last-pass line in every skill that writes prose | `technical-writing`, `teach`, `recall`, `blast-radius`, `show-me-your-work` | `technical-writing`, `writing-documentation`, `committing-changes` (commit bodies and pull request text) and `reviewing-code` (findings a person reads): "apply `unslop` as the last pass" |
 | A playbook step | investigation: "Apply the **unslop** skill to the reply" | The investigation playbook has no bundle (`aidlc-discover` reads it), so its finding step names the skill: "write the finding through `unslop`". The bug-fix playbook's USE SKILLS line names `why`. A playbook never holds a "Load the" phrase (ADR 0028) |
 
@@ -85,6 +84,7 @@ load none: what they write for a person is a stop message or the evidence table,
 | Pair | The line between them |
 |---|---|
 | `writing-documentation` and `technical-writing` | `writing-documentation` decides which document, for which reader, where it lives and what mode (Diátaxis). `technical-writing` decides how its sentences read |
+| `committing-changes` and `reviewing-code`'s change descriptions, and `technical-writing` | `committing-changes` decides what a commit or a pull request holds (one reason per commit, a typed subject, a body that says why, a reviewable size), and `reviewing-code` what a change description must cover. `technical-writing` decides how those sentences read |
 | `technical-writing` and `unslop` | `technical-writing` shapes a draft; `unslop` is the last pass on any text, and the only owner of the AI-tells catalog |
 | `how` and the `explorer` agent | The agent answers one precise question with citations. `how` frames the question and turns the answer into a mental model |
 | `how` and `why` | How it works now, from the code; why it is like this, from the history. Each description names the other |
@@ -111,8 +111,8 @@ Every new description stays below the routing check's 0.75 similarity with every
   of AI tells and leaves its code block and command byte for byte; `why` answers from a scaffold's commit
   history, cites a commit and marks an inference.
 - **Existing tests:** `scripts/test_loads.py` pins each stage's loads, so every new load line changes an expected set,
-  and some stages are near their word limits (`aidlc-plan` 3,493 of 3,500; `story-run` 2,274 of 2,300). The plan lists
-  each change for the owner's approval.
+  and some skills are near their word limits (`aidlc-plan` 3,493 of 3,500; `story-run` 2,274 of 2,300; `lane-run`
+  with `worker.md` 3,855 of 3,900). The plan lists each change for the owner's approval.
 
 ## Out of scope
 - `bro`, `teach` and `ketchup`; pstack's tool skills and principle skills (a later review).
