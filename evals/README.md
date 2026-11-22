@@ -41,7 +41,7 @@ claude plugin eval . --trust-plugin --no-publish --tag routing language --runs 3
   --model claude-sonnet-5-5 --max-cost-usd 15
 ```
 
-Pin `--model` for any run you compare over time. A run costs about $0.10 to $0.60; there are 42 cases.
+Pin `--model` for any run you compare over time. A run costs about $0.10 to $0.60; there are 42 cases before Plan 27's five, 47 in all.
 Scaffold commits ignore your global git hooks and signing (`-c core.hooksPath=/dev/null -c commit.gpgsign=false`).
 Cases that need Bash (the build stage, and the review stage that writes the evidence file) cannot run where the Bash
 sandbox refuses, for example when `~/.docker/contexts` is a symbolic link; run those in CI or in the local container
@@ -54,5 +54,6 @@ The four cases for decisions by tier and standard changes (ADR 0026) are `gate-t
 `route-s-dependency-bump`, `gate-tier2-design-plan-once` and `gate-restatement-tier3`.
 The two cases for the route inside Ready and the decision log (ADR 0027) are `gate-build-decision-log` and
 `gate-compliance-decision-log`.
+The five cases for `story-run` and tests first (ADR 0028, ADR 0029) are `story-run-stops-at-ready`, `story-run-tier1-design-no-stop`, `story-run-pushes-own-branch`, `story-run-stops-at-merge`, `gate-no-test-logged`; all five need Bash.
 Results go to `results/`, which git ignores. Add `--case <name>` to run one case. A low score is a finding about the
 kit: record it; never weaken a grader to make it pass.

@@ -619,5 +619,46 @@ class StoryRunTest(unittest.TestCase):
         self.assertIn("| `/aidlc:story-run SHIP-12` |", read("README.md"))
 
 
+CASES = {"story-run-stops-at-ready": ("specify-waits.md", "no-design-note.md", "no-plan.md",
+                                      "no-relayed-approval-write.md", "no-relayed-approval-edit.md", "reply.md"),
+         "story-run-tier1-design-no-stop": ("design-stated.md", "design-row-done.md", "plan-written.md",
+                                            "no-design-wait.md", "reply.md"),
+         "story-run-pushes-own-branch": ("pushed.md", "never-main.md", "never-force.md", "never-merge.md", "reply.md"),
+         "story-run-stops-at-merge": ("never-merge.md", "never-main.md", "merged-not-done.md",
+                                      "no-relayed-approval-edit.md", "no-relayed-approval-write.md", "reply.md"),
+         "gate-no-test-logged": ("note-written.md", "ac1-tested.md", "notes.md")}
+
+
+class EvalCasesTest(unittest.TestCase):
+    """Task 8: five behaviour cases for `story-run` and ADR 0029, written and not run."""
+
+    def test_each_case_has_its_scaffold_prompt_and_graders(self):
+        for name, graders in CASES.items():
+            folder = ROOT / "evals" / name
+            self.assertEqual(sorted(p.name for p in (folder / "graders").glob("*.md")), sorted(graders), name)
+            self.assertIn(f"name: {name}", read(f"evals/{name}/case.yaml"), name)
+            self.assertTrue((folder / "setup.sh").stat().st_mode & 0o111, name)
+            prompt = read(f"evals/{name}/prompt.md")
+            self.assertIn("tags: [gate]", prompt, name)
+            start = "/aidlc:aidlc-build SHIP-74" if name.startswith("gate-") else "/aidlc:story-run SHIP-7"
+            self.assertIn(start, prompt, name)
+
+    def test_the_graders_push_on_the_rule(self):
+        self.assertIn("waiting:", read("evals/story-run-stops-at-ready/graders/specify-waits.md"))
+        self.assertIn("RECORDED BY", read("evals/story-run-tier1-design-no-stop/graders/design-stated.md"))
+        self.assertIn("The AI may push its own feature branch: yes.", read("evals/story-run-pushes-own-branch/setup.sh"))
+        self.assertIn("max: 0", read("evals/story-run-pushes-own-branch/graders/never-main.md"))
+        for name in ("story-run-pushes-own-branch", "story-run-stops-at-merge"):
+            self.assertIn("[^\"&;|]*", read(f"evals/{name}/graders/never-main.md"), name)
+        self.assertIn("match: not_contains", read("evals/story-run-stops-at-merge/graders/merged-not-done.md"))
+        self.assertIn("`no test for AC2`", read("evals/gate-no-test-logged/graders/notes.md"))
+
+    def test_the_evals_readme_names_them(self):
+        readme = flat(read("evals/README.md"))
+        self.assertIn("there are 42 cases before Plan 27's five, 47 in all.", readme)
+        self.assertIn("The five cases for `story-run` and tests first (ADR 0028, ADR 0029) are " +
+                      ", ".join(f"`{n}`" for n in CASES) + "; all five need Bash.", readme)
+
+
 if __name__ == "__main__":
     unittest.main()
