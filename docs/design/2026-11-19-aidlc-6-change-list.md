@@ -312,3 +312,12 @@ person's merge confirms them), and runs the watch pass: it judges lanes by git, 
 it started, and reads CI; a red run goes back to build, two fixes for one check stop, and the AI never merges. A lane
 is `lane-run`, which runs `story-run` to the next person's decision; a hand-started lane is one message; every brief
 the coordinator or a lane writes opens with `worker.md`.
+
+## 13. After Plan 29 (2026-11-22)
+Plan 29 (`docs/plans/2026-11-22-plan-29-write-plainly.md`, design `docs/design/2026-11-22-write-plainly.md`) adds five
+practices adapted from pstack, keeping pstack's names, in aidlc 8.2.0: `unslop` (the AI-tells catalog, the base
+layer), `technical-writing` (the sentences of a document, a pull request description or a commit body; its last pass
+is `unslop`), `in-your-own-words`, `how` and `why`. The other skills reach `unslop` as pstack does: a standing rule
+in `story-run` and `worker.md`, a last-pass line in the skills that write prose, and a load of `technical-writing` at
+each stage step that writes a document a person decides from. No gate changes. `bro`, `teach` and `ketchup`, and
+pstack's tool and principle skills, wait for a later review.

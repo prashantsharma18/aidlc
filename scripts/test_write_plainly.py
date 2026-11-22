@@ -272,5 +272,16 @@ class EvalCasesTest(unittest.TestCase):
         self.assertNotRegex(json.dumps({"skill": "aidlc:how"}), fired)
 
 
+class DocsTest(unittest.TestCase):
+    """Task 5: the change list after Plan 29; aidlc 8.2.0."""
+
+    def test_the_change_list_and_the_version(self):
+        changes = flat(read("docs/design/2026-11-19-aidlc-6-change-list.md").split("## 13. After Plan 29 (2026-11-22)", 1)[1])
+        for phrase in ("`docs/plans/2026-11-22-plan-29-write-plainly.md`", "aidlc 8.2.0", "`unslop`",
+                       "`technical-writing`", "`in-your-own-words`", "`how`", "`why`", "keeping pstack's names"):
+            self.assertIn(phrase, changes, phrase)
+        self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.2.0")
+
+
 if __name__ == "__main__":
     unittest.main()
