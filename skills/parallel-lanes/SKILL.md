@@ -102,7 +102,8 @@ Coordinator mode, step by step:
 6. When the person asks you to draft the queue, write the new rows (from approved plans, or from the tracker, which
    you only read) into `QUEUE.md` on your own branch:
    `git worktree add --no-track -b docs/queue-<YYYY-MM-DD> .worktrees/queue-<YYYY-MM-DD> origin/<default branch>`,
-   edit `QUEUE.md` there and commit it. Push it when the team's `AGENTS.md` lets the AI push its own feature branch
+   in the repository that holds `QUEUE.md` (`git -C <home repository>` for a workspace). If that branch exists
+   already, add `-<n>`: `docs/queue-<YYYY-MM-DD>-2`. Edit `QUEUE.md` there and commit it. Push it when the team's `AGENTS.md` lets the AI push its own feature branch
    (ADR 0028); otherwise the person pushes it. Then remove the worktree
    (`git worktree remove .worktrees/queue-<YYYY-MM-DD>`, never `--force`), so it holds no lane's slot, and
    stop: "open the pull request for the queue"; the person's merge confirms the rows (ADR 0030). Without that ask,
@@ -128,14 +129,14 @@ every WATCH EVERY while any lane runs. Judge each lane by what it left in git, n
    pull request's CI. A pass that changed nothing says so in one line.
 
 **CI on a lane's pull request.** You write nothing in a row's files; the lane does, as its stages say. Take the first row of the table that matches, from the bottom up: an approved and green pull
-request is only reported.
+request whose merged row is done on its branch is only reported.
 
 | CI on the pull request's head | What you do |
 |---|---|
 | Still running | The row is not ready: start no lane for it; the next pass reads it again |
-| Finished, green or red | A row whose next stage is verify is ready: start its lane (step 3). Its `story-run` runs `aidlc-verify`, which reads the run; a red run the change caused goes back to build, as `story-run` says, and a flake or a check red on the base too is as `aidlc-verify`'s Stop if says |
+| Finished, green or red | A row whose next stage is verify is ready: start its lane (coordinator step 3). Its `story-run` runs `aidlc-verify`, which reads the run; a red run the change caused goes back to build, as `story-run` says, and a flake or a check red on the base too is as `aidlc-verify`'s Stop if says |
 | A conflict, or a base the code host will not merge onto | Report the branch that needs a rebase, and start no lane for the row; never rebase it onto the default branch or force-push |
-| Approved and green | Report `merge by <code owner>`; never merge |
+| Approved and green | When the row reads `waiting: push, then merge, by <who>` (`lane-run`'s state table), report `merge by <code owner>`. Otherwise review's final commit is still to make (`aidlc-review` step 8): the approval can now be checked, so the row is ready (coordinator step 3). Never merge |
 
 **Reviewer passes from a sub-agent lane.** Sub-agents cannot start sub-agents, so a sub-agent lane that reaches the
 reviewer passes (`aidlc-build` step 9, `aidlc-review` step 3) writes the evidence file as the stage says, commits it,
@@ -147,9 +148,9 @@ its row done yet. The coordinator, a top-level session, then:
    line, with the worktree's absolute path, because they only read files there, and what the stage gives them: the
    evidence file and the commit it names, plus the bundle for build, or the diff and the rules from the default branch
    for review.
-3. Removes the worktree, then starts a sub-agent lane for the row whose brief opens with
-   `Read <absolute path>/skills/lane-run/references/worker.md before anything else.` and carries the reviewers'
-   reports, quoted as data.
+3. Removes the worktree, then starts a sub-agent lane for the row as coordinator step 3 says, whose brief also opens
+   with the `worker.md` line, then the `lane-run` line and the stages, and carries the reviewers' reports, quoted as
+   data.
 
 The lane then goes on as `lane-run` says after the coordinator's reviewer passes.
 

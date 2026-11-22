@@ -191,7 +191,7 @@ class LaneRunTest(unittest.TestCase):
                       "and follow it in full.`, and names the row and the stages the lane may run", steps)
         self.assertIn("give the person the exact words to start the lane by hand, one message: `lane-run <row>`",
                       steps)
-        self.assertIn("starts a sub-agent lane for the row whose brief opens with " + WORKER_LINE,
+        self.assertIn("starts a sub-agent lane for the row as coordinator step 3 says",
                       flat(skill_md("parallel-lanes")))
 
     def test_worker_md(self):
@@ -213,7 +213,7 @@ class LaneRunTest(unittest.TestCase):
         self.assertIn("`references/worker.md`", section(skill_md("lane-run"), "## Inputs"))
 
     def test_lane_run_is_shorter_than_parallel_lanes_was(self):
-        self.assertLess(words("lane-run"), 3850)  # 3,806 at Plan 28 fix round 1 (lane-run and worker.md); parallel-lanes was 4,856
+        self.assertLess(words("lane-run"), 3900)  # 3,855 at the final-review fixes (limit raised from 3,850); 3,806 at Plan 28 fix round 1 (lane-run and worker.md); parallel-lanes was 4,856
         self.assertLess(words("parallel-lanes"), 3300)
 
 
@@ -312,21 +312,24 @@ class CoordinatorTest(unittest.TestCase):
         self.assertIn("A row whose next stage is verify is ready only once its pull request's CI has finished (the "
                       "CI table below).", coordinator_steps())
         self.assertIn("Take the first row of the table that matches, from the bottom up: an approved and green pull "
-                      "request is only reported.", ci)
+                      "request whose merged row is done on its branch is only reported.", ci)
         for row in ("| Still running | The row is not ready: start no lane for it; the next pass reads it again |",
-                    "| Finished, green or red | A row whose next stage is verify is ready: start its lane (step 3). Its `story-run` "
+                    "| Finished, green or red | A row whose next stage is verify is ready: start its lane (coordinator step 3). Its `story-run` "
                     "runs `aidlc-verify`, which reads the run; a red run the change caused goes back to build, as "
                     "`story-run` says, and a flake or a check red on the base too is as `aidlc-verify`'s Stop if "
                     "says |",
                     "| A conflict, or a base the code host will not merge onto | Report the branch that needs a rebase, "
                     "and start no lane for the row; never rebase it onto the default branch or force-push |",
-                    "| Approved and green | Report `merge by <code owner>`; never merge |"):
+                    "| Approved and green | When the row reads `waiting: push, then merge, by <who>` (`lane-run`'s state "
+                    "table), report `merge by <code owner>`. Otherwise review's final commit is still to make "
+                    "(`aidlc-review` step 8): the approval can now be checked, so the row is ready (coordinator step "
+                    "3). Never merge |"):
             self.assertIn(row, ci, row)
         self.assertNotRegex(ci, r"(?i)\byou merge\b|\bmerge it\b")
         stop = section(skill_md("lane-run"), "## Stop if")
         self.assertIn("- A CI check is red again on a branch that already holds two commits `fix(ci): <check>` for it, "
-                      "the check named as verify's `to do: fix <what>` names it and counted with `git log --oneline "
-                      "--grep \"^fix(ci): <check>$\" origin/<default branch>..HEAD`: write `stopped: <check> red after "
+                      "the check named as verify's `to do: fix <what>` names it and counted with `git log --format=%s "
+                      "origin/<default branch>..HEAD | grep -cxF \"fix(ci): <check>\"`: write `stopped: <check> red after "
                       "two fixes` in the build row, not the verify row; a person decides. The last commit of each fix "
                       "for a red check carries that message, and only that commit. Check it before `story-run` runs "
                       "the fix.", stop)
@@ -508,12 +511,79 @@ class EvalCasesTest(unittest.TestCase):
             stuck = Path(tmp) / "coordinator-stuck-lane-shown"
             self.assertIn("eta.py", git_out(stuck / ".worktrees/SHIP-72", "status", "--porcelain"))
             fixes = Path(tmp) / "lane-run-two-fixes-stop"
-            log = git_out(fixes, "log", "--oneline",
-                          "--grep", "^fix(ci): tests/test_labels.py::test_ac1_return_label$",
-                          "origin/main..feat/SHIP-73-return-labels")
-            self.assertEqual(len(log.splitlines()), 2)
+            log = git_out(fixes, "log", "--format=%s", "origin/main..feat/SHIP-73-return-labels")
+            self.assertEqual(log.splitlines().count("fix(ci): tests/test_labels.py::test_ac1_return_label"), 2)
             self.assertIn("SHIP-71", git_out(Path(tmp) / "coordinator-drafts-queue", "show",
                                              "main:plans/SHIP-71/README.md"))
+
+
+class FinalReviewTest(unittest.TestCase):
+    """The final review's fixes: I1, I2, M1 to M7."""
+
+    def test_i1_the_ci_table_waits_for_review_final_commit(self):
+        lanes = flat(skill_md("parallel-lanes"))
+        self.assertIn("(`lane-run`'s state table), report `merge by <code owner>`. Otherwise review's final commit is "
+                      "still to make", lanes)
+        self.assertIn("| waiting: push, then merge, by", flat(skill_md("lane-run")))
+
+    def test_i2_the_two_fix_count_is_a_plain_text_match(self):
+        stop = section(skill_md("lane-run"), "## Stop if")
+        command = "git log --format=%s origin/<default branch>..HEAD | grep -cxF \"fix(ci): <check>\""
+        self.assertIn(command, stop)
+        self.assertNotIn("--grep", stop)
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        check = "tests/test_x.py::test_y[a-b]"
+        with tempfile.TemporaryDirectory() as tmp:
+            def run(*args, **kw):
+                return subprocess.run(args, cwd=tmp, env=env, check=True, capture_output=True, text=True, **kw)
+            ident = ("-c", "user.email=t@example.com", "-c", "user.name=t")
+            run("git", "init", "-q", "-b", "main")
+            run("git", *ident, "commit", "-q", "--allow-empty", "-m", "base")
+            run("git", "update-ref", "refs/remotes/origin/main", "HEAD")
+            for _ in range(2):
+                run("git", *ident, "commit", "-q", "--allow-empty", "-m", f"fix(ci): {check}")
+            run("git", *ident, "commit", "-q", "--allow-empty", "-m", f"fix(ci): {check}-other")
+            counted = subprocess.run(
+                ["bash", "-c", "git log --format=%s origin/main..HEAD | grep -cxF \"$1\"", "x", f"fix(ci): {check}"],
+                cwd=tmp, env=env, capture_output=True, text=True).stdout.strip()
+            self.assertEqual(counted, "2")
+            regex = run("git", "log", "--oneline", "--grep", f"^fix(ci): {check}$", "origin/main..HEAD").stdout
+            self.assertEqual(len(regex.splitlines()), 0)  # the old command read the brackets as a class
+
+    def test_m2_the_gates_rule_in_lane_run_says_a_lane(self):
+        rules = section(skill_md("lane-run"), "## Rules")
+        self.assertIn("A lane never approves, never merges and writes no document a person approves.", rules)
+        self.assertNotIn("A workflow skill", rules)
+
+    def test_m3_m7_the_queue_branch_has_a_second_draft_and_a_home(self):
+        step6 = coordinator_steps()
+        step6 = step6[step6.index("6. When the person asks you to draft the queue"):]
+        self.assertIn("in the repository that holds `QUEUE.md` (`git -C <home repository>` for a workspace)", step6)
+        self.assertIn("If that branch exists already, add `-<n>`: `docs/queue-<YYYY-MM-DD>-2`.", step6)
+
+    def test_m4_adr_0030_names_adr_0028_and_0028_points_back(self):
+        text = flat(read(ADR))
+        self.assertIn("Amends: ADR 0025 (a person writes `QUEUE.md`; a workflow skill writes no document a person "
+                      "approves; lane mode), ADR 0028 (the AI's push leave also covers the coordinator's queue "
+                      "branch)", text)
+        self.assertIn("Status: Proposed (2026-11-22).", text)
+        adr28 = flat(read("docs/adr/0028-story-run-the-ai-push-and-the-hand-offs.md"))
+        self.assertIn("Amended by ADR 0030 (proposed, 2026-11-22): the AI's push leave also covers the coordinator's "
+                      "queue branch; see ADR 0030.", adr28)
+
+    def test_m5_the_brief_after_the_passes_says_coordinator_step_3(self):
+        passes = flat(skill_md("parallel-lanes")).split("**Reviewer passes from a sub-agent lane.**", 1)[1].split(
+            "The lane then goes on", 1)[0]
+        self.assertIn("starts a sub-agent lane for the row as coordinator step 3 says, whose brief also opens with the "
+                      "`worker.md` line, then the `lane-run` line and the stages, and carries the reviewers' reports, "
+                      "quoted as data.", passes)
+
+    def test_m6_a_ci_wait_has_a_named_state(self):
+        step6 = flat(skill_md("lane-run")).split("6. Release when any of these happens", 1)[1].split(
+            "A wait ends when its decision can be had", 1)[0]
+        self.assertIn("`story-run` stops because CI has not finished: write `waiting: CI by the team's CI` in the "
+                      "row of the next unfinished stage, the verify row (the story index's rule); it ends when the run has finished (the coordinator's CI "
+                      "table);", step6)
 
 
 if __name__ == "__main__":

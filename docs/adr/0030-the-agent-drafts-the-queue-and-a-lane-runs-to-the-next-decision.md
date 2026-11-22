@@ -2,7 +2,7 @@
 
 Status: Proposed (2026-11-22). · Decider: Prashant Sharma (framework owner)
 Design: `docs/design/2026-11-22-parallel-work-like-pstack.md` · Plan: `docs/plans/2026-11-22-plan-28-parallel-like-pstack.md` ·
-Amends: ADR 0025 (a person writes `QUEUE.md`; a workflow skill writes no document a person approves; lane mode)
+Amends: ADR 0025 (a person writes `QUEUE.md`; a workflow skill writes no document a person approves; lane mode), ADR 0028 (the AI's push leave also covers the coordinator's queue branch)
 
 ## Context
 ADR 0025 made a person write `QUEUE.md`, a row for each independent slice included, copied from the plan's `DEPENDS ON`
