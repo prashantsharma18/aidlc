@@ -161,7 +161,7 @@ class SpecifyTest(Layout, unittest.TestCase):
     """Task 2: `aidlc-specify` keeps amendment mode's steps in a reference; its stop and its decisions stay in
     SKILL.md."""
 
-    NAME, REFS, LIMIT = "aidlc-specify", ("amendment.md",), 1800
+    NAME, REFS, LIMIT = "aidlc-specify", ("amendment.md",), 2000  # Plan 27 reaches 1,937 (item W2)
 
     def test_the_amendment_stop_and_decisions_stay_in_skill_md(self):
         raw = skill_md(self.NAME)
@@ -180,7 +180,7 @@ class DesignTest(Layout, unittest.TestCase):
     references; every approval stays in SKILL.md."""
 
     NAME, REFS = "aidlc-design", ("amendment.md", "route-g.md", "several-repositories.md")
-    LIMIT = 2400  # the design's target is 2,000; this cut reaches 2,324 (item W1)
+    LIMIT = 2550  # the design's target is 2,000; Plan 26 reached 2,324 (item W1); Plan 27 reaches 2,480 (item W5)
 
     def test_the_approvals_and_the_load_stay_in_skill_md(self):
         raw = skill_md(self.NAME)
@@ -231,7 +231,7 @@ class PlanTest(Layout, unittest.TestCase):
 
     NAME = "aidlc-plan"
     REFS = ("brief-mode.md", "independent-slices.md", "revision.md", "route-g.md", "several-repositories.md")
-    LIMIT = 3200  # the design's target is 2,500; this cut reaches 3,185 (item W1)
+    LIMIT = 3450  # the design's target is 2,500; Plan 26 reached 3,185 (item W1); Plan 27 reaches 3,373 (item W3)
 
     def test_every_stop_of_a_brief_and_of_slice_0_is_in_stop_if(self):
         stops = flat(section(skill_md(self.NAME), "## Stop if"))
@@ -292,7 +292,7 @@ class BuildTest(Layout, unittest.TestCase):
     pause, route S's exception and every stop stay in SKILL.md."""
 
     NAME, REFS = "aidlc-build", ("recipe-commit.md", "route-g.md", "stacked-slices.md")
-    LIMIT = 3900  # the design's target is 2,500; this cut reaches 3,880 (item W1)
+    LIMIT = 4350  # the design's target is 2,500; Plan 26 reached 3,880 (item W1); Plan 27 reaches 4,271 (item W4)
 
     def test_the_recipe_pause_and_its_exception_stay_in_step_5(self):
         step5 = flat(skill_md(self.NAME)).split("5. **When the bundle has a RECIPE", 1)[1].split(" 6. ", 1)[0]

@@ -50,6 +50,7 @@ The pull request, its evidence table, on route D1 the fix brief `plans/<KEY>/fix
    (`confirmed by <name> in the session, <date>`); otherwise leave the row and report.
    Where the code host's rules dismiss stale approvals or require approval of the last push, the code owner re-approves
    after the final commit. Then check the approval again before you record it or call the pull request ready.
+   Then push that commit when the team's `AGENTS.md` lets you push your own feature branch (ADR 0028).
    The session then tells the person the pull request is ready to merge; you never merge (ADR 0023). So the row
    reaches the default branch only through the merge. The row's status stays `done`, because `aidlc-release` reads
    exactly that word. On slice 0 of route G, mark the `slice 0` row.

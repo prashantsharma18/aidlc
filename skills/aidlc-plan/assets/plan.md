@@ -37,4 +37,5 @@ Fields (check each against the files before asking for approval):
 
 APPROVAL   plan.md <version> (commit <sha>) approved by <tech lead>, <YYYY-MM-DD>, <on pull request n, checked in the review tool | in the session>. Conditions: <...>
            (written by the AI after the tech lead decides; ADR 0023. At Tier 1: `none: stated at Tier 1, the code owner reads it at Merge`, unless the slices are independent: then the tech lead approves, as at Tier 2.)
+           (When the plan merges first: `approved in its pull request; the record is the plan row of the story's index (ADR 0028)`, in place of the line above, written before the push; this file is never edited after the approval.)
 ```

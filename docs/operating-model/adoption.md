@@ -142,7 +142,7 @@ person who disagrees says so.
 | A judgement call made while building | No one approves a row: the code owner reads the decision log inside Merge, and may bring in the row's owner as a reviewer | Every tier | The progress note's decision log, copied into the pull request description by owner (ADR 0027) |
 | Each review finding | The engineer decides it; this is their review of the diff; high and medium findings block the merge | Every tier | The review record |
 | A specialist review (Tier 3) | The named specialist, who can block | Tier 3 | The pull request |
-| The push | The person who ran the session, who alone holds the push credential | Every tier | The code host |
+| The push | The person who ran the session; with ADR 0028's leave in the team's `AGENTS.md`, also the session itself, on the story's own feature branch only, with a credential that cannot push the default branch | Every tier | The code host |
 | Merge rules on the code host, where the team has them (aidlc needs none) | A repository administrator | Once | The code host |
 | Monitoring and rollback | The owning team confirms, with the release decision | With Release | The readiness record |
 | Containment of an incident | On-call; a person runs every runbook step | Every tier | The incident record |

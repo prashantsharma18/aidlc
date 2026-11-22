@@ -262,5 +262,139 @@ class CutsTest(unittest.TestCase):
         self.assertNotIn("Context gaps noticed", read("skills/aidlc-build/assets/progress-note.md"))
 
 
+PUSH_RULE = ("- The AI may push its own feature branch: no. Change it to yes only when the AI's credential can push "
+             "feature branches and the code host stops it from pushing the default branch (ADR 0028). Never a force-push, "
+             "a tag, a merge or an approval; a person opens every pull request.")
+RECORD = "`done: approved in pull request <n> by <who>, <how it was confirmed>`"
+PUSH = ("when the team's `AGENTS.md` lets you push your own feature branch (ADR 0028), or ask the person to")
+
+
+class PushTest(unittest.TestCase):
+    """Task 4: ADR 0028's push wherever "the person pushes" is stated; G2, the document pull requests' push and stop;
+    G3, their record in the index."""
+
+    def test_the_kept_rule_names_its_exception_in_every_copy(self):
+        for rel in TIERS_COPIES + (TIERS_DOCS,):
+            text = flat(read(rel))
+            self.assertIn("- The person pushes: the AI holds no push credential. The exception is ADR 0028: when the "
+                          "team's `AGENTS.md` says the AI may push its own feature branch, with a credential that cannot "
+                          "push the default branch, the AI pushes the story's own branches; never a force-push or a tag, "
+                          "and it never opens, approves or merges a pull request.", text, rel)
+        self.assertEqual(read(TIERS_COPIES[0]), read(TIERS_DOCS).split("\n", 1)[1])
+
+    def test_build_pushes_only_its_own_branch(self):
+        build = skill_md("aidlc-build")
+        step10 = flat(build).split(" 10. Report:", 1)[1].split(" ## Produces", 1)[0]
+        self.assertIn("The person pushes and opens the pull request; you hold no push credential.", step10)
+        self.assertIn("commit the note and the index together, as the session's last commit. Then, when the team's "
+                      "`AGENTS.md` lets you push your own feature branch (ADR 0028) and this was the branch's last slice "
+                      "(a slice on its own branch: once that slice is done), push it with a plain `git push`, never with "
+                      "force and never the default branch; the person still opens the pull request.", step10)
+        self.assertLess(step10.index("as the session's last commit"), step10.index("push it with a plain `git push`"))
+        self.assertIn("and the person pushes: you hold no push credential. Where the team's `AGENTS.md` lets you push "
+                      "your own feature branch (ADR 0028), you push it, never with force.", flat(section(build, "## Gate")))
+        self.assertIn("- You are about to push without the team's leave in `AGENTS.md`, to force-push, or to push the "
+                      "default branch or a tag; or to present local results as the verdict.",
+                      flat(section(build, "## Red flags")))
+
+    def test_the_other_statements_name_the_exception(self):
+        commits = flat(skill_md("committing-changes"))
+        self.assertIn("A push, force-push, history rewrite or release tag is needed: a person does it. A plain push of "
+                      "your own feature branch, when the team's `AGENTS.md` allows it (ADR 0028), is the exception.",
+                      commits)
+        self.assertIn("You never push, force-push or tag; a person does. The one exception is a plain push of your own "
+                      "feature branch, when the team's `AGENTS.md` allows it (ADR 0028).", commits)
+        lanes = flat(skill_md("parallel-lanes"))
+        self.assertIn("Ask the person first, unless the team's `AGENTS.md` lets a lane push its own branch. That leave "
+                      "covers a plain push only: this lease push asks the person first, always (ADR 0028).", lanes)
+        self.assertIn("- The team's `AGENTS.md`: whether a lane may push its own branch, and whether force-push is "
+                      "forbidden. The leave is ADR 0028's: a plain push of the row's own feature branch, never the "
+                      "default branch or a tag.", lanes)
+        self.assertIn("Row 7's push: the AI pushes its own feature branch instead, when the team's `AGENTS.md` allows "
+                      "it (ADR 0028).", flat(skill_md("using-aidlc")))
+        self.assertIn("| The push | The person who ran the session; with ADR 0028's leave in the team's `AGENTS.md`, "
+                      "also the session itself, on the story's own feature branch only, with a credential that cannot "
+                      "push the default branch |", read("docs/operating-model/adoption.md"))
+        for rel in RULES_FILES:
+            self.assertIn(PUSH_RULE, flat(read(rel)), rel)
+
+    def test_g2_a_document_pull_request_waits_commits_pushes_then_stops(self):
+        specify = flat(section(skill_md("aidlc-specify"), "## Steps"))
+        self.assertIn("as done, or as stopped with the reason. Until Ready is recorded, write `waiting: Ready by <spec "
+                      "owner>` there in place of done, as the index's rule for a document's decision says. At Tier 2 and "
+                      "3, write that wait first, then commit the spec and the index on the spec's branch (the index's "
+                      "`spec` BRANCH line) and push it, " + PUSH + "; stop: a person opens the pull request "
+                      "`[<KEY>] spec v<n>`, whose description is the spec's \"For the reviewer\" section.", specify)
+        plan = flat(section(skill_md("aidlc-plan"), "## Steps"))
+        self.assertIn("as done, or as stopped with the reason. When the plan merges first (at Tier 2 and 3, or with "
+                      "independent slices), write `waiting: Design + plan by <tech lead>` there in place of done, as the "
+                      "index's rule for a document's decision says; then commit the plan, its bundles and the index on "
+                      "the plan's branch (the index's `plan` BRANCH line) and push it, " + PUSH + "; stop: a person "
+                      "opens the pull request `[<KEY>] design + plan v<n>` (for a part, the title the Gate gives), whose "
+                      "description is the plan's \"For the reviewer\" section.", plan)
+        design = flat(section(skill_md("aidlc-design"), "## Steps"))
+        self.assertIn("as done, or as stopped with the reason. For a story across several repositories, write "
+                      "`waiting: Design + plan by <tech lead>` there in place of done, as the index's rule for a "
+                      "document's decision says; then commit the design's documents and the index on the plan's branch "
+                      "(the index's `plan` BRANCH line) and push it, " + PUSH + "; stop: a person opens the home design "
+                      "pull request, whose description is the design note's \"For the reviewer\" section.", design)
+        for steps in (specify, plan, design):
+            self.assertLess(steps.index("waiting:"), steps.index("then commit"))
+        review = flat(skill_md("aidlc-review"))
+        self.assertIn("push that commit when the team's `AGENTS.md` lets you push your own feature branch (ADR 0028). "
+                      "The session then tells the person the pull request is ready to merge; you never merge", review)
+
+    def test_one_rule_says_which_row_holds_a_wait(self):
+        for rel in ("skills/aidlc-start/assets/story-index.md", "skills/aidlc-plan/assets/story-index.md"):
+            self.assertIn("when the wait ends, that row reads `to do` again. That is every wait (a pause, a pull request "
+                          "to open, CI, Merge in the `merged` row, Release) except one (ADR 0028): a document's decision "
+                          "(Ready, Design + plan, a brief's confirmation) waits in that document's own row, in place of "
+                          "done, and ends with its record, never with `to do`: for a pull request's approval, the record "
+                          "below; for a brief's confirmation, `done: confirmed by <engineer>, <how it was confirmed>`.",
+                          flat(read(rel)), rel)
+        lanes = flat(skill_md("parallel-lanes"))
+        for phrase in ("whichever row holds it (a plan's approval waits in the plan row, as the story index's rule for a "
+                       "document's decision says, and is still the plan's);",
+                       "So each cell has one writer at a time, and a stage's `done` is never overwritten. The exception is "
+                       "a document's decision (Ready, Design + plan, a brief's confirmation): it waits in that document's "
+                       "own row, which was never `done`, and ends with its record, never with `to do`, as the story "
+                       "index's rule says (ADR 0028).",
+                       "- A waiting row is in the row of the next unfinished stage (lane step 6), except a document's "
+                       "decision (Ready, Design + plan, a brief's confirmation), which waits in its own row and ends with "
+                       "its record, as the story index's rule says (ADR 0028)."):
+            self.assertIn(phrase, lanes, phrase)
+
+    def test_g3_a_merged_document_is_never_edited_for_its_record(self):
+        specify = flat(section(skill_md("aidlc-specify"), "## Gate"))
+        self.assertIn("then write the spec's Approval record and the work item's entry from it, with how it was "
+                      "confirmed, and ask before posting (ADR 0026). At Tier 2 and 3, \"the spec's Approval record\" in "
+                      "the sentence before means the specify row of the story's index, " + RECORD + ", which the next "
+                      "start writes on the next row's branch; the spec's own slot names its pull request before the "
+                      "push, so the merged spec is never edited (ADR 0028).", specify)
+        plan = flat(section(skill_md("aidlc-plan"), "## Gate"))
+        self.assertIn("That pull request approval is the record: the work item's entry is written from it (ADR 0026). "
+                      "When the plan merges first, \"the plan's APPROVAL line\" above means the plan row of the story's "
+                      "index, " + RECORD + ", which the next start writes on the next row's branch; the APPROVAL line "
+                      "names its pull request before the push, so the merged plan is never edited (ADR 0028).", plan)
+        design = flat(section(skill_md("aidlc-design"), "## Gate"))
+        self.assertIn("When the design merges first, that APPROVED line and the ADR draft's Status are written before "
+                      "the push instead, as `approved in its pull request` and `Accepted when its pull request merges`; "
+                      "the merged files are never edited, and the record is a row of the story's index: in a single "
+                      "repository, where the design merges with the plan at Tier 2 and 3, the plan row; for a story "
+                      "across several repositories, where the home design pull request merges on its own, the design "
+                      "row (ADR 0028).", design)
+        for rel, slot in (("skills/aidlc-specify/assets/spec.md", "At Tier 2 and 3, where the spec merges first:"),
+                          ("skills/aidlc-plan/assets/plan.md", "(When the plan merges first:"),
+                          ("skills/aidlc-design/assets/design-note.md", "(When the design merges first:")):
+            self.assertIn(slot, read(rel), rel)
+            self.assertIn("in place of", read(rel), rel)
+        for rel in ("skills/aidlc-start/assets/story-index.md", "skills/aidlc-plan/assets/story-index.md"):
+            self.assertIn("A document that merges first (at Tier 2 and 3 the spec, and the design with the plan or, "
+                          "across several repositories, on its own; a plan with independent slices) is never edited "
+                          "after its approval: the next start that finds its pull request approved and merged first makes "
+                          "the next row's branch, then writes the document's row there as " + RECORD + " (ADR 0028).",
+                          flat(read(rel)), rel)
+
+
 if __name__ == "__main__":
     unittest.main()

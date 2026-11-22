@@ -57,7 +57,10 @@ Kept at every tier, unchanged:
 - Checkpoints where the bundle's MODE puts them.
 - The review of a recipe commit, except for a recipe class listed in `AGENTS.md`'s Standard changes on route S: the
   code owner reads its recipe check at Merge.
-- The person pushes: the AI holds no push credential.
+- The person pushes: the AI holds no push credential. The exception is ADR 0028: when the team's `AGENTS.md`
+  says the AI may push its own feature branch, with a credential that cannot push the default branch, the AI
+  pushes the story's own branches; never a force-push or a tag, and it never opens, approves or merges a pull
+  request.
 - Every decision in operate, feedback and onboard, and every `parallel-lanes` person action.
 - The AI never approves or merges (ADR 0023).
 - A change of tier, up or down, is a Ready decision at every tier: the risk's owner decides it.

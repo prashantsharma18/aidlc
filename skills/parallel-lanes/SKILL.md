@@ -34,7 +34,8 @@ For one item a person works on by hand, run its stage directly; no lane is neede
   `plans/<KEY>/part-<n>/slice-<m>/README.md` for a slice of a second part in the same repository), the plan, the
   bundles and the progress notes. For a part in another repository, run `git -C <repository> fetch`, then
   `git -C <repository> show <branch>:plans/<KEY>/README.md`.
-- The team's `AGENTS.md`: whether a lane may push its own branch, and whether force-push is forbidden.
+- The team's `AGENTS.md`: whether a lane may push its own branch, and whether force-push is forbidden. The leave is
+  ADR 0028's: a plain push of the row's own feature branch, never the default branch or a tag.
 - `git worktree list`, in each repository the queue names. Every worktree under `.worktrees/` there counts as a running lane; the main copy does not.
 
 **How the run reaches its lanes.** Every stage that has `disable-model-invocation: true`, and this skill, starts only
@@ -64,6 +65,9 @@ A row's state is read from its own files, never kept in the queue (ADR 0022):
 | done | the index's merged row, on the default branch (`git show origin/<default branch>:plans/<KEY>/README.md`; for a slice row, its own index `plans/<KEY>/slice-<n>/README.md`) |
 | ready | none of the above, its index exists, and every row it depends on is done; or waiting on a decision that can now be had (lane step 4) |
 
+- A waiting row is in the row of the next unfinished stage (lane step 6), except a document's decision (Ready,
+  Design + plan, a brief's confirmation), which waits in its own row and ends with its record, as the story index's
+  rule says (ADR 0028).
 - A row whose item has no index yet is not ready: a person routes it with `aidlc-start` first.
 - A waiting row is resumed by a lane, at lane step 4, once its decision can be had: checked where its stage says
   (a plan or design merged on the default branch; a pull request's approval or merge in the review tool or in git;
@@ -123,8 +127,8 @@ Lane mode, step by step:
    connected tool), or, for a lane a person started, the decider gives it in this session. Record it as the stage
    says (ADR 0023), then continue with the stage's next step. A hands-on build's restatement at Tier 3 and a pause are
    recorded as lines in the progress note, as `aidlc-build` says. A sub-agent lane resumes only a wait that build,
-   verify or review asked for, whichever row holds it (the plan's approval, written in the build row, is still the
-   plan's); `waiting: reviewer passes at <commit>` only from a brief that quotes the reviewers' reports for
+   verify or review asked for, whichever row holds it (a plan's approval waits in the plan row, as the story index's rule for a document's
+   decision says, and is still the plan's); `waiting: reviewer passes at <commit>` only from a brief that quotes the reviewers' reports for
    that commit (below); and the push wait as step 6 says. In a lane a person started, when the decision cannot be
    checked, ask the person for it and keep the worktree: record it when the decider gives it in this session, and
    release as step 6 says if they cannot. Only a sub-agent lane releases when it cannot check the decision: it
@@ -141,7 +145,9 @@ Lane mode, step by step:
 6. Release when any of these happens, then end. A lane writes a wait into the row of the next unfinished stage,
    never into a row already done; when the wait ends, that row reads `to do` again. While a stage runs, that is its
    own row; once it has marked its row done, it is the next stage's row. So each cell has one writer at a time, and a
-   stage's `done` is never overwritten.
+   stage's `done` is never overwritten. The exception is a document's decision (Ready, Design + plan, a brief's
+   confirmation): it waits in that document's own row, which was never `done`, and ends with its record, never with
+   `to do`, as the story index's rule says (ADR 0028).
    - a person's decision is needed, as the tiers file's decisions table lists it for the row's tier (answers, the
      plan's approval at Tier 2 and 3 and of a Tier 1 plan with independent slices, a pause or a Tier 3 restatement
      confirmation, the pull request review): write `waiting: <decision> by <who>`;
@@ -235,6 +241,7 @@ started runs the passes itself.
 5. Push with `git push --force-with-lease --force-if-includes origin <slice 3's branch>`, which fails rather than
    overwrite a push this lane has not seen or included, on this lane's own branch only; the branch is named because a
    stacked claim has no upstream. Ask the person first, unless the team's `AGENTS.md` lets a lane push its own branch.
+   That leave covers a plain push only: this lease push asks the person first, always (ADR 0028).
    If the team forbids force-push (a rule in its `AGENTS.md`), stop and ask. A slice rebased but not pushed makes a
    later claim's `--ff-only` and the ancestry check fail: a person must push it with the same lease command, or tell a
    lane to (asking first), never a plain push.

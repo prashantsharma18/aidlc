@@ -18,4 +18,5 @@ OUTCOME  <"none needed" with reason | decisions, each with its owner -> decision
 UI REFERENCE  <Figma link and version | wireframes/<screen>.md vN, approved by <product owner>, <how it was confirmed> | none: no new screen or flow>
 RECORDED BY  <tech lead or architect>, <YYYY-MM-DD>, <how it was confirmed> | stated at Tier 1; the code owner sees it at Merge
 APPROVED  <ADR now Accepted · contract version and its tests · boundary rules · approvers (tech lead or architect; consumers for a contract), YYYY-MM-DD, how it was confirmed>
+          (When the design merges first: `approved in its pull request; the record is the plan row of the story's index (ADR 0028)` in one repository, or the design row across several repositories, in place of the line above, written before the push)
 ```

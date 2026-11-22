@@ -20,11 +20,18 @@ person checks the facts at the first technical decision (ADR 0027). A re-route w
 Every route has a `merged` row after `aidlc-review`; a story index at a workspace root has none, because each part's
 index holds it (ADR 0028). Each stage marks its own row when it ends: done, or `stopped: <reason>`. The build row reads doing while slices remain.
 A lane (`parallel-lanes`) that stops for a person's decision writes `waiting: <decision> by <who>` in the row of the
-next unfinished stage, never in a row already done; when the wait ends, that row reads `to do` again.
+next unfinished stage, never in a row already done; when the wait ends, that row reads `to do` again. That is every wait (a pause, a pull request to open, CI, Merge in
+the `merged` row, Release) except one (ADR 0028): a document's decision (Ready, Design + plan, a brief's
+confirmation) waits in that document's own row, in place of done, and ends with its record, never with `to do`: for
+a pull request's approval, the record below; for a brief's confirmation, `done: confirmed by <engineer>, <how it was confirmed>`.
 Once the code owner approves, the AI checks the approval in the review tool and the team's CI result, marks the merged row
 done in the pull request's final commit (its message says how it was confirmed) and tells the person it is ready
 to merge (ADR 0023), so it reaches
-the default branch only through the merge. A re-plan or a revision resets the later rows to "to do". At release,
+the default branch only through the merge. A re-plan or a revision resets the later rows to "to do". A document that merges first (at Tier 2 and 3 the spec,
+and the design with the plan or, across several repositories, on its own; a plan with independent slices) is never
+edited after its approval: the next start that finds its pull request approved and merged first makes the next
+row's branch, then writes the document's row there as
+`done: approved in pull request <n> by <who>, <how it was confirmed>` (ADR 0028). At release,
 `aidlc-release` reads the merged row on each repository's default branch with git, and a person confirms it.
 
 Links to these documents on the tracker are permalinks at a commit (the full commit hash in the address), never a

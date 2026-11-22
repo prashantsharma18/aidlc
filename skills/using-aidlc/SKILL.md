@@ -36,7 +36,7 @@ A "pull request" is the code host's review request: a pull request on GitHub, Bi
 | 11 | `aidlc-operate` | The incident record and a new work item | Story level | On-call owns the incident; people act | `aidlc-feedback` |
 | 12 | `aidlc-feedback` | Each lesson routed to a test, an eval case, the context, a guardrail or a checklist | Story level | The owner of each source | — |
 
-A plan with independent slices is still approved by the tech lead at Tier 1, as at Tier 2 (ADR 0025): "stated at Tier 1" in rows 5 and 6 does not apply to it.
+A plan with independent slices is still approved by the tech lead at Tier 1, as at Tier 2 (ADR 0025): "stated at Tier 1" in rows 5 and 6 does not apply to it. Row 7's push: the AI pushes its own feature branch instead, when the team's `AGENTS.md` allows it (ADR 0028).
 
 ## The routes
 

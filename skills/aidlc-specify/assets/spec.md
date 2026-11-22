@@ -47,4 +47,5 @@ E1 {{condition}} -> {{decided behaviour}} (decided by {{who}}, {{how it was conf
 
 ## Approval record
 Spec {{version}} approved by {{owner}} on {{YYYY-MM-DD}}, {{how it was confirmed: checked on the work item, or in the session}} · route {{ROUTE}} (shown; the tech lead owns it). Reviewed by {{specialist}}.
+At Tier 2 and 3, where the spec merges first: write `approved in its pull request; the record is the specify row of the story's index (ADR 0028)` in place of the line above, before you push; this file is never edited after the approval.
 Amendments: {{date, criterion, reason, decider}}

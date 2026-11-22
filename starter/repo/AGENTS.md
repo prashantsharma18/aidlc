@@ -21,6 +21,9 @@
   `aidlc-design` (always), `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`; after an
   incident, `aidlc-operate` and `aidlc-feedback`.
 - Tests first: a failing test before any code; for a defect, a test that reproduces it.
+- The AI may push its own feature branch: no. Change it to yes only when the AI's credential can push feature
+  branches and the code host stops it from pushing the default branch (ADR 0028). Never a force-push, a tag, a
+  merge or an approval; a person opens every pull request.
 - Every change is reviewed in a pull request by a code owner who did not write it.
 - A person decides only where the tiers file's decisions table says (ADR 0026): at Tier 1, Ready and Merge, and Release only when users see the change; a plan with independent slices is still approved. A
   standard change listed below takes route S.
