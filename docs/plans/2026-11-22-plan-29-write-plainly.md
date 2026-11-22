@@ -43,6 +43,9 @@ Branch: `docs/write-plainly`, from main `20aeb77` (the design is its first commi
 
 Approve each item before execution. "Pinned" means an existing test on main asserts it.
 
+**Approved by the framework owner in the session, 2026-11-22:** the plan and every item below (L1, W1 to W4, V1 to
+V5); execution subagent-driven.
+
 | Item | File and line (on main) | Today | After |
 |---|---|---|---|
 | L1 | `scripts/test_loads.py`, the `LOADS` table | the expected loads of each stage | `aidlc-intent` gains `in-your-own-words`, `technical-writing`; `aidlc-specify`, `aidlc-design`, `aidlc-plan`, `aidlc-review`, `aidlc-release` and `aidlc-operate` each gain `technical-writing`; `aidlc-discover` gains `how`, `why` |
