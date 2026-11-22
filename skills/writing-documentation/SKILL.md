@@ -20,7 +20,7 @@ metadata:
 Not for: architecture decisions (`aidlc-design` drafts the ADR) or changelog entries (`committing-changes`).
 
 ## Steps
-1. Name the reader and the job: a new engineer setting up, a caller of the API, an operator during an incident, an agent starting a session. Each document serves one reader first.
+1. Name the reader and the job: a new engineer setting up, a caller of the API, an operator during an incident, an agent starting a session. Each document serves one reader first. Then pick the document's mode and keep to it (Diátaxis): a tutorial teaches by doing, a how-to guide reaches one goal, a reference lists facts for lookup, and an explanation gives the why; one document, one mode, so split and link rather than mix.
 2. Find what already exists and who owns it. Change that document; never start a parallel one.
 3. Write what the reader must do next, in the order they do it:
    - **README:** what this is and for whom, how to install and run it, how to run its tests, where to look next (the map, the decisions, the owners).
@@ -28,7 +28,7 @@ Not for: architecture decisions (`aidlc-design` drafts the ADR) or changelog ent
    - **Setup and operations guides:** the exact commands, the output to expect, and what to do when the output differs.
 4. Comment the reason, not the action: a constraint, a workaround with its cause and a link, an invariant that is not obvious. Delete comments that repeat the code; they are the first to go stale.
 5. Keep the documents agents read accurate. When a command, path or boundary in `AGENTS.md` or the codebase map stops being true, propose the fix in the same pull request for its owner.
-6. Run every command and example you wrote, and open every link, before you hand off. Where the session cannot run them (a read-only workspace root), say which are unchecked.
+6. Run every command and example you wrote, and open every link, before you hand off. Where the session cannot run them (a read-only workspace root), say which are unchecked. Load the `unslop` skill as the last pass on every document you wrote.
 7. Ship the documentation change in the same pull request as the code it describes. Release notes written after the merge go in their own pull request.
 
 ## Checks

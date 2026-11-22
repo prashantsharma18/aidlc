@@ -8,7 +8,7 @@ help" is a guess, and it does not ship: the smallest change the evidence support
 **Typical route.** D1, D2, and an incident's follow-up (it enters at `aidlc-start`).
 
 **USE SKILLS** (`aidlc-plan` names them in the bundle): `debugging-failures`, for steps 1 to 3 (brief mode names it for a
-fix brief too).
+fix brief too); `why`, for the history of the code the fix touches.
 
 **Steps.**
 1. Reproduce it yourself, on the surface where it fails, locally or in a test environment: a person acts on

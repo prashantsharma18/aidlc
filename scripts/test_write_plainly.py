@@ -157,5 +157,62 @@ class WhyTest(PracticeShape, unittest.TestCase):
         self.assertIn("a failing test or a broken build (`debugging-failures`)", flat(skill_md(self.NAME)))
 
 
+STANDING = ("Apply the `unslop` skill to every reply a person reads, and the `technical-writing` skill to every "
+            "document, pull request description and commit body.")
+STAGE_LOADS = {
+    "aidlc-intent": ("Before the first question, load the `in-your-own-words` skill and restate the request.",
+                     "Load the `technical-writing` skill for its sentences."),
+    "aidlc-specify": ("Load the `technical-writing` skill for the spec's sentences.",),
+    "aidlc-design": ("Load the `technical-writing` skill for the ADR's and the design note's sentences.",),
+    "aidlc-plan": ("Load the `technical-writing` skill.",),
+    "aidlc-review": ("Load the `technical-writing` skill for the description's sentences.",),
+    "aidlc-release": ("Load the `technical-writing` skill for their sentences.",),
+    "aidlc-operate": ("Load the `technical-writing` skill for this record and for the work item in step 6.",),
+    "aidlc-discover": ("To explain how a traced path works, load the `how` skill; to explain why it is like this, "
+                       "load the `why` skill.",),
+}
+
+
+class CallersTest(unittest.TestCase):
+    """Task 3: the other skills reach `unslop` as pstack does; the stages load at the moments a person decides."""
+
+    def test_the_standing_rule(self):
+        self.assertIn("- " + STANDING, section(skill_md("story-run"), "## Rules"))
+        self.assertIn("- " + STANDING, flat(read("skills/lane-run/references/worker.md")))
+
+    def test_the_last_pass_lines(self):
+        self.assertIn("Load the `unslop` skill as the last pass on every document you wrote.",
+                      section(skill_md("writing-documentation"), "## Steps"))
+        self.assertIn("pick the document's mode and keep to it (Diátaxis)",
+                      section(skill_md("writing-documentation"), "## Steps").split(" 2. ", 1)[0])
+        self.assertIn("Load the `unslop` skill as the last pass on the body and on any pull request text you write.",
+                      section(skill_md("committing-changes"), "## Steps"))
+        self.assertIn("Load the `unslop` skill as the last pass on the findings a person reads.",
+                      flat(skill_md("reviewing-code")).split("### Step 5: Categorize Findings", 1)[1].split("###", 1)[0])
+        self.assertIn("1. Load the `in-your-own-words` skill and restate the goal the decision serves. Write the "
+                      "decision in one paragraph", section(skill_md("stress-testing-decisions"), "## Steps"))
+
+    def test_the_stage_loads(self):
+        for stage, lines in STAGE_LOADS.items():
+            steps = section(skill_md(stage), "## Steps")
+            for line in lines:
+                self.assertIn(line, steps, (stage, line))
+        for stage in ("aidlc-build", "aidlc-verify"):
+            self.assertNotIn("`technical-writing`", skill_md(stage), stage)
+
+    def test_the_playbooks_name_them_without_loading(self):
+        bug = flat(read("skills/story-run/references/playbook-bug-fix.md"))
+        self.assertIn("`debugging-failures`, for steps 1 to 3 (brief mode names it for a fix brief too); `why`, for "
+                      "the history of the code the fix touches.", bug)
+        inv = flat(read("skills/story-run/references/playbook-investigation.md"))
+        self.assertIn("Write the finding through `unslop`, and answer a \"why\" from the record, as `why` says.", inv)
+        for text in (bug, inv):
+            self.assertNotRegex(text, r"[Ll]oad the `[a-z0-9-]+` skill")
+
+    def test_the_map_says_who_loads_them(self):
+        self.assertIn("`technical-writing` loads at each stage step that writes a document a person decides from, "
+                      "and `unslop` is the last pass of every skill that writes prose", flat(skill_md("using-aidlc")))
+
+
 if __name__ == "__main__":
     unittest.main()

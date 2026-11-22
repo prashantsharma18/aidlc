@@ -29,14 +29,14 @@ Where this runs: read the story's index first: `stories/<KEY>/README.md` at the 
 - Linked evidence: support reports, incident records, failing output. Link it. Never paste personal data: redact it, or link the restricted record.
 
 ## Steps
-1. When the request is vague or names a solution, interview first. Ask one question at a time, about the outcome and who has the problem, until you could state the problem without naming a solution. Offer two or three different framings when the person is unsure. Restate what you heard and ask the person to confirm it.
+1. Before the first question, load the `in-your-own-words` skill and restate the request. When the request is vague or names a solution, interview first. Ask one question at a time, about the outcome and who has the problem, until you could state the problem without naming a solution. Offer two or three different framings when the person is unsure. Restate what you heard and ask the person to confirm it.
 2. When the story already states the problem, an observable outcome and testable acceptance criteria, check it instead of redrafting it: list what is missing or unclear as questions for the product owner, and stop there. Otherwise, restate the request in two lines and record the Kind: new feature, defect, or incident follow-up. If the work item does not say, ask.
 3. State the problem: what is wrong, for whom, why now. Link the evidence.
 4. State the outcome as an observable change. Remove every implementation choice from the request ("add Redis rate limiting" becomes "a client cannot trigger more than N reset emails an hour") and list the removed choices under "Not now" as ideas for the spec, not decisions.
 5. Write what is deliberately not being done now.
 6. Propose a provisional tier with `assets/tiers.md`. Rate risk, complexity and scope; when the dials disagree, take the highest; when uncertain, go up a tier. Unknown owners, consumers or untested behaviour count as the next tier. Urgency changes the schedule, never the tier.
 7. For a defect or an incident follow-up, add what reproduces it (the failing output, or the steps) and "Done when: a test that reproduces it fails before the fix and passes after".
-8. Fill `assets/intent.md`, replacing each `{{FIELD}}` and leaving every approval slot for the person who approves, and write it to `plans/<KEY>/intent.md` (or `stories/<KEY>/intent.md` for a story that spans several repositories). Never overwrite an existing intent: add a new version.
+8. Fill `assets/intent.md`, replacing each `{{FIELD}}` and leaving every approval slot for the person who approves, and write it to `plans/<KEY>/intent.md` (or `stories/<KEY>/intent.md` for a story that spans several repositories). Never overwrite an existing intent: add a new version. Load the `technical-writing` skill for its sentences.
 9. Offer to post the statement as a comment on the work item. Posting asks the person first.
 10. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
    workspace root) as done, or as stopped with the reason. Then give the hand-off: what you did, the index's next row and where it runs, who it waits on, and the tracker move to suggest now (posting asks first).

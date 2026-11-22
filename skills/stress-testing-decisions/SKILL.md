@@ -19,7 +19,7 @@ metadata:
 Not for: Tier 1 changes with a rehearsed rollback, where the pass costs more than the risk; or reviewing finished code (`aidlc-review`).
 
 ## Steps
-1. Write the decision in one paragraph: what will be done, why, and what it relies on. If it does not fit in a paragraph, it is not ready to test.
+1. Load the `in-your-own-words` skill and restate the goal the decision serves. Write the decision in one paragraph: what will be done, why, and what it relies on. If it does not fit in a paragraph, it is not ready to test.
 2. List what it relies on, each item labelled FACT (with a file or link), INFERENCE or UNKNOWN.
 3. Challenge it from a fresh context, so the challenge does not inherit your blind spots. Send each question about the code to the `explorer` agent, one question per brief, with the paragraph and pointers to the code. Put the rest to a fresh session given only the paragraph and the list, briefed to argue against the decision, not to improve it. Between them, answer:
    - Which assumption, if false, breaks this, and how would we notice?

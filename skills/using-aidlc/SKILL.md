@@ -97,6 +97,8 @@ Some practices load every time at a given stage step, without being chosen:
 | `aidlc-plan` | `writing-tests` (step 4, test level), `using-aidlc` (step 7, to choose USE SKILLS) |
 | `aidlc-start` | `using-aidlc` (step 6, the route) |
 
+`technical-writing` loads at each stage step that writes a document a person decides from, and `unslop` is the last pass of every skill that writes prose; `story-run` and every sub-agent brief load both for what a person reads.
+
 ## How a slice gets its practices
 
 1. `aidlc-plan` chooses the practices each slice needs from the practice map and writes them into the bundle's USE SKILLS. The tech lead approves them with the plan. The bundle's PLAYBOOK line names the kind of work: its playbook, in `story-run`'s `references/`, says the steps and the proof that kind needs, and which practices USE SKILLS takes (ADR 0028).

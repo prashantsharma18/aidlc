@@ -37,7 +37,7 @@ The alert and its evidence, the runbook, masked logs and metrics the person shar
 4. Send the masked evidence to the `ops-diagnoser` agent: competing hypotheses, including "our change is wrong", each with the query that would test it; a person runs it and shares the masked result. Label each FACT, INFERENCE or UNKNOWN. A cause stays a hypothesis until a named person confirms it.
 5. Draft the incident record from `assets/incident.md` to `incidents/<ID>/incident.md`, filling Measures honestly (a
    change that caused the incident counts as failed), and, if the runbook lacked a step, a runbook change from
-   `assets/runbook.md` to `incidents/<ID>/runbook-change.md` (load the `adding-observability` skill).
+   `assets/runbook.md` to `incidents/<ID>/runbook-change.md` (load the `adding-observability` skill). Load the `technical-writing` skill for this record and for the work item in step 6.
 6. Draft a new work item that states the problem, not a solution, to `incidents/<ID>/work-item.md`, for the person to
    raise. When it is raised, it enters at `aidlc-start`.
 7. Hand the lessons to `aidlc-feedback`.

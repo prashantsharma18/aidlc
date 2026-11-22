@@ -209,7 +209,7 @@ class LaneRunTest(unittest.TestCase):
                        "Adapted from pstack's `worker.md` (`cursor/plugins`, folder `pstack`, MIT, Lauren Tan)"):
             self.assertIn(phrase, worker, phrase)
         self.assertNotIn("\n## ", read("skills/lane-run/references/worker.md"))
-        self.assertLess(len(worker.split()), 250)
+        self.assertLess(len(worker.split()), 300)  # 256 words at Plan 29 (the standing rule; item W2)
         self.assertIn("`references/worker.md`", section(skill_md("lane-run"), "## Inputs"))
 
     def test_lane_run_is_shorter_than_parallel_lanes_was(self):

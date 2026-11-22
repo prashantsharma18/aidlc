@@ -12,7 +12,7 @@ nothing.
    "why is it like this", read the history too: the commits, pull requests and ADRs that shaped it.
 2. Label every finding FACT, INFERENCE or UNKNOWN, with its file and line, or the commit or record it comes from.
 3. Write the finding: what it is, how it works, where things live, and the gotchas; for a choice between options, a
-   recommendation with a table of what each option gets and costs.
+   recommendation with a table of what each option gets and costs. Write the finding through `unslop`, and answer a "why" from the record, as `why` says.
 4. When the question's premise is wrong, say so, with the evidence.
 5. When the answer calls for a code change, say so in the finding: inside a story its next stages make it, after this
    stage's Gate; outside one, the person raises a work item at `aidlc-start`.
