@@ -30,6 +30,7 @@ the tests-first wording (ADR 0029, `writing-tests`), adapted from pstack (`curso
 `parallel-lanes`, and the throughput checkpoint in `aidlc-plan` (from pstack's `feature`, `multi-phase-plan`,
 `autopilot-full`, `autopilot-stack` and `babysit` playbooks), as ADR 0030 records.
 Also adapted from pstack: the practices `unslop`, `technical-writing`, `in-your-own-words`, `how` and `why`, keeping pstack's names, and the Diátaxis step in `writing-documentation` (from pstack's `technical-writing`) (Plan 29).
+Also from pstack, word for word with an "In aidlc:" note each: the principle skills `attack-the-premise`, `fix-root-causes`, `test-behavior-not-implementation`, `explain-the-number` and `exhaust-the-design-space` (pstack's `principle-<name>`, Plan 30).
 
 MIT License
 

@@ -341,5 +341,31 @@ class PlaybooksTest(unittest.TestCase):
         self.assertEqual(self.check({"notes.md": self.PLAY + "\n## Rules\nx\n"}), [])
 
 
+class PrincipleKindTest(unittest.TestCase):
+    """Plan 30: a principle skill says when it applies, is never auto-loaded, and keeps no sections."""
+
+    def check(self, description, flag=True):
+        text = (f"---\nname: attack-the-premise\ndescription: \"{description}\"\n"
+                + ("disable-model-invocation: true\n" if flag else "")
+                + "metadata:\n  kind: principle\n---\n\n# Attack the Premise\n\nA rule.\n\nYou draft; you never approve.\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package(root, {"attack-the-premise": text})
+            return [p for p in validate.validate(root) if "attack-the-premise" in p]
+
+    def test_apply_when_is_enough(self):
+        for opening in ("Apply when two fixes fail.", "Apply after a task.", "Apply before you measure.",
+                        "Use when two fixes fail."):
+            self.assertEqual(self.check(opening), [], opening)
+
+    def test_it_must_say_when(self):
+        self.assertTrue(any("a principle's description must say when it applies" in p
+                            for p in self.check("A rule about fixes.")))
+
+    def test_it_is_never_auto_loaded(self):
+        self.assertTrue(any("disable-model-invocation" in p for p in self.check("Apply when two fixes fail.",
+                                                                                flag=False)))
+
+
 if __name__ == "__main__":
     unittest.main()

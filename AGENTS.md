@@ -4,7 +4,8 @@ aidlc is a skills package for AI-assisted software delivery, from a requirement 
 It implements the guide "From Intent to Verified Change". Owner: framework owners (Prashant Sharma).
 
 ## Map
-- `skills/` the `aidlc-*` stage skills, the engineering-practice skills, the workflow skills `parallel-lanes`, `story-run` and `lane-run`, and the
+- `skills/` the `aidlc-*` stage skills, the engineering-practice skills, the workflow skills `parallel-lanes`, `story-run` and `lane-run`, the five principle skills adapted from pstack (`attack-the-premise`,
+  `fix-root-causes`, `test-behavior-not-implementation`, `explain-the-number`, `exhaust-the-design-space`), and the
   map `using-aidlc` (`skills/NOTICE` holds the third-party
   licences for parts of the eight earlier practices and for the playbooks `story-run` adapts from pstack); `agents/` the agent roles; `evals/` the behaviour evals.
   The repository root is the plugin.
@@ -29,6 +30,7 @@ It implements the guide "From Intent to Verified Change". Owner: framework owner
   excuses, Red flags, Rules; a workflow name never starts with `aidlc-` or with an "-ing" word; a real noun ending in
   "ing" goes into `ING_NOUNS` in `scripts/validate.py`. `using-aidlc` (`metadata.kind: map`) keeps the open format. A
   stage step commands a practice with "Load the `<name>` skill"; `scripts/test_loads.py` holds the table.
+- A principle skill (`metadata.kind: principle`) is pstack's text word for word: its description says "Apply when …", it keeps `disable-model-invocation: true`, it ends with its "In aidlc:" note, its credit and "You draft; you never approve.", and it is cited by name, never loaded; never reword it to aidlc's style.
 - A stage skill may keep the steps of one route or case in `references/<case>.md` (Plan 26), under three rules. A
   reference never holds a gate: no Gate, Stop if, Common excuses, Red flags or Rules section, and every stop and
   decision stays in `SKILL.md`, which the reference points to. `SKILL.md` names each reference with the condition to

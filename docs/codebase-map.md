@@ -35,6 +35,7 @@ and the workflows (`ai-review.yml`, `ci.yml`, `contract-check.yml`, `contract-pu
 - A new workflow skill: `skills/<noun-phrase>/SKILL.md` with `metadata.kind: workflow` and the workflow sections
   (When to use, Inputs, Steps, Stop if, Common excuses, Red flags, Rules); its name never starts with `aidlc-` or with
   an "-ing" word.
+- A principle adapted from pstack: `skills/<name>/SKILL.md`, pstack's text with `metadata.kind: principle`, `disable-model-invocation: true`, an "In aidlc:" note and its credit; cited by name, never loaded.
 - A template change: the `assets/` file of every skill that uses it (search for its file name).
 - Who decides at a gate: the decisions table in the six identical `assets/tiers.md` copies and
   `docs/operating-model/tiers-table.md` (ADR 0026); each deciding stage's Gate keeps its one line that points there.

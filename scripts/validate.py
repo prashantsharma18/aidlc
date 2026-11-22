@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Checks the aidlc plugin at the repository root and its marketplace entry: each skill and agent in the open Agent Skills format, the
 house sections of the stage and recipe skills, the practice sections of the practice skills, the workflow sections
-and names of the workflow skills,
+and names of the workflow skills, a principle skill (`kind: principle`) says when it applies and is never auto-loaded,
 no command of the parked harness and no tool-specific syntax (in a
 skill or its files), every named file present, the plugin's version, and the starter settings' secret denies.
 
@@ -34,6 +34,8 @@ KIND_PRACTICE = re.compile(r"^[ \t]+kind:[ \t]*['\"]?practice['\"]?[ \t]*(#.*)?$
 WORKFLOW_SECTIONS = ("## When to use", "## Inputs", "## Steps", "## Stop if", "## Common excuses", "## Red flags",
                      "## Rules")
 KIND_WORKFLOW = re.compile(r"^[ \t]+kind:[ \t]*['\"]?workflow['\"]?[ \t]*(#.*)?$", re.M)
+KIND_PRINCIPLE = re.compile(r"^[ \t]+kind:[ \t]*['\"]?principle['\"]?[ \t]*(#.*)?$", re.M)
+APPLIES = re.compile(r"\b(?:Apply|Use) (?:when|after|before)\b")
 ING_WORD = re.compile(r"^[a-z]{3,}ing(-|$)")
 ING_NOUNS = frozenset({"string", "spring"})  # first words that end in "ing" but are nouns, not doing words
 # The eight earlier practices keep their own structure, so PRACTICE_SECTIONS does not apply to them.
@@ -133,11 +135,16 @@ def check_skill(path: Path, root: Path) -> list[str]:
         problems.append(f"{rel}: name '{name}' does not match its folder '{folder}'")
     if not NAME.fullmatch(name) or len(name) > 64:
         problems.append(f"{rel}: name must be lower-case words joined by hyphens, at most 64 characters")
+    head = text[: text.find("\n---", 4)]
     if not description or len(description) > 1024:
         problems.append(f"{rel}: description is missing or longer than 1024 characters")
+    elif KIND_PRINCIPLE.search(head):
+        if not APPLIES.search(description):
+            problems.append(f"{rel}: a principle's description must say when it applies ('Apply when ...')")
+        if not re.search(r"(?m)^disable-model-invocation:[ \t]*true[ \t]*$", head):
+            problems.append(f"{rel}: a principle is never auto-loaded: it needs 'disable-model-invocation: true'")
     elif "Use when" not in description:
         problems.append(f"{rel}: description must say when to use the skill ('Use when ...')")
-    head = text[: text.find("\n---", 4)]
     if KIND_WORKFLOW.search(head):
         if folder.startswith(HOUSE_PREFIXES):
             problems.append(f"{rel}: a workflow name never starts with 'aidlc-', which marks a stage")
