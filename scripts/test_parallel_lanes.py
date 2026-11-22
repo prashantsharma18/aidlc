@@ -1121,7 +1121,7 @@ class DocsTest(unittest.TestCase):
     def test_the_readme_lists_the_workflow_skill_and_its_command(self):
         readme = read("README.md")
         self.assertIn("| Stage skills | Practice skills | Workflow skills |", readme)
-        self.assertIn("`testing-in-browser`, `writing-documentation` | `parallel-lanes` |", readme)
+        self.assertIn("`testing-in-browser`, `writing-documentation` | `parallel-lanes`, `story-run` |", readme)
         commands = readme.split("## Commands you type", 1)[1].split("\n## ", 1)[0]
         self.assertIn("| `/aidlc:parallel-lanes coordinator` |", commands)
         text = flat("README.md")
@@ -1137,7 +1137,7 @@ class DocsTest(unittest.TestCase):
             self.assertIn(kind, text, kind)
 
     def test_every_workflow_skill_is_named_where_a_team_reads(self):
-        self.assertEqual(workflow_skills(), ["parallel-lanes"])
+        self.assertEqual(workflow_skills(), ["parallel-lanes", "story-run"])
         for name in workflow_skills():
             for rel in ("README.md", "skills/using-aidlc/SKILL.md", "AGENTS.md", "docs/codebase-map.md"):
                 self.assertIn(name, read(rel), f"{rel}: {name}")

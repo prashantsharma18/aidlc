@@ -11,6 +11,7 @@ of one route or case in `references/`, read on a named condition (Plan 26)
 `skills/<practice>/`   engineering-practice skills (`skills/NOTICE` covers parts of the eight earlier ones)
 `skills/using-aidlc/`   the map: stages in order and the practice for each kind of work
 `skills/parallel-lanes/`   the workflow skill: lanes in git worktrees, from a `QUEUE.md` a person keeps (ADR 0025)
+`skills/story-run/`   the workflow skill a person starts once per decision: one story's stages, one after another, in one session (ADR 0028)
 `agents/`   agent roles the core skills call (Claude Code subagent format)
 `evals/`   behaviour eval cases, run with `claude plugin eval .`, or on demand in CI by `.github/workflows/evals.yml`
 `starter/repo/`, `starter/workspace/`   files a team copies once: a rules file, an ownership list and optional example

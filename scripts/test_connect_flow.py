@@ -515,5 +515,109 @@ class HandoffTest(unittest.TestCase):
                           flat(read(rel)), rel)
 
 
+RUN_LIMIT = 2150  # a new limit for a new skill: this task writes 2,048 words, and Plan 27b adds about 30
+LOAD = re.compile(r"\b[Ll]oad the `([a-z0-9-]+)` skill")
+
+
+class StoryRunTest(unittest.TestCase):
+    """Task 7: `story-run` runs the stages from the index until the next person's decision (ADR 0028)."""
+
+    def test_it_is_a_workflow_skill_only_a_person_starts(self):
+        import validate
+        text = skill_md("story-run")
+        head = text.split("\n---", 1)[0]
+        self.assertIn("name: story-run", head)
+        self.assertIn("  kind: workflow", head)
+        self.assertIn("disable-model-invocation: true", head)
+        self.assertEqual(validate.check_skill(ROOT / "skills/story-run/SKILL.md", ROOT), [])
+        self.assertLess(words("story-run"), RUN_LIMIT)
+        self.assertEqual(LOAD.findall(text), [])
+        self.assertTrue(flat(text).endswith(APPROVE))
+
+    def test_its_steps_pick_run_and_go_on(self):
+        steps = flat(section(skill_md("story-run"), "## Steps"))
+        for phrase in ("1. **Find the story.** Read its index where this session runs. No index: the next stage is "
+                       "`aidlc-start`, which writes it.",
+                       "2. **Pick the next row.** Take the first row that is not done,",
+                       "The `merged` row counts as done only once it reads done on the default branch",
+                       "A row that reads `waiting: <decision> by <who>` resumes only when its decision can be had",
+                       "or given by the decider in this session (ADR 0023)",
+                       RECORD,
+                       "3. **Get on the row's branch.** The index's BRANCH lines name it.",
+                       "Never work on the default branch.",
+                       "4. **Run the stage.** Read the row's stage `SKILL.md` by its path, and every reference whose "
+                       "condition holds, and follow them in full",
+                       "Its Inputs, its Gate, its Stop if and its Rules hold as written.",
+                       "one slice at a time, in the plan's order.",
+                       "5. **Go on, or stop.** Key on what the stage wrote in its row.",
+                       "When it wrote `doing` (the build row, slices remain), go on with the next slice, or stop for a "
+                       "fresh session as `aidlc-build`'s When to use says.",
+                       "Push also a branch whose last slice is done but not yet pushed (no upstream, or ahead of it), when "
+                       "opening its pull request is the next person's action.",
+                       "6. **Before every stop.** First write the wait, `waiting: <decision> by <who>`, into the row the "
+                       "index's rule names",
+                       "Then commit it with what the stage wrote. Push only where a stage says to: build after a branch's "
+                       "last slice, a document's pull request (specify, plan, the home design), and review's final commit;",
+                       "Never push to pause: not at Ready, a checkpoint, a question, or a long session",
+                       "Take the first row that is not done, even when a later row reads done",
+                       "the wait ends only when its pull request is approved and merged: first make the next row's branch "
+                       "(step 3), then write the document's row there",
+                       "At a workspace root, once the design row is done, the next work is each part:",
+                       "Check the tree is clean (`git status --porcelain` prints nothing)",
+                       "7. **The hand-off.** Open with one sentence that names what waits, and on whom",
+                       "the tracker move to suggest now", "the next start, `story-run <KEY>`",
+                       "Posting to the tracker or a pull request asks first (ADR 0023)."):
+            self.assertIn(phrase, steps, phrase)
+        six = steps.split("6. **Before every stop.**", 1)[1]
+        self.assertLess(six.index("First write the wait"), six.index("Then commit it"))
+        self.assertLess(six.index("Then commit it"), six.index("Push only where"))
+        inputs = flat(section(skill_md("story-run"), "## Inputs"))
+        self.assertIn("The stage skills: the `aidlc-*` folders beside this skill's folder.", inputs)
+        self.assertIn("read it from there, never from the repository.", inputs)
+
+    def test_it_stops_where_the_stages_and_people_stop(self):
+        stops = flat(section(skill_md("story-run"), "## Stop if"))
+        for phrase in ("a question for the product owner or a criterion's owner, Ready, Design + plan at Tier 2 and 3 or "
+                       "for a plan with independent slices, a MODE checkpoint, the Tier 3 restatement, the recipe review, "
+                       "or any item of its own Stop if.",
+                       "its pull request is not open yet: stop for the person to open it (\"open the pull request for "
+                       "SHIP-12 slice 1\").",
+                       "The team's CI has not run on the pull request yet, or is still running: stop;",
+                       "Merge: the code owner's approval, and the merge after it, are a person's.",
+                       "Release, when users see the change: the release approver decides.",
+                       "route G's `aidlc-onboard (prepare)`, `slice 0` or `aidlc-onboard (confirm)`",
+                       "A document's pull request is approved but not merged yet: stop for the person to merge it.",
+                       "At a workspace root, the design row is done: the parts run in their repositories",
+                       "The pull request has a merge conflict, or the default branch moved under it",
+                       "The tree is not clean when the run starts",
+                       "A step needs a force-push, a push to the default branch or of a tag, a merge, an approval, or "
+                       "opening or closing a pull request: a person does it.",
+                       "as `aidlc-build`'s When to use says"):
+            self.assertIn(phrase, stops, phrase)
+        when = flat(section(skill_md("story-run"), "## When to use"))
+        self.assertIn("That start is the person's go-ahead for the stages up to that decision (ADR 0028), as a person's "
+                      "start of a lane is (ADR 0025).", when)
+
+    def test_it_never_pushes_past_its_own_branch(self):
+        rules = flat(section(skill_md("story-run"), "## Rules"))
+        self.assertIn("You never approve, merge, or open or close a pull request. You push only your own feature "
+                      "branch, as the index's BRANCH lines name it, when the team's `AGENTS.md` allows it, and never "
+                      "with force (ADR 0028).", rules)
+        self.assertIn("This skill adds no step to a stage and lifts none of its gates.", rules)
+        self.assertIn("\"where your AI tool has one\"", rules)
+        flags = flat(section(skill_md("story-run"), "## Red flags"))
+        self.assertIn("- You are about to force-push, push the default branch or a tag, merge, approve, or open or close "
+                      "a pull request.", flags)
+
+    def test_the_map_and_the_lanes_name_it(self):
+        self.assertIn("`story-run` runs one story's stages in one session, one after another, until the next person's "
+                      "decision (ADR 0028).", flat(skill_md("using-aidlc")))
+        self.assertIn("no lane is needed. `story-run` runs such an item's stages one after another, in one session.",
+                      flat(skill_md("parallel-lanes")))
+        for rel in ("README.md", "AGENTS.md", "docs/codebase-map.md"):
+            self.assertIn("story-run", read(rel), rel)
+        self.assertIn("| `/aidlc:story-run SHIP-12` |", read("README.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

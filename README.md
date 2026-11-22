@@ -39,6 +39,8 @@ aidlc-start ──► intent ──► specify ──► discover ──► desi
   (at Tier 1, Ready and Merge, and Release only when users see the change; ADR 0026); a plan with independent slices is still approved; people approve in the pull request and the tracker, or tell the AI, which
   records each decision after checking it (ADR 0023). Tests come first (when a test is practical; a criterion with no test is a logged
   decision, ADR 0029); an existing test assertion is never changed to make a test pass.
+- **One start per decision:** the `story-run` workflow skill runs one story's stages one after another, in one session,
+  and stops at the next person's decision, with the wait written in the index and a hand-off (ADR 0028).
 - **Several at once:** the `parallel-lanes` workflow skill runs lanes, each in its own git worktree, from a
   `QUEUE.md` a person keeps. A lane releases at every person's decision, and the next ready row starts (ADR 0025).
 
@@ -88,6 +90,7 @@ them as below; in Copilot, Codex or Cursor, ask for the skill by name ("use aidl
 | `/aidlc:aidlc-release SHIP-12` | When every part is merged | The readiness and change records, with stop criteria |
 | `/aidlc:aidlc-operate INC-231` | When an alert fires | The incident record and a follow-up work item |
 | `/aidlc:aidlc-feedback INC-231` | After an incident, or when findings repeat | Where each lesson goes |
+| `/aidlc:story-run SHIP-12` | Once per person's decision: it runs the next stages until one is needed | What each stage it runs writes, and the wait in the index |
 | `/aidlc:parallel-lanes coordinator` | To work through `QUEUE.md` with several lanes at once; `lane` starts one lane by hand | Nothing but drafts (for reviewer passes it claims a row's worktree and writes nothing in it); each lane writes its own row's files |
 
 Which stages a piece of work needs depends on its route: the route table in the `using-aidlc` skill is the one
@@ -99,7 +102,7 @@ The skills (`skills/`):
 
 | Stage skills | Practice skills | Workflow skills |
 |---|---|---|
-| `aidlc-start`, `aidlc-onboard`, `aidlc-intent`, `aidlc-specify`, `aidlc-discover`, `aidlc-design`, `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`, `aidlc-operate`, `aidlc-feedback` | `designing-apis`, `reviewing-code`, `debugging-failures`, `migrating-safely`, `building-user-interfaces`, `adding-observability`, `tuning-performance`, `securing-code`, `writing-tests`, `committing-changes`, `building-ci-pipelines`, `simplifying-code`, `stress-testing-decisions`, `checking-official-docs`, `testing-in-browser`, `writing-documentation` | `parallel-lanes` |
+| `aidlc-start`, `aidlc-onboard`, `aidlc-intent`, `aidlc-specify`, `aidlc-discover`, `aidlc-design`, `aidlc-plan`, `aidlc-build`, `aidlc-verify`, `aidlc-review`, `aidlc-release`, `aidlc-operate`, `aidlc-feedback` | `designing-apis`, `reviewing-code`, `debugging-failures`, `migrating-safely`, `building-user-interfaces`, `adding-observability`, `tuning-performance`, `securing-code`, `writing-tests`, `committing-changes`, `building-ci-pipelines`, `simplifying-code`, `stress-testing-decisions`, `checking-official-docs`, `testing-in-browser`, `writing-documentation` | `parallel-lanes`, `story-run` |
 
 The map of the four kinds of skill (stage, practice, workflow and map), and the first skill to read: `using-aidlc`.
 

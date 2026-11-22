@@ -24,7 +24,8 @@ person and ends. Every state lives in git, so any lane carries on where another 
 - **At a stage's gate:** a stage running in a lane says "release at your gate as `parallel-lanes` says". Release as
   step 6 of lane mode says.
 
-For one item a person works on by hand, run its stage directly; no lane is needed.
+For one item a person works on by hand, run its stage directly; no lane is needed. `story-run` runs such an item's
+stages one after another, in one session.
 
 ## Inputs
 - `QUEUE.md` on the default branch: in the repository, or in the home repository for a workspace. A person writes it
