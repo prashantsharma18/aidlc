@@ -50,6 +50,9 @@ Branch: `docs/parallel-like-pstack`, from main `2d6bdab` (the design is its firs
 
 Approve each item before execution. "Pinned" means an existing test on main asserts the words.
 
+**Approved by the framework owner in the session, 2026-11-22:** O1, O2 and every item below (P1, I3a, I3b, L1-L3,
+R2, D2, B1, F1, Q1-Q4, E1, A3a, A3b, V1-V4, W1); execution subagent-driven.
+
 **Two design points**
 
 | Item | What | Recommended |
