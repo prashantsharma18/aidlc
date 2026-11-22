@@ -340,5 +340,105 @@ class DocsTest(unittest.TestCase):
         self.assertEqual(json.loads(read(".claude-plugin/plugin.json"))["version"], "8.1.0")
 
 
+CASES = {
+    "coordinator-schedules-slices": ("lane-for-slice-2.md", "no-lane-for-slice-3.md", "brief-opens-with-worker.md",
+                                     "no-queue-edit.md", "no-queue-write.md", "reply.md"),
+    "coordinator-drafts-queue": ("queue-branch.md", "main-copy-unchanged.md", "no-push.md", "reply.md"),
+    "coordinator-stuck-lane-shown": ("no-commit.md", "no-worktree-remove.md", "no-edit-in-the-lane.md",
+                                     "no-write-in-the-lane.md", "reply.md"),
+    "lane-run-two-fixes-stop": ("stopped.md", "no-third-fix.md", "no-push.md", "reply.md"),
+}
+
+
+def grader(case: str, name: str) -> dict:
+    """A grader's front matter as a dict of its top-level `key: value` lines (values as written)."""
+    text = read(f"evals/{case}/graders/{name}")
+    front = text.split("---", 2)[1]
+    return {line.split(":", 1)[0].strip(): line.split(":", 1)[1].strip()
+            for line in front.splitlines() if ":" in line and not line.startswith(" ")}
+
+
+def pattern(case: str, name: str) -> re.Pattern:
+    value = grader(case, name).get("input_match") or grader(case, name)["pattern"]
+    return re.compile(value[1:-1].replace("''", "'"))
+
+
+def tool_input(**fields) -> str:
+    """A tool's input as the graders see it: JSON."""
+    return json.dumps(fields)
+
+
+def scaffold(case: str, folder: Path) -> None:
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+    subprocess.run(["bash", str(ROOT / "evals" / case / "setup.sh")], cwd=folder, env=env, check=True,
+                   capture_output=True, text=True)
+
+
+def git_out(folder: Path, *args: str) -> str:
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+    return subprocess.run(["git", *args], cwd=folder, env=env, check=True, capture_output=True, text=True).stdout
+
+
+class EvalCasesTest(unittest.TestCase):
+    """Task 6: four cases for ADR 0030, written and checked, not run."""
+
+    def test_every_case_has_its_files(self):
+        for case, names in CASES.items():
+            for rel in ("case.yaml", "prompt.md", "setup.sh"):
+                self.assertTrue((ROOT / "evals" / case / rel).exists(), f"{case}/{rel}")
+            self.assertEqual(sorted(p.name for p in (ROOT / "evals" / case / "graders").glob("*.md")),
+                             sorted(names), case)
+            self.assertIn(f"name: {case}", read(f"evals/{case}/case.yaml"))
+            for name in names:
+                if name.startswith(("no-", "never-")):
+                    self.assertEqual(grader(case, name).get("max", "0"), "0", f"{case}/{name}")
+            self.assertIn(case, read("evals/README.md"), case)
+
+    def test_the_graders_match_right_and_not_wrong(self):
+        worker = pattern("coordinator-schedules-slices", "brief-opens-with-worker.md")
+        self.assertRegex(tool_input(prompt="Read /p/skills/lane-run/references/worker.md before anything else. Row SHIP-70 slice 2"), worker)
+        self.assertNotRegex(tool_input(prompt="Read /p/skills/parallel-lanes/SKILL.md before anything else."), worker)
+        slice3 = pattern("coordinator-schedules-slices", "no-lane-for-slice-3.md")
+        self.assertRegex(tool_input(prompt="You are a lane for SHIP-70 slice 3"), slice3)
+        self.assertNotRegex(tool_input(prompt="You are a lane for SHIP-70 slice 2"), slice3)
+        branch = pattern("coordinator-drafts-queue", "queue-branch.md")
+        self.assertRegex(tool_input(command="git worktree add --no-track -b docs/queue-2026-11-22 .worktrees/queue-2026-11-22 origin/main"), branch)
+        self.assertNotRegex(tool_input(command="git switch -c feat/SHIP-71-labels"), branch)
+        commit = pattern("coordinator-stuck-lane-shown", "no-commit.md")
+        self.assertRegex(tool_input(command="git -C .worktrees/SHIP-72 commit -am wip"), commit)
+        self.assertNotRegex(tool_input(command="git -C .worktrees/SHIP-72 log -1 --format=%ct"), commit)
+        stopped = pattern("lane-run-two-fixes-stop", "stopped.md")
+        readme = "/w/.worktrees/SHIP-73/plans/SHIP-73/README.md"
+        self.assertRegex(tool_input(file_path=readme, old_string="to do: fix", new_string="| aidlc-build | repository | "
+                                    "stopped: `tests/test_labels.py::test_ac1_return_label` red after two fixes |"),
+                         stopped)
+        self.assertNotRegex(tool_input(file_path=readme, old_string="doing", new_string="| aidlc-build | repository | "
+                                       "to do: fix tests/test_labels.py::test_ac1_return_label |"), stopped)
+        self.assertNotRegex(tool_input(file_path="/w/src/shipments/labels.py", old_string="x", new_string="stopped: "
+                                       "tests/test_labels.py::test_ac1_return_label red after two fixes"), stopped)
+
+    def test_the_scaffolds_build(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for case in CASES:
+                folder = Path(tmp) / case
+                folder.mkdir()
+                scaffold(case, folder)
+                self.assertEqual(git_out(folder, "status", "--porcelain").strip(), "", case)
+                self.assertIn("origin/main", git_out(folder, "branch", "-r"), case)
+            plans = Path(tmp) / "coordinator-schedules-slices"
+            self.assertIn("DEPENDS ON  slice 1", (plans / "plans/SHIP-70/bundle-3.md").read_text())
+            self.assertNotIn("feat/SHIP-70-returns-s2", git_out(plans, "branch", "-a"))
+            stuck = Path(tmp) / "coordinator-stuck-lane-shown"
+            self.assertIn("eta.py", git_out(stuck / ".worktrees/SHIP-72", "status", "--porcelain"))
+            fixes = Path(tmp) / "lane-run-two-fixes-stop"
+            log = git_out(fixes, "log", "--oneline", "feat/SHIP-73-return-labels",
+                          "--grep", "fix(ci): tests/test_labels.py::test_ac1_return_label", "--fixed-strings")
+            self.assertEqual(len(log.splitlines()), 2)
+            self.assertIn("SHIP-71", git_out(Path(tmp) / "coordinator-drafts-queue", "show",
+                                             "main:plans/SHIP-71/README.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

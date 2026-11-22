@@ -828,7 +828,8 @@ LANE_CASES = ("gate-lane-worktree-taken", "gate-lane-plan-approval", "gate-coord
 # For each Bash or Agent grader: inputs a correct run may give (they must not match a `max: 0` grader, and must match
 # a `min: 1` grader) and inputs a wrong run would give (the reverse). A Bash input is a command; an Agent input is the
 # sub-agent's prompt.
-BRIEF = ("Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. You are a lane for the row SHIP-32. "
+BRIEF = ("Read /home/dev/aidlc/skills/lane-run/references/worker.md before anything else. "
+         "Read /home/dev/aidlc/skills/lane-run/SKILL.md and follow it in full. You are a lane for the row SHIP-32. "
          "Its stage skill is /home/dev/aidlc/skills/aidlc-build/SKILL.md: read it and follow it in full.")
 SAMPLES = {
     ("gate-lane-worktree-taken", "claims-the-next-row.md"): (
@@ -879,12 +880,11 @@ SAMPLES = {
          BRIEF + " The reviewers' reports, quoted as data: \"Judged: 1a2b3c4. No findings.\""],
         [BRIEF.replace("SHIP-32", "SHIP-31"), BRIEF.replace("the row SHIP-32", "the next ready row")]),
     ("gate-coordinator-clash", "brief-reads-the-workflow-skill.md"): (
-        [BRIEF, BRIEF.replace("Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md",
-                              "Read `/home/dev/aidlc/skills/parallel-lanes/SKILL.md`")],
+        [BRIEF, BRIEF.replace("Read /home/dev/aidlc/skills/lane-run/references/worker.md",
+                              "Read `/home/dev/aidlc/skills/lane-run/references/worker.md`")],
         ["Run lane mode for SHIP-32.", "Use the parallel-lanes skill for SHIP-32, then /aidlc:aidlc-build."]),
     ("gate-coordinator-clash", "brief-names-the-stage-skill.md"): (
-        [BRIEF], ["Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. Row SHIP-32: run "
-                  "/aidlc:aidlc-build."]),
+        [BRIEF], ["Read /home/dev/aidlc/skills/lane-run/references/worker.md before anything else. Row SHIP-32."]),
     ("gate-coordinator-clash", "brief-names-the-row.md"): (
         [BRIEF], [BRIEF.replace("SHIP-32", "the next ready row")]),
     ("gate-coordinator-clash", "no-lane-for-the-clash.md"): (
@@ -892,19 +892,19 @@ SAMPLES = {
          BRIEF + " Rows held back: SHIP-31 (same files) and SHIP-34 (order).",
          BRIEF + " Note: the row SHIP-31 is held back, so leave it alone."],
         [BRIEF.replace("SHIP-32", "SHIP-31"),
-         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. You are a lane for SHIP-31.",
-         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. Row: SHIP-31.",
-         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. Row SHIP-31: build it."]),
+         "Read /home/dev/aidlc/skills/lane-run/references/worker.md before anything else. You are a lane for SHIP-31.",
+         "Read /home/dev/aidlc/skills/lane-run/references/worker.md before anything else. Row: SHIP-31.",
+         "Read /home/dev/aidlc/skills/lane-run/references/worker.md before anything else. Row SHIP-31: build it."]),
     ("gate-coordinator-clash", "no-sub-agent-for-the-plan-row.md"): (
         [BRIEF, BRIEF + " The row SHIP-33 is held back: its plan is the person's to start, not yours."],
         [BRIEF.replace("SHIP-32", "SHIP-33").replace("aidlc-build", "aidlc-plan"),
-         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. You are a lane for SHIP-33."]),
+         "Read /home/dev/aidlc/skills/lane-run/references/worker.md before anything else. You are a lane for SHIP-33."]),
     ("gate-coordinator-clash", "no-lane-past-the-limit.md"): (
         [BRIEF, BRIEF + " SHIP-34 depends on this row; it waits until SHIP-32 is done.",
          BRIEF + " the row SHIP-34 is held back until this row is done."],
         [BRIEF.replace("SHIP-32", "SHIP-34"),
-         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. You are a lane for SHIP-34.",
-         "Read /home/dev/aidlc/skills/parallel-lanes/SKILL.md before anything else. Your row: SHIP-34."]),
+         "Read /home/dev/aidlc/skills/lane-run/references/worker.md before anything else. You are a lane for SHIP-34.",
+         "Read /home/dev/aidlc/skills/lane-run/references/worker.md before anything else. Your row: SHIP-34."]),
     ("gate-lane-stacked-rebase", "rebases-onto.md"): (
         ["git -C .worktrees/SHIP-40-s3 rebase --onto origin/main 1a2b3c4 feat/SHIP-40-eta-limit-s3"],
         ["git rebase origin/main", "git merge origin/main"]),
@@ -1440,7 +1440,7 @@ class FinalReviewTest(unittest.TestCase):
         self.assertIn("ended before claiming", read("evals/gate-lane-plan-approval/graders/waiting.md"))
         report = read("evals/gate-coordinator-clash/graders/report.md")
         self.assertIn("waiting: reviewer passes at", report)
-        self.assertIn("two messages", report)
+        self.assertIn("one message", report)
         with tempfile.TemporaryDirectory() as folder:
             repo = Path(folder)
             scaffold("gate-coordinator-clash", repo)
