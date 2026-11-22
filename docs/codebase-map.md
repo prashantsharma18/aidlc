@@ -31,6 +31,7 @@ and the workflows (`ai-review.yml`, `ci.yml`, `contract-check.yml`, `contract-pu
   it; its stops and decisions stay in `SKILL.md`.
 - A new practice skill: `skills/<gerund-name>/SKILL.md` with `metadata.kind: practice` and the practice
   sections (When to use, Steps, Checks, Stop if, Common excuses, Red flags, Rules); long checklists in its `references/`.
+- A practice adapted from pstack keeps pstack's name (`unslop`, `technical-writing`, `in-your-own-words`, `how`, `why`).
 - A new workflow skill: `skills/<noun-phrase>/SKILL.md` with `metadata.kind: workflow` and the workflow sections
   (When to use, Inputs, Steps, Stop if, Common excuses, Red flags, Rules); its name never starts with `aidlc-` or with
   an "-ing" word.

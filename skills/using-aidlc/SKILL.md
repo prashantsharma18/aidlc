@@ -78,6 +78,8 @@ Choose by the kind of work. A slice can need several.
 | Commits, pull request size, versions, changelogs | `committing-changes` |
 | A CI pipeline or a quality gate | `building-ci-pipelines` |
 | A README, API reference, code comments, or the files agents read | `writing-documentation` |
+| How the sentences of a document, a pull request description or a commit body read | `technical-writing` |
+| The last pass on any text a person reads: cut AI tells | `unslop` |
 | A framework or library behaviour the change relies on | `checking-official-docs` |
 | A plan, design or risky change at Tier 2 or above | `stress-testing-decisions` |
 | A failing test, a broken build, an unexpected error | `debugging-failures` |
