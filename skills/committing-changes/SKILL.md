@@ -38,7 +38,7 @@ Not for: the team's branching and release strategy, which AGENTS.md and `aidlc-r
 - No generated output, secret, key, `.env` file or personal editor setting is committed.
 - Every commit on the branch builds and passes its tests, so bisecting works, except an approved recipe commit, which holds only the tool's output (`aidlc-build`).
 - A breaking change is marked in the subject and the footer, and the version reflects it.
-- In a slice, the pull request description maps each change to its criterion (`aidlc-verify` drafts it and `aidlc-review` completes it).
+- In a slice, the pull request description maps each change to its criterion (`aidlc-review` drafts it from the evidence table).
 
 ## Stop if
 - The diff holds a change you cannot explain. Find out what it is before committing it.

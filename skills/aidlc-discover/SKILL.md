@@ -27,7 +27,7 @@ disable-model-invocation: true
 Before design or planning, when the provisional tier asks for discovery (`assets/tiers.md`), or whenever an owner, a consumer or today's behaviour is unknown. At Tier 2 and 3, no plan is approved without the evidence pack and its recorded decision; that decision is taken with the design and the plan, in their one pull request.
 
 ## Inputs
-Where this runs: read the story's index first: `stories/<KEY>/README.md` at the workspace root, `../stories/<KEY>/README.md` from inside one of its repositories, or `plans/<KEY>/README.md` in a lone repository. No index: ask the person to run `aidlc-start` first, and stop. When it routes the story to several repositories, run at the workspace root and write to `stories/<KEY>/`; started inside a repository for such a story, say so, name the workspace root, and stop. When it names one repository, run inside that repository: a one-repository story runs entirely in that repository, with its documents in `plans/<KEY>/`; started at the workspace root for such a story, name the repository to open, and stop.
+Where this runs: read the story's index first: `stories/<KEY>/README.md` at the workspace root, `../stories/<KEY>/README.md` from inside one of its repositories, or `plans/<KEY>/README.md` in a lone repository. No index: ask the person to run `aidlc-start` first, and stop. Run where the "Runs in" cell of this stage's row says, on the branch the index's BRANCH lines name for that row; started elsewhere, name the right folder, and stop.
 
 The question or the intent, the provisional tier, `AGENTS.md` and the codebase map. Runtime evidence (audit logs, gateway logs) comes only from a person.
 

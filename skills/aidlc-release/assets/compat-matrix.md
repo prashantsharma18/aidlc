@@ -1,10 +1,4 @@
----
-id: compat-matrix
-title: Compatibility matrix
-stage: discover
-guide: ["14.8"]
-fields: [KEY]
----
+<!-- aidlc template: compat-matrix -->
 # {{KEY}} · compatibility matrix
 
 Every combination of old and new must hold before the step that creates it ships.

@@ -203,5 +203,64 @@ class RouteTableTest(unittest.TestCase):
             "skills/aidlc-start/references/route-s.md")))
 
 
+PLACEMENT = ("Run where the \"Runs in\" cell of this stage's row says, on the branch the index's BRANCH lines name for "
+             "that row; started elsewhere, name the right folder, and stop.")
+PART_PLACEMENT = "Where this runs: inside the repository, as the \"Runs in\" cell of this stage's row in its index"
+
+
+class CutsTest(unittest.TestCase):
+    """Task 3: R3 (one placement line that names the branch, G1), R5, R6, R9 and R10."""
+
+    def test_every_story_level_stage_points_to_its_row_and_branch(self):
+        for name in STORY_LEVEL:
+            text = flat(skill_md(name))
+            self.assertIn("No index: ask the person to run `aidlc-start` first, and stop.", text, name)
+            self.assertEqual(text.count(PLACEMENT), 1, name)
+            self.assertLess(text.index("No index: ask the person"), text.index(PLACEMENT), name)
+            self.assertNotIn("When it routes the story to several repositories", text, name)
+        self.assertIn("provisional key `NEW-<slug>`", flat(skill_md("aidlc-intent")))
+
+    def test_every_part_level_stage_points_to_its_row_and_branch(self):
+        for name in PART_LEVEL:
+            inputs = flat(section(skill_md(name), "## Inputs"))
+            self.assertTrue(inputs.startswith("## Inputs " + PART_PLACEMENT), name)
+            for phrase in ("on the branch the index's BRANCH lines name for that row.",
+                           "`../stories/<KEY>/coordination-plan.md`, from the repository's root (read-only;", "the workspace root is the folder that holds "
+                           "`WORKSPACE.md`, as `parallel-lanes` says", "`[<KEY>] part <n> of <m>: <what>`",
+                           "Started elsewhere: name the right folder, and stop."):
+                self.assertIn(phrase, inputs, (name, phrase))
+            self.assertNotIn("A one-repository story runs entirely in that repository.", inputs, name)
+
+    def test_r5_the_repeated_lead_in_is_gone(self):
+        design, plan = flat(section(skill_md("aidlc-design"), "## Gate")), flat(section(skill_md("aidlc-plan"), "## Gate"))
+        self.assertEqual(design.count("For a story across several repositories, Decision 2"), 1)
+        self.assertIn("never as a separate tracker approval. Its Decision 2 (design and plan) is this design's pull "
+                      "request in the home repository", design)
+        self.assertEqual(plan.count("For a story across several repositories, Decision 2"), 1)
+        self.assertIn("For a part, Decision 2 is the home design pull request plus this plan's pull request", plan)
+
+    def test_r6_review_owns_the_description(self):
+        verify = flat(skill_md("aidlc-verify"))
+        self.assertNotIn("Draft the pull request description", verify)
+        self.assertIn("## Produces The evidence table; `aidlc-review` drafts the pull request description from it.",
+                      verify)
+        self.assertIn(" 6. Mark this stage's row in the index", verify)
+        self.assertIn("2. Draft the pull request description from `assets/pr-description.md`, with the evidence table "
+                      "first:", flat(skill_md("aidlc-review")))
+        self.assertIn("(`aidlc-review` drafts it from the evidence table)", flat(skill_md("committing-changes")))
+        readme = read("README.md")
+        self.assertIn("| When the pull request's checks have run | The evidence table |", readme)
+        self.assertIn("| Before the code owner reviews | The pull request description and the review record |", readme)
+
+    def test_r9_r10_nothing_is_left_that_nothing_reads(self):
+        for name, path in (("coordination-plan", "aidlc-design/assets/coordination-plan.md"),
+                           ("workspace", "aidlc-onboard/assets/workspace.md"),
+                           ("compat-matrix", "aidlc-release/assets/compat-matrix.md")):
+            text = read(f"skills/{path}")
+            self.assertTrue(text.startswith(f"<!-- aidlc template: {name} -->\n# "), path)
+            self.assertNotIn("\nfields: [", text, path)
+        self.assertNotIn("Context gaps noticed", read("skills/aidlc-build/assets/progress-note.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

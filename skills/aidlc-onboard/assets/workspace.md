@@ -1,10 +1,4 @@
----
-id: workspace
-title: Workspace guide (WORKSPACE.md)
-stage: context
-guide: ["14.4", "2.11"]
-fields: [NAME, PURPOSE]
----
+<!-- aidlc template: workspace -->
 # Workspace: {{NAME}}
 
 {{PURPOSE}}

@@ -116,7 +116,7 @@ class GatesTest(unittest.TestCase):
         commits = read("skills/committing-changes/SKILL.md")
         self.assertNotIn("about 400", commits)
         self.assertIn("the pull-request size `reviewing-code` gives", commits)
-        self.assertIn("`aidlc-verify` drafts it and `aidlc-review` completes it", commits)
+        self.assertIn("`aidlc-review` drafts it from the evidence table", commits)
         self.assertIn("320 and 1440 pixels", read("skills/testing-in-browser/SKILL.md"))
         self.assertIn("come from the Quality bar in `AGENTS.md`", read("skills/tuning-performance/SKILL.md"))
         self.assertIn("no new serious or critical accessibility issue",

@@ -1,10 +1,4 @@
----
-id: coordination-plan
-title: Coordination plan (cross-repository)
-stage: plan
-guide: ["14.9", "7.14"]
-fields: [KEY, TITLE]
----
+<!-- aidlc template: coordination-plan -->
 # Coordination plan · {{KEY}} · {{TITLE}} · v1
 
 ## For the reviewer

@@ -83,8 +83,8 @@ them as below; in Copilot, Codex or Cursor, ask for the skill by name ("use aidl
 | `/aidlc:aidlc-design SHIP-12` | Always before planning; most end at "none needed" | The design note, ADR drafts, contract changes |
 | `/aidlc:aidlc-plan SHIP-12` | Once the spec is approved; on the fast paths, brief mode | The plan and one bundle per slice, or `fix.md` or `brief.md` |
 | `/aidlc:aidlc-build SHIP-12 1` | One slice at a time, from its approved bundle (at Tier 1, the stated one, or the approved one for independent slices) | Commits and the slice's progress note |
-| `/aidlc:aidlc-verify SHIP-12` | When the pull request's checks have run | The evidence table and the pull request description |
-| `/aidlc:aidlc-review SHIP-12` | Before the code owner reviews | The review record |
+| `/aidlc:aidlc-verify SHIP-12` | When the pull request's checks have run | The evidence table |
+| `/aidlc:aidlc-review SHIP-12` | Before the code owner reviews | The pull request description and the review record |
 | `/aidlc:aidlc-release SHIP-12` | When every part is merged | The readiness and change records, with stop criteria |
 | `/aidlc:aidlc-operate INC-231` | When an alert fires | The incident record and a follow-up work item |
 | `/aidlc:aidlc-feedback INC-231` | After an incident, or when findings repeat | Where each lesson goes |

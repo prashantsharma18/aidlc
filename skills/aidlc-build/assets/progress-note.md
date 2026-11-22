@@ -42,5 +42,3 @@ Write `- none` only when there is no judgement call, no Deviation and no Assumpt
 An assumption about how the work should behave that the spec does not say is a stop (`aidlc-build`'s Stop if), never an assumption: only a fact about the code you could not yet confirm is flagged for the reviewer.
 - {{assumption}} — {{confirmed in code at file:line | flagged for reviewer}}
 
-## Context gaps noticed (B5)
-- {{gap | wrong | ignored | not context}}: {{what the agent did not know}}

@@ -21,7 +21,7 @@ metadata:
 After the team's CI has run on the pull request. Checks you ran yourself are local evidence; only trusted verification counts towards a merge.
 
 ## Inputs
-Where this runs: inside the repository whose part you are working on. For a story that spans several repositories, read your part's row in the workspace's `../stories/<KEY>/coordination-plan.md`, from the repository's root (read-only; from a lane's worktree, the workspace root is the folder that holds `WORKSPACE.md`, as `parallel-lanes` says) and the design it points to; the branch is `feat/<KEY>-<part>` and the pull request title is `[<KEY>] part <n> of <m>: <what>`. Started at the workspace root: name the repository to open, and stop. A one-repository story runs entirely in that repository.
+Where this runs: inside the repository, as the "Runs in" cell of this stage's row in its index `plans/<KEY>/README.md` says, on the branch the index's BRANCH lines name for that row. For a part of a story across several repositories, also read your part's row in `../stories/<KEY>/coordination-plan.md`, from the repository's root (read-only; from a lane's worktree, the workspace root is the folder that holds `WORKSPACE.md`, as `parallel-lanes` says); its pull request title is `[<KEY>] part <n> of <m>: <what>`. Started elsewhere: name the right folder, and stop.
 
 The pull request's CI results (the checks and their logs, test reports), or, where there is no CI yet, the output of the repository's test commands run for this purpose, the spec's criteria and edge cases, and the plan's criterion-to-test map; on route D1, the fix brief `plans/<KEY>/fix.md` (its EXPECTED line and the reproducing test) in place of the spec and the plan. On route F0, the feature brief `plans/<KEY>/brief.md` (its CRITERIA lines, each mapped to its test) in place of the spec and the plan. On route S, the standard brief `plans/<KEY>/standard.md` (its LIMITS lines and the evidence its class needs) in place of the spec and the plan. For a part of a story across several repositories, the criteria are the part's read-only copy `plans/<KEY>/criteria.md`, which names the home commit it came from: the trusted run never needs the home repository. For a slice on its own branch, read the evidence file and write the evidence table in `plans/<KEY>/slice-<n>/` (ADR 0025).
 
@@ -32,13 +32,12 @@ The pull request's CI results (the checks and their logs, test reports), or, whe
 3. Write the total counts from the run, including skipped tests. A skipped or quarantined test is never a pass: its criterion is unproved.
 4. Fill the integrity rows (scope, the changed test files, the test count at the base and at the run's commit, protected tests, skips) from the evidence file `plans/<KEY>/review-evidence.md` when its HEAD and the commit the trusted run tested differ in no path outside `plans/<KEY>/` (`git diff --name-only <evidence HEAD> <tested commit> -- ':(top)' ':(top,exclude)plans/<KEY>/'` prints nothing, the same command as the verdict rule); otherwise run the git commands it lists yourself and write their outputs. Then fill the scans, and the AI review findings, with how each was answered: fixed, with the commit; or dismissed, with the reason.
 5. Under Unproved, list every criterion without a passing trusted test, why, and who accepted it, as they told you or as you checked it (the decider's own word, never a relayed one), with how it was confirmed; or write "none".
-6. Draft the pull request description: point reviewers at the tests first, and link the spec and plan. Updating the pull request asks the person first.
-7. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
+6. Mark this stage's row in the index (`plans/<KEY>/README.md` in a repository, `stories/<KEY>/README.md` at a
    workspace root) as done, or as stopped with the reason. On slice 0 of route G, the rows are the bundle's DONE WHEN checks (the real test, the health
    check, each CI check), not the spec's criteria, which later slices prove; mark the `slice 0` row.
 
 ## Produces
-The evidence table and the pull request description; updating the pull request asks the person first.
+The evidence table; `aidlc-review` drafts the pull request description from it.
 
 ## Gate
 The team's CI is green on the pull request, and every row points to the trusted run, or is listed as unproved with a decision. The code owner's approval is one decision, Merge, taken once at `aidlc-review`'s gate (ADR 0026): this stage asks for no approval of its own. A person decides here only where the tiers file's decisions table lists this decision; otherwise state what you did and go on. In a lane, release at your gate as `parallel-lanes` says. You draft; you never approve.
