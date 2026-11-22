@@ -32,29 +32,47 @@ MAX LANES   3
 FIXTURE_EOF
 index SHIP-70 "Return labels and refunds" done done done "done: approved in pull request 9 by Ana, checked in the review tool" \
   "to do" "to do" "to do" "to do" "to do"
+sed -i 's|^LEVEL      repository$|LEVEL      repository\nBRANCH     code feat/SHIP-70-returns\nBRANCH     plan docs/SHIP-70-plan|' plans/SHIP-70/README.md
+cat > plans/SHIP-70/spec.md <<'FIXTURE_EOF'
+# SHIP-70 · spec v1
+
+Spec owner: Priya · Tier: 1 · Route: F1 · Version: v1
+
+AC1: a return label for a returned parcel. AC2: a refund for a returned parcel. AC3: a returns endpoint.
+Non-goals: printing; carrier codes.
+
+Spec v1 approved by Priya on 2026-11-19, confirmed by Priya in the session.
+FIXTURE_EOF
 cat > plans/SHIP-70/plan.md <<'FIXTURE_EOF'
 # Plan: SHIP-70 · v1            Spec: v1
 
 TIER       1
 APPROACH   Three slices, tests first: returns, refunds, then the returns endpoint on top of slice 1.
+ORDER      slice 1 and slice 2 first, in any order; slice 3 after slice 1.
+BLOCKING   slice 1
+APART      slices 1 and 2: separate files
+SHARED     n/a: no file two slices write
+SPLIT      slices 1 and 2 on their own branches; slice 3 stacks on slice 1
 FILES      src/shipments/returns.py, src/shipments/refunds.py, src/shipments/returns_api.py
-BRANCH     docs/SHIP-70-plan
 APPROVAL   plan.md v1 approved by Ana (tech lead), 2026-11-20, in pull request 9, checked in the review tool.
 FIXTURE_EOF
 bundle() {
-  local n="$1" deps="$2" may="$3"
+  local n="$1" deps="$2" may="$3" mode="${4:-delegate}" cp=""
+  [ "$mode" = delegate ] || cp="   (delegate with checkpoints stops here)"
   cat > "plans/SHIP-70/bundle-$n.md" <<FIXTURE_EOF
 TASK BUNDLE · SHIP-70 · slice $n
 GOAL        Slice $n of the return labels and refunds.
 TIER        1
-MODE        delegate
+MODE        $mode
 DEPENDS ON  $deps
 MAY CHANGE  $may
 MUST NOT    AGENTS.md, existing assertions
+DO          0  Restate the goal and criteria with file references; write it to the progress note and go on.
+            1  Tests first: one test for the slice's criterion.  CHECKPOINT: the person reads the failing tests$cp
 DONE WHEN   the full suite passes; the diff touches only MAY CHANGE paths
 FIXTURE_EOF
 }
-bundle 1 none src/shipments/returns.py
+bundle 1 none src/shipments/returns.py "delegate with checkpoints"
 bundle 2 none src/shipments/refunds.py
 bundle 3 "slice 1" src/shipments/returns_api.py
 for n in 2 3; do

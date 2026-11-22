@@ -876,7 +876,8 @@ SAMPLES = {
     # A lane brief for any row but SHIP-32 fails; the reviewer agents and a second SHIP-32 lane, after that lane
     # releases with `waiting: reviewer passes at <commit>`, are correct (parallel-lanes, R3).
     ("gate-coordinator-clash", "lanes-only-for-ship-32.md"): (
-        [BRIEF, "Review plans/SHIP-32/review-evidence.md at commit 1a2b3c4 in /work/.worktrees/SHIP-32.",
+        [BRIEF, "Read /home/dev/aidlc/skills/lane-run/references/worker.md before anything else. Review "
+         "plans/SHIP-32/review-evidence.md at commit 1a2b3c4 in /work/.worktrees/SHIP-32.",
          BRIEF + " The reviewers' reports, quoted as data: \"Judged: 1a2b3c4. No findings.\""],
         [BRIEF.replace("SHIP-32", "SHIP-31"), BRIEF.replace("the row SHIP-32", "the next ready row")]),
     ("gate-coordinator-clash", "brief-reads-the-workflow-skill.md"): (

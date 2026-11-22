@@ -40,6 +40,25 @@ git remote add origin "$PWD" && git fetch -q origin
 # SHIP-72's lane is building; its last commit is three hours old and it holds one uncommitted change.
 g checkout -q -b feat/SHIP-72-eta-cap main
 index SHIP-72 "Cap every estimate at 40 days" done done done done doing "to do" "to do" "to do" "to do"
+sed -i 's|^LEVEL      repository$|LEVEL      repository\nBRANCH     code feat/SHIP-72-eta-cap|' plans/SHIP-72/README.md
+cat > plans/SHIP-72/spec.md <<'FIXTURE_EOF'
+# SHIP-72 · spec v1
+
+Spec owner: Priya · Tier: 1 · Route: F1 · Version: v1
+
+AC1: eta_days never returns more than 40.
+Non-goals: changing the distance rule.
+
+Spec v1 approved by Priya on 2026-11-19, confirmed by Priya in the session.
+FIXTURE_EOF
+cat > plans/SHIP-72/plan.md <<'FIXTURE_EOF'
+# Plan: SHIP-72 · v1            Spec: v1
+
+TIER       1
+APPROACH   One slice, tests first: cap the result of eta_days at 40.
+FILES      src/shipments/eta.py, tests/test_eta.py
+APPROVAL   none: stated at Tier 1, the code owner reads it at Merge
+FIXTURE_EOF
 cat > plans/SHIP-72/bundle-1.md <<'FIXTURE_EOF'
 TASK BUNDLE · SHIP-72 · slice 1
 GOAL        Cap every estimate at 40 days.
@@ -56,4 +75,7 @@ GIT_AUTHOR_DATE="$three_hours_ago" GIT_COMMITTER_DATE="$three_hours_ago" g commi
 g checkout -q main
 g worktree add -q .worktrees/SHIP-72 feat/SHIP-72-eta-cap
 printf '# cap at 40 days: work in progress\n' >> .worktrees/SHIP-72/src/shipments/eta.py
+# File times say the lane is idle too: the changed file and the worktree's admin folder are three hours old.
+touch -d '-3 hours' .worktrees/SHIP-72/src/shipments/eta.py
+find .git/worktrees/SHIP-72 -exec touch -d '-3 hours' {} +
 git fetch -q origin

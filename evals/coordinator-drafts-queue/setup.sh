@@ -33,7 +33,7 @@ FIXTURE_EOF
 index SHIP-70 "Return labels and refunds" done done done done done done done done done
 index SHIP-71 "Labels for parcels sent back" done done done "done: approved in pull request 11 by Ana, checked in the review tool" \
   "to do" "to do" "to do" "to do" "to do"
-printf 'BRANCH     code feat/SHIP-71-labels\n' >> plans/SHIP-71/README.md
+sed -i 's|^LEVEL      repository$|LEVEL      repository\nBRANCH     code feat/SHIP-71-labels|' plans/SHIP-71/README.md
 cat > plans/SHIP-71/spec.md <<'FIXTURE_EOF'
 # SHIP-71 · spec v1
 

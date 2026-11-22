@@ -38,7 +38,31 @@ g add -A && g commit -q -m "fixture: the queue"
 git remote add origin "$PWD" && git fetch -q origin
 g checkout -q -b feat/SHIP-73-return-labels main
 index SHIP-73 "Return labels" done done done done "to do: fix tests/test_labels.py::test_ac1_return_label" "to do" "to do" "to do" "to do"
-printf 'BRANCH     code feat/SHIP-73-return-labels\n' >> plans/SHIP-73/README.md
+sed -i 's|^LEVEL      repository$|LEVEL      repository\nBRANCH     code feat/SHIP-73-return-labels|' plans/SHIP-73/README.md
+cat > plans/SHIP-73/spec.md <<'FIXTURE_EOF'
+# SHIP-73 · spec v1
+
+Spec owner: Priya · Tier: 1 · Route: F1 · Version: v1
+
+AC1: return_label("ab12") returns "RETURN-AB12".
+Non-goals: printing.
+
+Spec v1 approved by Priya on 2026-11-19, confirmed by Priya in the session.
+FIXTURE_EOF
+cat > plans/SHIP-73/progress-1.md <<'FIXTURE_EOF'
+# SHIP-73 · progress, slice 1
+
+STATUS      done
+Restated: AC1 from spec v1; steps from bundle-1.md; Tier 1, so no wait.
+
+## Decision log
+| Decision | Why | Who |
+|---|---|---|
+| none | | |
+
+## Result
+Tests first, then return_label; the suite was green locally, CI is red on test_ac1_return_label.
+FIXTURE_EOF
 cat > plans/SHIP-73/plan.md <<'FIXTURE_EOF'
 # Plan: SHIP-73 · v1            Spec: v1
 

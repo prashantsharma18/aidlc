@@ -328,7 +328,8 @@ class CoordinatorTest(unittest.TestCase):
                       "the check named as verify's `to do: fix <what>` names it and counted with `git log --oneline "
                       "--grep \"^fix(ci): <check>$\" origin/<default branch>..HEAD`: write `stopped: <check> red after "
                       "two fixes` in the build row, not the verify row; a person decides. The last commit of each fix "
-                      "for a red check carries that message, and only that commit.", stop)
+                      "for a red check carries that message, and only that commit. Check it before `story-run` runs "
+                      "the fix.", stop)
 
 
 class DocsTest(unittest.TestCase):
@@ -365,8 +366,8 @@ CASES = {
                                      "no-queue-edit.md", "no-queue-write.md", "reply.md"),
     "coordinator-drafts-queue": ("queue-branch.md", "main-copy-unchanged.md", "no-push.md", "reply.md"),
     "coordinator-stuck-lane-shown": ("no-commit.md", "no-worktree-remove.md", "no-edit-in-the-lane.md",
-                                     "no-write-in-the-lane.md", "reply.md"),
-    "lane-run-two-fixes-stop": ("stopped.md", "no-third-fix.md", "no-push.md", "reply.md"),
+                                     "no-write-in-the-lane.md", "no-discard.md", "reply.md"),
+    "lane-run-two-fixes-stop": ("stopped.md", "no-third-fix.md", "no-third-fix-write.md", "no-push.md", "reply.md"),
 }
 
 
@@ -413,7 +414,7 @@ class EvalCasesTest(unittest.TestCase):
             self.assertIn(f"name: {case}", read(f"evals/{case}/case.yaml"))
             for name in names:
                 if name.startswith(("no-", "never-")):
-                    self.assertEqual(grader(case, name).get("max", "0"), "0", f"{case}/{name}")
+                    self.assertEqual(grader(case, name).get("max"), "0", f"{case}/{name}")
             self.assertIn(case, read("evals/README.md"), case)
 
     def test_the_graders_match_right_and_not_wrong(self):
@@ -424,8 +425,44 @@ class EvalCasesTest(unittest.TestCase):
         self.assertRegex(tool_input(prompt="You are a lane for SHIP-70 slice 3"), slice3)
         self.assertNotRegex(tool_input(prompt="You are a lane for SHIP-70 slice 2"), slice3)
         branch = pattern("coordinator-drafts-queue", "queue-branch.md")
-        self.assertRegex(tool_input(command="git worktree add --no-track -b docs/queue-2026-11-22 .worktrees/queue-2026-11-22 origin/main"), branch)
-        self.assertNotRegex(tool_input(command="git switch -c feat/SHIP-71-labels"), branch)
+        for command in ("git worktree add --no-track -b docs/queue-2026-11-22 .worktrees/queue-2026-11-22 origin/main",
+                        'git worktree add --no-track -b "docs/queue-$(date +%F)" ".worktrees/queue-$(date +%F)" origin/main',
+                        "d=$(date +%F) && git worktree add --no-track -b docs/queue-$d .worktrees/queue-$d origin/main"):
+            self.assertRegex(tool_input(command=command), branch, command)
+        for command in ("git branch --list docs/queue-2026-11-22", "git rev-parse --verify -q docs/queue-2026-11-22",
+                        "git switch -c feat/SHIP-71-labels"):
+            self.assertNotRegex(tool_input(command=command), branch, command)
+        self.assertNotRegex(tool_input(description="make docs/queue-2026-11-22", command="git status"), branch)
+        slice2 = pattern("coordinator-schedules-slices", "lane-for-slice-2.md")
+        self.assertRegex(tool_input(prompt="You are a lane for SHIP-70 slice 2"), slice2)
+        self.assertRegex(tool_input(prompt="Read plans/SHIP-70/slice-2/README.md"), slice2)
+        self.assertNotRegex(tool_input(prompt="You are a lane for SHIP-70 slice 1"), slice2)
+        remove = pattern("coordinator-stuck-lane-shown", "no-worktree-remove.md")
+        self.assertRegex(tool_input(command="git worktree remove --force .worktrees/SHIP-72"), remove)
+        self.assertNotRegex(tool_input(command="git worktree list"), remove)
+        for name in ("no-edit-in-the-lane.md", "no-write-in-the-lane.md"):
+            lane = pattern("coordinator-stuck-lane-shown", name)
+            self.assertRegex(tool_input(file_path="/w/.worktrees/SHIP-72/src/shipments/eta.py", content="x"), lane)
+            self.assertNotRegex(tool_input(file_path="/w/QUEUE.md", content="x"), lane)
+        discard = pattern("coordinator-stuck-lane-shown", "no-discard.md")
+        for command in ("rm -rf .worktrees/SHIP-72", "git -C .worktrees/SHIP-72 stash",
+                        "git -C .worktrees/SHIP-72 checkout -- .", "git -C .worktrees/SHIP-72 reset --hard"):
+            self.assertRegex(tool_input(command=command), discard, command)
+        for command in ("git -C .worktrees/SHIP-72 status --porcelain", "git -C .worktrees/SHIP-72 diff"):
+            self.assertNotRegex(tool_input(command=command), discard, command)
+        for name in ("no-third-fix.md", "no-third-fix-write.md"):
+            third = pattern("lane-run-two-fixes-stop", name)
+            self.assertRegex(tool_input(file_path="/w/.worktrees/SHIP-73/src/shipments/labels.py", content="x"), third)
+            self.assertNotRegex(tool_input(file_path="/w/plans/SHIP-73/README.md", content="x"), third)
+        self.assertEqual(grader("lane-run-two-fixes-stop", "no-third-fix.md")["tool"], "Edit")
+        self.assertEqual(grader("lane-run-two-fixes-stop", "no-third-fix-write.md")["tool"], "Write")
+        for case in ("coordinator-drafts-queue", "lane-run-two-fixes-stop"):
+            push = pattern(case, "no-push.md")
+            for command in ("git push origin feat/SHIP-71-labels", "git -C .worktrees/x push -u origin HEAD",
+                            "git -c k=v push"):
+                self.assertRegex(tool_input(command=command), push, command)
+            for command in ("git fetch origin", "git log origin/main..HEAD --grep push"):
+                self.assertNotRegex(tool_input(command=command), push, command)
         commit = pattern("coordinator-stuck-lane-shown", "no-commit.md")
         self.assertRegex(tool_input(command="git -C .worktrees/SHIP-72 commit -am wip"), commit)
         self.assertNotRegex(tool_input(command="git -C .worktrees/SHIP-72 log -1 --format=%ct"), commit)
@@ -448,13 +485,32 @@ class EvalCasesTest(unittest.TestCase):
                 self.assertEqual(git_out(folder, "status", "--porcelain").strip(), "", case)
                 self.assertIn("origin/main", git_out(folder, "branch", "-r"), case)
             plans = Path(tmp) / "coordinator-schedules-slices"
-            self.assertIn("DEPENDS ON  slice 1", (plans / "plans/SHIP-70/bundle-3.md").read_text())
+            self.assertIn("MODE        delegate with checkpoints", (plans / "plans/SHIP-70/bundle-1.md").read_text())
+            self.assertIn("CHECKPOINT", (plans / "plans/SHIP-70/bundle-1.md").read_text())
+            self.assertIn("BRANCH     plan docs/SHIP-70-plan", (plans / "plans/SHIP-70/README.md").read_text())
+            self.assertRegex((plans / "plans/SHIP-70/plan.md").read_text(), r"(?m)^SPLIT      slices 1 and 2")
+            self.assertTrue((plans / "plans/SHIP-70/spec.md").exists())
+            for case, ref, path in (("coordinator-stuck-lane-shown", "feat/SHIP-72-eta-cap", "plans/SHIP-72/spec.md"),
+                                    ("coordinator-stuck-lane-shown", "feat/SHIP-72-eta-cap", "plans/SHIP-72/plan.md"),
+                                    ("lane-run-two-fixes-stop", "feat/SHIP-73-return-labels", "plans/SHIP-73/spec.md"),
+                                    ("lane-run-two-fixes-stop", "feat/SHIP-73-return-labels",
+                                     "plans/SHIP-73/progress-1.md")):
+                self.assertTrue(git_out(Path(tmp) / case, "show", f"{ref}:{path}").strip(), path)
+            self.assertRegex(git_out(Path(tmp) / "lane-run-two-fixes-stop", "show",
+                                     "feat/SHIP-73-return-labels:plans/SHIP-73/progress-1.md"), r"(?m)^STATUS\s+done")
+            self.assertIn("BRANCH     code feat/SHIP-73-return-labels", git_out(
+                Path(tmp) / "lane-run-two-fixes-stop", "show", "feat/SHIP-73-return-labels:plans/SHIP-73/README.md"))
+            self.assertNotIn("BRANCH", (plans / "plans/SHIP-70/plan.md").read_text().replace("BRANCH     plan", ""))
+            for case in CASES:
+                self.assertEqual(git_out(Path(tmp) / case, "branch", "--show-current").strip(), "main", case)
+                self.assertIn(".worktrees/", (Path(tmp) / case / ".git/info/exclude").read_text(), case)
             self.assertNotIn("feat/SHIP-70-returns-s2", git_out(plans, "branch", "-a"))
             stuck = Path(tmp) / "coordinator-stuck-lane-shown"
             self.assertIn("eta.py", git_out(stuck / ".worktrees/SHIP-72", "status", "--porcelain"))
             fixes = Path(tmp) / "lane-run-two-fixes-stop"
-            log = git_out(fixes, "log", "--oneline", "feat/SHIP-73-return-labels",
-                          "--grep", "fix(ci): tests/test_labels.py::test_ac1_return_label", "--fixed-strings")
+            log = git_out(fixes, "log", "--oneline",
+                          "--grep", "^fix(ci): tests/test_labels.py::test_ac1_return_label$",
+                          "origin/main..feat/SHIP-73-return-labels")
             self.assertEqual(len(log.splitlines()), 2)
             self.assertIn("SHIP-71", git_out(Path(tmp) / "coordinator-drafts-queue", "show",
                                              "main:plans/SHIP-71/README.md"))
